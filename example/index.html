@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>blueprint3d-babylon 测试地图</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="workspace">
+        <aside class="panel left-panel">
+          <nav class="tabs" aria-label="编辑模式">
+            <div class="tabs-slider"></div>
+            <button class="tab active" type="button" data-tab="floorplan">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 12H3"/><path d="M12 3v18"/></svg>
+              <span class="tab-text">户型</span>
+            </button>
+            <button class="tab" type="button" data-tab="design">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.63-.77 1.63-1.7 0-.43-.16-.83-.41-1.16a.81.81 0 0 1-.22-.56c0-.44.33-.8 1.72-.8 5.48 0 9.28-4.5 9.28-10C24 6.5 18.62 2 12 2z"/></svg>
+              <span class="tab-text">设计</span>
+            </button>
+            <button class="tab" type="button" data-tab="items">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5"/><path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4H2Z"/><path d="M6 18v2"/><path d="M18 18v2"/></svg>
+              <span class="tab-text">家具</span>
+            </button>
+          </nav>
+
+          <section class="tool-section" data-panel="floorplan">
+            <h2>建筑工具</h2>
+            <div class="segmented floor-tools">
+              <button class="mode active" type="button" data-mode="select">选择/移动<span class="shortcut">(Space)</span></button>
+              <button class="mode" type="button" data-mode="draw-wall">画墙<span class="shortcut">(L)</span></button>
+              <button class="mode" type="button" data-mode="delete-wall">删除墙<span class="shortcut">(E)</span></button>
+              <button class="mode" type="button" data-mode="add-room">新建房间<span class="shortcut">(R)</span></button>
+              <button class="mode" type="button" data-mode="add-door">加门<span class="shortcut">(D)</span></button>
+              <button class="mode" type="button" data-mode="add-window">加窗<span class="shortcut">(W)</span></button>
+            </div>
+            <label class="check-field">
+              <input id="snap-enabled" type="checkbox" checked />
+              <span>对齐格子</span>
+            </label>
+            <label class="field compact-field">
+              <span>格子尺寸（米）</span>
+              <input id="snap-size" type="number" min="0.1" max="2" step="0.1" value="1" />
+            </label>
+            <p class="hint">选择房间后可拖动移动，也可拖动四周手柄调节长宽。选择墙体可设置长度或直接删除。</p>
+          </section>
+
+          <section class="tool-section hidden" data-panel="design">
+            <h2>设计</h2>
+            <label id="floor-color-field" class="field">
+              <span>地板颜色</span>
+              <input id="floor-color" type="color" value="#f4efe6" />
+            </label>
+            <div class="material-uploader">
+              <label class="field">
+                <span>材质分类</span>
+                <select id="material-category"></select>
+              </label>
+              <input id="material-upload" type="file" accept="image/*" hidden />
+            </div>
+            <div id="material-library" class="material-library"></div>
+            <div id="design-selection-panel" class="design-selection"></div>
+            <button id="btn-reset-material" type="button">重置</button>
+          </section>
+
+          <section class="tool-section hidden" data-panel="items">
+            <h2>家具库</h2>
+            <div class="furniture-filter-wrapper">
+              <label class="field">
+                <span>家具分类</span>
+                <select id="furniture-category-select"></select>
+              </label>
+            </div>
+            <div id="item-grid" class="item-grid"></div>
+          </section>
+        </aside>
+
+        <section id="stage" class="stage" data-view="2d">
+          <div class="stage-controls">
+            <div class="control-group-left">
+              <div class="file-dropdown">
+                <button id="btn-file-menu" type="button" class="btn-icon btn-menu" title="文件">
+                  <span class="icon-lines" aria-hidden="true"></span>
+                </button>
+                <div id="file-menu-content" class="dropdown-content hidden">
+                  <button id="btn-new" type="button">新建项目</button>
+                  <button id="btn-save" type="button">保存建筑文件</button>
+                  <button id="btn-export-dxf" type="button">导出 CAD（DXF）</button>
+                  <button id="btn-export-3mf" type="button">导出 3MF</button>
+                  <button id="btn-load" type="button">导入建筑文件</button>
+                </div>
+              </div>
+            </div>
+            <div class="control-group-right">
+              <button id="btn-undo" type="button" class="btn-icon" title="撤销" disabled>↶</button>
+              <button id="btn-redo" type="button" class="btn-icon" title="重做" disabled>↷</button>
+              <button id="btn-reset-camera" type="button" class="btn-icon hidden" title="重置视角">⛶</button>
+              <button id="btn-view-toggle" class="primary" type="button" aria-pressed="false">3D</button>
+              <input id="building-file-input" type="file" accept=".json,.b3dbuilding,.b3dbuilding.json,application/json" hidden />
+            </div>
+          </div>
+
+          <div class="view-card plan-card" data-view-card="2d">
+            <svg id="floorplan" viewBox="0 0 720 520" role="img" aria-label="2D 户型编辑器"></svg>
+          </div>
+          <div class="view-card canvas-card" data-view-card="3d">
+            <canvas id="render-canvas"></canvas>
+          </div>
+        </section>
+
+        <aside id="right-panel" class="panel right-panel">
+          <button id="btn-toggle-right" class="toggle-side-btn" type="button" aria-label="收起面板">›</button>
+          <div class="right-panel-content">
+            <h2>对象属性</h2>
+            <div id="empty-state" class="empty-state">请选择房间、墙、家具、门或窗</div>
+
+            <div id="room-editor" class="editor hidden">
+              <strong id="selected-room-name">房间</strong>
+              <label class="field">
+                <span>房间名称</span>
+                <input id="room-name" type="text" />
+              </label>
+              <label class="field">
+                <span>长度（米）</span>
+                <input id="room-width" type="number" min="1.2" step="0.1" />
+              </label>
+              <label class="field">
+                <span>宽度（米）</span>
+                <input id="room-depth" type="number" min="1.2" step="0.1" />
+              </label>
+              <button id="btn-delete-room" type="button" class="danger">删除房间</button>
+            </div>
+
+            <div id="wall-editor" class="editor hidden">
+              <strong id="selected-wall-name">墙面</strong>
+              <label class="field">
+                <span>墙体长度（米）</span>
+                <input id="wall-length" type="number" min="0.2" step="0.1" />
+              </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="wall-rotation" type="number" min="0" max="359" step="90" />
+                <input id="wall-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <p class="hint">墙面颜色 and 材质请在左侧“设计”面板调整。</p>
+              <button id="btn-delete-wall" type="button" class="danger">删除墙体</button>
+            </div>
+
+            <div id="item-editor" class="editor hidden">
+              <strong id="selected-name">家具</strong>
+              <label class="field">
+                <span>宽度 (m)</span>
+                <input id="item-width" type="number" min="0.1" step="0.01" />
+              </label>
+              <label class="field">
+                <span>深度 (m)</span>
+                <input id="item-depth" type="number" min="0.1" step="0.01" />
+              </label>
+              <label class="field">
+                <span>高度 (m)</span>
+                <input id="item-height" type="number" min="0.1" step="0.01" />
+              </label>
+              <label class="field">
+                <span>离地高度 (m)</span>
+                <input id="item-elevation" type="number" min="0" step="0.01" />
+              </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="item-rotation" type="number" min="0" max="359" step="15" />
+                <input id="item-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <label class="field">
+                <span>缩放</span>
+                <input id="item-scale" type="number" min="0.5" max="4" step="0.1" />
+                <input id="item-scale-range" type="range" min="0.5" max="4" step="0.05" />
+              </label>
+              <label id="item-pose-field" class="field hidden">
+                <span>木偶姿态</span>
+                <select id="item-pose">
+                  <option value="stand">站立</option>
+                  <option value="sit">坐下</option>
+                  <option value="lie">平躺</option>
+                </select>
+              </label>
+              <label class="check-field">
+                <input id="item-locked" type="checkbox" />
+                <span>锁定位置</span>
+              </label>
+              <label id="item-light-field" class="check-field hidden">
+                <input id="item-light-on" type="checkbox" />
+                <span>开启灯光</span>
+              </label>
+              <button id="btn-delete-item" type="button" class="danger">删除家具</button>
+            </div>
+
+            <div id="opening-editor" class="editor hidden">
+              <strong id="selected-opening-name">门窗</strong>
+              <label class="field">
+                <span>沿墙位置</span>
+                <input id="opening-position" type="range" min="8" max="92" step="1" />
+              </label>
+              <label class="field">
+                <span>宽度（米）</span>
+                <input id="opening-width" type="number" min="0.25" max="3.6" step="0.05" />
+              </label>
+              <label id="opening-height-field" class="field hidden">
+                <span>窗户高度（米）</span>
+                <input id="opening-height" type="number" min="0.3" max="2.2" step="0.05" />
+              </label>
+              <label id="opening-sill-field" class="field hidden">
+                <span>离地高度（米）</span>
+                <input id="opening-sill-height" type="number" min="0" max="2.4" step="0.05" />
+              </label>
+              <label id="opening-open-field" class="check-field hidden">
+                <input id="opening-open" type="checkbox" />
+                <span>开启状态</span>
+              </label>
+              <label id="opening-flip-lr-field" class="check-field hidden">
+                <input id="opening-flip-lr" type="checkbox" />
+                <span>左右翻转</span>
+              </label>
+              <label id="opening-flip-io-field" class="check-field hidden">
+                <input id="opening-flip-io" type="checkbox" />
+                <span>内外翻转</span>
+              </label>
+              <button id="btn-delete-opening" type="button" class="danger">删除门窗</button>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "name": "blueprint3d-babylon",
+  "version": "0.1.0",
+  "description": "面向 Babylon.js 的蓝图式 2D/3D 建筑编辑库，服务粉色城堡与家园沙盘测试地图。",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./presets/pink-castle": "./src/presets/pinkCastle.js",
+    "./presets/blueprint-test-map": "./src/presets/blueprintTestMap.js",
+    "./furniture": "./src/furniture/index.js",
+    "./materials": "./src/core/materialCatalog.js"
+  },
+  "scripts": {
+    "build": "vite build example --outDir ../../dist-blueprint-test --emptyOutDir"
+  },
+  "peerDependencies": {
+    "@babylonjs/core": "^7.11.0"
+  },
+  "devDependencies": {
+    "@babylonjs/core": "^7.11.0",
+    "vite": "^5.0.0"
+  },
+  "keywords": [
+    "babylonjs",
+    "blueprint3d",
+    "3d",
+    "castle",
+    "floorplan"
+  ]
+}

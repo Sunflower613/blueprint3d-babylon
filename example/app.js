@@ -20,6 +20,19 @@ const view = { width: 720, height: 520, pad: 42, minX: -6.4, maxX: 6.8, minZ: -9
 const groundPlane = new BABYLON.Plane(0, 1, 0, 0);
 
 let mode = 'select';
+
+function switchToSelectMode() {
+  const selectButton = document.querySelector('.mode[data-mode="select"]');
+  if (selectButton) {
+    selectButton.click();
+  } else {
+    mode = 'select';
+    drawStart = null;
+    document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate.dataset.mode === 'select'));
+    renderPlan();
+  }
+}
+
 let currentView = '2d';
 let selectedRoomId = null;
 let selectedWallId = null;
@@ -27,6 +40,7 @@ let selectedItemId = null;
 let selectedOpeningId = null;
 let selectedRoofId = null;
 let selectedStairsId = null;
+let selectedFenceId = null;
 let drawStart = null;
 let dragState = null;
 let openingDragState = null;
@@ -35,7 +49,12 @@ let roomDragState = null;
 let roomResizeState = null;
 let drag3DState = null;
 let structureDragState = null;
+let drawWallPreviewCylinder = null;
+let drawWallPreviewStartCylinder = null;
+let drawWallPreviewWall = null;
 let roofResizeState = null;
+let fenceDragState = null;
+let fenceHandleDragState = null;
 let contextMenuElement = null;
 let longPressState = null;
 let snapEnabled = true;
@@ -49,6 +68,12 @@ let activeMaterialDescriptor = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
 let itemGestureState = null;
 const activePointers = new Map();
+let hasUserZoomedOrPanned = false;
+const viewPointers = new Map();
+let isPanning2D = false;
+let panStart2D = null;
+let prevTouchDist2D = 0;
+let prevTouchCenter2D = null;
 let roomCounter = 1;
 let undoStack = [];
 let redoStack = [];
@@ -226,6 +251,12 @@ function resetCurrentMaterial() {
     refreshShadows();
     updateEditor();
     renderPlan();
+  } else if (selectedFenceId) {
+    pushHistory();
+    testMap.updateFence(selectedFenceId, { material: '#8d6e63', color: '#8d6e63' });
+    refreshShadows();
+    updateEditor();
+    renderPlan();
   }
 }
 
@@ -349,7 +380,7 @@ function setView(nextView) {
   
   const resetCamBtn = document.getElementById('btn-reset-camera');
   if (resetCamBtn) {
-    resetCamBtn.classList.toggle('hidden', nextView !== '3d');
+    resetCamBtn.classList.remove('hidden');
   }
 
   if (nextView === '3d') {
@@ -362,6 +393,7 @@ function setView(nextView) {
   } else {
     clear3DEditHandles();
     clear3DGrid();
+    clearDrawWallPreview();
     renderPlan();
   }
 }
@@ -467,9 +499,12 @@ function iconSvg(name) {
   const attrs = 'class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
   const icons = {
     copy: `<svg ${attrs}><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+    rotate: `<svg ${attrs}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>`,
     trash: `<svg ${attrs}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`,
     up: `<svg ${attrs}><path d="m18 15-6-6-6 6"/></svg>`,
-    down: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`
+    down: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`,
+    power: `<svg ${attrs}><path d="M12 2v10"/><path d="M18.36 6.36a9 9 0 1 1-12.73 0"/></svg>`,
+    door: `<svg ${attrs}><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M15 6 L10.5 4.5 A2 2 0 0 0 9 6.5 L9 17.5 A2 2 0 0 0 10.5 19.5 L15 18 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`
   };
   return icons[name] || '';
 }
@@ -569,18 +604,125 @@ function get2DContextTargetFromElement(element) {
   if (roof?.dataset.roofId) return { type: 'roof', id: roof.dataset.roofId };
   const stairs = element.closest?.('[data-stairs-id]');
   if (stairs?.dataset.stairsId) return { type: 'stairs', id: stairs.dataset.stairsId };
+  const fence = element.closest?.('[data-fence-id]');
+  if (fence?.dataset.fenceId) return { type: 'fence', id: fence.dataset.fenceId };
   const roomHit = element.closest?.('[data-room-hit-id]');
   if (roomHit?.dataset.roomHitId) return { type: 'room', id: roomHit.dataset.roomHitId };
   const room = element.closest?.('[data-room-id]');
   if (room?.dataset.roomId) return { type: 'room', id: room.dataset.roomId };
   return null;
 }
+function isSwitchableTarget(target) {
+  if (!target) return false;
+  if (target.type === 'opening') return true;
+  if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (!item) return false;
+    const def = testMap.getFurnitureDefinition(item.type);
+    return !!(def && (def.category === 'lighting' || def.lightSource || def.isSwitchable || item.isOn !== undefined || item.lightOn !== undefined));
+  }
+  return false;
+}
+
+function isLightingTarget(target) {
+  if (!target || target.type !== 'item') return false;
+  const item = testMap.getItem(target.id);
+  if (!item) return false;
+  const def = testMap.getFurnitureDefinition(item.type);
+  return !!(def && (def.category === 'lighting' || def.lightSource));
+}
+
 function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedContextTarget(target)) return;
+  const isRotatable = ['item', 'roof', 'stairs', 'opening'].includes(target.type);
+  const isSwitchable = isSwitchableTarget(target);
+  const isLighting = isLightingTarget(target);
+  
   showIconMenu(clientX, clientY, [
     { icon: 'copy', title: '\u590d\u5236', onClick: () => copyContextTarget(target) },
+    isRotatable && { icon: 'rotate', title: '\u65cb\u8f6c', onClick: () => rotateContextTarget(target) },
+    isSwitchable && { 
+      icon: isLighting ? 'power' : (target.type === 'opening' ? 'door' : 'power'), 
+      title: '\u5f00\u5173', 
+      onClick: () => toggleContextTarget(target) 
+    },
     { icon: 'trash', title: '\u5220\u9664', onClick: () => deleteContextTarget(target) }
   ]);
+}
+
+function toggleContextTarget(target) {
+  if (!isAllowedContextTarget(target)) return;
+  pushHistory();
+  if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    if (!opening) return;
+    testMap.updateOpening(target.id, { isOpen: !opening.isOpen });
+    if (selectedOpeningId === target.id) {
+      updateEditor();
+    }
+  } else if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (!item) return;
+    const def = testMap.getFurnitureDefinition(item.type);
+    if (def && (def.category === 'lighting' || def.lightSource)) {
+      testMap.updateItem(target.id, { lightOn: item.lightOn === false });
+    } else {
+      testMap.updateItem(target.id, { isOn: item.isOn === false });
+    }
+    if (selectedItemId === target.id) {
+      updateEditor();
+    }
+  }
+  refreshShadows();
+  renderPlan();
+}
+
+function rotateContextTarget(target) {
+  if (!isAllowedContextTarget(target)) return;
+  pushHistory();
+  if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (!item) return;
+    const currentDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
+    const nextDegrees = (currentDegrees + 90) % 360;
+    testMap.rotateItem(target.id, nextDegrees * Math.PI / 180);
+    if (selectedItemId === target.id) {
+      updateEditor();
+    }
+  } else if (target.type === 'roof' || target.type === 'stairs') {
+    const structure = getStructure(target.type, target.id);
+    if (!structure) return;
+    const currentDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
+    const nextDegrees = (currentDegrees + 90) % 360;
+    updateStructure(target.type, target.id, { rotation: nextDegrees * Math.PI / 180 });
+    const selected = getSelectedStructure();
+    if (selected && selected.type === target.type && selected.id === target.id) {
+      updateEditor();
+    }
+  } else if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    if (!opening) return;
+    const lr = !!opening.isFlippedLR;
+    const io = !!opening.isFlippedIO;
+    let state = 0;
+    if (lr && !io) state = 1;
+    else if (lr && io) state = 2;
+    else if (!lr && io) state = 3;
+    
+    const nextState = (state + 1) % 4;
+    const nextLr = (nextState === 1 || nextState === 2);
+    const nextIo = (nextState === 2 || nextState === 3);
+    
+    testMap.updateOpening(target.id, {
+      isFlippedLR: nextLr,
+      isFlippedIO: nextIo
+    });
+    if (selectedOpeningId === target.id) {
+      updateEditor();
+    }
+  }
+  refreshShadows();
+  renderPlan();
 }
 
 function findMatchingCurrentFloorWall(sourceWall, sourcePoint) {
@@ -688,12 +830,23 @@ function copyContextTarget(target) {
 
 function deleteContextTarget(target) {
   if (!isAllowedContextTarget(target)) return;
+  if (target.type === 'room') {
+    showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
+      if (confirmed) {
+        pushHistory();
+        testMap.deleteRoom(target.id);
+        clearSelection();
+        refreshShadows();
+        renderPlan();
+      }
+    });
+    return;
+  }
   pushHistory();
   if (target.type === 'item') testMap.deleteItem(target.id);
   if (target.type === 'opening') testMap.deleteOpening(target.id);
   if (target.type === 'roof') testMap.deleteRoof?.(target.id);
   if (target.type === 'stairs') testMap.deleteStairs?.(target.id);
-  if (target.type === 'room') testMap.deleteRoom(target.id);
   clearSelection();
   refreshShadows();
   renderPlan();
@@ -753,32 +906,7 @@ function cancelObjectInteractions() {
   camera.attachControl(canvas, true, false, 1);
 }
 function ensureBuildingToolControls() {
-  if (!document.querySelector('.floor-tools .mode[data-mode="add-roof"]')) {
-    const tools = document.querySelector('.floor-tools');
-    if (tools) {
-      const roofButton = document.createElement('button');
-      roofButton.type = 'button';
-      roofButton.className = 'mode';
-      roofButton.dataset.mode = 'add-roof';
-      roofButton.innerHTML = `
-        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m12 2-8 8h16Z"/></svg>
-        <span class="mode-text">屋顶</span>
-        <span class="mode-shortcut"></span>
-      `;
-      tools.appendChild(roofButton);
-
-      const stairsButton = document.createElement('button');
-      stairsButton.type = 'button';
-      stairsButton.className = 'mode';
-      stairsButton.dataset.mode = 'add-stairs';
-      stairsButton.innerHTML = `
-        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20h14"/><path d="M10 16h10"/><path d="M14 12h6"/><path d="M18 8h2"/><path d="M2 20h4v-4h4v-4h4V8h4V4h4"/></svg>
-        <span class="mode-text">楼梯</span>
-        <span class="mode-shortcut"></span>
-      `;
-      tools.appendChild(stairsButton);
-    }
-  }
+  // 静态 HTML 已经包含了按钮，此方法已废弃
 }
 
 function ensure3DGridControls() {
@@ -826,6 +954,17 @@ function ensureStructureEditor() {
   title.id = 'selected-structure-name';
   title.textContent = '\u5efa\u7b51\u7ec4\u4ef6';
   editor.appendChild(title);
+  
+  // 插入“类型”下拉框
+  const subtypeLabel = document.createElement('label');
+  subtypeLabel.className = 'field';
+  const subtypeSpan = document.createElement('span');
+  subtypeSpan.textContent = '\u7c7b\u578b'; // 类型
+  const subtypeSelect = document.createElement('select');
+  subtypeSelect.id = 'structure-subtype';
+  subtypeLabel.append(subtypeSpan, subtypeSelect);
+  editor.appendChild(subtypeLabel);
+
   editor.appendChild(createStructureField('X (m)', 'structure-x', { type: 'number', step: '0.1' }));
   editor.appendChild(createStructureField('Z (m)', 'structure-z', { type: 'number', step: '0.1' }));
   editor.appendChild(createStructureField('\u5bbd\u5ea6 (m)', 'structure-width', { type: 'number', min: '0.6', step: '0.1' }));
@@ -944,6 +1083,7 @@ function wallPointAt(wall, t) {
 }
 
 function updateViewBounds() {
+  if (hasUserZoomedOrPanned) return;
   const corners = [];
   [...referenceFloorWalls(), ...currentWalls()].forEach((wall) => {
     corners.push({ x: wall.from[0], z: wall.from[1] });
@@ -1038,6 +1178,7 @@ function renderPlan() {
 
   currentRoofs().forEach((roof) => renderRoof(roof));
   currentStairs().forEach((stairs) => renderStairs(stairs));
+  currentFences().forEach((fence) => renderFence(fence));
 
   if (drawStart) {
     const a = worldToSvg(drawStart[0], drawStart[1]);
@@ -1049,6 +1190,8 @@ function renderPlan() {
   if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
   const selectedRoof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
   if (selectedRoof) renderSelectedRoofHandles(selectedRoof);
+  const selectedFence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
+  if (selectedFence) renderSelectedFenceHandles(selectedFence);
 }
 
 function renderRoom(room) {
@@ -1185,22 +1328,25 @@ function renderWall(wall) {
     beginWallDrag(event, wall.id);
   });
   line.addEventListener('click', (event) => {
-    event.stopPropagation();
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    if (mode === 'delete-wall') {
-      pushHistory();
-      testMap.deleteWall(wall.id);
-      clearSelection();
-      refreshShadows();
-      renderPlan();
-    } else if (mode === 'add-door' || mode === 'add-window') {
-      pushHistory();
-      const opening = testMap.addOpening(wall.id, mode === 'add-door' ? 'door' : 'window', getWallProjectionT(wall, world));
-      refreshShadows();
-      selectOpening(opening?.id || null);
-    } else if (mode === 'select') {
-      selectWall(wall.id);
+    if (mode === 'delete-wall' || mode === 'add-door' || mode === 'add-window' || mode === 'select') {
+      event.stopPropagation();
+      const point = svgPointFromEvent(event);
+      const world = svgToWorld(point.x, point.y);
+      if (mode === 'delete-wall') {
+        pushHistory();
+        testMap.deleteWall(wall.id);
+        clearSelection();
+        refreshShadows();
+        renderPlan();
+      } else if (mode === 'add-door' || mode === 'add-window') {
+        pushHistory();
+        const opening = testMap.addOpening(wall.id, mode === 'add-door' ? 'door' : 'window', getWallProjectionT(wall, world));
+        refreshShadows();
+        selectOpening(opening?.id || null);
+        switchToSelectMode();
+      } else if (mode === 'select') {
+        selectWall(wall.id);
+      }
     }
   });
   svg.appendChild(line);
@@ -1230,8 +1376,8 @@ function renderOpening(opening) {
   attachContextMenuTrigger(line, () => ({ type: 'opening', id: opening.id }));
   line.addEventListener('pointerdown', (event) => beginOpeningDrag(event, opening.id));
   line.addEventListener('click', (event) => {
-    event.stopPropagation();
     if (mode === 'delete-wall') {
+      event.stopPropagation();
       pushHistory();
       testMap.deleteOpening(opening.id);
       clearSelection();
@@ -1245,69 +1391,365 @@ function renderOpening(opening) {
 function renderRoof(roof) {
   const a = worldToSvg((roof.x || 0) - (roof.width || 6) / 2, (roof.z || 0) - (roof.depth || 6) / 2);
   const b = worldToSvg((roof.x || 0) + (roof.width || 6) / 2, (roof.z || 0) + (roof.depth || 6) / 2);
-  const rect = createSvgElement('rect', {
-    class: `roof-rect ${selectedRoofId === roof.id ? 'selected' : ''}`,
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(b.x - a.x),
-    height: Math.abs(b.y - a.y),
-    rx: 4,
-    fill: roof.color || '#b75b54',
+  
+  const minX = Math.min(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const w = Math.abs(b.x - a.x);
+  const h = Math.abs(b.y - a.y);
+  const centerX = minX + w / 2;
+  const centerY = minY + h / 2;
+  
+  const group = createSvgElement('g', {
+    class: `roof-group ${selectedRoofId === roof.id ? 'selected' : ''}`,
     'data-roof-id': roof.id
   });
-  attachContextMenuTrigger(rect, () => ({ type: 'roof', id: roof.id }));
+  
+  const rect = createSvgElement('rect', {
+    class: 'roof-rect',
+    x: minX,
+    y: minY,
+    width: w,
+    height: h,
+    rx: 4,
+    fill: roof.color || '#b75b54'
+  });
+  group.appendChild(rect);
+  
+  const subtype = roof.subtype || roof.type || 'gable';
+  const strokeColor = 'rgba(255,255,255,0.6)';
+  const strokeWidth = 1.5;
+  
+  if (subtype === 'gable') {
+    const line = createSvgElement('line', {
+      x1: centerX, y1: minY,
+      x2: centerX, y2: minY + h,
+      stroke: strokeColor,
+      'stroke-width': strokeWidth
+    });
+    group.appendChild(line);
+  } else if (subtype === 'shed') {
+    const arrow = createSvgElement('path', {
+      d: `M ${minX + w * 0.8} ${centerY} L ${minX + w * 0.2} ${centerY} M ${minX + w * 0.3} ${centerY - 6} L ${minX + w * 0.2} ${centerY} M ${minX + w * 0.3} ${centerY + 6} L ${minX + w * 0.2} ${centerY}`,
+      stroke: strokeColor,
+      fill: 'none',
+      'stroke-width': strokeWidth
+    });
+    group.appendChild(arrow);
+  } else if (subtype === 'arch') {
+    const step = w / 6;
+    for (let i = 1; i < 6; i++) {
+      const line = createSvgElement('line', {
+        x1: minX + step * i, y1: minY,
+        x2: minX + step * i, y2: minY + h,
+        stroke: strokeColor,
+        'stroke-width': 1,
+        'stroke-dasharray': '2,2'
+      });
+      group.appendChild(line);
+    }
+  } else if (subtype === 'dome') {
+    const circle = createSvgElement('circle', {
+      cx: centerX, cy: centerY,
+      r: Math.min(w, h) * 0.3,
+      stroke: strokeColor,
+      fill: 'none',
+      'stroke-width': strokeWidth,
+      'stroke-dasharray': '2,2'
+    });
+    const lineH = createSvgElement('line', {
+      x1: minX, y1: centerY, x2: minX + w, y2: centerY,
+      stroke: strokeColor, 'stroke-width': 1, 'stroke-dasharray': '4,4'
+    });
+    const lineV = createSvgElement('line', {
+      x1: centerX, y1: minY, x2: centerX, y2: minY + h,
+      stroke: strokeColor, 'stroke-width': 1, 'stroke-dasharray': '4,4'
+    });
+    group.appendChild(circle);
+    group.appendChild(lineH);
+    group.appendChild(lineV);
+  } else if (subtype === 'trapezoid') {
+    const innerW = w * 0.5;
+    const innerH = h * 0.5;
+    const innerRect = createSvgElement('rect', {
+      x: centerX - innerW / 2,
+      y: centerY - innerH / 2,
+      width: innerW,
+      height: innerH,
+      stroke: strokeColor,
+      fill: 'none',
+      'stroke-width': strokeWidth
+    });
+    group.appendChild(innerRect);
+    const lines = [
+      { x1: minX, y1: minY, x2: centerX - innerW / 2, y2: centerY - innerH / 2 },
+      { x1: minX + w, y1: minY, x2: centerX + innerW / 2, y2: centerY - innerH / 2 },
+      { x1: minX + w, y1: minY + h, x2: centerX + innerW / 2, y2: centerY + innerH / 2 },
+      { x1: minX, y1: minY + h, x2: centerX - innerW / 2, y2: centerY + innerH / 2 }
+    ];
+    lines.forEach(l => {
+      const line = createSvgElement('line', {
+        x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2,
+        stroke: strokeColor, 'stroke-width': strokeWidth
+      });
+      group.appendChild(line);
+    });
+  } else if (subtype === 'hip') {
+    if (w > h) {
+      const rw = (w - h) / 2;
+      const lx = centerX - rw;
+      const rx = centerX + rw;
+      const ridge = createSvgElement('line', {
+        x1: lx, y1: centerY, x2: rx, y2: centerY,
+        stroke: strokeColor, 'stroke-width': strokeWidth
+      });
+      group.appendChild(ridge);
+      group.appendChild(createSvgElement('line', { x1: minX, y1: minY, x2: lx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX, y1: minY + h, x2: lx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY, x2: rx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY + h, x2: rx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
+    } else {
+      const rh = (h - w) / 2;
+      const ty = centerY - rh;
+      const by = centerY + rh;
+      const ridge = createSvgElement('line', {
+        x1: centerX, y1: ty, x2: centerX, y2: by,
+        stroke: strokeColor, 'stroke-width': strokeWidth
+      });
+      group.appendChild(ridge);
+      group.appendChild(createSvgElement('line', { x1: minX, y1: minY, x2: centerX, y2: ty, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY, x2: centerX, y2: ty, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX, y1: minY + h, x2: centerX, y2: by, stroke: strokeColor, 'stroke-width': strokeWidth }));
+      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY + h, x2: centerX, y2: by, stroke: strokeColor, 'stroke-width': strokeWidth }));
+    }
+  } else if (subtype === 'flat') {
+    const border = createSvgElement('rect', {
+      x: minX + 4, y: minY + 4,
+      width: w - 8, height: h - 8,
+      stroke: strokeColor, fill: 'none',
+      'stroke-width': 1, 'stroke-dasharray': '2,2'
+    });
+    group.appendChild(border);
+  }
+  
   rect.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'roof', roof.id));
   rect.addEventListener('click', (event) => {
-    event.stopPropagation();
-    selectRoof(roof.id);
+    if (mode === 'select') {
+      event.stopPropagation();
+      selectRoof(roof.id);
+    }
   });
-  svg.appendChild(rect);
+  attachContextMenuTrigger(rect, () => ({ type: 'roof', id: roof.id }));
+  svg.appendChild(group);
 }
-
+ 
 function renderStairs(stairs) {
   const a = worldToSvg((stairs.x || 0) - (stairs.width || 1.2) / 2, (stairs.z || 0) - (stairs.depth || 3.2) / 2);
   const b = worldToSvg((stairs.x || 0) + (stairs.width || 1.2) / 2, (stairs.z || 0) + (stairs.depth || 3.2) / 2);
+  
+  const minX = Math.min(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const w = Math.abs(b.x - a.x);
+  const h = Math.abs(b.y - a.y);
+  const centerX = minX + w / 2;
+  const centerY = minY + h / 2;
+  
   const group = createSvgElement('g', {
     class: `stairs-symbol ${selectedStairsId === stairs.id ? 'selected' : ''}`,
     transform: `rotate(${((stairs.rotation || 0) * 180 / Math.PI) || 0} ${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`,
     'data-stairs-id': stairs.id
   });
+  
   const rect = createSvgElement('rect', {
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(b.x - a.x),
-    height: Math.abs(b.y - a.y),
+    x: minX,
+    y: minY,
+    width: w,
+    height: h,
     rx: 4,
     fill: stairs.color || '#d8c0a0'
   });
   group.appendChild(rect);
-  const steps = 5;
-  for (let i = 1; i < steps; i += 1) {
-    const x = Math.min(a.x, b.x);
-    const y = Math.min(a.y, b.y) + (Math.abs(b.y - a.y) / steps) * i;
+ 
+  const subtype = stairs.subtype || 'straight';
+  const steps = 6;
+ 
+  if (subtype === 'straight') {
+    for (let i = 1; i < steps; i += 1) {
+      const y = minY + (h / steps) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: minX, y1: y,
+        x2: minX + w, y2: y,
+        class: 'stairs-step-line'
+      }));
+    }
+    group.appendChild(createSvgElement('path', {
+      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + h * 0.2} M ${centerX - 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2} M ${centerX + 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2}`,
+      stroke: 'rgba(0,0,0,0.4)',
+      fill: 'none',
+      'stroke-width': 1.5
+    }));
+  } else if (subtype === 'lshape') {
+    const landSize = w;
+    const subSteps = 3;
+    for (let i = 1; i <= subSteps; i++) {
+      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: minX, y1: y,
+        x2: minX + w, y2: y,
+        class: 'stairs-step-line'
+      }));
+    }
+    for (let i = 1; i <= subSteps; i++) {
+      const x = minX + w + ((h - w) / (subSteps + 1)) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: x, y1: minY,
+        x2: x, y2: minY + w,
+        class: 'stairs-step-line'
+      }));
+    }
+    group.appendChild(createSvgElement('path', {
+      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + w / 2} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 - 4} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 + 4} L ${minX + h * 0.8} ${minY + w / 2}`,
+      stroke: 'rgba(0,0,0,0.4)',
+      fill: 'none',
+      'stroke-width': 1.5
+    }));
+  } else if (subtype === 'ushape') {
+    const landSize = w;
+    const subSteps = 4;
     group.appendChild(createSvgElement('line', {
-      x1: x,
-      y1: y,
-      x2: x + Math.abs(b.x - a.x),
-      y2: y,
-      class: 'stairs-step-line'
+      x1: centerX, y1: minY + landSize,
+      x2: centerX, y2: minY + h,
+      stroke: 'rgba(0,0,0,0.2)',
+      'stroke-width': 1
+    }));
+    for (let i = 1; i <= subSteps; i++) {
+      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: minX, y1: y,
+        x2: centerX, y2: y,
+        class: 'stairs-step-line'
+      }));
+    }
+    for (let i = 1; i <= subSteps; i++) {
+      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: centerX, y1: y,
+        x2: minX + w, y2: y,
+        class: 'stairs-step-line'
+      }));
+    }
+    group.appendChild(createSvgElement('path', {
+      d: `M ${minX + w * 0.25} ${minY + h * 0.8} L ${minX + w * 0.25} ${minY + landSize / 2} C ${minX + w * 0.25} ${minY + 6}, ${minX + w * 0.75} ${minY + 6}, ${minX + w * 0.75} ${minY + landSize / 2} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.7} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.8} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8}`,
+      stroke: 'rgba(0,0,0,0.4)',
+      fill: 'none',
+      'stroke-width': 1.5
+    }));
+  } else if (subtype === 'spiral') {
+    const r = Math.min(w, h) / 2;
+    group.appendChild(createSvgElement('circle', {
+      cx: centerX, cy: centerY,
+      r: r - 2,
+      stroke: 'rgba(0,0,0,0.2)',
+      fill: 'none',
+      'stroke-width': 1
+    }));
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * 30 * Math.PI) / 180;
+      group.appendChild(createSvgElement('line', {
+        x1: centerX, y1: centerY,
+        x2: centerX + (r - 2) * Math.sin(angle), y2: centerY - (r - 2) * Math.cos(angle),
+        class: 'stairs-step-line'
+      }));
+    }
+    group.appendChild(createSvgElement('circle', {
+      cx: centerX, cy: centerY,
+      r: r * 0.15,
+      fill: 'rgba(0,0,0,0.3)',
+      stroke: 'none'
+    }));
+    group.appendChild(createSvgElement('path', {
+      d: `M ${centerX + r * 0.5} ${centerY} A ${r * 0.5} ${r * 0.5} 0 1 0 ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 + 4} L ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 - 4} L ${centerX} ${centerY - r * 0.5}`,
+      stroke: 'rgba(0,0,0,0.4)',
+      fill: 'none',
+      'stroke-width': 1.2
+    }));
+  } else if (subtype === 'curved') {
+    const R = Math.max(w, h);
+    const r = R - w;
+    const segments = 6;
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * (Math.PI / 2);
+      group.appendChild(createSvgElement('line', {
+        x1: minX + r * Math.sin(angle), y1: minY + h - r * Math.cos(angle),
+        x2: minX + R * Math.sin(angle), y2: minY + h - R * Math.cos(angle),
+        class: 'stairs-step-line'
+      }));
+    }
+    const arrowR = (R + r) / 2;
+    const arrowSegments = 20;
+    let pathD = '';
+    for (let i = 0; i <= arrowSegments; i++) {
+      const t = i / arrowSegments;
+      const angle = 0.2 * Math.PI / 2 + t * 0.6 * Math.PI / 2;
+      const ax = minX + arrowR * Math.sin(angle);
+      const ay = minY + h - arrowR * Math.cos(angle);
+      if (i === 0) pathD += `M ${ax} ${ay}`;
+      else pathD += ` L ${ax} ${ay}`;
+    }
+    group.appendChild(createSvgElement('path', {
+      d: pathD,
+      stroke: 'rgba(0,0,0,0.4)',
+      fill: 'none',
+      'stroke-width': 1.5
+    }));
+  } else if (subtype === 'floating') {
+    rect.setAttribute('fill', 'none');
+    rect.setAttribute('stroke', 'rgba(0,0,0,0.15)');
+    rect.setAttribute('stroke-dasharray', '2,2');
+    for (let i = 0; i < steps; i++) {
+      const sy = minY + (h / steps) * i + 2;
+      const sh = (h / steps) - 4;
+      group.appendChild(createSvgElement('rect', {
+        x: minX + 2,
+        y: sy,
+        width: w - 4,
+        height: sh,
+        rx: 1,
+        fill: '#f0d8b8',
+        stroke: 'rgba(0,0,0,0.2)',
+        'stroke-width': 0.8
+      }));
+    }
+    group.appendChild(createSvgElement('line', {
+      x1: centerX, y1: minY,
+      x2: centerX, y2: minY + h,
+      stroke: 'rgba(0,0,0,0.3)',
+      'stroke-width': 3
     }));
   }
+ 
   attachContextMenuTrigger(group, () => ({ type: 'stairs', id: stairs.id }));
   group.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'stairs', stairs.id));
   group.addEventListener('click', (event) => {
-    event.stopPropagation();
-    selectStairs(stairs.id);
+    if (mode === 'select') {
+      event.stopPropagation();
+      selectStairs(stairs.id);
+    }
   });
   svg.appendChild(group);
 }
 
 function getStructure(type, id) {
-  return type === 'roof' ? testMap.getRoof?.(id) : testMap.getStairs?.(id);
+  if (type === 'roof') return testMap.getRoof?.(id);
+  if (type === 'stairs') return testMap.getStairs?.(id);
+  if (type === 'fence') return testMap.getFence?.(id);
+  return null;
 }
 
 function updateStructure(type, id, patch, rebuild = true) {
-  return type === 'roof' ? testMap.updateRoof?.(id, patch, rebuild) : testMap.updateStairs?.(id, patch, rebuild);
+  if (type === 'roof') return testMap.updateRoof?.(id, patch, rebuild);
+  if (type === 'stairs') return testMap.updateStairs?.(id, patch, rebuild);
+  if (type === 'fence') return testMap.updateFence?.(id, patch, rebuild);
+  return null;
 }
 
 function beginStructureDrag(event, type, id) {
@@ -1334,14 +1776,29 @@ function beginStructureDrag(event, type, id) {
 }
 
 function moveStructureTo(type, id, x, z, options = {}) {
-  const snapped = snapWorldPoint({ x, z });
+  const structure = getStructure(type, id);
+  let snappedX = x;
+  let snappedZ = z;
+  if (structure) {
+    const width = structure.width || (type === 'stairs' ? 1.2 : 4);
+    const depth = structure.depth || (type === 'stairs' ? 3.2 : 4);
+    const left = snapNumber(x - width / 2);
+    const top = snapNumber(z - depth / 2);
+    snappedX = Number((left + width / 2).toFixed(3));
+    snappedZ = Number((top + depth / 2).toFixed(3));
+  } else {
+    const snapped = snapWorldPoint({ x, z });
+    snappedX = snapped.x;
+    snappedZ = snapped.z;
+  }
+
   const rebuild = options.rebuild !== false;
-  const structure = updateStructure(type, id, { x: snapped.x, z: snapped.z }, rebuild);
-  if (!rebuild && structure) {
+  const updated = updateStructure(type, id, { x: snappedX, z: snappedZ }, rebuild);
+  if (!rebuild && updated) {
     const node = type === 'roof' ? testMap.roofNodes?.get(id) : testMap.stairNodes?.get(id);
     if (node) {
-      node.position.x = structure.x || 0;
-      node.position.z = structure.z || 0;
+      node.position.x = updated.x || 0;
+      node.position.z = updated.z || 0;
     }
   }
   if (rebuild || options.refresh !== false) refreshShadows();
@@ -1433,7 +1890,8 @@ function moveRoomDrag(event) {
     pushHistory();
     roomDragState.historyPushed = true;
   }
-  testMap.updateRoom(room.id, { x: nextX, z: nextZ }, { moveItems: true });
+  testMap.updateRoom(room.id, { x: nextX, z: nextZ }, { moveItems: true, rebuild: false });
+  syncRoomMovePreview(room.id);
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -1470,15 +1928,21 @@ function moveRoomResize(event) {
     pushHistory();
     roomResizeState.historyPushed = true;
   }
-  testMap.updateRoom(room.id, patch, { moveItems: false });
+  testMap.updateRoom(room.id, patch, { moveItems: false, rebuild: false });
+  syncRoomMovePreview(room.id);
   refreshShadows();
   updateEditor();
   renderPlan();
 }
 
 function finishRoomEdit() {
+  const needRebuild = !!(roomDragState || roomResizeState);
   roomDragState = null;
   roomResizeState = null;
+  if (needRebuild) {
+    testMap.build();
+    refreshShadows();
+  }
 }
 
 function beginRoofResize(event, roofId, side) {
@@ -1934,13 +2398,150 @@ function moveWallBy(wallId, dx, dz) {
   testMap.updateWall(wallId, {
     from: [nextFromX, nextFromZ],
     to: [nextToX, nextToZ]
-  });
+  }, { rebuild: false });
+  syncWallMovePreview(wallId);
   
   updateEditor();
   renderPlan();
 }
 
+// 阻止鼠标中键触发浏览器默认的自动滚动行为，确保平移顺畅
+svg.addEventListener('mousedown', (event) => {
+  if (event.button === 1) {
+    event.preventDefault();
+  }
+});
+
+// 2D 视图滚轮缩放（以鼠标为缩放中心）
+svg.addEventListener('wheel', (event) => {
+  if (currentView !== '2d') return;
+  event.preventDefault();
+
+  const rect = svg.getBoundingClientRect();
+  const svgX = ((event.clientX - rect.left) / rect.width) * view.width;
+  const svgY = ((event.clientY - rect.top) / rect.height) * view.height;
+  const worldCenter = svgToWorld(svgX, svgY);
+
+  const zoomStep = 0.08;
+  const factor = event.deltaY < 0 ? 1 - zoomStep : 1 + zoomStep;
+
+  const currentSpanX = view.maxX - view.minX;
+  const nextSpanX = currentSpanX * factor;
+  // 限制视口世界坐标跨度在 0.5m 到 100m 之间
+  if (nextSpanX < 0.5 || nextSpanX > 100) return;
+
+  view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
+  view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
+  view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
+  view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+
+  hasUserZoomedOrPanned = true;
+  renderPlan();
+}, { passive: false });
+
+svg.addEventListener('pointerdown', (event) => {
+  if (currentView !== '2d') return;
+  // 记录到视图触点列表中
+  viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  // 鼠标中键平移
+  if (event.pointerType === 'mouse' && event.button === 1) {
+    isPanning2D = true;
+    panStart2D = { x: event.clientX, y: event.clientY };
+    svg.setPointerCapture(event.pointerId);
+    hasUserZoomedOrPanned = true;
+  }
+
+  // 双指手势
+  if (viewPointers.size === 2) {
+    // 取消其他物体的拖动和编辑状态，避免冲突
+    dragState = null;
+    roomDragState = null;
+    roomResizeState = null;
+    openingDragState = null;
+    wallDragState = null;
+    structureDragState = null;
+    roofResizeState = null;
+
+    const pts = Array.from(viewPointers.values());
+    prevTouchDist2D = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    prevTouchCenter2D = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    hasUserZoomedOrPanned = true;
+  }
+});
+
 svg.addEventListener('pointermove', (event) => {
+  // 更新我们的 viewPointers
+  if (viewPointers.has(event.pointerId)) {
+    viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  }
+
+  // 处理中键平移
+  if (isPanning2D && panStart2D) {
+    const dx = event.clientX - panStart2D.x;
+    const dy = event.clientY - panStart2D.y;
+    const rect = svg.getBoundingClientRect();
+    const innerW = view.width - view.pad * 2;
+    const innerH = view.height - view.pad * 2;
+    const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW;
+    const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH;
+
+    view.minX -= worldDx;
+    view.maxX -= worldDx;
+    view.minZ -= worldDz;
+    view.maxZ -= worldDz;
+
+    panStart2D = { x: event.clientX, y: event.clientY };
+    renderPlan();
+    return;
+  }
+
+  // 处理双指缩放和平移
+  if (viewPointers.size === 2 && prevTouchCenter2D) {
+    const pts = Array.from(viewPointers.values());
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const center = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+
+    if (prevTouchDist2D > 0 && prevTouchCenter2D) {
+      const factor = prevTouchDist2D / dist;
+      const rect = svg.getBoundingClientRect();
+      const centerPoint = {
+        x: ((center.x - rect.left) / rect.width) * view.width,
+        y: ((center.y - rect.top) / rect.height) * view.height
+      };
+      const worldCenter = svgToWorld(centerPoint.x, centerPoint.y);
+
+      const currentSpanX = view.maxX - view.minX;
+      const nextSpanX = currentSpanX * factor;
+      if (nextSpanX >= 0.5 && nextSpanX <= 100) {
+        view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
+        view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
+        view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
+        view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+      }
+
+      // 平移
+      const dx = center.x - prevTouchCenter2D.x;
+      const dy = center.y - prevTouchCenter2D.y;
+      const innerW = view.width - view.pad * 2;
+      const innerH = view.height - view.pad * 2;
+      const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW;
+      const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH;
+
+      view.minX -= worldDx;
+      view.maxX -= worldDx;
+      view.minZ -= worldDz;
+      view.maxZ -= worldDz;
+
+      renderPlan();
+    }
+
+    prevTouchDist2D = dist;
+    prevTouchCenter2D = center;
+    event.preventDefault();
+    return;
+  }
+
   updatePointer(event);
   if (itemGestureState) {
     moveItemGesture();
@@ -1996,9 +2597,48 @@ svg.addEventListener('pointermove', (event) => {
     }
     moveWallBy(wallDragState.wallId, dx, dz);
   }
+  if (fenceHandleDragState) {
+    const point = svgPointFromEvent(event);
+    const world = svgToWorld(point.x, point.y);
+    const snapped = snapWorldPoint(world);
+    if (!fenceHandleDragState.historyPushed && Math.hypot(world.x - fenceHandleDragState.startWorldX, world.z - fenceHandleDragState.startWorldZ) > 0.02) {
+      pushHistory();
+      fenceHandleDragState.historyPushed = true;
+    }
+    if (fenceHandleDragState.handle === 'from') {
+      testMap.updateFence(fenceHandleDragState.fenceId, { from: [snapped.x, snapped.z] }, false);
+    } else {
+      testMap.updateFence(fenceHandleDragState.fenceId, { to: [snapped.x, snapped.z] }, false);
+    }
+    syncFenceMovePreview(fenceHandleDragState.fenceId);
+    updateEditor();
+    renderPlan();
+  }
+  if (fenceDragState) {
+    const point = svgPointFromEvent(event);
+    const world = svgToWorld(point.x, point.y);
+    const dx = world.x - fenceDragState.startWorldX;
+    const dz = world.z - fenceDragState.startWorldZ;
+    if (!fenceDragState.historyPushed && Math.hypot(dx, dz) > 0.02) {
+      pushHistory();
+      fenceDragState.historyPushed = true;
+    }
+    moveFenceBy(fenceDragState.fenceId, dx, dz);
+  }
 });
 
 svg.addEventListener('pointerup', (event) => {
+  viewPointers.delete(event.pointerId);
+  if (event.pointerType === 'mouse' && event.button === 1 || isPanning2D) {
+    isPanning2D = false;
+    panStart2D = null;
+    try { svg.releasePointerCapture(event.pointerId); } catch (e) {}
+  }
+  if (viewPointers.size < 2) {
+    prevTouchDist2D = 0;
+    prevTouchCenter2D = null;
+  }
+
   forgetPointer(event);
   if (itemGestureState && activePointers.size < 2) itemGestureState = null;
   dragState = null;
@@ -2007,9 +2647,21 @@ svg.addEventListener('pointerup', (event) => {
   finishRoomEdit();
   finishOpeningDrag();
   finishWallDrag();
+  finishFenceDrag();
 });
 
 svg.addEventListener('pointercancel', (event) => {
+  viewPointers.delete(event.pointerId);
+  if (event.pointerType === 'mouse' && event.button === 1 || isPanning2D) {
+    isPanning2D = false;
+    panStart2D = null;
+    try { svg.releasePointerCapture(event.pointerId); } catch (e) {}
+  }
+  if (viewPointers.size < 2) {
+    prevTouchDist2D = 0;
+    prevTouchCenter2D = null;
+  }
+
   forgetPointer(event);
   if (itemGestureState && activePointers.size < 2) itemGestureState = null;
   dragState = null;
@@ -2018,10 +2670,22 @@ svg.addEventListener('pointercancel', (event) => {
   finishRoomEdit();
   finishOpeningDrag();
   finishWallDrag();
+  finishFenceDrag();
+});
+
+svg.addEventListener('dblclick', (event) => {
+  if (currentView !== '2d') return;
+  const target = get2DContextTargetFromElement(event.target);
+  if (!target) {
+    hasUserZoomedOrPanned = false;
+    renderPlan();
+  }
 });
 
 svg.addEventListener('click', (event) => {
-  if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-roof-id]') || event.target.closest?.('[data-stairs-id]') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]') || event.target.closest?.('[data-roof-handle]')) return;
+  if (mode === 'select') {
+    if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-roof-id]') || event.target.closest?.('[data-stairs-id]') || event.target.closest?.('[data-fence-id]') || event.target.closest?.('.fence-handle') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]') || event.target.closest?.('[data-roof-handle]')) return;
+  }
   const point = svgPointFromEvent(event);
   const world = svgToWorld(point.x, point.y);
   const snappedWorld = snapWorldPoint(world);
@@ -2042,17 +2706,49 @@ svg.addEventListener('click', (event) => {
     const room = testMap.addRoom({ x: snapped[0], z: snapped[1], name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
     refreshShadows();
     selectRoom(room.id);
-  } else if (mode === 'add-roof') {
+    switchToSelectMode();
+  } else if (mode.startsWith('add-roof')) {
     pushHistory();
+    const subtype = mode.replace('add-roof-', '') || 'gable';
     const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped[0], snapped[1]);
-    const roof = testMap.addRoof({ x: room?.x ?? snapped[0], z: room?.z ?? snapped[1], width: room?.width ?? 6, depth: room?.depth ?? 6 });
+    const roof = testMap.addRoof({
+      x: room?.x ?? snapped[0],
+      z: room?.z ?? snapped[1],
+      width: room?.width ?? 6,
+      depth: room?.depth ?? 6,
+      subtype: subtype
+    });
     refreshShadows();
     selectRoof(roof.id);
-  } else if (mode === 'add-stairs') {
+    switchToSelectMode();
+  } else if (mode.startsWith('add-stairs')) {
     pushHistory();
-    const stairs = testMap.addStairs({ x: snapped[0], z: snapped[1] });
+    const subtype = mode.replace('add-stairs-', '') || 'straight';
+    const stairs = testMap.addStairs({
+      x: snapped[0],
+      z: snapped[1],
+      subtype: subtype
+    });
     refreshShadows();
     selectStairs(stairs.id);
+    switchToSelectMode();
+  } else if (mode.startsWith('draw-fence')) {
+    if (!drawStart) {
+      drawStart = snapped;
+    } else {
+      pushHistory();
+      const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
+      const fence = testMap.addFence({
+        from: drawStart,
+        to: snapped,
+        subtype: subtype
+      });
+      drawStart = null;
+      refreshShadows();
+      selectFence(fence.id);
+      switchToSelectMode();
+    }
+    renderPlan();
   } else {
     clearSelection();
   }
@@ -2091,6 +2787,10 @@ function findStairsIdFromNode(node) {
   return findMetadataFromNode(node, 'blueprintStairsId');
 }
 
+function findFenceIdFromNode(node) {
+  return findMetadataFromNode(node, 'blueprintFenceId');
+}
+
 function groundPointFromPointer() {
   const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
@@ -2105,6 +2805,40 @@ function clear3DEditHandles() {
 }
 
 function get3DEditTargetBounds(type, id) {
+  if (type === 'wall') {
+    const wall = testMap.getWall(id);
+    if (!wall) return null;
+    return {
+      target: wall,
+      x: (wall.from[0] + wall.to[0]) / 2,
+      z: (wall.from[1] + wall.to[1]) / 2,
+      fromX: wall.from[0],
+      fromZ: wall.from[1],
+      toX: wall.to[0],
+      toZ: wall.to[1],
+      width: 0.3,
+      depth: 0.3,
+      height: 0,
+      floorId: wall.floorId || testMap.floorplan.currentFloorId
+    };
+  }
+  if (type === 'fence') {
+    const fence = testMap.getFence(id);
+    if (!fence) return null;
+    return {
+      target: fence,
+      x: (fence.from[0] + fence.to[0]) / 2,
+      z: (fence.from[1] + fence.to[1]) / 2,
+      fromX: fence.from[0],
+      fromZ: fence.from[1],
+      toX: fence.to[0],
+      toZ: fence.to[1],
+      width: 0.15,
+      depth: 0.15,
+      height: fence.height || 1.1,
+      floorId: fence.floorId || testMap.floorplan.currentFloorId
+    };
+  }
   const target = type === 'room' ? testMap.getRoom(id) : getStructure(type, id);
   if (!target) return null;
   return {
@@ -2120,14 +2854,116 @@ function get3DEditTargetBounds(type, id) {
 
 function get3DEditHandleY(type, bounds) {
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(bounds.floorId) : 0;
+  if (type === 'wall') return floorY + 1.2;
+  if (type === 'fence') return floorY + (bounds.height || 1.1) + 0.18;
   if (type === 'roof') return floorY + (testMap.floorplan.wallHeight || 2.8) + bounds.height + 0.18;
   if (type === 'stairs') return floorY + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
   return floorY + 0.18;
 }
 
-function create3DEditHandle(type, id, action, side, position, size, color) {
-  const handle = BABYLON.MeshBuilder.CreateBox('edit_handle_' + type + '_' + id + '_' + action + '_' + (side || 'center'), size, scene);
+function create3DEditHandle(type, id, action, side, position, color, rotationY = 0) {
+  let handle = null;
+
+  if (action === 'move') {
+     // 1. 创建中心圆盘
+    const centerDisc = BABYLON.MeshBuilder.CreateCylinder("center_disc", {
+      height: 0.06,
+      diameter: 0.18
+    }, scene);
+    
+    const meshesToMerge = [centerDisc];
+    const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+     // 2. 循环创建4个箭头（上下左右）
+    angles.forEach((angle, idx) => {
+       // 创建箭杆
+      const shaft = BABYLON.MeshBuilder.CreateCylinder("shaft_" + idx, {
+        height: 0.21,
+        diameter: 0.06
+      }, scene);
+      shaft.rotation.x = Math.PI / 2;
+      shaft.rotation.y = angle;
+      shaft.position.x = 0.195 * Math.sin(angle);
+      shaft.position.z = 0.195 * Math.cos(angle);
+      // 创建箭头尖
+      const tip = BABYLON.MeshBuilder.CreateCylinder("tip_" + idx, {
+        height: 0.15,
+        diameterTop: 0,
+        diameterBottom: 0.15
+      }, scene);
+      tip.rotation.x = Math.PI / 2;
+      tip.rotation.y = angle;
+      tip.position.x = 0.375 * Math.sin(angle);
+      tip.position.z = 0.375 * Math.cos(angle);
+      
+      shaft.bakeCurrentTransformIntoVertices();
+      tip.bakeCurrentTransformIntoVertices();
+      meshesToMerge.push(shaft, tip);
+    });
+    
+    handle = BABYLON.Mesh.MergeMeshes(meshesToMerge, true, true, undefined, false, true);
+  } else if (action === 'rotate') {
+    const radius = 0.24;
+    const path = [];
+    for (let i = 0; i <= 20; i++) {
+      const theta = (i / 20) * (Math.PI / 2);
+      path.push(new BABYLON.Vector3(Math.cos(theta) * radius, 0, -Math.sin(theta) * radius));
+    }
+    const arc = BABYLON.MeshBuilder.CreateTube("arc", { path, radius: 0.024, tessellation: 12 }, scene);
+    
+    const arrowHeight = 0.18;
+    const arrowDiameter = 0.14;
+    
+    const cone1 = BABYLON.MeshBuilder.CreateCylinder("cone1", {
+      height: arrowHeight,
+      diameterTop: 0,
+      diameterBottom: arrowDiameter,
+      tessellation: 16
+    }, scene);
+    cone1.position.set(radius, 0, arrowHeight / 2);
+    cone1.rotation.x = Math.PI / 2;
+    cone1.bakeCurrentTransformIntoVertices();
+    
+    const cone2 = BABYLON.MeshBuilder.CreateCylinder("cone2", {
+      height: arrowHeight,
+      diameterTop: 0,
+      diameterBottom: arrowDiameter,
+      tessellation: 16
+    }, scene);
+    cone2.position.set(-arrowHeight / 2, 0, -radius);
+    cone2.rotation.z = Math.PI / 2;
+    cone2.bakeCurrentTransformIntoVertices();
+    
+    handle = BABYLON.Mesh.MergeMeshes([arc, cone1, cone2], true, true, undefined, false, true);
+  } else {
+    const shaft = BABYLON.MeshBuilder.CreateCylinder("shaft", {
+      height: 0.42,
+      diameter: 0.075
+    }, scene);
+    shaft.rotation.x = Math.PI / 2;
+    shaft.position.z = 0.21;
+    shaft.bakeCurrentTransformIntoVertices();
+    
+    const tip = BABYLON.MeshBuilder.CreateCylinder("tip", {
+      height: 0.24,
+      diameterTop: 0,
+      diameterBottom: 0.21
+    }, scene);
+    tip.rotation.x = Math.PI / 2;
+    tip.position.z = 0.54;
+    tip.bakeCurrentTransformIntoVertices();
+    
+    handle = BABYLON.Mesh.MergeMeshes([shaft, tip], true, true, undefined, false, true);
+  }
+
+  if (!handle) return null;
+
+  handle.name = 'edit_handle_' + type + '_' + id + '_' + action + '_' + (side || 'center');
   handle.position.set(position.x, position.y, position.z);
+  
+  if (action === 'resize' || action === 'rotate') {
+    handle.rotation.y = rotationY;
+  }
+  
   handle.material = new BABYLON.StandardMaterial(handle.name + '_mat', scene);
   handle.material.diffuseColor = BABYLON.Color3.FromHexString(color);
   handle.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.35);
@@ -2141,6 +2977,7 @@ function create3DEditHandle(type, id, action, side, position, size, color) {
   handle.renderOutline = true;
   handle.outlineWidth = 0.035;
   handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
+  
   editHandleNodes.push(handle);
   return handle;
 }
@@ -2155,13 +2992,39 @@ function refresh3DEditHandles() {
     return;
   }
   const y = get3DEditHandleY(type, bounds);
+  if (type === 'wall') {
+    const wall = bounds.target;
+    const dx = wall.to[0] - wall.from[0];
+    const dz = wall.to[1] - wall.from[1];
+    const angle = Math.atan2(dx, dz);
+    
+    create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
+    create3DEditHandle(type, id, 'resize', 'from', { x: bounds.fromX, y, z: bounds.fromZ }, '#ff9f1c', angle + Math.PI);
+    create3DEditHandle(type, id, 'resize', 'to', { x: bounds.toX, y, z: bounds.toZ }, '#ff9f1c', angle);
+    return;
+  }
+  if (type === 'fence') {
+    const fence = bounds.target;
+    const dx = fence.to[0] - fence.from[0];
+    const dz = fence.to[1] - fence.from[1];
+    const angle = Math.atan2(dx, dz);
+    
+    create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
+    create3DEditHandle(type, id, 'resize', 'from', { x: bounds.fromX, y, z: bounds.fromZ }, '#ff9f1c', angle + Math.PI);
+    create3DEditHandle(type, id, 'resize', 'to', { x: bounds.toX, y, z: bounds.toZ }, '#ff9f1c', angle);
+    return;
+  }
+
   const halfW = bounds.width / 2;
   const halfD = bounds.depth / 2;
-  create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, { width: 0.42, height: 0.14, depth: 0.42 }, '#1f8fff');
-  create3DEditHandle(type, id, 'resize', 'north', { x: bounds.x, y, z: bounds.z - halfD }, { width: 0.72, height: 0.12, depth: 0.22 }, '#ff9f1c');
-  create3DEditHandle(type, id, 'resize', 'south', { x: bounds.x, y, z: bounds.z + halfD }, { width: 0.72, height: 0.12, depth: 0.22 }, '#ff9f1c');
-  create3DEditHandle(type, id, 'resize', 'east', { x: bounds.x + halfW, y, z: bounds.z }, { width: 0.22, height: 0.12, depth: 0.72 }, '#ff9f1c');
-  create3DEditHandle(type, id, 'resize', 'west', { x: bounds.x - halfW, y, z: bounds.z }, { width: 0.22, height: 0.12, depth: 0.72 }, '#ff9f1c');
+  create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
+  create3DEditHandle(type, id, 'resize', 'north', { x: bounds.x, y, z: bounds.z - halfD }, '#ff9f1c', Math.PI);
+  create3DEditHandle(type, id, 'resize', 'south', { x: bounds.x, y, z: bounds.z + halfD }, '#ff9f1c', 0);
+  create3DEditHandle(type, id, 'resize', 'east', { x: bounds.x + halfW, y, z: bounds.z }, '#ff9f1c', Math.PI / 2);
+  create3DEditHandle(type, id, 'resize', 'west', { x: bounds.x - halfW, y, z: bounds.z }, '#ff9f1c', -Math.PI / 2);
+  if (type === 'roof' || type === 'stairs') {
+    create3DEditHandle(type, id, 'rotate', 'rotation', { x: bounds.x + halfW + 0.4, y, z: bounds.z - halfD - 0.4 }, '#2ec456', 0);
+  }
 }
 
 function set3DEditTarget(type, id) {
@@ -2189,6 +3052,7 @@ function pickNearest3DTarget(pointerX = scene.pointerX, pointerY = scene.pointer
     || !!findRoomIdFromNode(mesh)
     || !!findRoofIdFromNode(mesh)
     || !!findStairsIdFromNode(mesh)
+    || !!findFenceIdFromNode(mesh)
   ));
   const mesh = pick?.pickedMesh;
   if (!mesh) return null;
@@ -2202,6 +3066,8 @@ function pickNearest3DTarget(pointerX = scene.pointerX, pointerY = scene.pointer
   if (roofId) return { type: 'roof', id: roofId, pick };
   const stairsId = findStairsIdFromNode(mesh);
   if (stairsId) return { type: 'stairs', id: stairsId, pick };
+  const fenceId = findFenceIdFromNode(mesh);
+  if (fenceId) return { type: 'fence', id: fenceId, pick };
   const roomId = findRoomIdFromNode(mesh);
   if (roomId) return { type: 'room', id: roomId, pick };
   return null;
@@ -2219,11 +3085,34 @@ function begin3DEditHandleDrag(handle, event) {
     action: handle.action,
     side: handle.side,
     pointerId: event.pointerId,
-    original: { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth },
+    original: (handle.type === 'wall' || handle.type === 'fence') ? {
+      from: [bounds.fromX, bounds.fromZ],
+      to: [bounds.toX, bounds.toZ],
+      x: bounds.x,
+      z: bounds.z
+    } : { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth },
     offsetX: bounds.x - groundPoint.x,
     offsetZ: bounds.z - groundPoint.z,
     historyPushed: false
   };
+
+  if (handle.type === 'wall' || handle.type === 'fence') {
+    const targetX = (handle.action === 'move' || handle.side === 'from') ? bounds.fromX : bounds.toX;
+    const targetZ = (handle.action === 'move' || handle.side === 'from') ? bounds.fromZ : bounds.toZ;
+    editHandleDragState.dragOffsetX = targetX - groundPoint.x;
+    editHandleDragState.dragOffsetZ = targetZ - groundPoint.z;
+  }
+
+  if (handle.action === 'rotate') {
+    const structure = getStructure(handle.type, handle.id);
+    if (structure) {
+      editHandleDragState.originalRotation = structure.rotation || 0;
+      const dx = groundPoint.x - bounds.x;
+      const dz = groundPoint.z - bounds.z;
+      editHandleDragState.startAngle = Math.atan2(dz, dx);
+    }
+  }
+
   drag3DState = { type: 'edit-handle', pointerId: event.pointerId };
   document.body.classList.add('is-dragging-3d');
   canvas.setPointerCapture?.(event.pointerId);
@@ -2247,6 +3136,9 @@ function syncRoomMovePreview(roomId) {
     const [x1, z1] = wall.from;
     const [x2, z2] = wall.to;
     node.position.set(x1, 0, z1);
+    const currentLength = Math.hypot(x2 - x1, z2 - z1);
+    const originalLength = node.metadata?.originalLength || currentLength || 1;
+    node.scaling.x = currentLength / originalLength;
     node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
   });
 
@@ -2271,13 +3163,72 @@ function syncRoomMovePreview(roomId) {
   });
 }
 
+function syncWallMovePreview(wallId) {
+  const wall = testMap.getWall(wallId);
+  const node = testMap.wallNodes?.get(wallId);
+  if (!wall || !node) return;
+  const [x1, z1] = wall.from;
+  const [x2, z2] = wall.to;
+  node.position.set(x1, 0, z1);
+  const currentLength = Math.hypot(x2 - x1, z2 - z1);
+  const originalLength = node.metadata?.originalLength || currentLength || 1;
+  node.scaling.x = currentLength / originalLength;
+  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(wall.floorId) : 0;
+  testMap.floorplan.openings.forEach((opening) => {
+    if (opening.wallId !== wallId) return;
+    const opNode = testMap.openingNodes?.get(opening.id);
+    if (!opNode) return;
+    const point = wallPointAt(wall, opening.t ?? 0.5);
+    const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
+    const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+    const [wx1, wz1] = wall.from;
+    const [wx2, wz2] = wall.to;
+    opNode.position.set(point.x, floorY + localY, point.z);
+    opNode.rotation.y = -Math.atan2(wz2 - wz1, wx2 - wx1);
+  });
+}
+
+function syncFenceMovePreview(fenceId) {
+  const fence = testMap.getFence(fenceId);
+  const node = testMap.fenceNodes?.get(fenceId);
+  if (!fence || !node) return;
+  const [x1, z1] = fence.from;
+  const [x2, z2] = fence.to;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(fence.floorId) : 0;
+  
+  node.position.set((x1 + x2) / 2, floorY, (z1 + z2) / 2);
+  
+  const currentLength = Math.hypot(x2 - x1, z2 - z1);
+  const originalLength = node.metadata?.originalLength || currentLength || 1;
+  node.scaling.x = currentLength / originalLength;
+  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+}
+
 function update3DEditTarget(type, id, patch, options = {}) {
-  if (type === 'room') {
+  if (type === 'wall') {
+    const rebuild = options.rebuild !== false;
+    if (rebuild) {
+      testMap.build();
+      refreshShadows();
+    } else {
+      syncWallMovePreview(id);
+    }
+  } else if (type === 'fence') {
+    const rebuild = options.rebuild !== false;
+    if (rebuild) {
+      testMap.build();
+      refreshShadows();
+    } else {
+      syncFenceMovePreview(id);
+    }
+  } else if (type === 'room') {
     const rebuild = options.rebuild !== false;
     const moveItems = options.moveItems !== false;
     testMap.updateRoom(id, patch, { moveItems, rebuild });
     if (rebuild) refreshShadows();
-    else if (moveItems) syncRoomMovePreview(id);
+    else syncRoomMovePreview(id);
   } else {
     const rebuild = options.rebuild !== false;
     const updated = updateStructure(type, id, patch, rebuild);
@@ -2304,10 +3255,141 @@ function move3DEditHandle(groundPoint) {
   let moveItems = false;
   let rebuild = true;
 
+  if (state.action === 'rotate') {
+    const bounds = get3DEditTargetBounds(state.type, state.id);
+    if (!bounds) return;
+    const dx = groundPoint.x - bounds.x;
+    const dz = groundPoint.z - bounds.z;
+    const currentAngle = Math.atan2(dz, dx);
+    const deltaAngle = currentAngle - state.startAngle;
+    const nextRotation = state.originalRotation + deltaAngle;
+    const degrees = (nextRotation * 180 / Math.PI + 360) % 360;
+    const normalizedDegrees = normalizeRotationDegrees(degrees);
+    const rotationRad = normalizedDegrees * Math.PI / 180;
+    
+    const node = state.type === 'roof' ? testMap.roofNodes?.get(state.id) : testMap.stairNodes?.get(state.id);
+    if (node) {
+      node.rotation.y = rotationRad;
+    }
+    
+    updateStructure(state.type, state.id, { rotation: rotationRad }, false);
+    
+    if (!state.historyPushed && Math.abs(deltaAngle) > 0.02) {
+      pushHistory();
+      state.historyPushed = true;
+    }
+    return;
+  }
+
+  if (state.type === 'wall') {
+    const wall = testMap.getWall(state.id);
+    if (!wall) return;
+    let nextFrom = [...original.from];
+    let nextTo = [...original.to];
+    
+    if (state.action === 'move') {
+      const targetFromX = groundPoint.x + state.dragOffsetX;
+      const targetFromZ = groundPoint.z + state.dragOffsetZ;
+      const snappedFrom = snapWorldPoint({ x: targetFromX, z: targetFromZ });
+      const dx = snappedFrom.x - original.from[0];
+      const dz = snappedFrom.z - original.from[1];
+      
+      if (!state.historyPushed && (Math.abs(dx) > 0.02 || Math.abs(dz) > 0.02)) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextFrom = [snappedFrom.x, snappedFrom.z];
+      nextTo = [Number((original.to[0] + dx).toFixed(3)), Number((original.to[1] + dz).toFixed(3))];
+    } else if (state.side === 'from') {
+      const targetX = groundPoint.x + state.dragOffsetX;
+      const targetZ = groundPoint.z + state.dragOffsetZ;
+      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
+      
+      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.from[0], snappedTarget.z - original.from[1]) > 0.02) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextFrom = [snappedTarget.x, snappedTarget.z];
+    } else if (state.side === 'to') {
+      const targetX = groundPoint.x + state.dragOffsetX;
+      const targetZ = groundPoint.z + state.dragOffsetZ;
+      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
+      
+      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.to[0], snappedTarget.z - original.to[1]) > 0.02) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextTo = [snappedTarget.x, snappedTarget.z];
+    }
+    
+    wall.from = [Number(nextFrom[0].toFixed(3)), Number(nextFrom[1].toFixed(3))];
+    wall.to = [Number(nextTo[0].toFixed(3)), Number(nextTo[1].toFixed(3))];
+    
+    update3DEditTarget('wall', state.id, null, { rebuild: false });
+    return;
+  }
+  if (state.type === 'fence') {
+    const fence = testMap.getFence(state.id);
+    if (!fence) return;
+    let nextFrom = [...original.from];
+    let nextTo = [...original.to];
+    
+    if (state.action === 'move') {
+      const targetFromX = groundPoint.x + state.dragOffsetX;
+      const targetFromZ = groundPoint.z + state.dragOffsetZ;
+      const snappedFrom = snapWorldPoint({ x: targetFromX, z: targetFromZ });
+      const dx = snappedFrom.x - original.from[0];
+      const dz = snappedFrom.z - original.from[1];
+      
+      if (!state.historyPushed && (Math.abs(dx) > 0.02 || Math.abs(dz) > 0.02)) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextFrom = [snappedFrom.x, snappedFrom.z];
+      nextTo = [Number((original.to[0] + dx).toFixed(3)), Number((original.to[1] + dz).toFixed(3))];
+    } else if (state.side === 'from') {
+      const targetX = groundPoint.x + state.dragOffsetX;
+      const targetZ = groundPoint.z + state.dragOffsetZ;
+      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
+      
+      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.from[0], snappedTarget.z - original.from[1]) > 0.02) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextFrom = [snappedTarget.x, snappedTarget.z];
+    } else if (state.side === 'to') {
+      const targetX = groundPoint.x + state.dragOffsetX;
+      const targetZ = groundPoint.z + state.dragOffsetZ;
+      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
+      
+      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.to[0], snappedTarget.z - original.to[1]) > 0.02) {
+        pushHistory();
+        state.historyPushed = true;
+      }
+      
+      nextTo = [snappedTarget.x, snappedTarget.z];
+    }
+    
+    fence.from = [Number(nextFrom[0].toFixed(3)), Number(nextFrom[1].toFixed(3))];
+    fence.to = [Number(nextTo[0].toFixed(3)), Number(nextTo[1].toFixed(3))];
+    
+    update3DEditTarget('fence', state.id, null, { rebuild: false });
+    return;
+  }
+
   if (state.action === 'move') {
+    const rawX = groundPoint.x + state.offsetX;
+    const rawZ = groundPoint.z + state.offsetZ;
+    const left = snapNumber(rawX - original.width / 2);
+    const top = snapNumber(rawZ - original.depth / 2);
     patch = {
-      x: snapNumber(groundPoint.x + state.offsetX),
-      z: snapNumber(groundPoint.z + state.offsetZ)
+      x: Number((left + original.width / 2).toFixed(3)),
+      z: Number((top + original.depth / 2).toFixed(3))
     };
     moveItems = true;
     rebuild = false;
@@ -2318,22 +3400,70 @@ function move3DEditHandle(groundPoint) {
     const right = original.x + original.width / 2;
     const top = original.z - original.depth / 2;
     const bottom = original.z + original.depth / 2;
-    let nextLeft = left;
-    let nextRight = right;
-    let nextTop = top;
-    let nextBottom = bottom;
-    if (state.side === 'west') nextLeft = Math.min(snapped.x, right - minWidth);
-    if (state.side === 'east') nextRight = Math.max(snapped.x, left + minWidth);
-    if (state.side === 'north') nextTop = Math.min(snapped.z, bottom - minDepth);
-    if (state.side === 'south') nextBottom = Math.max(snapped.z, top + minDepth);
+
+    let w = original.width;
+    let d = original.depth;
+    let x = original.x;
+    let z = original.z;
+
+    if (state.side === 'west' || state.side === 'east') {
+      let rawW = original.width;
+      if (state.side === 'west') {
+        const snappedRight = snapNumber(right);
+        rawW = snappedRight - snapped.x;
+        w = snapValue(rawW);
+        if (snapEnabled && snapSize) {
+          if (w < minWidth) w = Math.ceil(minWidth / snapSize) * snapSize;
+        } else {
+          w = Math.max(minWidth, w);
+        }
+        x = snappedRight - w / 2;
+      } else {
+        const snappedLeft = snapNumber(left);
+        rawW = snapped.x - snappedLeft;
+        w = snapValue(rawW);
+        if (snapEnabled && snapSize) {
+          if (w < minWidth) w = Math.ceil(minWidth / snapSize) * snapSize;
+        } else {
+          w = Math.max(minWidth, w);
+        }
+        x = snappedLeft + w / 2;
+      }
+    }
+
+    if (state.side === 'north' || state.side === 'south') {
+      let rawD = original.depth;
+      if (state.side === 'north') {
+        const snappedBottom = snapNumber(bottom);
+        rawD = snappedBottom - snapped.z;
+        d = snapValue(rawD);
+        if (snapEnabled && snapSize) {
+          if (d < minDepth) d = Math.ceil(minDepth / snapSize) * snapSize;
+        } else {
+          d = Math.max(minDepth, d);
+        }
+        z = snappedBottom - d / 2;
+      } else {
+        const snappedTop = snapNumber(top);
+        rawD = snapped.z - snappedTop;
+        d = snapValue(rawD);
+        if (snapEnabled && snapSize) {
+          if (d < minDepth) d = Math.ceil(minDepth / snapSize) * snapSize;
+        } else {
+          d = Math.max(minDepth, d);
+        }
+        z = snappedTop + d / 2;
+      }
+    }
+
     patch = {
-      x: snapNumber((nextLeft + nextRight) / 2),
-      z: snapNumber((nextTop + nextBottom) / 2),
-      width: snapNumber(nextRight - nextLeft),
-      depth: snapNumber(nextBottom - nextTop)
+      x: snapNumber(x),
+      z: snapNumber(z),
+      width: snapNumber(w),
+      depth: snapNumber(d)
     };
     moveItems = false;
-    rebuild = state.type !== 'room';
+    rebuild = false;
   }
 
   const moved = Math.hypot((patch.x ?? original.x) - original.x, (patch.z ?? original.z) - original.z);
@@ -2342,31 +3472,112 @@ function move3DEditHandle(groundPoint) {
     pushHistory();
     state.historyPushed = true;
   }
+  
+  if (state.type === 'roof' || state.type === 'stairs') {
+    const node = state.type === 'roof' ? testMap.roofNodes?.get(state.id) : testMap.stairNodes?.get(state.id);
+    if (node && original.width && original.depth && patch.width && patch.depth) {
+      node.scaling.x = patch.width / original.width;
+      node.scaling.z = patch.depth / original.depth;
+    }
+  }
+
   update3DEditTarget(state.type, state.id, patch, { moveItems, rebuild });
 }
 
 function begin3DDrag(pointerInfo) {
   const event = pointerInfo.event;
+  if (event.button === 2) {
+    if (mode === 'draw-wall' || mode === 'delete-wall' || mode === 'add-room' || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode === 'add-door' || mode === 'add-window') {
+      drawStart = null;
+      clearDrawWallPreview();
+      switchToSelectMode();
+      event.preventDefault();
+      return;
+    }
+  }
   if (event.button !== 0 && event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
 
-  if (mode === 'add-room' || mode === 'add-roof' || mode === 'add-stairs') {
+  if (mode === 'delete-wall') {
+    const target = pickNearest3DTarget();
+    if (target && target.type === 'wall' && isTargetOnCurrentFloor(target)) {
+      pushHistory();
+      testMap.deleteWall(target.id);
+      clearSelection();
+      refreshShadows();
+      event.preventDefault();
+      return;
+    }
+  }
+
+  if (mode === 'draw-wall') {
     const point = groundPointFromPointer();
     if (point) {
       const snapped = snapWorldPoint({ x: point.x, z: point.z });
-      pushHistory();
-      if (mode === 'add-room') {
-        const room = testMap.addRoom({ x: snapped.x, z: snapped.z, name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
-        refreshShadows();
-        selectRoom(room.id);
-      } else if (mode === 'add-roof') {
-        const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
-        const roof = testMap.addRoof({ x: room?.x ?? snapped.x, z: room?.z ?? snapped.z, width: room?.width ?? 6, depth: room?.depth ?? 6 });
-        refreshShadows();
-        selectRoof(roof.id);
+      const snappedPos = [snapped.x, snapped.z];
+      if (!drawStart) {
+        drawStart = snappedPos;
       } else {
-        const stairs = testMap.addStairs({ x: snapped.x, z: snapped.z });
+        pushHistory();
+        testMap.addWall(drawStart, snappedPos);
+        drawStart = null;
+        clearDrawWallPreview();
         refreshShadows();
-        selectStairs(stairs.id);
+      }
+      event.preventDefault();
+      return;
+    }
+  }
+
+  if (mode === 'add-room' || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode.startsWith('draw-fence')) {
+    const point = groundPointFromPointer();
+    if (point) {
+      const snapped = snapWorldPoint({ x: point.x, z: point.z });
+      if (mode.startsWith('draw-fence')) {
+        const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
+        if (!drawStart) {
+          drawStart = [snapped.x, snapped.z];
+        } else {
+          pushHistory();
+          const fence = testMap.addFence({
+            from: drawStart,
+            to: [snapped.x, snapped.z],
+            subtype: subtype
+          });
+          drawStart = null;
+          clearDrawWallPreview();
+          refreshShadows();
+          selectFence(fence.id);
+          switchToSelectMode();
+        }
+      } else {
+        pushHistory();
+        if (mode === 'add-room') {
+          const room = testMap.addRoom({ x: snapped.x, z: snapped.z, name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
+          refreshShadows();
+          selectRoom(room.id);
+        } else if (mode.startsWith('add-roof')) {
+          const subtype = mode.replace('add-roof-', '') || 'gable';
+          const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
+          const roof = testMap.addRoof({
+            x: room?.x ?? snapped.x,
+            z: room?.z ?? snapped.z,
+            width: room?.width ?? 6,
+            depth: room?.depth ?? 6,
+            subtype: subtype
+          });
+          refreshShadows();
+          selectRoof(roof.id);
+        } else {
+          const subtype = mode.replace('add-stairs-', '') || 'straight';
+          const stairs = testMap.addStairs({
+            x: snapped.x,
+            z: snapped.z,
+            subtype: subtype
+          });
+          refreshShadows();
+          selectStairs(stairs.id);
+        }
+        switchToSelectMode();
       }
       event.preventDefault();
       return;
@@ -2384,6 +3595,7 @@ function begin3DDrag(pointerInfo) {
         const opening = testMap.addOpening(wallId, mode === 'add-door' ? 'door' : 'window', getWallProjectionT(wall, pt));
         refreshShadows();
         selectOpening(opening?.id || null);
+        switchToSelectMode();
         event.preventDefault();
         return;
       }
@@ -2426,7 +3638,12 @@ function begin3DDrag(pointerInfo) {
   }
 
   if (target.type === 'wall') {
-    selectWall(target.id);
+    if (selectedWallId === target.id) {
+      if (!same3DEditTarget('wall', target.id)) set3DEditTarget('wall', target.id);
+    } else {
+      selectWall(target.id);
+    }
+    event.preventDefault();
     return;
   }
 
@@ -2448,6 +3665,15 @@ function begin3DDrag(pointerInfo) {
       selectRoof(target.id);
     } else {
       selectStairs(target.id);
+    }
+    event.preventDefault();
+    return;
+  }
+  if (target.type === 'fence') {
+    if (selectedFenceId === target.id) {
+      if (!same3DEditTarget('fence', target.id)) set3DEditTarget('fence', target.id);
+    } else {
+      selectFence(target.id);
     }
     event.preventDefault();
     return;
@@ -2492,8 +3718,6 @@ function move3DDrag(pointerInfo) {
     moveItemTo(drag3DState.itemId, nextX, nextZ);
   } else if (drag3DState.type === 'opening') {
     moveOpeningToWorld(drag3DState.openingId, { x: groundPoint.x, z: groundPoint.z }, drag3DState);
-    testMap.build();
-    refreshShadows();
   } else if (drag3DState.type === 'roof' || drag3DState.type === 'stairs') {
     const nextX = groundPoint.x + drag3DState.offsetX;
     const nextZ = groundPoint.z + drag3DState.offsetZ;
@@ -2519,10 +3743,17 @@ function end3DDrag(event) {
   editHandleDragState = null;
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
-  if (openingId) selectOpening(openingId);
+  if (openingId) {
+    testMap.build();
+    refreshShadows();
+    selectOpening(openingId);
+  }
   if (roofId) selectRoof(roofId);
   if (stairsId) selectStairs(stairsId);
-  if (completedEditHandle?.type === 'room') {
+  if (completedEditHandle?.type === 'room' || completedEditHandle?.type === 'wall' ||
+      completedEditHandle?.type === 'fence' ||
+      completedEditHandle?.type === 'roof' || completedEditHandle?.type === 'stairs' ||
+      roofId || stairsId) {
     testMap.build();
     refreshShadows();
   }
@@ -2587,23 +3818,148 @@ canvas.addEventListener('pointercancel', cancelLongPress);
 scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
-  if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) move3DDrag(pointerInfo);
+  if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
+    if (mode === 'draw-wall' || mode.startsWith('draw-fence')) {
+      const point = groundPointFromPointer();
+      if (point) {
+        const snapped = snapWorldPoint({ x: point.x, z: point.z });
+        updateDrawWallPreview(snapped);
+      } else {
+        clearDrawWallPreview();
+      }
+    } else {
+      clearDrawWallPreview();
+    }
+    move3DDrag(pointerInfo);
+  }
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERUP) end3DDrag(pointerInfo.event);
 });
 
 canvas.addEventListener('pointercancel', end3DDrag);
 window.addEventListener('pointerup', end3DDrag);
 
+function clearDrawWallPreview() {
+  if (drawWallPreviewCylinder) {
+    drawWallPreviewCylinder.dispose();
+    drawWallPreviewCylinder = null;
+  }
+  if (drawWallPreviewStartCylinder) {
+    drawWallPreviewStartCylinder.dispose();
+    drawWallPreviewStartCylinder = null;
+  }
+  if (drawWallPreviewWall) {
+    drawWallPreviewWall.dispose();
+    drawWallPreviewWall = null;
+  }
+}
+window.clearDrawWallPreview = clearDrawWallPreview;
+
+function updateDrawWallPreview(snappedPoint) {
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const isFence = mode.startsWith('draw-fence');
+  const H = isFence ? 1.1 : (testMap.floorplan.wallHeight || 2.8);
+  const T = isFence ? 0.1 : (testMap.floorplan.wallThickness || 0.18);
+
+  // 如果预览类型（墙体还是栅栏）改变了，先销毁以便重建
+  if (drawWallPreviewCylinder && drawWallPreviewCylinder.metadata?.isFence !== isFence) {
+    clearDrawWallPreview();
+  }
+
+  // 1. 更新当前悬浮处的立柱
+  if (!drawWallPreviewCylinder) {
+    drawWallPreviewCylinder = BABYLON.MeshBuilder.CreateCylinder("draw_wall_preview_cyl", {
+      height: H,
+      diameter: T
+    }, scene);
+    drawWallPreviewCylinder.metadata = { isFence };
+    const mat = new BABYLON.StandardMaterial("draw_wall_cyl_mat", scene);
+    mat.diffuseColor = BABYLON.Color3.FromHexString("#ff4081");
+    mat.emissiveColor = BABYLON.Color3.FromHexString("#ff4081").scale(0.35);
+    mat.alpha = 0.55;
+    mat.disableDepthWrite = true;
+    drawWallPreviewCylinder.material = mat;
+    drawWallPreviewCylinder.isPickable = false;
+  }
+  drawWallPreviewCylinder.position.set(snappedPoint.x, floorY + H / 2, snappedPoint.z);
+
+  // 2. 如果存在 drawStart，更新起点立柱和预览墙体
+  if (drawStart) {
+    // 起点立柱
+    if (!drawWallPreviewStartCylinder) {
+      drawWallPreviewStartCylinder = BABYLON.MeshBuilder.CreateCylinder("draw_wall_preview_start_cyl", {
+        height: H,
+        diameter: T
+      }, scene);
+      drawWallPreviewStartCylinder.metadata = { isFence };
+      const mat = new BABYLON.StandardMaterial("draw_wall_start_cyl_mat", scene);
+      mat.diffuseColor = BABYLON.Color3.FromHexString("#4caf50");
+      mat.emissiveColor = BABYLON.Color3.FromHexString("#4caf50").scale(0.35);
+      mat.alpha = 0.55;
+      mat.disableDepthWrite = true;
+      drawWallPreviewStartCylinder.material = mat;
+      drawWallPreviewStartCylinder.isPickable = false;
+    }
+    drawWallPreviewStartCylinder.position.set(drawStart[0], floorY + H / 2, drawStart[1]);
+
+    // 预览墙面 Box
+    const dx = snappedPoint.x - drawStart[0];
+    const dz = snappedPoint.z - drawStart[1];
+    const distance = Math.hypot(dx, dz);
+
+    if (distance > 0.01) {
+      if (!drawWallPreviewWall) {
+        drawWallPreviewWall = BABYLON.MeshBuilder.CreateBox("draw_wall_preview_wall", {
+          width: 1,
+          height: H,
+          depth: T
+        }, scene);
+        drawWallPreviewWall.metadata = { isFence };
+        const mat = new BABYLON.StandardMaterial("draw_wall_preview_wall_mat", scene);
+        mat.diffuseColor = BABYLON.Color3.FromHexString("#1f8fff");
+        mat.emissiveColor = BABYLON.Color3.FromHexString("#1f8fff").scale(0.35);
+        mat.alpha = 0.35;
+        mat.disableDepthWrite = true;
+        drawWallPreviewWall.material = mat;
+        drawWallPreviewWall.isPickable = false;
+      }
+      drawWallPreviewWall.visibility = 1.0;
+      drawWallPreviewWall.scaling.x = distance;
+      drawWallPreviewWall.position.set(
+        drawStart[0] + dx / 2,
+        floorY + H / 2,
+        drawStart[1] + dz / 2
+      );
+      drawWallPreviewWall.rotation.y = -Math.atan2(dz, dx);
+    } else {
+      if (drawWallPreviewWall) {
+        drawWallPreviewWall.visibility = 0;
+      }
+    }
+  } else {
+    if (drawWallPreviewStartCylinder) {
+      drawWallPreviewStartCylinder.dispose();
+      drawWallPreviewStartCylinder = null;
+    }
+    if (drawWallPreviewWall) {
+      drawWallPreviewWall.dispose();
+      drawWallPreviewWall = null;
+    }
+  }
+}
+
 function clearSelection() {
   clear3DEditHandles();
+  clearDrawWallPreview();
   selectedRoomId = null;
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
   selectedRoofId = null;
   selectedStairsId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2616,8 +3972,10 @@ function selectRoom(roomId) {
   selectedOpeningId = null;
   selectedRoofId = null;
   selectedStairsId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2630,8 +3988,10 @@ function selectWall(wallId) {
   selectedOpeningId = null;
   selectedRoofId = null;
   selectedStairsId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(wallId);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2644,8 +4004,10 @@ function selectItem(itemId) {
   selectedOpeningId = null;
   selectedRoofId = null;
   selectedStairsId = null;
+  selectedFenceId = null;
   testMap.setSelectedWall(null);
   testMap.setSelectedItem(itemId);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2658,8 +4020,10 @@ function selectOpening(openingId) {
   selectedItemId = null;
   selectedRoofId = null;
   selectedStairsId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2672,8 +4036,10 @@ function selectRoof(roofId) {
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
 }
@@ -2686,10 +4052,308 @@ function selectStairs(stairsId) {
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedFenceId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
   updateEditor();
   renderPlan();
+}
+
+function selectFence(fenceId) {
+  clear3DEditHandles();
+  selectedFenceId = fenceId;
+  selectedRoofId = null;
+  selectedStairsId = null;
+  selectedRoomId = null;
+  selectedWallId = null;
+  selectedItemId = null;
+  selectedOpeningId = null;
+  testMap.setSelectedItem(null);
+  testMap.setSelectedWall(null);
+  testMap.setSelectedFence(fenceId);
+  if (fenceId) set3DEditTarget('fence', fenceId);
+  updateEditor();
+  renderPlan();
+}
+
+function currentFences() {
+  return testMap.floorplan.fences || [];
+}
+
+function renderFence(fence) {
+  const a = worldToSvg(fence.from[0], fence.from[1]);
+  const b = worldToSvg(fence.to[0], fence.to[1]);
+  
+  const group = createSvgElement('g', {
+    class: `fence-group ${selectedFenceId === fence.id ? 'selected' : ''}`,
+    'data-fence-id': fence.id
+  });
+  
+  const line = createSvgElement('line', {
+    class: `fence-line ${selectedFenceId === fence.id ? 'selected' : ''}`,
+    x1: a.x,
+    y1: a.y,
+    x2: b.x,
+    y2: b.y,
+    stroke: selectedFenceId === fence.id ? '#36c2ff' : (fence.color || '#8d6e63'),
+    'stroke-width': 6,
+    'stroke-linecap': 'round',
+    opacity: 0.8
+  });
+  
+  line.addEventListener('pointerdown', (event) => {
+    if (mode === 'select') {
+      beginFenceDrag(event, fence.id);
+    }
+  });
+  
+  line.addEventListener('click', (event) => {
+    if (mode === 'delete-wall' || mode === 'select') {
+      event.stopPropagation();
+      if (mode === 'delete-wall') {
+        pushHistory();
+        testMap.deleteFence(fence.id);
+        clearSelection();
+        refreshShadows();
+        renderPlan();
+      } else if (mode === 'select') {
+        selectFence(fence.id);
+      }
+    }
+  });
+  
+  group.appendChild(line);
+  
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  
+  if (len > 10) {
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    
+    if (fence.subtype === 'picket_wood') {
+      const step = 15;
+      for (let d = 5; d < len - 5; d += step) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        group.appendChild(createSvgElement('line', {
+          x1: cx - nx * 4,
+          y1: cy - ny * 4,
+          x2: cx + nx * 4,
+          y2: cy + ny * 4,
+          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#5d4037',
+          'stroke-width': 2
+        }));
+      }
+    } else if (fence.subtype === 'iron_ornamental') {
+      const step = 20;
+      for (let d = 10; d < len - 10; d += step) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        group.appendChild(createSvgElement('line', {
+          x1: cx - nx * 3,
+          y1: cy - ny * 3,
+          x2: cx + nx * 3,
+          y2: cy + ny * 3,
+          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#212121',
+          'stroke-width': 1.5
+        }));
+        group.appendChild(createSvgElement('circle', {
+          cx, cy, r: 2,
+          fill: selectedFenceId === fence.id ? '#36c2ff' : '#212121'
+        }));
+      }
+    } else if (fence.subtype === 'wire_mesh') {
+      line.setAttribute('stroke-dasharray', '5,5');
+      line.setAttribute('stroke-width', 3);
+      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : '#78909c');
+    } else if (fence.subtype === 'stone_masonry') {
+      line.setAttribute('stroke-width', 8);
+      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : '#90a4ae');
+      const step = 30;
+      for (let d = step; d < len - 5; d += step) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        group.appendChild(createSvgElement('line', {
+          x1: cx - nx * 4,
+          y1: cy - ny * 4,
+          x2: cx + nx * 4,
+          y2: cy + ny * 4,
+          stroke: '#ffffff',
+          'stroke-width': 1.5
+        }));
+      }
+    } else if (fence.subtype === 'bamboo') {
+      const step = 20;
+      for (let d = 5; d < len - 5; d += step) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        group.appendChild(createSvgElement('line', {
+          x1: cx - ux * 5 - nx * 4,
+          y1: cy - uy * 5 - ny * 4,
+          x2: cx + ux * 5 + nx * 4,
+          y2: cy + uy * 5 + ny * 4,
+          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#4caf50',
+          'stroke-width': 1.5
+        }));
+        group.appendChild(createSvgElement('line', {
+          x1: cx - ux * 5 + nx * 4,
+          y1: cy - uy * 5 - ny * 4,
+          x2: cx + ux * 5 - nx * 4,
+          y2: cy + uy * 5 + ny * 4,
+          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#4caf50',
+          'stroke-width': 1.5
+        }));
+      }
+    } else if (fence.subtype === 'glass_rail') {
+      line.setAttribute('stroke-width', 6);
+      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : 'rgba(129, 212, 250, 0.6)');
+      const step = 40;
+      for (let d = 0; d <= len; d += step) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        group.appendChild(createSvgElement('circle', {
+          cx, cy, r: 3,
+          fill: selectedFenceId === fence.id ? '#36c2ff' : '#b0bec5'
+        }));
+      }
+      if (len % step > 10) {
+        group.appendChild(createSvgElement('circle', {
+          cx: b.x, cy: b.y, r: 3,
+          fill: selectedFenceId === fence.id ? '#36c2ff' : '#b0bec5'
+        }));
+      }
+    }
+  }
+  
+  svg.appendChild(group);
+}
+
+function renderSelectedFenceHandles(fence) {
+  const a = worldToSvg(fence.from[0], fence.from[1]);
+  const b = worldToSvg(fence.to[0], fence.to[1]);
+  
+  const handleFrom = createSvgElement('circle', {
+    class: 'fence-handle',
+    cx: a.x,
+    cy: a.y,
+    r: 6,
+    fill: '#ff9f1c',
+    stroke: '#ffffff',
+    'stroke-width': 1.5,
+    cursor: 'pointer'
+  });
+  
+  const handleTo = createSvgElement('circle', {
+    class: 'fence-handle',
+    cx: b.x,
+    cy: b.y,
+    r: 6,
+    fill: '#ff9f1c',
+    stroke: '#ffffff',
+    'stroke-width': 1.5,
+    cursor: 'pointer'
+  });
+  
+  handleFrom.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+    rememberPointer(event);
+    const point = svgPointFromEvent(event);
+    const world = svgToWorld(point.x, point.y);
+    fenceHandleDragState = {
+      fenceId: fence.id,
+      handle: 'from',
+      startWorldX: world.x,
+      startWorldZ: world.z,
+      historyPushed: false
+    };
+    svg.setPointerCapture(event.pointerId);
+  });
+  
+  handleTo.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+    rememberPointer(event);
+    const point = svgPointFromEvent(event);
+    const world = svgToWorld(point.x, point.y);
+    fenceHandleDragState = {
+      fenceId: fence.id,
+      handle: 'to',
+      startWorldX: world.x,
+      startWorldZ: world.z,
+      historyPushed: false
+    };
+    svg.setPointerCapture(event.pointerId);
+  });
+  
+  svg.appendChild(handleFrom);
+  svg.appendChild(handleTo);
+}
+
+function beginFenceDrag(event, fenceId) {
+  event.stopPropagation();
+  rememberPointer(event);
+  selectFence(fenceId);
+  const fence = testMap.getFence(fenceId);
+  if (!fence) return;
+  const point = svgPointFromEvent(event);
+  const world = svgToWorld(point.x, point.y);
+  fenceDragState = {
+    fenceId,
+    originalFrom: [...fence.from],
+    originalTo: [...fence.to],
+    startWorldX: world.x,
+    startWorldZ: world.z,
+    historyPushed: false
+  };
+  svg.setPointerCapture(event.pointerId);
+}
+
+function moveFenceBy(fenceId, dx, dz) {
+  const fence = testMap.getFence(fenceId);
+  if (!fence) return;
+  
+  let nextFromX = fenceDragState.originalFrom[0] + dx;
+  let nextFromZ = fenceDragState.originalFrom[1] + dz;
+  let nextToX = fenceDragState.originalTo[0] + dx;
+  let nextToZ = fenceDragState.originalTo[1] + dz;
+  
+  if (snapEnabled && snapSize) {
+    const origDx = fenceDragState.originalTo[0] - fenceDragState.originalFrom[0];
+    const origDz = fenceDragState.originalTo[1] - fenceDragState.originalFrom[1];
+    const snappedFrom = snapWorldPoint({ x: nextFromX, z: nextFromZ });
+    nextFromX = snappedFrom.x;
+    nextFromZ = snappedFrom.z;
+    nextToX = Number((nextFromX + origDx).toFixed(3));
+    nextToZ = Number((nextFromZ + origDz).toFixed(3));
+  } else {
+    nextFromX = Number(nextFromX.toFixed(3));
+    nextFromZ = Number(nextFromZ.toFixed(3));
+    nextToX = Number(nextToX.toFixed(3));
+    nextToZ = Number(nextToZ.toFixed(3));
+  }
+  
+  testMap.updateFence(fenceId, {
+    from: [nextFromX, nextFromZ],
+    to: [nextToX, nextToZ]
+  }, false);
+  syncFenceMovePreview(fenceId);
+  
+  updateEditor();
+  renderPlan();
+}
+
+function finishFenceDrag() {
+  if (!fenceDragState && !fenceHandleDragState) return;
+  const fenceId = fenceDragState ? fenceDragState.fenceId : fenceHandleDragState.fenceId;
+  fenceDragState = null;
+  fenceHandleDragState = null;
+  testMap.build();
+  refreshShadows();
+  selectFence(fenceId);
 }
 
 function findNearestSeat(mannequinItem) {
@@ -2739,12 +4403,14 @@ function findNearestSeat(mannequinItem) {
 function updateEditor() {
   const roomEditor = document.getElementById('room-editor');
   const wallEditor = document.getElementById('wall-editor');
+  const fenceEditor = document.getElementById('fence-editor');
   const itemEditor = document.getElementById('item-editor');
   const openingEditor = document.getElementById('opening-editor');
   const structureEditor = document.getElementById('structure-editor');
   const emptyState = document.getElementById('empty-state');
   const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
   const wall = selectedWallId ? testMap.getWall(selectedWallId) : null;
+  const fence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
   const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
   const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
   const roof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
@@ -2754,10 +4420,11 @@ function updateEditor() {
 
   roomEditor.classList.toggle('hidden', !room);
   wallEditor.classList.toggle('hidden', !wall);
+  if (fenceEditor) fenceEditor.classList.toggle('hidden', !fence);
   itemEditor.classList.toggle('hidden', !item);
   openingEditor.classList.toggle('hidden', !opening);
   structureEditor?.classList.toggle('hidden', !structure);
-  emptyState.classList.toggle('hidden', !!room || !!wall || !!item || !!opening || !!structure);
+  emptyState.classList.toggle('hidden', !!room || !!wall || !!fence || !!item || !!opening || !!structure);
 
   document.getElementById('floor-color').value = room?.color || testMap.floorplan.floor.color || '#f4efe6';
 
@@ -2776,6 +4443,20 @@ function updateEditor() {
     const angleDeg = Math.round(((angleRad * 180 / Math.PI) + 360) % 360);
     document.getElementById('wall-rotation').value = angleDeg;
     document.getElementById('wall-rotation-range').value = angleDeg;
+  }
+  if (fence) {
+    document.getElementById('selected-fence-name').textContent = fence.id;
+    document.getElementById('fence-subtype').value = fence.subtype || 'picket_wood';
+    const dx = fence.to[0] - fence.from[0];
+    const dz = fence.to[1] - fence.from[1];
+    const length = Math.hypot(dx, dz);
+    document.getElementById('fence-length').value = Number(length.toFixed(2));
+    const angleRad = Math.atan2(dz, dx);
+    const angleDeg = Math.round(((angleRad * 180 / Math.PI) + 360) % 360);
+    document.getElementById('fence-rotation').value = angleDeg;
+    document.getElementById('fence-rotation-range').value = angleDeg;
+    document.getElementById('fence-height').value = fence.height || 1.1;
+    document.getElementById('fence-color').value = fence.color || '#8d6e63';
   }
 
   if (item) {
@@ -2841,6 +4522,45 @@ function updateEditor() {
     stepsField.classList.toggle('hidden', structureType !== 'stairs');
     document.getElementById('structure-steps').value = structure.steps || 9;
     document.getElementById('structure-color').value = structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0');
+ 
+    const subtypeSelect = document.getElementById('structure-subtype');
+    if (subtypeSelect) {
+      subtypeSelect.innerHTML = '';
+      if (structureType === 'roof') {
+        const options = [
+          { value: 'gable', label: '双斜坡屋顶' },
+          { value: 'shed', label: '单斜坡屋顶' },
+          { value: 'arch', label: '拱形屋顶' },
+          { value: 'dome', label: '穹型屋顶' },
+          { value: 'trapezoid', label: '梯形屋顶' },
+          { value: 'hip', label: '四角屋顶' },
+          { value: 'flat', label: '平屋顶' }
+        ];
+        options.forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          subtypeSelect.appendChild(o);
+        });
+        subtypeSelect.value = structure.subtype || structure.type || 'gable';
+      } else {
+        const options = [
+          { value: 'straight', label: '直跑楼梯' },
+          { value: 'lshape', label: 'L形折返楼梯' },
+          { value: 'ushape', label: 'U形折返楼梯' },
+          { value: 'spiral', label: '旋转楼梯' },
+          { value: 'curved', label: '弧形楼梯' },
+          { value: 'floating', label: '悬浮楼梯' }
+        ];
+        options.forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          subtypeSelect.appendChild(o);
+        });
+        subtypeSelect.value = structure.subtype || 'straight';
+      }
+    }
   }
 
   if (opening) {
@@ -2872,15 +4592,15 @@ function updateEditor() {
     }
   }
 
-  renderDesignPanel(room, wall, item, structure, structureType);
-  revealRightPanelIfNeeded(room || wall || item || opening || structure);
+  renderDesignPanel(room, wall, item, structure, structureType, fence);
+  revealRightPanelIfNeeded(room || wall || item || opening || structure || fence);
 }
 
-function renderDesignPanel(room, wall, item, structure = null, structureType = null) {
+function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null) {
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
-    btnResetMaterial.disabled = !(room || wall || item || structure);
+    btnResetMaterial.disabled = !(room || wall || item || structure || fence);
   }
   const floorColorField = document.getElementById('floor-color-field');
   if (floorColorField) floorColorField.classList.toggle('hidden', !room);
@@ -2947,6 +4667,22 @@ function renderDesignPanel(room, wall, item, structure = null, structureType = n
     return;
   }
 
+  if (fence) {
+    const title = document.createElement('p');
+    title.className = 'selection-title';
+    title.textContent = '栅栏颜色 / 材质';
+    designSelectionPanel.appendChild(title);
+    designSelectionPanel.appendChild(createColorField('颜色', fence.color || '#8d6e63', (color) => {
+      pushHistory();
+      testMap.updateFence(fence.id, { color: color, material: color });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    }));
+    designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质', () => applyMaterialToFence(activeMaterialDescriptor)));
+    return;
+  }
+
   const hint = document.createElement('p');
   hint.className = 'hint';
   hint.textContent = '选择墙面或家具后，这里会显示可调整的颜色和材质入口。材质库里的“应用到地板”可直接修改地面。';
@@ -3004,6 +4740,94 @@ function getSelectedStructure() {
   return null;
 }
 
+function normalizeRotationDegrees(degrees, useSnap = snapEnabled) {
+  let value = Number(degrees) || 0;
+  if (useSnap) value = Math.round(value / 90) * 90;
+  return (value % 360 + 360) % 360;
+}
+
+function syncRotationInputs(inputId, rangeId, degrees) {
+  const normalized = normalizeRotationDegrees(degrees);
+  const input = document.getElementById(inputId);
+  const range = document.getElementById(rangeId);
+  if (input) input.value = normalized;
+  if (range) range.value = normalized;
+  return normalized;
+}
+
+function getStructureNode(type, id) {
+  return type === 'roof' ? testMap.roofNodes?.get(id) : testMap.stairNodes?.get(id);
+}
+
+function previewSelectedStructureRotation(degrees) {
+  const selected = getSelectedStructure();
+  if (!selected?.value) return;
+  const normalized = syncRotationInputs('structure-rotation', 'structure-rotation-range', degrees);
+  const node = getStructureNode(selected.type, selected.id);
+  const rotationRad = normalized * Math.PI / 180;
+  if (node) node.rotation.y = rotationRad;
+  updateStructure(selected.type, selected.id, { rotation: rotationRad }, false);
+  if (selected.type === 'stairs' && currentView !== '3d') {
+    renderPlan();
+  }
+}
+
+function commitSelectedStructureRotation(degrees) {
+  const selected = getSelectedStructure();
+  if (!selected?.value) return;
+  const normalized = syncRotationInputs('structure-rotation', 'structure-rotation-range', degrees);
+  pushHistory();
+  updateStructure(selected.type, selected.id, { rotation: normalized * Math.PI / 180 });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function getRotatedWallEndpoints(wall, degrees) {
+  const angleRad = normalizeRotationDegrees(degrees) * Math.PI / 180;
+  const x1 = wall.from[0];
+  const z1 = wall.from[1];
+  const x2 = wall.to[0];
+  const z2 = wall.to[1];
+  const midX = (x1 + x2) / 2;
+  const midZ = (z1 + z2) / 2;
+  const length = Math.hypot(x2 - x1, z2 - z1) || 1;
+  const ux = Math.cos(angleRad);
+  const uz = Math.sin(angleRad);
+  return {
+    from: [Number((midX - ux * length / 2).toFixed(3)), Number((midZ - uz * length / 2).toFixed(3))],
+    to: [Number((midX + ux * length / 2).toFixed(3)), Number((midZ + uz * length / 2).toFixed(3))],
+    angleRad
+  };
+}
+
+function syncOpeningPreviewToWall(opening, wallLike) {
+  const node = testMap.openingNodes?.get(opening.id);
+  if (!node) return;
+  const point = wallPointAt(wallLike, opening.t ?? 0.5);
+  const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
+  const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(opening.floorId || wallLike.floorId) : 0;
+  const [x1, z1] = wallLike.from;
+  const [x2, z2] = wallLike.to;
+  node.position.set(point.x, floorY + localY, point.z);
+  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+}
+
+function previewSelectedWallRotation(degrees) {
+  if (!selectedWallId) return;
+  const wall = testMap.getWall(selectedWallId);
+  if (!wall) return;
+  const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', degrees);
+  const preview = getRotatedWallEndpoints(wall, normalized);
+  const node = testMap.wallNodes?.get(selectedWallId);
+  if (node) {
+    node.position.set(preview.from[0], 0, preview.from[1]);
+    node.rotation.y = -preview.angleRad;
+  }
+  const wallLike = { ...wall, from: preview.from, to: preview.to };
+  testMap.floorplan.openings.filter((opening) => opening.wallId === wall.id).forEach((opening) => syncOpeningPreviewToWall(opening, wallLike));
+}
 function updateSelectedStructure() {
   const selected = getSelectedStructure();
   if (!selected?.value) return;
@@ -3016,8 +4840,12 @@ function updateSelectedStructure() {
     height: Number(document.getElementById('structure-height').value),
     rotation: (Number(document.getElementById('structure-rotation').value) || 0) * Math.PI / 180,
     color: document.getElementById('structure-color').value,
-    material: document.getElementById('structure-color').value
+    material: document.getElementById('structure-color').value,
+    subtype: document.getElementById('structure-subtype')?.value || (selected.type === 'roof' ? 'gable' : 'straight')
   };
+  if (selected.type === 'roof') {
+    patch.type = patch.subtype;
+  }
   if (selected.type === 'stairs') patch.steps = Number(document.getElementById('structure-steps').value);
   updateStructure(selected.type, selected.id, patch);
   refreshShadows();
@@ -3055,6 +4883,108 @@ function updateSelectedRoom() {
   });
   refreshShadows();
   updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceSubtype() {
+  if (!selectedFenceId) return;
+  pushHistory();
+  testMap.updateFence(selectedFenceId, { subtype: document.getElementById('fence-subtype').value });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceLength() {
+  if (!selectedFenceId) return;
+  const len = Number(document.getElementById('fence-length').value);
+  if (len <= 0.05) return;
+  pushHistory();
+  
+  const fence = testMap.getFence(selectedFenceId);
+  if (fence) {
+    const [x1, z1] = fence.from;
+    const [x2, z2] = fence.to;
+    const midX = (x1 + x2) / 2;
+    const midZ = (z1 + z2) / 2;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const curLen = Math.hypot(dx, dz) || 1;
+    const ux = dx / curLen;
+    const uz = dz / curLen;
+    
+    const nextFromX = Number((midX - ux * len / 2).toFixed(3));
+    const nextFromZ = Number((midZ - uz * len / 2).toFixed(3));
+    const nextToX = Number((midX + ux * len / 2).toFixed(3));
+    const nextToZ = Number((midZ + uz * len / 2).toFixed(3));
+    
+    testMap.updateFence(selectedFenceId, {
+      from: [nextFromX, nextFromZ],
+      to: [nextToX, nextToZ]
+    });
+  }
+  
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceRotation(deg) {
+  if (!selectedFenceId) return;
+  const fence = testMap.getFence(selectedFenceId);
+  if (!fence) return;
+  pushHistory();
+  
+  const angleRad = (deg % 360) * Math.PI / 180;
+  const [x1, z1] = fence.from;
+  const [x2, z2] = fence.to;
+  const midX = (x1 + x2) / 2;
+  const midZ = (z1 + z2) / 2;
+  const length = Math.hypot(x2 - x1, z2 - z1) || 1;
+  
+  const ux = Math.cos(angleRad);
+  const uz = Math.sin(angleRad);
+  
+  const nextFromX = Number((midX - ux * length / 2).toFixed(3));
+  const nextFromZ = Number((midZ - uz * length / 2).toFixed(3));
+  const nextToX = Number((midX + ux * length / 2).toFixed(3));
+  const nextToZ = Number((midZ + uz * length / 2).toFixed(3));
+  
+  testMap.updateFence(selectedFenceId, {
+    from: [nextFromX, nextFromZ],
+    to: [nextToX, nextToZ]
+  });
+  
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceHeight() {
+  if (!selectedFenceId) return;
+  pushHistory();
+  testMap.updateFence(selectedFenceId, { height: Number(document.getElementById('fence-height').value) });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceColor() {
+  if (!selectedFenceId) return;
+  pushHistory();
+  const col = document.getElementById('fence-color').value;
+  testMap.updateFence(selectedFenceId, { color: col, material: col });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function deleteSelectedFence() {
+  if (!selectedFenceId) return;
+  pushHistory();
+  testMap.deleteFence(selectedFenceId);
+  clearSelection();
+  refreshShadows();
   renderPlan();
 }
 
@@ -3329,6 +5259,16 @@ function applyMaterialToStructure(material) {
   renderPlan();
 }
 
+function applyMaterialToFence(material) {
+  if (!selectedFenceId || !material) return;
+  pushHistory();
+  const color = material.color || '#8d6e63';
+  testMap.updateFence(selectedFenceId, { material: material.url || color, color: color });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -3584,8 +5524,36 @@ document.addEventListener('keydown', (event) => {
     }
     if (selectedRoomId) {
       event.preventDefault();
+      showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
+        if (confirmed) {
+          pushHistory();
+          testMap.deleteRoom(selectedRoomId);
+          clearSelection();
+          refreshShadows();
+        }
+      });
+      return;
+    }
+    if (selectedRoofId) {
+      event.preventDefault();
       pushHistory();
-      testMap.deleteRoom(selectedRoomId);
+      testMap.deleteRoof(selectedRoofId);
+      clearSelection();
+      refreshShadows();
+      return;
+    }
+        if (selectedStairsId) {
+      event.preventDefault();
+      pushHistory();
+      testMap.deleteStairs(selectedStairsId);
+      clearSelection();
+      refreshShadows();
+      return;
+    }
+    if (selectedFenceId) {
+      event.preventDefault();
+      pushHistory();
+      testMap.deleteFence(selectedFenceId);
       clearSelection();
       refreshShadows();
       return;
@@ -3640,7 +5608,7 @@ document.addEventListener('keydown', (event) => {
   }
 
   if (targetMode) {
-    const button = document.querySelector(`.floor-tools .mode[data-mode="${targetMode}"]`);
+    const button = document.querySelector(`.mode[data-mode="${targetMode}"]`);
     if (button) {
       button.click();
     }
@@ -3658,6 +5626,7 @@ document.querySelectorAll('.mode').forEach((button) => {
   button.addEventListener('click', () => {
     mode = button.dataset.mode;
     drawStart = null;
+    clearDrawWallPreview();
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
     renderPlan();
   });
@@ -3793,17 +5762,20 @@ document.getElementById('item-grid').addEventListener('click', (event) => {
   document.getElementById(id).addEventListener('change', updateSelectedRoom);
 });
 
-['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-color'].forEach((id) => {
+['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-color', 'structure-subtype'].forEach((id) => {
   document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
 });
 document.getElementById('structure-rotation')?.addEventListener('change', (event) => {
   const degrees = (Number(event.target.value) || 0) % 360;
   document.getElementById('structure-rotation-range').value = degrees;
-  updateSelectedStructureRotation(degrees);
+  commitSelectedStructureRotation(degrees);
 });
 document.getElementById('structure-rotation-range')?.addEventListener('input', (event) => {
   document.getElementById('structure-rotation').value = event.target.value;
-  updateSelectedStructureRotation(event.target.value);
+  previewSelectedStructureRotation(event.target.value);
+});
+document.getElementById('structure-rotation-range')?.addEventListener('change', (event) => {
+  commitSelectedStructureRotation(event.target.value);
 });
 document.getElementById('btn-delete-structure')?.addEventListener('click', deleteSelectedStructure);
 
@@ -3915,6 +5887,34 @@ document.getElementById('snap-size').addEventListener('change', (event) => {
   refresh3DGrid();
 });
 
+document.getElementById('fence-subtype').addEventListener('change', updateSelectedFenceSubtype);
+document.getElementById('fence-length').addEventListener('change', updateSelectedFenceLength);
+
+document.getElementById('fence-rotation').addEventListener('change', (event) => {
+  let val = Number(event.target.value) || 0;
+  if (snapEnabled) {
+    val = Math.round(val / 90) * 90;
+  }
+  val = (val % 360 + 360) % 360;
+  event.target.value = val;
+  document.getElementById('fence-rotation-range').value = val;
+  updateSelectedFenceRotation(val);
+});
+
+document.getElementById('fence-rotation-range').addEventListener('input', (event) => {
+  let val = Number(event.target.value) || 0;
+  if (snapEnabled) {
+    val = Math.round(val / 90) * 90;
+  }
+  val = (val % 360 + 360) % 360;
+  document.getElementById('fence-rotation').value = val;
+  updateSelectedFenceRotation(val);
+});
+
+document.getElementById('fence-height').addEventListener('change', updateSelectedFenceHeight);
+document.getElementById('fence-color').addEventListener('change', updateSelectedFenceColor);
+document.getElementById('btn-delete-fence').addEventListener('click', deleteSelectedFence);
+
 document.getElementById('btn-delete-item').addEventListener('click', () => {
   if (!selectedItemId) return;
   pushHistory();
@@ -3934,10 +5934,14 @@ document.getElementById('btn-delete-opening').addEventListener('click', () => {
 
 document.getElementById('btn-delete-room').addEventListener('click', () => {
   if (!selectedRoomId) return;
-  pushHistory();
-  testMap.deleteRoom(selectedRoomId);
-  clearSelection();
-  refreshShadows();
+  showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
+    if (confirmed) {
+      pushHistory();
+      testMap.deleteRoom(selectedRoomId);
+      clearSelection();
+      refreshShadows();
+    }
+  });
 });
 
 document.getElementById('floor-color').addEventListener('change', (event) => {
@@ -3951,7 +5955,14 @@ document.getElementById('floor-color').addEventListener('change', (event) => {
   renderPlan();
 });
 
-document.getElementById('btn-reset-camera').addEventListener('click', resetCamera);
+document.getElementById('btn-reset-camera').addEventListener('click', () => {
+  if (currentView === '3d') {
+    resetCamera();
+  } else {
+    hasUserZoomedOrPanned = false;
+    renderPlan();
+  }
+});
 document.getElementById('btn-reset-material').addEventListener('click', resetCurrentMaterial);
 
 function resetInteractionState() {
@@ -3966,6 +5977,11 @@ function resetInteractionState() {
   roomResizeState = null;
   itemGestureState = null;
   activePointers.clear();
+  viewPointers.clear();
+  isPanning2D = false;
+  panStart2D = null;
+  prevTouchDist2D = 0;
+  prevTouchCenter2D = null;
   end3DDrag();
 }
 
@@ -4016,6 +6032,7 @@ async function loadBuildingFile(file) {
   pushHistory();
   testMap.loadBuildingFile(text);
   syncFloorControls();
+  hasUserZoomedOrPanned = false;
   resetInteractionState();
   refreshShadows();
   updateEditor();
@@ -4050,6 +6067,7 @@ document.getElementById('btn-new').addEventListener('click', () => {
   pushHistory();
   testMap.loadJSON(BLUEPRINT3D_TEST_FLOORPLAN);
   syncFloorControls();
+  hasUserZoomedOrPanned = false;
   resetInteractionState();
   refreshShadows();
   updateEditor();

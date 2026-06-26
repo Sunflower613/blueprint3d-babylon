@@ -1401,8 +1401,11 @@ select {
   flex-shrink: 0;
 }
 
-/* 建筑工具网格排布 (2x4 网格卡片化) */
-.floor-tools {
+/* 建筑工具网格排布 (4列网格卡片化) */
+.floor-tools,
+.roof-tools,
+.stairs-tools,
+.fence-tools {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 6px !important;
@@ -1413,7 +1416,10 @@ select {
   margin-bottom: 12px;
 }
 
-.floor-tools .mode {
+.floor-tools .mode,
+.roof-tools .mode,
+.stairs-tools .mode,
+.fence-tools .mode {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -1434,12 +1440,18 @@ select {
   user-select: none;
 }
 
-.floor-tools .mode:hover {
+.floor-tools .mode:hover,
+.roof-tools .mode:hover,
+.stairs-tools .mode:hover,
+.fence-tools .mode:hover {
   background: rgba(42, 65, 92, 0.08) !important;
   color: #2a415c !important;
 }
 
-.floor-tools .mode.active {
+.floor-tools .mode.active,
+.roof-tools .mode.active,
+.stairs-tools .mode.active,
+.fence-tools .mode.active {
   background: #ffffff !important;
   color: #1f8fff !important;
   font-weight: 600 !important;
@@ -1464,7 +1476,10 @@ select {
   line-height: 1;
 }
 
-.floor-tools .mode.active .mode-shortcut {
+.floor-tools .mode.active .mode-shortcut,
+.roof-tools .mode.active .mode-shortcut,
+.stairs-tools .mode.active .mode-shortcut,
+.fence-tools .mode.active .mode-shortcut {
   color: rgba(31, 143, 255, 0.6);
 }
 
@@ -1473,7 +1488,10 @@ select {
   .mode-shortcut {
     display: none !important;
   }
-  .floor-tools .mode {
+  .floor-tools .mode,
+  .roof-tools .mode,
+  .stairs-tools .mode,
+  .fence-tools .mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;
@@ -1483,7 +1501,10 @@ select {
   .mode-shortcut {
     display: none !important;
   }
-  .floor-tools .mode {
+  .floor-tools .mode,
+  .roof-tools .mode,
+  .stairs-tools .mode,
+  .fence-tools .mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;

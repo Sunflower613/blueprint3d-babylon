@@ -7,6 +7,9 @@ import { stringifyDXF, create3MFPackage } from '../core/exporters.js';
 import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition } from '../furniture/index.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
 import { buildOpeningGeometry } from '../openings/index.js';
+import { getRoofGeometryData } from '../geometry/roofGeometry.js';
+import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
+import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
 
 
 export const BLUEPRINT3D_TEST_FLOORPLAN = {
@@ -149,6 +152,7 @@ function normalizeFloorplan(floorplan) {
   normalized.items ||= [];
   normalized.roofs ||= [];
   normalized.stairs ||= [];
+  normalized.fences ||= [];
 
   normalized.walls.forEach((wall) => {
     wall.floorId ||= DEFAULT_FLOOR_ID;
@@ -176,6 +180,7 @@ function normalizeFloorplan(floorplan) {
     roof.depth = Math.max(1, Number(roof.depth || 6));
     roof.height = Math.max(0.2, Number(roof.height || 1.1));
     roof.type ||= 'gable';
+    roof.subtype ||= roof.type || 'gable';
     roof.color ||= '#b75b54';
     roof.material ||= roof.color;
     roof.color = materialPreviewColor(roof.material, roof.color || '#b75b54');
@@ -189,10 +194,24 @@ function normalizeFloorplan(floorplan) {
     stairs.width = Math.max(0.6, Number(stairs.width || 1.2));
     stairs.depth = Math.max(1.2, Number(stairs.depth || 3.2));
     stairs.height = Math.max(1, Number(stairs.height || normalized.storyHeight));
+    stairs.subtype ||= 'straight';
     stairs.rotation = Number(stairs.rotation || 0);
     stairs.color ||= '#d8c0a0';
     stairs.material ||= stairs.color;
     stairs.color = materialPreviewColor(stairs.material, stairs.color || '#d8c0a0');
+  });
+
+  normalized.fences.forEach((fence) => {
+    fence.id ||= `fence_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    fence.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
+    fence.from ||= [0, 0];
+    fence.to ||= [2, 0];
+    fence.subtype ||= 'picket_wood';
+    fence.height = Math.max(0.2, Number(fence.height || 1.1));
+    fence.thickness = Math.max(0.04, Number(fence.thickness || 0.1));
+    fence.color ||= '#8d6e63';
+    fence.material ||= fence.color;
+    fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
   });
 
   normalized.items.forEach((item) => {
@@ -252,7 +271,7 @@ function normalizeWallSegmentMesh(mesh) {
     BABYLON.VertexData.ComputeNormals(positions, indices, normals);
     mesh.setVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
   }
-  mesh.receiveShadows = true;
+  mesh.receiveShadows = false;
   mesh.doNotSyncBoundingInfo = false;
   mesh.refreshBoundingInfo();
   return mesh;
@@ -269,8 +288,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.openingNodes = new Map();
     this.roofNodes = new Map();
     this.stairNodes = new Map();
+    this.fenceNodes = new Map();
     this.selectedItemId = null;
     this.selectedWallId = null;
+    this.selectedFenceId = null;
     this.build();
   }
 
@@ -294,9 +315,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.buildOpenings();
     this.buildRoofs();
     this.buildStairs();
+    this.buildFences();
     this.floorplan.items.filter((item) => this.isFloorVisible(item.floorId)).forEach((item) => this.buildItem(item));
     this.setSelectedItem(this.selectedItemId);
     this.setSelectedWall(this.selectedWallId);
+    this.setSelectedFence(this.selectedFenceId);
   }
 
   getCurrentFloor() {
@@ -463,12 +486,14 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.openingNodes.forEach((node) => node.dispose(false, true));
     this.roofNodes.forEach((node) => node.dispose(false, true));
     this.stairNodes.forEach((node) => node.dispose(false, true));
+    this.fenceNodes.forEach((node) => node.dispose(false, true));
     this.itemNodes.clear();
     this.wallNodes.clear();
     this.floorNodes.clear();
     this.openingNodes.clear();
     this.roofNodes.clear();
     this.stairNodes.clear();
+    this.fenceNodes.clear();
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
     this.root.getChildren().forEach((child) => child.dispose(false, true));
@@ -739,7 +764,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const wallGroup = new BABYLON.TransformNode(`wall_group_${wall.id}`, this.scene);
       wallGroup.position.set(x1, 0, z1);
       wallGroup.rotation.y = -Math.atan2(dz, dx);
-      wallGroup.metadata = { blueprintWallId: wall.id, floorId: wall.floorId };
+      wallGroup.metadata = { blueprintWallId: wall.id, floorId: wall.floorId, originalLength: length };
       wallGroup.computeWorldMatrix(true);
 
       // 辅助：执行 CSG 剪切 cutter 的局部函数
@@ -915,25 +940,14 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const eaveY = floorY + (this.floorplan.wallHeight || 2.8);
       const material = createBlueprintMaterial(this.scene, `roof_${roof.id}_mat`, roof.material || roof.color || '#b75b54', {
         fallbackColor: roof.color || '#b75b54',
-        flatShading: false,
+        flatShading: true,
         backFaceCulling: false
       });
       const mesh = new BABYLON.Mesh(`roof_${roof.id}`, this.scene);
-      const positions = [
-        -width / 2, 0, -depth / 2,
-        width / 2, 0, -depth / 2,
-        0, height, -depth / 2,
-        -width / 2, 0, depth / 2,
-        width / 2, 0, depth / 2,
-        0, height, depth / 2
-      ];
-      const indices = [
-        0, 1, 2,
-        3, 5, 4,
-        0, 3, 4, 0, 4, 1,
-        1, 4, 5, 1, 5, 2,
-        2, 5, 3, 2, 3, 0
-      ];
+      
+      const subtype = roof.subtype || roof.type || 'gable';
+      const { positions, indices } = getRoofGeometryData(subtype, width, depth, height);
+
       const normals = [];
       BABYLON.VertexData.ComputeNormals(positions, indices, normals);
       const vertexData = new BABYLON.VertexData();
@@ -941,6 +955,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       vertexData.indices = indices;
       vertexData.normals = normals;
       vertexData.applyToMesh(mesh);
+      mesh.convertToFlatShadedMesh();
       mesh.position.set(roof.x || 0, eaveY, roof.z || 0);
       mesh.rotation.y = roof.rotation || 0;
       mesh.material = material;
@@ -968,27 +983,42 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const width = Math.max(0.6, Number(stairs.width || 1.2));
       const depth = Math.max(1.2, Number(stairs.depth || 3.2));
       const height = Math.max(1, Number(stairs.height || this.floorplan.storyHeight));
-      for (let i = 0; i < steps; i += 1) {
-        const stepDepth = depth / steps;
-        const stepHeight = height / steps;
-        createBox(this, `stairs_step_${stairs.id}_${i}`, {
-          width,
-          height: stepHeight * (i + 1),
-          depth: stepDepth
-        }, {
-          position: {
-            x: 0,
-            y: stepHeight * (i + 1) / 2,
-            z: -depth / 2 + stepDepth * i + stepDepth / 2
-          }
-        }, {
-          material,
-          parent: group,
-          receiveShadows: true,
-          shadowCaster: true
-        });
-      }
+      
+      buildStairsGeometry(this, group, stairs, material, width, depth, height, steps);
+
       this.stairNodes.set(stairs.id, group);
+    });
+  }
+
+  buildFences() {
+    this.floorplan.fences.filter((fence) => this.isFloorVisible(fence.floorId)).forEach((fence) => {
+      const floorY = this.getFloorElevation(fence.floorId);
+      const group = new BABYLON.TransformNode(`fence_${fence.id}`, this.scene);
+      
+      const [x1, z1] = fence.from || [0, 0];
+      const [x2, z2] = fence.to || [2, 0];
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const length = Math.sqrt(dx * dx + dz * dz);
+      if (length <= 0.01) {
+        group.dispose();
+        return;
+      }
+      
+      const angle = Math.atan2(dz, dx);
+      group.position.set((x1 + x2) / 2, floorY, (z1 + z2) / 2);
+      group.rotation.y = -angle;
+      group.parent = this.root;
+      group.metadata = { blueprintFenceId: fence.id, floorId: fence.floorId, originalLength: length };
+      
+      const material = createBlueprintMaterial(this.scene, `fence_${fence.id}_mat`, fence.material || fence.color || '#8d6e63', {
+        fallbackColor: fence.color || '#8d6e63',
+        flatShading: false
+      });
+      
+      buildFenceGeometry(this, group, fence, material, length, fence.height || 1.1, fence.thickness || 0.1);
+      
+      this.fenceNodes.set(fence.id, group);
     });
   }
 
@@ -1306,11 +1336,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return wall;
   }
 
-  updateWall(wallId, patch) {
+  updateWall(wallId, patch, options = {}) {
     const wall = this.getWall(wallId);
     if (!wall) return null;
     Object.assign(wall, patch);
-    this.build();
+    if (options.rebuild !== false) {
+      this.build();
+    }
     return wall;
   }
 
@@ -1427,7 +1459,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       depth: partialRoof.depth || 6,
       height: partialRoof.height || 1.1,
       rotation: partialRoof.rotation || 0,
-      type: partialRoof.type || 'gable',
+      type: partialRoof.type || partialRoof.subtype || 'gable',
+      subtype: partialRoof.subtype || partialRoof.type || 'gable',
       color: partialRoof.color || '#b75b54',
       material: partialRoof.material || partialRoof.color || '#b75b54'
     };
@@ -1446,6 +1479,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       depth: partialStairs.depth || 3.2,
       height: partialStairs.height || this.floorplan.storyHeight,
       steps: partialStairs.steps || 9,
+      subtype: partialStairs.subtype || 'straight',
       rotation: partialStairs.rotation || 0,
       color: partialStairs.color || '#d8c0a0',
       material: partialStairs.material || partialStairs.color || '#d8c0a0'
@@ -1514,6 +1548,62 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return before !== this.floorplan.stairs.length;
   }
 
+  addFence(partialFence = {}) {
+    const fence = {
+      id: partialFence.id || `fence_${Date.now()}`,
+      floorId: partialFence.floorId || this.floorplan.currentFloorId,
+      from: partialFence.from ? [...partialFence.from] : [0, 0],
+      to: partialFence.to ? [...partialFence.to] : [2, 0],
+      subtype: partialFence.subtype || 'picket_wood',
+      height: Math.max(0.2, Number(partialFence.height || 1.1)),
+      thickness: Math.max(0.04, Number(partialFence.thickness || 0.1)),
+      color: partialFence.color || '#8d6e63',
+      material: partialFence.material || partialFence.color || '#8d6e63'
+    };
+    this.floorplan.fences.push(fence);
+    this.build();
+    return fence;
+  }
+
+  getFence(fenceId) {
+    return this.floorplan.fences.find((fence) => fence.id === fenceId);
+  }
+
+  updateFence(fenceId, patch, rebuild = true) {
+    const fence = this.getFence(fenceId);
+    if (!fence) return null;
+    Object.assign(fence, patch);
+    if (patch.from) fence.from = [...patch.from];
+    if (patch.to) fence.to = [...patch.to];
+    fence.height = Math.max(0.2, Number(fence.height || 0.2));
+    fence.thickness = Math.max(0.04, Number(fence.thickness || 0.04));
+    if (patch.color && !patch.material) fence.material = patch.color;
+    fence.color ||= '#8d6e63';
+    fence.material ||= fence.color;
+    fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
+    if (rebuild) this.build();
+    return fence;
+  }
+
+  deleteFence(fenceId) {
+    const before = this.floorplan.fences.length;
+    this.floorplan.fences = this.floorplan.fences.filter((fence) => fence.id !== fenceId);
+    if (before !== this.floorplan.fences.length) this.build();
+    return before !== this.floorplan.fences.length;
+  }
+
+  setSelectedFence(fenceId) {
+    this.selectedFenceId = fenceId;
+    this.fenceNodes.forEach((node, id) => {
+      const isSelected = (id === fenceId);
+      node.getChildMeshes().forEach((mesh) => {
+        mesh.renderOutline = isSelected;
+        mesh.outlineWidth = 0.04;
+        mesh.outlineColor = BABYLON.Color3.FromHexString('#36c2ff');
+      });
+    });
+  }
+
   addOpening(wallId, type = 'door', t = 0.5) {
     const wall = this.getWall(wallId);
     if (!wall) return null;
@@ -1540,9 +1630,35 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (opening.type === 'window') {
       opening.height = Math.max(0.3, Number(opening.height || 0.85));
     }
-    if (rebuild) this.build();
+    if (rebuild) {
+      this.build();
+    } else {
+      this.updateOpeningNodePose(openingId);
+    }
     return opening;
   }
+
+  updateOpeningNodePose(openingId) {
+    const opening = this.getOpening(openingId);
+    const node = this.openingNodes.get(openingId);
+    if (!opening || !node) return;
+    const wall = this.getWall(opening.wallId);
+    if (!wall) return;
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const angle = -Math.atan2(dz, dx);
+    const pos = wallPoint(wall, opening.t ?? 0.5);
+    const width = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
+    const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
+    const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+    const floorY = this.getFloorElevation(opening.floorId || wall.floorId);
+
+    node.position.set(pos.x, floorY + localY, pos.z);
+    node.rotation.y = angle;
+  }
+
 
   deleteOpening(openingId) {
     this.floorplan.openings = this.floorplan.openings.filter((opening) => opening.id !== openingId);

@@ -50,6 +50,7 @@ export {
 } from './presets/blueprintTestMap.js';
 
 export * from './furniture/index.js';
+export * from './openings/index.js';
 
 export {
   PinkCastleGenerator

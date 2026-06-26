@@ -4,6 +4,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const ceilingLight = {
   type: 'ceiling_light',
   name: '简约吸顶灯',
+  placeType: 'ceiling',
   defaultSize: { width: 16, depth: 16, height: 4 },
   emissiveComponents: ['bulb', 'glow'],
   lightColorComponent: 'glow',
@@ -38,6 +39,7 @@ export const ceilingLight = {
 export const chandelierLight = {
   type: 'chandelier_light',
   name: '豪华木耳吊灯',
+  placeType: 'ceiling',
   defaultSize: { width: 24, depth: 24, height: 32 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
@@ -300,6 +302,7 @@ export const bedsideLampLight = {
 export const trackLight = {
   type: 'track_light',
   name: '工业轨道射灯',
+  placeType: 'ceiling',
   defaultSize: { width: 36, depth: 4, height: 8 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
@@ -405,6 +408,7 @@ export const neonSignLight = {
 export const globePendantLight = {
   type: 'globe_pendant_light',
   name: '和风纸球吊灯',
+  placeType: 'ceiling',
   defaultSize: { width: 18, depth: 18, height: 36 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',

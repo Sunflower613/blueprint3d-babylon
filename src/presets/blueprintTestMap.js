@@ -6,6 +6,7 @@ import { createBuildingFile, parseBuildingFile, stringifyBuildingFile } from '..
 import { stringifyDXF, create3MFPackage } from '../core/exporters.js';
 import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition } from '../furniture/index.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
+import { buildOpeningGeometry } from '../openings/index.js';
 
 
 export const BLUEPRINT3D_TEST_FLOORPLAN = {
@@ -87,6 +88,7 @@ export const BLUEPRINT3D_TEST_FLOORPLAN = {
 const INCHES_PER_UNIT = 24;
 const DEFAULT_WALL_COLOR = '#f9fbff';
 const DEFAULT_FLOOR_COLOR = '#f4efe6';
+const DEFAULT_FLOOR_ID = 'floor_1';
 
 function cloneFloorplan(floorplan) {
   return JSON.parse(JSON.stringify(floorplan));
@@ -116,8 +118,27 @@ function normalizeFloorplan(floorplan) {
   if (!normalized.floor.material || normalized.floor.material === DEFAULT_FLOOR_COLOR) {
     normalized.floor.material = defaultFloorMaterial;
   }
+  normalized.floors ||= [{ id: DEFAULT_FLOOR_ID, name: '1F', level: 0 }];
+  normalized.floors.forEach((floor, index) => {
+    floor.id ||= `floor_${index + 1}`;
+    floor.name ||= `${index + 1}F`;
+    floor.level = Number.isFinite(Number(floor.level)) ? Number(floor.level) : index;
+  });
+  if (!normalized.floors.length) normalized.floors.push({ id: DEFAULT_FLOOR_ID, name: '1F', level: 0 });
+  normalized.currentFloorId ||= normalized.floors[0].id;
+  if (!normalized.floors.some((floor) => floor.id === normalized.currentFloorId)) {
+    normalized.currentFloorId = normalized.floors[0].id;
+  }
+  const alignedStoryHeight = (normalized.wallHeight || 2.8) + (normalized.floorHeight || 0.06);
+  const legacyStoryHeight = (normalized.wallHeight || 2.8) + 0.35;
+  const suppliedStoryHeight = Number(normalized.storyHeight);
+  normalized.storyHeight = (!Number.isFinite(suppliedStoryHeight) || Math.abs(suppliedStoryHeight - legacyStoryHeight) < 0.001)
+    ? alignedStoryHeight
+    : Math.max(alignedStoryHeight, suppliedStoryHeight);
+
   normalized.floor.rooms ||= [];
   normalized.floor.rooms.forEach((room) => {
+    room.floorId ||= DEFAULT_FLOOR_ID;
     room.color ||= normalized.floor.color || DEFAULT_FLOOR_COLOR;
     if (!room.material || room.material === room.color || room.material === DEFAULT_FLOOR_COLOR) {
       room.material = normalized.floor.material;
@@ -126,13 +147,18 @@ function normalizeFloorplan(floorplan) {
   normalized.walls ||= [];
   normalized.openings ||= [];
   normalized.items ||= [];
+  normalized.roofs ||= [];
+  normalized.stairs ||= [];
 
   normalized.walls.forEach((wall) => {
+    wall.floorId ||= DEFAULT_FLOOR_ID;
     wall.color ||= DEFAULT_WALL_COLOR;
     wall.material ||= wall.color;
   });
 
   normalized.openings.forEach((opening) => {
+    const wall = normalized.walls.find((candidate) => candidate.id === opening.wallId);
+    opening.floorId ||= wall?.floorId || DEFAULT_FLOOR_ID;
     opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
     opening.width ||= opening.type === 'door' ? 0.9 : 1.25;
     if (opening.type === 'window') {
@@ -141,7 +167,37 @@ function normalizeFloorplan(floorplan) {
     }
   });
 
+  normalized.roofs.forEach((roof) => {
+    roof.id ||= `roof_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    roof.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
+    roof.x = Number(roof.x || 0);
+    roof.z = Number(roof.z || 0);
+    roof.width = Math.max(1, Number(roof.width || 6));
+    roof.depth = Math.max(1, Number(roof.depth || 6));
+    roof.height = Math.max(0.2, Number(roof.height || 1.1));
+    roof.type ||= 'gable';
+    roof.color ||= '#b75b54';
+    roof.material ||= roof.color;
+    roof.color = materialPreviewColor(roof.material, roof.color || '#b75b54');
+  });
+
+  normalized.stairs.forEach((stairs) => {
+    stairs.id ||= `stairs_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    stairs.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
+    stairs.x = Number(stairs.x || 0);
+    stairs.z = Number(stairs.z || 0);
+    stairs.width = Math.max(0.6, Number(stairs.width || 1.2));
+    stairs.depth = Math.max(1.2, Number(stairs.depth || 3.2));
+    stairs.height = Math.max(1, Number(stairs.height || normalized.storyHeight));
+    stairs.rotation = Number(stairs.rotation || 0);
+    stairs.color ||= '#d8c0a0';
+    stairs.material ||= stairs.color;
+    stairs.color = materialPreviewColor(stairs.material, stairs.color || '#d8c0a0');
+  });
+
   normalized.items.forEach((item) => {
+    const room = normalized.floor.rooms.find((candidate) => candidate.id === item.roomId);
+    item.floorId ||= room?.floorId || DEFAULT_FLOOR_ID;
     const definition = getFurnitureDefinition(item.type);
     item.name ||= definition.name;
     item.width ||= definition.defaultSize.width;
@@ -211,6 +267,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.wallNodes = new Map();
     this.floorNodes = new Map();
     this.openingNodes = new Map();
+    this.roofNodes = new Map();
+    this.stairNodes = new Map();
     this.selectedItemId = null;
     this.selectedWallId = null;
     this.build();
@@ -223,7 +281,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       door: createFlatMaterial(this.scene, 'blueprintDoor', palette.door || '#8c5a32'),
       window: createFlatMaterial(this.scene, 'blueprintWindow', palette.window || '#75d7ff', { alpha: 0.72, emissive: true, backFaceCulling: false }),
       trim: createFlatMaterial(this.scene, 'blueprintTrim', palette.trim || '#b8c4d4'),
-      decor: createFlatMaterial(this.scene, 'blueprintDecor', palette.decor || '#ffffff')
+      decor: createFlatMaterial(this.scene, 'blueprintDecor', palette.decor || '#ffffff'),
+      roof: createFlatMaterial(this.scene, 'blueprintRoof', palette.roof || '#b75b54'),
+      stair: createFlatMaterial(this.scene, 'blueprintStair', palette.stair || '#d8c0a0')
     };
   }
 
@@ -232,9 +292,168 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.buildFloors();
     this.buildWalls();
     this.buildOpenings();
-    this.floorplan.items.forEach((item) => this.buildItem(item));
+    this.buildRoofs();
+    this.buildStairs();
+    this.floorplan.items.filter((item) => this.isFloorVisible(item.floorId)).forEach((item) => this.buildItem(item));
     this.setSelectedItem(this.selectedItemId);
     this.setSelectedWall(this.selectedWallId);
+  }
+
+  getCurrentFloor() {
+    return this.floorplan.floors.find((floor) => floor.id === this.floorplan.currentFloorId) || this.floorplan.floors[0];
+  }
+
+  getFloor(floorId) {
+    return this.floorplan.floors.find((floor) => floor.id === floorId) || this.floorplan.floors[0];
+  }
+
+  getFloorLevel(floorId) {
+    return Number(this.getFloor(floorId)?.level || 0);
+  }
+
+  getFloorElevation(floorId) {
+    return this.getFloorLevel(floorId) * (this.floorplan.storyHeight || ((this.floorplan.wallHeight || 2.8) + (this.floorplan.floorHeight || 0.06)));
+  }
+
+  isFloorVisible(floorId) {
+    return this.getFloorLevel(floorId) <= this.getFloorLevel(this.floorplan.currentFloorId);
+  }
+
+  isOnCurrentFloor(entity) {
+    return (entity?.floorId || DEFAULT_FLOOR_ID) === this.floorplan.currentFloorId;
+  }
+
+  getCurrentFloorRooms() {
+    return this.floorplan.floor.rooms.filter((room) => this.isOnCurrentFloor(room));
+  }
+
+  getCurrentFloorWalls() {
+    return this.floorplan.walls.filter((wall) => this.isOnCurrentFloor(wall));
+  }
+
+  getCurrentFloorOpenings() {
+    return this.floorplan.openings.filter((opening) => this.isOnCurrentFloor(opening));
+  }
+
+  getCurrentFloorItems() {
+    return this.floorplan.items.filter((item) => this.isOnCurrentFloor(item));
+  }
+
+  getCurrentFloorRoofs() {
+    return this.floorplan.roofs.filter((roof) => this.isOnCurrentFloor(roof));
+  }
+
+  getCurrentFloorStairs() {
+    return this.floorplan.stairs.filter((stairs) => this.isOnCurrentFloor(stairs));
+  }
+
+  setCurrentFloor(floorId) {
+    if (!this.floorplan.floors.some((floor) => floor.id === floorId)) return this.getCurrentFloor();
+    this.floorplan.currentFloorId = floorId;
+    this.build();
+    return this.getCurrentFloor();
+  }
+
+  addFloor(partialFloor = {}) {
+    const nextLevel = partialFloor.level ?? (Math.max(...this.floorplan.floors.map((floor) => Number(floor.level || 0))) + 1);
+    const floor = {
+      id: partialFloor.id || `floor_${Date.now()}`,
+      name: partialFloor.name || `${nextLevel + 1}F`,
+      level: nextLevel
+    };
+    this.floorplan.floors.push(floor);
+
+    if (partialFloor.copyFromFloorId) {
+      this.copyFloorPlanToFloor(partialFloor.copyFromFloorId, floor.id);
+    }
+
+    this.floorplan.currentFloorId = floor.id;
+    this.build();
+    return floor;
+  }
+
+  copyFloorPlanToFloor(sourceFloorId, targetFloorId) {
+    const suffix = `${targetFloorId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const wallIdMap = new Map();
+    const roomIdMap = new Map();
+
+    this.floorplan.walls
+      .filter((wall) => (wall.floorId || DEFAULT_FLOOR_ID) === sourceFloorId)
+      .forEach((wall, index) => {
+        const nextId = `wall_${suffix}_${index}`;
+        wallIdMap.set(wall.id, nextId);
+        this.floorplan.walls.push({
+          ...cloneFloorplan(wall),
+          id: nextId,
+          from: [...wall.from],
+          to: [...wall.to],
+          floorId: targetFloorId
+        });
+      });
+
+    this.floorplan.floor.rooms
+      .filter((room) => (room.floorId || DEFAULT_FLOOR_ID) === sourceFloorId)
+      .forEach((room, index) => {
+        const nextId = `room_${suffix}_${index}`;
+        roomIdMap.set(room.id, nextId);
+        const wallIds = {};
+        Object.entries(room.wallIds || {}).forEach(([side, wallId]) => {
+          if (wallIdMap.has(wallId)) wallIds[side] = wallIdMap.get(wallId);
+        });
+        this.floorplan.floor.rooms.push({
+          ...cloneFloorplan(room),
+          id: nextId,
+          name: room.name,
+          floorId: targetFloorId,
+          wallIds
+        });
+      });
+
+    this.floorplan.openings
+      .filter((opening) => wallIdMap.has(opening.wallId))
+      .forEach((opening, index) => {
+        this.floorplan.openings.push({
+          ...cloneFloorplan(opening),
+          id: `${opening.type || 'opening'}_${suffix}_${index}`,
+          wallId: wallIdMap.get(opening.wallId),
+          floorId: targetFloorId
+        });
+      });
+
+    return { wallIdMap, roomIdMap };
+  }
+
+  moveFloor(floorId, direction) {
+    const floors = [...this.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
+    const index = floors.findIndex((floor) => floor.id === floorId);
+    if (index < 0) return false;
+    const swapIndex = direction === 'up' ? index + 1 : index - 1;
+    if (swapIndex < 0 || swapIndex >= floors.length) return false;
+    const currentLevel = floors[index].level;
+    floors[index].level = floors[swapIndex].level;
+    floors[swapIndex].level = currentLevel;
+    this.build();
+    return true;
+  }
+
+  deleteFloor(floorId) {
+    if (this.floorplan.floors.length <= 1) return false;
+    const floor = this.floorplan.floors.find((candidate) => candidate.id === floorId);
+    if (!floor) return false;
+    const removedWallIds = new Set(this.floorplan.walls.filter((wall) => (wall.floorId || DEFAULT_FLOOR_ID) === floorId).map((wall) => wall.id));
+    this.floorplan.floors = this.floorplan.floors.filter((candidate) => candidate.id !== floorId);
+    this.floorplan.floor.rooms = this.floorplan.floor.rooms.filter((room) => (room.floorId || DEFAULT_FLOOR_ID) !== floorId);
+    this.floorplan.walls = this.floorplan.walls.filter((wall) => (wall.floorId || DEFAULT_FLOOR_ID) !== floorId);
+    this.floorplan.openings = this.floorplan.openings.filter((opening) => (opening.floorId || DEFAULT_FLOOR_ID) !== floorId && !removedWallIds.has(opening.wallId));
+    this.floorplan.items = this.floorplan.items.filter((item) => (item.floorId || DEFAULT_FLOOR_ID) !== floorId);
+    this.floorplan.roofs = this.floorplan.roofs.filter((roof) => (roof.floorId || DEFAULT_FLOOR_ID) !== floorId);
+    this.floorplan.stairs = this.floorplan.stairs.filter((stairs) => (stairs.floorId || DEFAULT_FLOOR_ID) !== floorId);
+    if (this.floorplan.currentFloorId === floorId) {
+      const nextFloor = [...this.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0))[0];
+      this.floorplan.currentFloorId = nextFloor.id;
+    }
+    this.build();
+    return true;
   }
 
   clearBuiltMeshes() {
@@ -242,47 +461,136 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.wallNodes.forEach((node) => node.dispose(false, true));
     this.floorNodes.forEach((node) => node.dispose(false, true));
     this.openingNodes.forEach((node) => node.dispose(false, true));
+    this.roofNodes.forEach((node) => node.dispose(false, true));
+    this.stairNodes.forEach((node) => node.dispose(false, true));
     this.itemNodes.clear();
     this.wallNodes.clear();
     this.floorNodes.clear();
     this.openingNodes.clear();
+    this.roofNodes.clear();
+    this.stairNodes.clear();
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
     this.root.getChildren().forEach((child) => child.dispose(false, true));
   }
 
+  getStairFloorHoles(room) {
+    const roomLevel = this.getFloorLevel(room.floorId);
+    const left = room.x - room.width / 2;
+    const right = room.x + room.width / 2;
+    const top = room.z - room.depth / 2;
+    const bottom = room.z + room.depth / 2;
+    return this.floorplan.stairs
+      .filter((stairs) => this.getFloorLevel(stairs.floorId) === roomLevel - 1)
+      .map((stairs) => {
+        const rotation = Number(stairs.rotation || 0);
+        const halfWidth = Math.abs(Math.cos(rotation)) * Number(stairs.width || 1.2) / 2 + Math.abs(Math.sin(rotation)) * Number(stairs.depth || 3.2) / 2;
+        const halfDepth = Math.abs(Math.sin(rotation)) * Number(stairs.width || 1.2) / 2 + Math.abs(Math.cos(rotation)) * Number(stairs.depth || 3.2) / 2;
+        return {
+          left: Math.max(left, Number(stairs.x || 0) - halfWidth),
+          right: Math.min(right, Number(stairs.x || 0) + halfWidth),
+          top: Math.max(top, Number(stairs.z || 0) - halfDepth),
+          bottom: Math.min(bottom, Number(stairs.z || 0) + halfDepth)
+        };
+      })
+      .filter((hole) => hole.right - hole.left > 0.05 && hole.bottom - hole.top > 0.05);
+  }
+
+  buildFloorPiece(group, room, material, ceilingMaterial, rect, index) {
+    const width = rect.right - rect.left;
+    const depth = rect.bottom - rect.top;
+    if (width <= 0.01 || depth <= 0.01) return;
+    const centerX = (rect.left + rect.right) / 2;
+    const centerZ = (rect.top + rect.bottom) / 2;
+    const piece = createBox(this, `floor_${room.id}_${index}`, {
+      width,
+      height: this.floorplan.floorHeight,
+      depth
+    }, {
+      position: { x: centerX - room.x, y: 0, z: centerZ - room.z }
+    }, {
+      parent: group,
+      material,
+      receiveShadows: true,
+      shadowCaster: false
+    });
+    piece.metadata = { blueprintRoomId: room.id };
+
+    const ceilingThickness = 0.002;
+    const ceilingPiece = createBox(this, `ceiling_${room.id}_${index}`, {
+      width,
+      height: ceilingThickness,
+      depth
+    }, {
+      position: { x: centerX - room.x, y: -this.floorplan.floorHeight / 2 - ceilingThickness / 2, z: centerZ - room.z }
+    }, {
+      parent: group,
+      material: ceilingMaterial,
+      receiveShadows: true,
+      shadowCaster: false
+    });
+    ceilingPiece.metadata = { blueprintRoomId: room.id };
+  }
+
   buildFloors() {
-    this.floorplan.floor.rooms.forEach((room) => {
+    this.floorplan.floor.rooms.filter((room) => this.isFloorVisible(room.floorId)).forEach((room) => {
+      const floorY = this.getFloorElevation(room.floorId);
       const floorMaterial = createBlueprintMaterial(this.scene, `floor_${room.id}`, room.material || this.floorplan.floor.material || room.color || this.floorplan.floor.color, {
         fallbackColor: room.color || this.floorplan.floor.color || DEFAULT_FLOOR_COLOR
       });
-      const floor = createBox(this, `floor_${room.id}`, {
-        width: room.width,
-        height: this.floorplan.floorHeight,
-        depth: room.depth
-      }, {
-        position: { x: room.x, y: -this.floorplan.floorHeight / 2, z: room.z }
-      }, {
-        material: floorMaterial,
-        receiveShadows: true,
-        shadowCaster: false
+      const ceilingMaterial = createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
+        fallbackColor: '#ffffff'
       });
-      floor.metadata = { blueprintRoomId: room.id };
-      this.floorNodes.set(room.id, floor);
+      const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
+      group.position.set(room.x, floorY - this.floorplan.floorHeight / 2, room.z);
+      group.metadata = { blueprintRoomId: room.id };
+      this.add(group, { shadowCaster: false });
+
+      const roomRect = {
+        left: room.x - room.width / 2,
+        right: room.x + room.width / 2,
+        top: room.z - room.depth / 2,
+        bottom: room.z + room.depth / 2
+      };
+      const holes = this.getStairFloorHoles(room);
+      const xCuts = [roomRect.left, roomRect.right];
+      const zCuts = [roomRect.top, roomRect.bottom];
+      holes.forEach((hole) => {
+        xCuts.push(hole.left, hole.right);
+        zCuts.push(hole.top, hole.bottom);
+      });
+      const xs = [...new Set(xCuts.map((value) => Number(value.toFixed(3))))].sort((a, b) => a - b);
+      const zs = [...new Set(zCuts.map((value) => Number(value.toFixed(3))))].sort((a, b) => a - b);
+      let pieceIndex = 0;
+      for (let xi = 0; xi < xs.length - 1; xi += 1) {
+        for (let zi = 0; zi < zs.length - 1; zi += 1) {
+          const rect = { left: xs[xi], right: xs[xi + 1], top: zs[zi], bottom: zs[zi + 1] };
+          const centerX = (rect.left + rect.right) / 2;
+          const centerZ = (rect.top + rect.bottom) / 2;
+          const insideHole = holes.some((hole) => centerX > hole.left && centerX < hole.right && centerZ > hole.top && centerZ < hole.bottom);
+          if (!insideHole) {
+            this.buildFloorPiece(group, room, floorMaterial, ceilingMaterial, rect, pieceIndex);
+            pieceIndex += 1;
+          }
+        }
+      }
+
+      this.floorNodes.set(room.id, group);
       this.addCollider({
         type: 'floor',
         worldX: room.x,
         worldZ: room.z,
-        worldY: 0,
+        worldY: floorY,
         radius: Math.max(room.width, room.depth) / 2
       });
     });
   }
 
   buildWalls() {
+    const visibleWalls = this.floorplan.walls.filter((wall) => this.isFloorVisible(wall.floorId));
     // 1. 构建拓扑节点映射，以便识别墙角关系
     const vertexMap = new Map();
-    this.floorplan.walls.forEach((w) => {
+    visibleWalls.forEach((w) => {
       const [wx1, wz1] = w.from;
       const [wx2, wz2] = w.to;
       const p1 = `${wx1.toFixed(3)},${wz1.toFixed(3)}`;
@@ -295,7 +603,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       vertexMap.get(p2).push({ wall: w, isFrom: false });
     });
 
-    this.floorplan.walls.forEach((wall) => {
+    visibleWalls.forEach((wall) => {
       const [x1, z1] = wall.from;
       const [x2, z2] = wall.to;
       const dx = x2 - x1;
@@ -321,12 +629,14 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
       const T = this.floorplan.wallThickness;
       const H = this.floorplan.wallHeight;
+      const floorY = this.getFloorElevation(wall.floorId);
+      const FH = this.floorplan.floorHeight || 0.06;
 
       // 归一化墙体方向向量 (从 p1 指向 p2)
       const ux = dx / length;
       const uz = dz / length;
 
-      // 计算斜切端向外需要额外延伸的长度，使得斜切后外侧尖角保持完整
+      // 计算斜切端向外额外延伸的长度，使得斜切后外侧尖角保持完整
       const getExtLen = (P, otherP, adjWall) => {
         const [ax1, az1] = adjWall.from;
         const [ax2, az2] = adjWall.to;
@@ -359,7 +669,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const X_max = length + extLen_end;
 
       // 3. 收集并排序门窗区间
-      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id);
+      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.isFloorVisible(op.floorId));
       const intervals = [];
       wallOpenings.forEach((opening) => {
         const width = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
@@ -390,7 +700,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           subBoxes.push({
             xStart: curX,
             xEnd: inter.left,
-            yStart: 0,
+            yStart: -FH,
             yEnd: H
           });
         }
@@ -399,7 +709,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           subBoxes.push({
             xStart: Math.max(X_min, inter.left),
             xEnd: Math.min(X_max, inter.right),
-            yStart: 0,
+            yStart: -FH,
             yEnd: inter.sillHeight
           });
         }
@@ -420,7 +730,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         subBoxes.push({
           xStart: curX,
           xEnd: X_max,
-          yStart: 0,
+          yStart: -FH,
           yEnd: H
         });
       }
@@ -429,7 +739,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const wallGroup = new BABYLON.TransformNode(`wall_group_${wall.id}`, this.scene);
       wallGroup.position.set(x1, 0, z1);
       wallGroup.rotation.y = -Math.atan2(dz, dx);
-      wallGroup.metadata = { blueprintWallId: wall.id };
+      wallGroup.metadata = { blueprintWallId: wall.id, floorId: wall.floorId };
       wallGroup.computeWorldMatrix(true);
 
       // 辅助：执行 CSG 剪切 cutter 的局部函数
@@ -476,7 +786,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           depth: cutterDepth
         }, this.scene);
         
-        cutter.position.set(cutterPos.x, H / 2, cutterPos.z);
+        cutter.position.set(cutterPos.x, floorY + H / 2, cutterPos.z);
         cutter.rotation.y = -Math.atan2(w.z, w.x);
         
         let cutterCSG = BABYLON.CSG.FromMesh(cutter);
@@ -506,7 +816,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           height: height,
           depth: T / 2
         }, this.scene);
-        subMeshFront.position.set(x1 + localX * ux + (T / 4) * nx, localY, z1 + localX * uz + (T / 4) * nz);
+        subMeshFront.position.set(x1 + localX * ux + (T / 4) * nx, floorY + localY, z1 + localX * uz + (T / 4) * nz);
         subMeshFront.rotation.y = angle;
         subMeshFront.material = matFront;
 
@@ -525,6 +835,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         normalizeWallSegmentMesh(finalSubMeshFront);
         finalSubMeshFront.setParent(wallGroup);
         finalSubMeshFront.metadata = { blueprintWallId: wall.id, side: 'front' };
+        this.shadowCasters.push(finalSubMeshFront);
 
         // 背面 Box
         let subMeshBack = BABYLON.MeshBuilder.CreateBox(`wall_sub_${wall.id}_${idx}_b`, {
@@ -532,7 +843,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           height: height,
           depth: T / 2
         }, this.scene);
-        subMeshBack.position.set(x1 + localX * ux - (T / 4) * nx, localY, z1 + localX * uz - (T / 4) * nz);
+        subMeshBack.position.set(x1 + localX * ux - (T / 4) * nx, floorY + localY, z1 + localX * uz - (T / 4) * nz);
         subMeshBack.rotation.y = angle;
         subMeshBack.material = matBack;
 
@@ -551,6 +862,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         normalizeWallSegmentMesh(finalSubMeshBack);
         finalSubMeshBack.setParent(wallGroup);
         finalSubMeshBack.metadata = { blueprintWallId: wall.id, side: 'back' };
+        this.shadowCasters.push(finalSubMeshBack);
       });
 
       // 设置高亮
@@ -566,7 +878,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildOpenings() {
-    this.floorplan.openings.forEach((opening) => {
+    this.floorplan.openings.filter((opening) => this.isFloorVisible(opening.floorId)).forEach((opening) => {
       const wall = this.getWall(opening.wallId);
       if (!wall) return;
       const [x1, z1] = wall.from;
@@ -577,146 +889,106 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const pos = wallPoint(wall, opening.t ?? 0.5);
       const width = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
       const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
-      const y = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+      const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+      const floorY = this.getFloorElevation(opening.floorId || wall.floorId);
 
-      // 创建主定位TransformNode
       const openingGroup = new BABYLON.TransformNode(`opening_group_${opening.id}`, this.scene);
-      openingGroup.position.set(pos.x, y, pos.z);
+      openingGroup.position.set(pos.x, floorY + localY, pos.z);
       openingGroup.rotation.y = angle;
-      openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, wallId: opening.wallId };
+      openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, wallId: opening.wallId, floorId: opening.floorId };
 
       const wallT = this.floorplan.wallThickness;
-      const frameT = wallT + 0.02; // 比墙体略宽，做出包耳效果
-      const frameW = 0.04;        // 门窗框宽度 4 厘米
-
-      if (opening.type === 'door') {
-        const frameMat = this.materials.trim || this.materials.door;
-        const doorMat = this.materials.door;
-
-        // 1. 左边框
-        createBox(this, `door_frame_l_${opening.id}`, {
-          width: frameW, height: height, depth: frameT
-        }, {
-          position: { x: -width / 2 + frameW / 2, y: 0, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 2. 右边框
-        createBox(this, `door_frame_r_${opening.id}`, {
-          width: frameW, height: height, depth: frameT
-        }, {
-          position: { x: width / 2 - frameW / 2, y: 0, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 3. 顶边框
-        createBox(this, `door_frame_t_${opening.id}`, {
-          width: width - frameW * 2, height: frameW, depth: frameT
-        }, {
-          position: { x: 0, y: height / 2 - frameW / 2, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        const isFlippedLR = !!opening.isFlippedLR;
-        const isFlippedIO = !!opening.isFlippedIO;
-
-        // 4. 创建铰链节点 (根据翻转状态确定以左侧或右侧框内边缘为旋转轴心)
-        const hinge = new BABYLON.TransformNode(`door_hinge_${opening.id}`, this.scene);
-        hinge.parent = openingGroup;
-        const hingeX = isFlippedLR ? (width / 2 - frameW) : (-width / 2 + frameW);
-        hinge.position.set(hingeX, 0, 0);
-        // 如果开启，根据左右和内外翻转状态旋转对应的 90 度角
-        hinge.rotation.y = opening.isOpen ? (isFlippedLR === isFlippedIO ? -Math.PI / 2 : Math.PI / 2) : 0;
-
-        // 5. 门板
-        const panelW = width - frameW * 2;
-        const panelH = height - frameW;
-        const panelD = 0.04;
-        const panelX = isFlippedLR ? -panelW / 2 : panelW / 2;
-        const panel = createBox(this, `door_panel_${opening.id}`, {
-          width: panelW, height: panelH, depth: panelD
-        }, {
-          position: { x: panelX, y: -frameW / 2, z: 0 }
-        }, {
-          material: doorMat, parent: hinge, shadowCaster: true
-        });
-
-        // 6. 双面拉手 + 连接杆
-        const handleD = 0.02;
-        const handleH = 0.12;
-        const handleX = isFlippedLR ? (-panelW + 0.08) : (panelW - 0.08);
-        [-1, 1].forEach((side) => {
-          createCylinder(this, `door_handle_${side}_${opening.id}`, {
-            diameterTop: handleD, diameterBottom: handleD, height: handleH, tessellation: 8
-          }, {
-            position: { x: handleX, y: -0.05, z: side * (panelD / 2 + 0.02) }
-          }, {
-            material: this.materials.trim, parent: hinge
-          });
-
-          createBox(this, `door_handle_stem_${side}_${opening.id}`, {
-            width: 0.015, height: 0.015, depth: 0.02
-          }, {
-            position: { x: handleX, y: -0.05, z: side * (panelD / 2 + 0.01) }
-          }, {
-            material: this.materials.trim, parent: hinge
-          });
-        });
-
-      } else {
-        const frameMat = this.materials.trim;
-        const windowMat = this.materials.window;
-
-        // 1. 窗左框
-        createBox(this, `win_frame_l_${opening.id}`, {
-          width: frameW, height: height, depth: frameT
-        }, {
-          position: { x: -width / 2 + frameW / 2, y: 0, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 2. 窗右框
-        createBox(this, `win_frame_r_${opening.id}`, {
-          width: frameW, height: height, depth: frameT
-        }, {
-          position: { x: width / 2 - frameW / 2, y: 0, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 3. 窗顶框
-        createBox(this, `win_frame_t_${opening.id}`, {
-          width: width - frameW * 2, height: frameW, depth: frameT
-        }, {
-          position: { x: 0, y: height / 2 - frameW / 2, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 4. 窗底框
-        createBox(this, `win_frame_b_${opening.id}`, {
-          width: width - frameW * 2, height: frameW, depth: frameT
-        }, {
-          position: { x: 0, y: -height / 2 + frameW / 2, z: 0 }
-        }, {
-          material: frameMat, parent: openingGroup, shadowCaster: false
-        });
-
-        // 5. 嵌窗半透明玻璃
-        createBox(this, `win_glass_${opening.id}`, {
-          width: width - frameW * 2, height: height - frameW * 2, depth: 0.012
-        }, {
-          position: { x: 0, y: 0, z: 0 }
-        }, {
-          material: windowMat, parent: openingGroup, shadowCaster: false
-        });
-      }
+      const frameT = wallT + 0.02;
+      const frameW = 0.04;
+      buildOpeningGeometry(this, opening, openingGroup, { width, height, frameT, frameW });
 
       this.openingNodes.set(opening.id, openingGroup);
+    });
+  }
+
+  buildRoofs() {
+    this.floorplan.roofs.filter((roof) => this.isFloorVisible(roof.floorId)).forEach((roof) => {
+      const floorY = this.getFloorElevation(roof.floorId);
+      const width = Math.max(1, Number(roof.width || 6));
+      const depth = Math.max(1, Number(roof.depth || 6));
+      const height = Math.max(0.2, Number(roof.height || 1.1));
+      const eaveY = floorY + (this.floorplan.wallHeight || 2.8);
+      const material = createBlueprintMaterial(this.scene, `roof_${roof.id}_mat`, roof.material || roof.color || '#b75b54', {
+        fallbackColor: roof.color || '#b75b54',
+        flatShading: false,
+        backFaceCulling: false
+      });
+      const mesh = new BABYLON.Mesh(`roof_${roof.id}`, this.scene);
+      const positions = [
+        -width / 2, 0, -depth / 2,
+        width / 2, 0, -depth / 2,
+        0, height, -depth / 2,
+        -width / 2, 0, depth / 2,
+        width / 2, 0, depth / 2,
+        0, height, depth / 2
+      ];
+      const indices = [
+        0, 1, 2,
+        3, 5, 4,
+        0, 3, 4, 0, 4, 1,
+        1, 4, 5, 1, 5, 2,
+        2, 5, 3, 2, 3, 0
+      ];
+      const normals = [];
+      BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+      const vertexData = new BABYLON.VertexData();
+      vertexData.positions = positions;
+      vertexData.indices = indices;
+      vertexData.normals = normals;
+      vertexData.applyToMesh(mesh);
+      mesh.position.set(roof.x || 0, eaveY, roof.z || 0);
+      mesh.rotation.y = roof.rotation || 0;
+      mesh.material = material;
+      mesh.metadata = { blueprintRoofId: roof.id, floorId: roof.floorId };
+      mesh.receiveShadows = true;
+      mesh.parent = this.root;
+      this.shadowCasters.push(mesh);
+      this.roofNodes.set(roof.id, mesh);
+    });
+  }
+
+  buildStairs() {
+    this.floorplan.stairs.filter((stairs) => this.isFloorVisible(stairs.floorId)).forEach((stairs) => {
+      const floorY = this.getFloorElevation(stairs.floorId);
+      const group = new BABYLON.TransformNode(`stairs_${stairs.id}`, this.scene);
+      group.position.set(stairs.x || 0, floorY, stairs.z || 0);
+      group.rotation.y = stairs.rotation || 0;
+      group.parent = this.root;
+      group.metadata = { blueprintStairsId: stairs.id, floorId: stairs.floorId };
+      const material = createBlueprintMaterial(this.scene, `stairs_${stairs.id}_mat`, stairs.material || stairs.color || '#d8c0a0', {
+        fallbackColor: stairs.color || '#d8c0a0',
+        flatShading: false
+      });
+      const steps = Math.max(4, Math.round(Number(stairs.steps || 9)));
+      const width = Math.max(0.6, Number(stairs.width || 1.2));
+      const depth = Math.max(1.2, Number(stairs.depth || 3.2));
+      const height = Math.max(1, Number(stairs.height || this.floorplan.storyHeight));
+      for (let i = 0; i < steps; i += 1) {
+        const stepDepth = depth / steps;
+        const stepHeight = height / steps;
+        createBox(this, `stairs_step_${stairs.id}_${i}`, {
+          width,
+          height: stepHeight * (i + 1),
+          depth: stepDepth
+        }, {
+          position: {
+            x: 0,
+            y: stepHeight * (i + 1) / 2,
+            z: -depth / 2 + stepDepth * i + stepDepth / 2
+          }
+        }, {
+          material,
+          parent: group,
+          receiveShadows: true,
+          shadowCaster: true
+        });
+      }
+      this.stairNodes.set(stairs.id, group);
     });
   }
 
@@ -730,10 +1002,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     });
 
     const node = new BABYLON.TransformNode(`item_${item.id}`, this.scene);
+    const floorY = this.getFloorElevation(item.floorId);
     // Y坐标考虑离地高度，换算为米
-    node.position.set(item.x, inchesToUnits(item.elevation || 0), item.z);
+    node.position.set(item.x, floorY + inchesToUnits(item.elevation || 0), item.z);
     node.rotation.y = item.rotation || 0;
-    node.metadata = { blueprintItemId: item.id, locked: !!item.locked };
+    node.metadata = { blueprintItemId: item.id, locked: !!item.locked, floorId: item.floorId };
     this.add(node, { shadowCaster: false });
 
     const itemScale = Number(item.scale || 1);
@@ -888,7 +1161,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   getRoomAt(x, z) {
-    return this.floorplan.floor.rooms.find((room) => pointInRoom(room, x, z));
+    return this.getCurrentFloorRooms().find((room) => pointInRoom(room, x, z));
   }
 
   assignItemToRoom(itemId, roomId) {
@@ -901,7 +1174,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
   refreshItemRoomLinks() {
     this.floorplan.items.forEach((item) => {
-      const room = this.getRoomAt(item.x, item.z);
+      const room = this.floorplan.floor.rooms.find((candidate) => candidate.floorId === item.floorId && pointInRoom(candidate, item.x, item.z));
       if (room) {
         item.roomId = room.id;
       }
@@ -944,6 +1217,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       locked: false,
       scale: partialItem.scale || 1,
       roomId: partialItem.roomId,
+      floorId: partialItem.floorId || this.floorplan.currentFloorId,
       colors: {},
       materials: {}
     };
@@ -1004,7 +1278,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   addWall(from, to) {
-    const wall = { id: `wall_${Date.now()}`, from, to, color: DEFAULT_WALL_COLOR };
+    const wall = { id: `wall_${Date.now()}`, from, to, color: DEFAULT_WALL_COLOR, floorId: this.floorplan.currentFloorId };
     this.floorplan.walls.push(wall);
     this.build();
     return wall;
@@ -1069,6 +1343,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       z,
       width,
       depth,
+      floorId: partialRoom.floorId || this.floorplan.currentFloorId,
       wallIds: {
         north: `${id}_north`,
         east: `${id}_east`,
@@ -1078,10 +1353,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     };
     const { left, right, top, bottom } = roomEdges(room);
     const walls = [
-      { id: room.wallIds.north, from: [left, top], to: [right, top], color: DEFAULT_WALL_COLOR },
-      { id: room.wallIds.east, from: [right, top], to: [right, bottom], color: DEFAULT_WALL_COLOR },
-      { id: room.wallIds.south, from: [right, bottom], to: [left, bottom], color: DEFAULT_WALL_COLOR },
-      { id: room.wallIds.west, from: [left, bottom], to: [left, top], color: DEFAULT_WALL_COLOR }
+      { id: room.wallIds.north, from: [left, top], to: [right, top], color: DEFAULT_WALL_COLOR, floorId: room.floorId },
+      { id: room.wallIds.east, from: [right, top], to: [right, bottom], color: DEFAULT_WALL_COLOR, floorId: room.floorId },
+      { id: room.wallIds.south, from: [right, bottom], to: [left, bottom], color: DEFAULT_WALL_COLOR, floorId: room.floorId },
+      { id: room.wallIds.west, from: [left, bottom], to: [left, top], color: DEFAULT_WALL_COLOR, floorId: room.floorId }
     ];
     this.floorplan.floor.rooms.push(room);
     this.floorplan.walls.push(...walls);
@@ -1111,6 +1386,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const shouldMoveItems = options.moveItems ?? (!('width' in patch) && !('depth' in patch));
     if ((dx || dz) && shouldMoveItems) {
       this.floorplan.items.forEach((item) => {
+        if (item.floorId !== room.floorId) return;
         const belongedToRoom = item.roomId === room.id || pointInRoom(previous, item.x, item.z);
         if (!belongedToRoom) return;
         item.x = Number((item.x + dx).toFixed(3));
@@ -1125,7 +1401,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     setWallEndpoints(this.getWall(ids.east), [right, top], [right, bottom]);
     setWallEndpoints(this.getWall(ids.south), [right, bottom], [left, bottom]);
     setWallEndpoints(this.getWall(ids.west), [left, bottom], [left, top]);
-    this.build();
+    if (options.rebuild !== false) this.build();
     return room;
   }
 
@@ -1133,7 +1409,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const room = this.getRoom(roomId);
     if (!room) return false;
     const wallIds = new Set(Object.values(room.wallIds || {}));
-    this.floorplan.items = this.floorplan.items.filter((item) => item.roomId !== room.id && !pointInRoom(room, item.x, item.z));
+    this.floorplan.items = this.floorplan.items.filter((item) => item.floorId !== room.floorId || (item.roomId !== room.id && !pointInRoom(room, item.x, item.z)));
     this.floorplan.openings = this.floorplan.openings.filter((opening) => !wallIds.has(opening.wallId));
     this.floorplan.walls = this.floorplan.walls.filter((wall) => !wallIds.has(wall.id));
     this.floorplan.floor.rooms = this.floorplan.floor.rooms.filter((candidate) => candidate.id !== room.id);
@@ -1141,14 +1417,113 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return true;
   }
 
+  addRoof(partialRoof = {}) {
+    const roof = {
+      id: partialRoof.id || `roof_${Date.now()}`,
+      floorId: partialRoof.floorId || this.floorplan.currentFloorId,
+      x: partialRoof.x ?? 0,
+      z: partialRoof.z ?? 0,
+      width: partialRoof.width || 6,
+      depth: partialRoof.depth || 6,
+      height: partialRoof.height || 1.1,
+      rotation: partialRoof.rotation || 0,
+      type: partialRoof.type || 'gable',
+      color: partialRoof.color || '#b75b54',
+      material: partialRoof.material || partialRoof.color || '#b75b54'
+    };
+    this.floorplan.roofs.push(roof);
+    this.build();
+    return roof;
+  }
+
+  addStairs(partialStairs = {}) {
+    const stairs = {
+      id: partialStairs.id || `stairs_${Date.now()}`,
+      floorId: partialStairs.floorId || this.floorplan.currentFloorId,
+      x: partialStairs.x ?? 0,
+      z: partialStairs.z ?? 0,
+      width: partialStairs.width || 1.2,
+      depth: partialStairs.depth || 3.2,
+      height: partialStairs.height || this.floorplan.storyHeight,
+      steps: partialStairs.steps || 9,
+      rotation: partialStairs.rotation || 0,
+      color: partialStairs.color || '#d8c0a0',
+      material: partialStairs.material || partialStairs.color || '#d8c0a0'
+    };
+    this.floorplan.stairs.push(stairs);
+    this.build();
+    return stairs;
+  }
+
+  getRoof(roofId) {
+    return this.floorplan.roofs.find((roof) => roof.id === roofId);
+  }
+
+  updateRoof(roofId, patch, rebuild = true) {
+    const roof = this.getRoof(roofId);
+    if (!roof) return null;
+    Object.assign(roof, patch);
+    roof.x = Number(roof.x || 0);
+    roof.z = Number(roof.z || 0);
+    roof.width = Math.max(1, Number(roof.width || 1));
+    roof.depth = Math.max(1, Number(roof.depth || 1));
+    roof.height = Math.max(0.2, Number(roof.height || 0.2));
+    roof.rotation = Number(roof.rotation || 0);
+    if (patch.color && !patch.material) roof.material = patch.color;
+    roof.color ||= '#b75b54';
+    roof.material ||= roof.color;
+    roof.color = materialPreviewColor(roof.material, roof.color || '#b75b54');
+    if (rebuild) this.build();
+    return roof;
+  }
+
+  deleteRoof(roofId) {
+    const before = this.floorplan.roofs.length;
+    this.floorplan.roofs = this.floorplan.roofs.filter((roof) => roof.id !== roofId);
+    if (before !== this.floorplan.roofs.length) this.build();
+    return before !== this.floorplan.roofs.length;
+  }
+
+  getStairs(stairsId) {
+    return this.floorplan.stairs.find((stairs) => stairs.id === stairsId);
+  }
+
+  updateStairs(stairsId, patch, rebuild = true) {
+    const stairs = this.getStairs(stairsId);
+    if (!stairs) return null;
+    Object.assign(stairs, patch);
+    stairs.x = Number(stairs.x || 0);
+    stairs.z = Number(stairs.z || 0);
+    stairs.width = Math.max(0.6, Number(stairs.width || 0.6));
+    stairs.depth = Math.max(1.2, Number(stairs.depth || 1.2));
+    stairs.height = Math.max(1, Number(stairs.height || 1));
+    stairs.steps = Math.max(3, Math.round(Number(stairs.steps || 9)));
+    stairs.rotation = Number(stairs.rotation || 0);
+    if (patch.color && !patch.material) stairs.material = patch.color;
+    stairs.color ||= '#d8c0a0';
+    stairs.material ||= stairs.color;
+    stairs.color = materialPreviewColor(stairs.material, stairs.color || '#d8c0a0');
+    if (rebuild) this.build();
+    return stairs;
+  }
+
+  deleteStairs(stairsId) {
+    const before = this.floorplan.stairs.length;
+    this.floorplan.stairs = this.floorplan.stairs.filter((stairs) => stairs.id !== stairsId);
+    if (before !== this.floorplan.stairs.length) this.build();
+    return before !== this.floorplan.stairs.length;
+  }
+
   addOpening(wallId, type = 'door', t = 0.5) {
-    if (!this.getWall(wallId)) return null;
+    const wall = this.getWall(wallId);
+    if (!wall) return null;
     const opening = {
       id: `${type}_${Date.now()}`,
       type,
       wallId,
       t: clamp(t, 0.08, 0.92),
-      width: type === 'door' ? 0.9 : 1.25
+      width: type === 'door' ? 0.9 : 1.25,
+      floorId: wall.floorId || this.floorplan.currentFloorId
     };
     if (type === 'window') opening.height = 0.85;
     this.floorplan.openings.push(opening);

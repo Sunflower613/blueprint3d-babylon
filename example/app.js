@@ -25,6 +25,8 @@ let selectedRoomId = null;
 let selectedWallId = null;
 let selectedItemId = null;
 let selectedOpeningId = null;
+let selectedRoofId = null;
+let selectedStairsId = null;
 let drawStart = null;
 let dragState = null;
 let openingDragState = null;
@@ -32,7 +34,16 @@ let wallDragState = null;
 let roomDragState = null;
 let roomResizeState = null;
 let drag3DState = null;
+let structureDragState = null;
+let roofResizeState = null;
+let contextMenuElement = null;
+let longPressState = null;
 let snapEnabled = true;
+let show3DGrid = true;
+const grid3DNodes = [];
+let active3DEditTarget = null;
+const editHandleNodes = [];
+let editHandleDragState = null;
 let snapSize = 1;
 let activeMaterialDescriptor = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
@@ -41,6 +52,7 @@ const activePointers = new Map();
 let roomCounter = 1;
 let undoStack = [];
 let redoStack = [];
+let floorPanelCollapsed = false;
 
 const stage = document.getElementById('stage');
 const viewToggleButton = document.getElementById('btn-view-toggle');
@@ -59,13 +71,17 @@ const scene = new BABYLON.Scene(engine);
 scene.clearColor = BABYLON.Color4.FromHexString('#eef4fbff');
 
 const camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 3, Math.PI / 3, 15, new BABYLON.Vector3(0, 0, -2.2), scene);
-camera.attachControl(canvas, true);
+camera.attachControl(canvas, true, false, 1);
 // 彻底移除相机自带的键盘输入移动模块，防止其默认的键盘行为（包含旋转和方向键监听）干扰自定义操作
 camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
 camera.lowerRadiusLimit = 5;
 camera.upperRadiusLimit = 28;
 camera.wheelDeltaPercentage = 0.02;
 camera.panningSensibility = 1200;
+camera.panningMouseButton = 1; // 设置鼠标中键为平移控制键
+if (camera.inputs.attached.pointers) {
+  camera.inputs.attached.pointers.buttons = [0, 1]; // 只允许鼠标左键(0)和中键(1)控制相机，避免右键(2)导致相机在右键呼出复制菜单时晃动
+}
 
 const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
 hemi.intensity = 0.72;
@@ -79,8 +95,14 @@ shadowGenerator.blurKernel = 24;
 
 let testMap = new Blueprint3DTestMap(scene);
 
+ensureBuildingToolControls();
+ensure3DGridControls();
+ensureStructureEditor();
+syncFloorControls();
 initFurnitureButtons();
 initMaterialControls();
+createCustomDropdown('furniture-category-select');
+createCustomDropdown('material-category');
 refreshShadows();
 selectItem(testMap.floorplan.items[0]?.id || null);
 setView('2d');
@@ -106,10 +128,13 @@ function pushHistory() {
 
 function restoreSnapshot(data) {
   testMap.loadJSON(data);
+  syncFloorControls();
   selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
   selectedWallId = selectedWallId && testMap.getWall(selectedWallId) ? selectedWallId : null;
   selectedItemId = selectedItemId && testMap.getItem(selectedItemId) ? selectedItemId : null;
   selectedOpeningId = selectedOpeningId && testMap.getOpening(selectedOpeningId) ? selectedOpeningId : null;
+  selectedRoofId = selectedRoofId && testMap.getRoof?.(selectedRoofId) ? selectedRoofId : null;
+  selectedStairsId = selectedStairsId && testMap.getStairs?.(selectedStairsId) ? selectedStairsId : null;
   testMap.setSelectedItem(selectedItemId);
   testMap.setSelectedWall(selectedWallId);
   refreshShadows();
@@ -136,9 +161,27 @@ function updateHistoryButtons() {
   redoButton.disabled = redoStack.length === 0;
 }
 
+function getMeshFloorId(mesh) {
+  let current = mesh;
+  while (current) {
+    if (current.metadata && current.metadata.floorId) {
+      return current.metadata.floorId;
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
 function refreshShadows() {
   shadowGenerator.getShadowMap().renderList = [];
-  testMap.getShadowCasters().forEach((mesh) => shadowGenerator.addShadowCaster(mesh));
+  const currentFloorId = testMap.floorplan.currentFloorId;
+  testMap.getShadowCasters().forEach((mesh) => {
+    const floorId = getMeshFloorId(mesh);
+    if (!floorId || floorId === currentFloorId) {
+      shadowGenerator.addShadowCaster(mesh);
+    }
+  });
+  refresh3DGrid();
 }
 
 function resetCamera() {
@@ -186,6 +229,118 @@ function resetCurrentMaterial() {
   }
 }
 
+function clear3DGrid() {
+  grid3DNodes.splice(0).forEach((node) => node.dispose(false, true));
+}
+
+function get3DGridBounds() {
+  const points = [];
+  currentWalls().forEach((wall) => {
+    points.push({ x: wall.from[0], z: wall.from[1] }, { x: wall.to[0], z: wall.to[1] });
+  });
+  currentRooms().forEach((room) => {
+    points.push(
+      { x: room.x - room.width / 2, z: room.z - room.depth / 2 },
+      { x: room.x + room.width / 2, z: room.z + room.depth / 2 }
+    );
+  });
+  currentRoofs().forEach((roof) => {
+    points.push(
+      { x: (roof.x || 0) - (roof.width || 6) / 2, z: (roof.z || 0) - (roof.depth || 6) / 2 },
+      { x: (roof.x || 0) + (roof.width || 6) / 2, z: (roof.z || 0) + (roof.depth || 6) / 2 }
+    );
+  });
+  currentStairs().forEach((stairs) => {
+    points.push(
+      { x: (stairs.x || 0) - (stairs.width || 1.2) / 2, z: (stairs.z || 0) - (stairs.depth || 3.2) / 2 },
+      { x: (stairs.x || 0) + (stairs.width || 1.2) / 2, z: (stairs.z || 0) + (stairs.depth || 3.2) / 2 }
+    );
+  });
+  currentItems().forEach((item) => {
+    const scale = Number(item.scale || 1);
+    const width = inchesToWorld(item.width || 24) * scale;
+    const depth = inchesToWorld(item.depth || 24) * scale;
+    points.push(
+      { x: item.x - width / 2, z: item.z - depth / 2 },
+      { x: item.x + width / 2, z: item.z + depth / 2 }
+    );
+  });
+  if (!points.length) return { minX: -8, maxX: 8, minZ: -8, maxZ: 8 };
+  const xs = points.map((point) => point.x);
+  const zs = points.map((point) => point.z);
+  const step = Math.max(0.25, snapEnabled && snapSize ? snapSize : 1);
+  const pad = Math.max(4, step * 3);
+  return {
+    minX: Math.floor((Math.min(...xs) - pad) / step) * step,
+    maxX: Math.ceil((Math.max(...xs) + pad) / step) * step,
+    minZ: Math.floor((Math.min(...zs) - pad) / step) * step,
+    maxZ: Math.ceil((Math.max(...zs) + pad) / step) * step
+  };
+}
+
+function createDashedLineSegments(p1, p2, dashSize = 0.08, gapSize = 0.08) {
+  const segments = [];
+  const dir = p2.subtract(p1);
+  const totalLength = dir.length();
+  if (totalLength <= 0.001) return segments;
+
+  const stepVec = dir.normalize();
+  let currentLength = 0;
+
+  while (currentLength < totalLength) {
+    const start = p1.add(stepVec.scale(currentLength));
+    currentLength = Math.min(totalLength, currentLength + dashSize);
+    const end = p1.add(stepVec.scale(currentLength));
+    segments.push([start, end]);
+    currentLength += gapSize;
+  }
+  return segments;
+}
+
+function refresh3DGrid() {
+  clear3DGrid();
+  if (!show3DGrid || currentView !== '3d' || !scene || !testMap) return;
+  const step = Math.max(0.25, snapEnabled && snapSize ? snapSize : 1);
+  const bounds = get3DGridBounds();
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const y = floorY + 0.012;
+  const lines = [];
+  const axisLines = [];
+  for (let x = bounds.minX; x <= bounds.maxX + 0.001; x += step) {
+    if (Math.abs(x) < 0.001) {
+      axisLines.push([new BABYLON.Vector3(x, y, bounds.minZ), new BABYLON.Vector3(x, y, bounds.maxZ)]);
+    } else {
+      const p1 = new BABYLON.Vector3(x, y, bounds.minZ);
+      const p2 = new BABYLON.Vector3(x, y, bounds.maxZ);
+      lines.push(...createDashedLineSegments(p1, p2, 0.08, 0.08));
+    }
+  }
+  for (let z = bounds.minZ; z <= bounds.maxZ + 0.001; z += step) {
+    if (Math.abs(z) < 0.001) {
+      axisLines.push([new BABYLON.Vector3(bounds.minX, y, z), new BABYLON.Vector3(bounds.maxX, y, z)]);
+    } else {
+      const p1 = new BABYLON.Vector3(bounds.minX, y, z);
+      const p2 = new BABYLON.Vector3(bounds.maxX, y, z);
+      lines.push(...createDashedLineSegments(p1, p2, 0.08, 0.08));
+    }
+  }
+  if (lines.length) {
+    const grid = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d', { lines }, scene);
+    grid.color = BABYLON.Color3.FromHexString('#c2cbd6');
+    grid.alpha = 0.08;
+    grid.isPickable = false;
+    grid.renderingGroupId = 0;
+    grid3DNodes.push(grid);
+  }
+  if (axisLines.length) {
+    const axes = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d_axes', { lines: axisLines }, scene);
+    axes.color = BABYLON.Color3.FromHexString('#8fb8e8');
+    axes.alpha = 0.28;
+    axes.isPickable = false;
+    axes.renderingGroupId = 0;
+    grid3DNodes.push(axes);
+  }
+}
 function setView(nextView) {
   currentView = nextView;
   stage.dataset.view = nextView;
@@ -198,11 +353,15 @@ function setView(nextView) {
   }
 
   if (nextView === '3d') {
+    refresh3DGrid();
     requestAnimationFrame(() => {
       engine.resize();
+      refresh3DGrid();
       scene.render();
     });
   } else {
+    clear3DEditHandles();
+    clear3DGrid();
     renderPlan();
   }
 }
@@ -260,6 +419,502 @@ function snapNumber(value) {
   return Number(snapValue(value).toFixed(3));
 }
 
+function currentRooms() {
+  return testMap.getCurrentFloorRooms ? testMap.getCurrentFloorRooms() : testMap.floorplan.floor.rooms;
+}
+
+function currentWalls() {
+  return testMap.getCurrentFloorWalls ? testMap.getCurrentFloorWalls() : testMap.floorplan.walls;
+}
+
+function referenceFloorWalls() {
+  if (!testMap.getFloorLevel || !testMap.floorplan.floors?.length) return [];
+  const currentLevel = testMap.getFloorLevel(testMap.floorplan.currentFloorId);
+  const lowerFloors = testMap.floorplan.floors
+    .filter((floor) => Number(floor.level || 0) < currentLevel)
+    .sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
+  const referenceFloor = lowerFloors[0];
+  if (!referenceFloor) return [];
+  return testMap.floorplan.walls.filter((wall) => (wall.floorId || 'floor_1') === referenceFloor.id);
+}
+
+function currentOpenings() {
+  return testMap.getCurrentFloorOpenings ? testMap.getCurrentFloorOpenings() : testMap.floorplan.openings;
+}
+
+function currentItems() {
+  return testMap.getCurrentFloorItems ? testMap.getCurrentFloorItems() : testMap.floorplan.items;
+}
+
+function currentRoofs() {
+  return testMap.getCurrentFloorRoofs ? testMap.getCurrentFloorRoofs() : [];
+}
+
+function currentStairs() {
+  return testMap.getCurrentFloorStairs ? testMap.getCurrentFloorStairs() : [];
+}
+
+function makeButton(id, label, className = '') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  if (id) button.id = id;
+  if (className) button.className = className;
+  button.textContent = label;
+  return button;
+}
+
+function iconSvg(name) {
+  const attrs = 'class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  const icons = {
+    copy: `<svg ${attrs}><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+    trash: `<svg ${attrs}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`,
+    up: `<svg ${attrs}><path d="m18 15-6-6-6 6"/></svg>`,
+    down: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`
+  };
+  return icons[name] || '';
+}
+
+function hideContextMenu() {
+  contextMenuElement?.remove();
+  contextMenuElement = null;
+}
+
+function showIconMenu(clientX, clientY, actions) {
+  hideContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'context-icon-menu';
+  actions.filter(Boolean).forEach((action) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'context-icon-button';
+    button.title = action.title || '';
+    button.setAttribute('aria-label', action.title || 'action');
+    button.disabled = !!action.disabled;
+    button.innerHTML = iconSvg(action.icon);
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideContextMenu();
+      if (!action.disabled) action.onClick?.();
+    });
+    menu.appendChild(button);
+  });
+  if (!menu.children.length) return;
+  document.body.appendChild(menu);
+  const rect = menu.getBoundingClientRect();
+  const x = Math.min(window.innerWidth - rect.width - 8, Math.max(8, clientX));
+  const y = Math.min(window.innerHeight - rect.height - 8, Math.max(8, clientY));
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  contextMenuElement = menu;
+}
+
+function cancelLongPress() {
+  if (longPressState?.timer) clearTimeout(longPressState.timer);
+  longPressState = null;
+}
+
+function attachContextMenuTrigger(element, getTarget, showMenu = showObjectContextMenu) {
+  element.addEventListener('contextmenu', (event) => {
+    const target = getTarget(event);
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    showMenu(target, event.clientX, event.clientY);
+  });
+  element.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse' || event.button === 2) return;
+    const target = getTarget(event);
+    if (!target) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    cancelLongPress();
+    longPressState = {
+      pointerId: event.pointerId,
+      startX,
+      startY,
+      timer: window.setTimeout(() => {
+        longPressState = null;
+        showMenu(target, startX, startY);
+      }, 560)
+    };
+  });
+}
+
+function isAllowedContextTarget(target) {
+  return ['item', 'opening', 'roof', 'stairs', 'room'].includes(target?.type);
+}
+
+function getTargetFloorId(target) {
+  if (!target) return null;
+  if (target.type === 'room') return testMap.getRoom(target.id)?.floorId || 'floor_1';
+  if (target.type === 'wall') return testMap.getWall(target.id)?.floorId || 'floor_1';
+  if (target.type === 'opening') return testMap.getOpening(target.id)?.floorId || testMap.getWall(testMap.getOpening(target.id)?.wallId)?.floorId || 'floor_1';
+  if (target.type === 'item') return testMap.getItem(target.id)?.floorId || 'floor_1';
+  if (target.type === 'roof') return testMap.getRoof?.(target.id)?.floorId || 'floor_1';
+  if (target.type === 'stairs') return testMap.getStairs?.(target.id)?.floorId || 'floor_1';
+  return testMap.floorplan.currentFloorId;
+}
+
+function isTargetOnCurrentFloor(target) {
+  return getTargetFloorId(target) === testMap.floorplan.currentFloorId;
+}
+
+function get2DContextTargetFromElement(element) {
+  const item = element.closest?.('[data-item-id]');
+  if (item?.dataset.itemId) return { type: 'item', id: item.dataset.itemId };
+  const opening = element.closest?.('[data-opening-id]');
+  if (opening?.dataset.openingId) return { type: 'opening', id: opening.dataset.openingId };
+  const roof = element.closest?.('[data-roof-id]');
+  if (roof?.dataset.roofId) return { type: 'roof', id: roof.dataset.roofId };
+  const stairs = element.closest?.('[data-stairs-id]');
+  if (stairs?.dataset.stairsId) return { type: 'stairs', id: stairs.dataset.stairsId };
+  const roomHit = element.closest?.('[data-room-hit-id]');
+  if (roomHit?.dataset.roomHitId) return { type: 'room', id: roomHit.dataset.roomHitId };
+  const room = element.closest?.('[data-room-id]');
+  if (room?.dataset.roomId) return { type: 'room', id: room.dataset.roomId };
+  return null;
+}
+function showObjectContextMenu(target, clientX, clientY) {
+  if (!isAllowedContextTarget(target)) return;
+  showIconMenu(clientX, clientY, [
+    { icon: 'copy', title: '\u590d\u5236', onClick: () => copyContextTarget(target) },
+    { icon: 'trash', title: '\u5220\u9664', onClick: () => deleteContextTarget(target) }
+  ]);
+}
+
+function findMatchingCurrentFloorWall(sourceWall, sourcePoint) {
+  if (!sourceWall) return null;
+  const [sx1, sz1] = sourceWall.from;
+  const [sx2, sz2] = sourceWall.to;
+  const sourceAngle = Math.atan2(sz2 - sz1, sx2 - sx1);
+  let bestWall = null;
+  let bestScore = Infinity;
+  currentWalls().forEach((wall) => {
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    const angle = Math.atan2(z2 - z1, x2 - x1);
+    const angleDelta = Math.abs(Math.atan2(Math.sin(angle - sourceAngle), Math.cos(angle - sourceAngle)));
+    const parallelDelta = Math.min(angleDelta, Math.abs(Math.PI - angleDelta));
+    if (parallelDelta > Math.PI / 6) return;
+    const projectedT = getWallProjectionT(wall, sourcePoint);
+    const projected = wallPointAt(wall, projectedT);
+    const distance = Math.hypot(projected.x - sourcePoint.x, projected.z - sourcePoint.z);
+    const score = distance + parallelDelta * 2;
+    if (score < bestScore) {
+      bestScore = score;
+      bestWall = wall;
+    }
+  });
+  return bestWall;
+}
+function copyContextTarget(target) {
+  if (!isAllowedContextTarget(target)) return;
+  pushHistory();
+  let nextSelection = null;
+  if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (!item) return;
+    const copyX = (item.x || 0) + 0.4;
+    const copyZ = (item.z || 0) + 0.4;
+    const targetRoom = currentRooms().find((room) => (
+      copyX >= room.x - room.width / 2
+      && copyX <= room.x + room.width / 2
+      && copyZ >= room.z - room.depth / 2
+      && copyZ <= room.z + room.depth / 2
+    ));
+    const copy = testMap.addItem({
+      ...JSON.parse(JSON.stringify(item)),
+      id: undefined,
+      name: item.name,
+      x: copyX,
+      z: copyZ,
+      roomId: targetRoom?.id,
+      floorId: testMap.floorplan.currentFloorId
+    });
+    nextSelection = { type: 'item', id: copy.id };
+  } else if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    const sourceWall = opening ? testMap.getWall(opening.wallId) : null;
+    if (!opening || !sourceWall) return;
+    const sourcePoint = wallPointAt(sourceWall, opening.t ?? 0.5);
+    const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
+    if (!targetWall) return;
+    const nextT = Math.min(0.92, getWallProjectionT(targetWall, sourcePoint) + 0.08);
+    const next = testMap.addOpening(targetWall.id, opening.type, nextT);
+    if (next) {
+      testMap.updateOpening(next.id, {
+        width: opening.width,
+        height: opening.height,
+        sillHeight: opening.sillHeight,
+        isOpen: opening.isOpen,
+        isFlippedLR: opening.isFlippedLR,
+        isFlippedIO: opening.isFlippedIO,
+        floorId: testMap.floorplan.currentFloorId
+      });
+      nextSelection = { type: 'opening', id: next.id };
+    }
+  } else if (target.type === 'roof') {
+    const roof = testMap.getRoof?.(target.id);
+    if (!roof) return;
+    const copy = testMap.addRoof({
+      ...JSON.parse(JSON.stringify(roof)),
+      id: undefined,
+      x: (roof.x || 0) + 0.5,
+      z: (roof.z || 0) + 0.5,
+      floorId: testMap.floorplan.currentFloorId
+    });
+    nextSelection = { type: 'roof', id: copy.id };
+  } else if (target.type === 'stairs') {
+    const stairs = testMap.getStairs?.(target.id);
+    if (!stairs) return;
+    const copy = testMap.addStairs({
+      ...JSON.parse(JSON.stringify(stairs)),
+      id: undefined,
+      x: (stairs.x || 0) + 0.5,
+      z: (stairs.z || 0) + 0.5,
+      floorId: testMap.floorplan.currentFloorId
+    });
+    nextSelection = { type: 'stairs', id: copy.id };
+  } else if (target.type === 'room') {
+    const room = testMap.getRoom(target.id);
+    if (!room) return;
+    const copy = testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: room.floorId });
+    nextSelection = { type: 'room', id: copy.id };
+  }
+  refreshShadows();
+  selectContextTarget(nextSelection || target);
+}
+
+function deleteContextTarget(target) {
+  if (!isAllowedContextTarget(target)) return;
+  pushHistory();
+  if (target.type === 'item') testMap.deleteItem(target.id);
+  if (target.type === 'opening') testMap.deleteOpening(target.id);
+  if (target.type === 'roof') testMap.deleteRoof?.(target.id);
+  if (target.type === 'stairs') testMap.deleteStairs?.(target.id);
+  if (target.type === 'room') testMap.deleteRoom(target.id);
+  clearSelection();
+  refreshShadows();
+  renderPlan();
+}
+
+function selectContextTarget(target) {
+  if (!target || !isTargetOnCurrentFloor(target)) return;
+  if (target.type === 'item') selectItem(target.id);
+  if (target.type === 'opening') selectOpening(target.id);
+  if (target.type === 'roof') selectRoof(target.id);
+  if (target.type === 'stairs') selectStairs(target.id);
+  if (target.type === 'room') selectRoom(target.id);
+}
+
+function showFloorContextMenu(target, clientX, clientY) {
+  if (!target?.id || target.id !== testMap.floorplan.currentFloorId) return;
+  const sorted = [...testMap.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
+  const index = sorted.findIndex((floor) => floor.id === target.id);
+  showIconMenu(clientX, clientY, [
+    { icon: 'up', title: '\u4e0a\u79fb', disabled: index === sorted.length - 1, onClick: () => moveCurrentFloor('up') },
+    { icon: 'down', title: '\u4e0b\u79fb', disabled: index <= 0, onClick: () => moveCurrentFloor('down') },
+    { icon: 'trash', title: '\u5220\u9664', disabled: testMap.floorplan.floors.length <= 1, onClick: deleteCurrentFloor }
+  ]);
+}
+
+function moveCurrentFloor(direction) {
+  pushHistory();
+  if (testMap.moveFloor?.(testMap.floorplan.currentFloorId, direction)) {
+    syncFloorControls();
+    refreshShadows();
+    renderPlan();
+  }
+}
+
+function deleteCurrentFloor() {
+  if (testMap.floorplan.floors.length <= 1) return;
+  pushHistory();
+  if (testMap.deleteFloor?.(testMap.floorplan.currentFloorId)) {
+    clearSelection();
+    syncFloorControls();
+    refreshShadows();
+    renderPlan();
+  }
+}
+
+function cancelObjectInteractions() {
+  dragState = null;
+  openingDragState = null;
+  wallDragState = null;
+  roomDragState = null;
+  roomResizeState = null;
+  structureDragState = null;
+  roofResizeState = null;
+  editHandleDragState = null;
+  drag3DState = null;
+  document.body.classList.remove('is-dragging-3d');
+  camera.attachControl(canvas, true, false, 1);
+}
+function ensureBuildingToolControls() {
+  if (!document.querySelector('.floor-tools .mode[data-mode="add-roof"]')) {
+    const tools = document.querySelector('.floor-tools');
+    if (tools) {
+      const roofButton = document.createElement('button');
+      roofButton.type = 'button';
+      roofButton.className = 'mode';
+      roofButton.dataset.mode = 'add-roof';
+      roofButton.innerHTML = `
+        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m12 2-8 8h16Z"/></svg>
+        <span class="mode-text">屋顶</span>
+        <span class="mode-shortcut"></span>
+      `;
+      tools.appendChild(roofButton);
+
+      const stairsButton = document.createElement('button');
+      stairsButton.type = 'button';
+      stairsButton.className = 'mode';
+      stairsButton.dataset.mode = 'add-stairs';
+      stairsButton.innerHTML = `
+        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20h14"/><path d="M10 16h10"/><path d="M14 12h6"/><path d="M18 8h2"/><path d="M2 20h4v-4h4v-4h4V8h4V4h4"/></svg>
+        <span class="mode-text">楼梯</span>
+        <span class="mode-shortcut"></span>
+      `;
+      tools.appendChild(stairsButton);
+    }
+  }
+}
+
+function ensure3DGridControls() {
+  if (document.getElementById('show-3d-grid')) return;
+  const snapSizeField = document.getElementById('snap-size')?.closest('.field');
+  const snapEnabledField = document.getElementById('snap-enabled')?.closest('.check-field');
+  const anchor = snapSizeField || snapEnabledField;
+  if (!anchor?.parentElement) return;
+  const label = document.createElement('label');
+  label.className = 'check-field';
+  const input = document.createElement('input');
+  input.id = 'show-3d-grid';
+  input.type = 'checkbox';
+  input.checked = show3DGrid;
+  const span = document.createElement('span');
+  span.textContent = '\u663e\u793a3D\u7f51\u683c';
+  label.append(input, span);
+  anchor.insertAdjacentElement('afterend', label);
+  input.addEventListener('change', (event) => {
+    show3DGrid = event.target.checked;
+    refresh3DGrid();
+  });
+}
+
+function createStructureField(labelText, inputId, attrs = {}) {
+  const label = document.createElement('label');
+  label.className = 'field';
+  const span = document.createElement('span');
+  span.textContent = labelText;
+  const input = document.createElement('input');
+  input.id = inputId;
+  Object.entries(attrs).forEach(([key, value]) => input.setAttribute(key, value));
+  label.append(span, input);
+  return label;
+}
+
+function ensureStructureEditor() {
+  if (document.getElementById('structure-editor')) return;
+  const content = document.querySelector('#right-panel .right-panel-content');
+  if (!content) return;
+  const editor = document.createElement('div');
+  editor.id = 'structure-editor';
+  editor.className = 'editor hidden';
+  const title = document.createElement('strong');
+  title.id = 'selected-structure-name';
+  title.textContent = '\u5efa\u7b51\u7ec4\u4ef6';
+  editor.appendChild(title);
+  editor.appendChild(createStructureField('X (m)', 'structure-x', { type: 'number', step: '0.1' }));
+  editor.appendChild(createStructureField('Z (m)', 'structure-z', { type: 'number', step: '0.1' }));
+  editor.appendChild(createStructureField('\u5bbd\u5ea6 (m)', 'structure-width', { type: 'number', min: '0.6', step: '0.1' }));
+  editor.appendChild(createStructureField('\u6df1\u5ea6 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
+  editor.appendChild(createStructureField('\u9ad8\u5ea6 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
+  const rotationLabel = createStructureField('\u65cb\u8f6c (\u5ea6)', 'structure-rotation', { type: 'number', min: '0', max: '359', step: '15' });
+  const rotationRange = document.createElement('input');
+  rotationRange.id = 'structure-rotation-range';
+  rotationRange.type = 'range';
+  rotationRange.min = '0';
+  rotationRange.max = '360';
+  rotationRange.step = '1';
+  rotationLabel.appendChild(rotationRange);
+  editor.appendChild(rotationLabel);
+  editor.appendChild(createStructureField('\u8e0f\u6b65\u6570', 'structure-steps', { type: 'number', min: '3', max: '32', step: '1' }));
+  editor.appendChild(createStructureField('\u989c\u8272', 'structure-color', { type: 'color' }));
+  const deleteButton = document.createElement('button');
+  deleteButton.id = 'btn-delete-structure';
+  deleteButton.type = 'button';
+  deleteButton.className = 'danger';
+  deleteButton.textContent = '\u5220\u9664\u7ec4\u4ef6';
+  editor.appendChild(deleteButton);
+  const openingEditor = document.getElementById('opening-editor');
+  if (openingEditor) {
+    openingEditor.insertAdjacentElement('afterend', editor);
+  } else {
+    content.appendChild(editor);
+  }
+}
+
+function syncFloorControls() {
+  const container = document.getElementById('floor-floating-group');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (floorPanelCollapsed) {
+    // 折叠状态下，只渲染一个用来展开的图层图标按钮
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'btn-icon btn-floor-toggle-expanded';
+    toggleBtn.title = '展开楼层面板';
+    toggleBtn.setAttribute('aria-label', '展开楼层面板');
+    toggleBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-10 4 10 4 10-4Z"/><path d="m2 12 10 4 10-4"/><path d="m2 17 10 4 10-4"/></svg>';
+    container.appendChild(toggleBtn);
+    return;
+  }
+
+  // 展开状态下正常渲染楼层列表
+  const sortedFloors = [...testMap.floorplan.floors].sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
+
+  sortedFloors.forEach((floor) => {
+    const btn = document.createElement('button');
+    const floorName = floor.name || `${Number(floor.level || 0) + 1}F`;
+    btn.type = 'button';
+    btn.className = 'btn-icon btn-floor-item';
+    btn.dataset.floorId = floor.id;
+    btn.textContent = floorName;
+    btn.title = `切换到 ${floorName}`;
+    btn.setAttribute('aria-label', `切换到 ${floorName}`);
+
+    if (floor.id === testMap.floorplan.currentFloorId) {
+      btn.classList.add('active');
+      attachContextMenuTrigger(btn, () => ({ type: 'floor', id: floor.id }), showFloorContextMenu);
+    }
+
+    container.appendChild(btn);
+  });
+
+  // 添加新建楼层按钮
+  const addBtn = document.createElement('button');
+  addBtn.id = 'btn-add-floor';
+  addBtn.type = 'button';
+  addBtn.className = 'btn-icon btn-floor-add';
+  addBtn.title = '新建楼层';
+  addBtn.setAttribute('aria-label', '新建楼层');
+  addBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>';
+  container.appendChild(addBtn);
+
+  // 添加收起整个楼层面板的按钮 (向上折叠箭头)
+  const foldBtn = document.createElement('button');
+  foldBtn.type = 'button';
+  foldBtn.className = 'btn-icon btn-floor-fold';
+  foldBtn.title = '收起楼层面板';
+  foldBtn.setAttribute('aria-label', '收起楼层面板');
+  foldBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
+  container.appendChild(foldBtn);
+}
+
 function snapRoomPosition(room, x, z) {
   const left = snapNumber(x - room.width / 2);
   const top = snapNumber(z - room.depth / 2);
@@ -290,15 +945,15 @@ function wallPointAt(wall, t) {
 
 function updateViewBounds() {
   const corners = [];
-  testMap.floorplan.walls.forEach((wall) => {
+  [...referenceFloorWalls(), ...currentWalls()].forEach((wall) => {
     corners.push({ x: wall.from[0], z: wall.from[1] });
     corners.push({ x: wall.to[0], z: wall.to[1] });
   });
-  testMap.floorplan.floor.rooms.forEach((room) => {
+  currentRooms().forEach((room) => {
     corners.push({ x: room.x - room.width / 2, z: room.z - room.depth / 2 });
     corners.push({ x: room.x + room.width / 2, z: room.z + room.depth / 2 });
   });
-  testMap.floorplan.items.forEach((item) => {
+  currentItems().forEach((item) => {
     const w = inchesToWorld(item.width) / 2;
     const d = inchesToWorld(item.depth) / 2;
     corners.push({ x: item.x - w, z: item.z - d });
@@ -375,19 +1030,25 @@ function renderPlan() {
   }
   svg.appendChild(grid);
 
-  testMap.floorplan.floor.rooms.forEach((room) => renderRoom(room));
-  testMap.floorplan.walls.forEach((wall) => renderWall(wall));
-  testMap.floorplan.floor.rooms.forEach((room) => renderRoomInteraction(room));
-  testMap.floorplan.openings.forEach((opening) => renderOpening(opening));
+  currentRooms().forEach((room) => renderRoom(room));
+  referenceFloorWalls().forEach((wall) => renderReferenceWall(wall));
+  currentWalls().forEach((wall) => renderWall(wall));
+  currentRooms().forEach((room) => renderRoomInteraction(room));
+  currentOpenings().forEach((opening) => renderOpening(opening));
+
+  currentRoofs().forEach((roof) => renderRoof(roof));
+  currentStairs().forEach((stairs) => renderStairs(stairs));
 
   if (drawStart) {
     const a = worldToSvg(drawStart[0], drawStart[1]);
     svg.appendChild(createSvgElement('circle', { class: 'draw-anchor', cx: a.x, cy: a.y, r: 6 }));
   }
 
-  testMap.floorplan.items.forEach((item) => renderPlanItem(item));
+  currentItems().forEach((item) => renderPlanItem(item));
   const selectedRoom = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
   if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
+  const selectedRoof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
+  if (selectedRoof) renderSelectedRoofHandles(selectedRoof);
 }
 
 function renderRoom(room) {
@@ -401,6 +1062,7 @@ function renderRoom(room) {
     height: Math.abs(b.y - a.y),
     'data-room-id': room.id
   });
+  attachContextMenuTrigger(rect, () => ({ type: 'room', id: room.id }));
   rect.addEventListener('click', (event) => {
     if (mode !== 'select') return;
     event.stopPropagation();
@@ -448,6 +1110,7 @@ function renderRoomInteraction(room) {
     'data-room-hit-id': room.id,
     fill: 'rgba(54, 194, 255, 0.001)'
   });
+  attachContextMenuTrigger(rect, () => ({ type: 'room', id: room.id }));
   rect.addEventListener('pointerdown', (event) => beginRoomDrag(event, room.id));
   rect.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -460,6 +1123,50 @@ function renderSelectedRoomHandles(room) {
   const a = worldToSvg(room.x - room.width / 2, room.z - room.depth / 2);
   const b = worldToSvg(room.x + room.width / 2, room.z + room.depth / 2);
   renderRoomHandles(room, a, b);
+}
+
+function renderReferenceWall(wall) {
+  const a = worldToSvg(wall.from[0], wall.from[1]);
+  const b = worldToSvg(wall.to[0], wall.to[1]);
+  svg.appendChild(createSvgElement('line', {
+    class: 'reference-wall-line',
+    x1: a.x,
+    y1: a.y,
+    x2: b.x,
+    y2: b.y
+  }));
+}
+
+function renderRoofHandles(roof, a, b) {
+  const minX = Math.min(a.x, b.x);
+  const maxX = Math.max(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const maxY = Math.max(a.y, b.y);
+  const handles = [
+    { side: 'north', x: (minX + maxX) / 2, y: minY },
+    { side: 'east', x: maxX, y: (minY + maxY) / 2 },
+    { side: 'south', x: (minX + maxX) / 2, y: maxY },
+    { side: 'west', x: minX, y: (minY + maxY) / 2 }
+  ];
+  handles.forEach((handle) => {
+    const node = createSvgElement('rect', {
+      class: `roof-resize-handle handle-${handle.side}`,
+      x: handle.x - 6,
+      y: handle.y - 6,
+      width: 12,
+      height: 12,
+      rx: 3,
+      'data-roof-handle': handle.side
+    });
+    node.addEventListener('pointerdown', (event) => beginRoofResize(event, roof.id, handle.side));
+    svg.appendChild(node);
+  });
+}
+
+function renderSelectedRoofHandles(roof) {
+  const a = worldToSvg((roof.x || 0) - (roof.width || 6) / 2, (roof.z || 0) - (roof.depth || 6) / 2);
+  const b = worldToSvg((roof.x || 0) + (roof.width || 6) / 2, (roof.z || 0) + (roof.depth || 6) / 2);
+  renderRoofHandles(roof, a, b);
 }
 
 function renderWall(wall) {
@@ -520,6 +1227,7 @@ function renderOpening(opening) {
     y2: b.y,
     'data-opening-id': opening.id
   });
+  attachContextMenuTrigger(line, () => ({ type: 'opening', id: opening.id }));
   line.addEventListener('pointerdown', (event) => beginOpeningDrag(event, opening.id));
   line.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -532,6 +1240,113 @@ function renderOpening(opening) {
     }
   });
   svg.appendChild(line);
+}
+
+function renderRoof(roof) {
+  const a = worldToSvg((roof.x || 0) - (roof.width || 6) / 2, (roof.z || 0) - (roof.depth || 6) / 2);
+  const b = worldToSvg((roof.x || 0) + (roof.width || 6) / 2, (roof.z || 0) + (roof.depth || 6) / 2);
+  const rect = createSvgElement('rect', {
+    class: `roof-rect ${selectedRoofId === roof.id ? 'selected' : ''}`,
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    width: Math.abs(b.x - a.x),
+    height: Math.abs(b.y - a.y),
+    rx: 4,
+    fill: roof.color || '#b75b54',
+    'data-roof-id': roof.id
+  });
+  attachContextMenuTrigger(rect, () => ({ type: 'roof', id: roof.id }));
+  rect.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'roof', roof.id));
+  rect.addEventListener('click', (event) => {
+    event.stopPropagation();
+    selectRoof(roof.id);
+  });
+  svg.appendChild(rect);
+}
+
+function renderStairs(stairs) {
+  const a = worldToSvg((stairs.x || 0) - (stairs.width || 1.2) / 2, (stairs.z || 0) - (stairs.depth || 3.2) / 2);
+  const b = worldToSvg((stairs.x || 0) + (stairs.width || 1.2) / 2, (stairs.z || 0) + (stairs.depth || 3.2) / 2);
+  const group = createSvgElement('g', {
+    class: `stairs-symbol ${selectedStairsId === stairs.id ? 'selected' : ''}`,
+    transform: `rotate(${((stairs.rotation || 0) * 180 / Math.PI) || 0} ${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`,
+    'data-stairs-id': stairs.id
+  });
+  const rect = createSvgElement('rect', {
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    width: Math.abs(b.x - a.x),
+    height: Math.abs(b.y - a.y),
+    rx: 4,
+    fill: stairs.color || '#d8c0a0'
+  });
+  group.appendChild(rect);
+  const steps = 5;
+  for (let i = 1; i < steps; i += 1) {
+    const x = Math.min(a.x, b.x);
+    const y = Math.min(a.y, b.y) + (Math.abs(b.y - a.y) / steps) * i;
+    group.appendChild(createSvgElement('line', {
+      x1: x,
+      y1: y,
+      x2: x + Math.abs(b.x - a.x),
+      y2: y,
+      class: 'stairs-step-line'
+    }));
+  }
+  attachContextMenuTrigger(group, () => ({ type: 'stairs', id: stairs.id }));
+  group.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'stairs', stairs.id));
+  group.addEventListener('click', (event) => {
+    event.stopPropagation();
+    selectStairs(stairs.id);
+  });
+  svg.appendChild(group);
+}
+
+function getStructure(type, id) {
+  return type === 'roof' ? testMap.getRoof?.(id) : testMap.getStairs?.(id);
+}
+
+function updateStructure(type, id, patch, rebuild = true) {
+  return type === 'roof' ? testMap.updateRoof?.(id, patch, rebuild) : testMap.updateStairs?.(id, patch, rebuild);
+}
+
+function beginStructureDrag(event, type, id) {
+  if (event.button === 2) return;
+  if (mode !== 'select') return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (type === 'roof') selectRoof(id);
+  if (type === 'stairs') selectStairs(id);
+  const structure = getStructure(type, id);
+  if (!structure) return;
+  const point = svgPointFromEvent(event);
+  const world = svgToWorld(point.x, point.y);
+  structureDragState = {
+    type,
+    id,
+    offsetX: (structure.x || 0) - world.x,
+    offsetZ: (structure.z || 0) - world.z,
+    originalX: structure.x || 0,
+    originalZ: structure.z || 0,
+    historyPushed: false
+  };
+  svg.setPointerCapture(event.pointerId);
+}
+
+function moveStructureTo(type, id, x, z, options = {}) {
+  const snapped = snapWorldPoint({ x, z });
+  const rebuild = options.rebuild !== false;
+  const structure = updateStructure(type, id, { x: snapped.x, z: snapped.z }, rebuild);
+  if (!rebuild && structure) {
+    const node = type === 'roof' ? testMap.roofNodes?.get(id) : testMap.stairNodes?.get(id);
+    if (node) {
+      node.position.x = structure.x || 0;
+      node.position.z = structure.z || 0;
+    }
+  }
+  if (rebuild || options.refresh !== false) refreshShadows();
+  updateEditor();
+  if (currentView !== '3d') renderPlan();
 }
 
 function renderPlanItem(item) {
@@ -560,11 +1375,13 @@ function renderPlanItem(item) {
   label.textContent = item.name;
   group.appendChild(rect);
   group.appendChild(label);
+  attachContextMenuTrigger(group, () => ({ type: 'item', id: item.id }));
   group.addEventListener('pointerdown', (event) => beginItemDrag(event, item.id));
   svg.appendChild(group);
 }
 
 function beginRoomDrag(event, roomId) {
+  if (event.button === 2) return;
   if (mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
@@ -587,6 +1404,7 @@ function beginRoomDrag(event, roomId) {
 }
 
 function beginRoomResize(event, roomId, side) {
+  if (event.button === 2) return;
   if (mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
@@ -663,7 +1481,66 @@ function finishRoomEdit() {
   roomResizeState = null;
 }
 
+function beginRoofResize(event, roofId, side) {
+  if (event.button === 2) return;
+  if (mode !== 'select') return;
+  event.preventDefault();
+  event.stopPropagation();
+  selectRoof(roofId);
+  const roof = testMap.getRoof?.(roofId);
+  if (!roof) return;
+  roofResizeState = {
+    roofId,
+    side,
+    original: { x: roof.x || 0, z: roof.z || 0, width: roof.width || 6, depth: roof.depth || 6 },
+    historyPushed: false
+  };
+  svg.setPointerCapture(event.pointerId);
+}
+
+function moveRoofResize(event) {
+  if (!roofResizeState) return;
+  const roof = testMap.getRoof?.(roofResizeState.roofId);
+  if (!roof) return;
+  const point = svgPointFromEvent(event);
+  const world = snapWorldPoint(svgToWorld(point.x, point.y));
+  const original = roofResizeState.original;
+  const left = original.x - original.width / 2;
+  const right = original.x + original.width / 2;
+  const top = original.z - original.depth / 2;
+  const bottom = original.z + original.depth / 2;
+  let nextLeft = left;
+  let nextRight = right;
+  let nextTop = top;
+  let nextBottom = bottom;
+
+  if (roofResizeState.side === 'west') nextLeft = Math.min(world.x, right - 1);
+  if (roofResizeState.side === 'east') nextRight = Math.max(world.x, left + 1);
+  if (roofResizeState.side === 'north') nextTop = Math.min(world.z, bottom - 1);
+  if (roofResizeState.side === 'south') nextBottom = Math.max(world.z, top + 1);
+
+  const patch = {
+    x: snapNumber((nextLeft + nextRight) / 2),
+    z: snapNumber((nextTop + nextBottom) / 2),
+    width: snapNumber(nextRight - nextLeft),
+    depth: snapNumber(nextBottom - nextTop)
+  };
+  if (!roofResizeState.historyPushed && (Math.abs(patch.width - original.width) > 0.02 || Math.abs(patch.depth - original.depth) > 0.02)) {
+    pushHistory();
+    roofResizeState.historyPushed = true;
+  }
+  testMap.updateRoof?.(roof.id, patch);
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function finishRoofResize() {
+  roofResizeState = null;
+}
+
 function beginItemDrag(event, itemId) {
+  if (event.button === 2) return;
   if (mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
@@ -752,6 +1629,7 @@ function moveItemGesture() {
 }
 
 function beginOpeningDrag(event, openingId) {
+  if (event.button === 2) return;
   event.preventDefault();
   event.stopPropagation();
   selectOpening(openingId);
@@ -775,6 +1653,85 @@ function beginOpeningDrag(event, openingId) {
   svg.setPointerCapture(event.pointerId);
 }
 
+function canPlaceOnTable(item, definition) {
+  if (!definition) return false;
+  if (definition.placeType === 'wall' || definition.placeType === 'ceiling') {
+    return false;
+  }
+  const category = definition.category;
+  if (category === 'seating' || category === 'bedroom' || category === 'kitchen-bath') {
+    if (definition.type !== 'cushion') {
+      return false;
+    }
+  }
+  if (category === 'tables' || category === 'storage') {
+    return false;
+  }
+  if (category === 'lighting') {
+    if (definition.type.includes('floor')) {
+      return false;
+    }
+    if (!definition.type.includes('lamp') && !definition.type.includes('light')) {
+      return false;
+    }
+  }
+  
+  // 限制尺寸：底面积较小，长宽均在24英寸(60厘米)以下
+  const w = item.width || definition.defaultSize.width;
+  const d = item.depth || definition.defaultSize.depth;
+  if (w > 24 || d > 24) {
+    return false;
+  }
+  return true;
+}
+
+function findTableBelow(item) {
+  let highestTable = null;
+  let highestSurface = -Infinity;
+  
+  const items = testMap.floorplan.items || [];
+  const itemFloorId = item.floorId || testMap.floorplan.currentFloorId;
+  for (const other of items) {
+    if (other.id === item.id) continue;
+    if (other.floorId !== itemFloorId) continue;
+    
+    const otherDef = testMap.getFurnitureDefinition(other.type);
+    if (!otherDef) continue;
+    
+    if (otherDef.category !== 'tables' && otherDef.category !== 'storage') {
+      continue;
+    }
+    if (otherDef.placeType === 'wall' || otherDef.placeType === 'ceiling') {
+      continue;
+    }
+    
+    const cx = other.x;
+    const cz = other.z;
+    const angle = other.rotation || 0;
+    
+    const dx = item.x - cx;
+    const dz = item.z - cz;
+    
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    
+    const halfW = ((other.width || otherDef.defaultSize.width) * (other.scale || 1)) / 48;
+    const halfD = ((other.depth || otherDef.defaultSize.depth) * (other.scale || 1)) / 48;
+    
+    if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
+      const surface = (other.elevation || 0) + (other.height || otherDef.defaultSize.height) * (other.scale || 1);
+      if (surface > highestSurface) {
+        highestSurface = surface;
+        highestTable = other;
+      }
+    }
+  }
+  
+  return highestTable;
+}
+
 function moveItemTo(itemId, x, z) {
   const item = testMap.getItem(itemId);
   if (!item || item.locked) return;
@@ -788,7 +1745,7 @@ function moveItemTo(itemId, x, z) {
     let bestAngle = item.rotation || 0;
     let bestWall = null;
 
-    testMap.floorplan.walls.forEach((wall) => {
+    currentWalls().forEach((wall) => {
       const [x1, z1] = wall.from;
       const [x2, z2] = wall.to;
       const dx = x2 - x1;
@@ -856,10 +1813,19 @@ function moveItemTo(itemId, x, z) {
   } else if (definition.placeType === 'ceiling') {
     item.x = snapped.x;
     item.z = snapped.z;
-    item.elevation = (testMap.floorplan.wallHeight || 2.8) * 24; // 贴齐天花板
+    item.elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - (item.height || definition.defaultSize.height) * (item.scale || 1); // 贴齐天花板下方
   } else {
     item.x = snapped.x;
     item.z = snapped.z;
+    if (canPlaceOnTable(item, definition)) {
+      const tableBelow = findTableBelow(item);
+      if (tableBelow) {
+        const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
+        item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+      } else {
+        item.elevation = 0;
+      }
+    }
   }
 
   const room = testMap.getRoomAt(item.x, item.z);
@@ -880,7 +1846,8 @@ function moveItemTo(itemId, x, z) {
   }
 
   if (node) {
-    node.position.set(item.x, (item.elevation || 0) / 24, item.z);
+    const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(item.floorId) : 0;
+    node.position.set(item.x, floorY + (item.elevation || 0) / 24, item.z);
     node.rotation.y = item.rotation || 0;
   }
   renderPlan();
@@ -910,6 +1877,7 @@ function finishOpeningDrag() {
 }
 
 function beginWallDrag(event, wallId) {
+  if (event.button === 2) return;
   if (mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
@@ -982,8 +1950,24 @@ svg.addEventListener('pointermove', (event) => {
     moveRoomResize(event);
     return;
   }
+  if (roofResizeState) {
+    moveRoofResize(event);
+    return;
+  }
   if (roomDragState) {
     moveRoomDrag(event);
+    return;
+  }
+  if (structureDragState) {
+    const point = svgPointFromEvent(event);
+    const world = svgToWorld(point.x, point.y);
+    const nextX = world.x + structureDragState.offsetX;
+    const nextZ = world.z + structureDragState.offsetZ;
+    if (!structureDragState.historyPushed && Math.hypot(nextX - structureDragState.originalX, nextZ - structureDragState.originalZ) > 0.02) {
+      pushHistory();
+      structureDragState.historyPushed = true;
+    }
+    moveStructureTo(structureDragState.type, structureDragState.id, nextX, nextZ);
     return;
   }
   if (dragState) {
@@ -1018,6 +2002,8 @@ svg.addEventListener('pointerup', (event) => {
   forgetPointer(event);
   if (itemGestureState && activePointers.size < 2) itemGestureState = null;
   dragState = null;
+  structureDragState = null;
+  finishRoofResize();
   finishRoomEdit();
   finishOpeningDrag();
   finishWallDrag();
@@ -1027,13 +2013,15 @@ svg.addEventListener('pointercancel', (event) => {
   forgetPointer(event);
   if (itemGestureState && activePointers.size < 2) itemGestureState = null;
   dragState = null;
+  structureDragState = null;
+  finishRoofResize();
   finishRoomEdit();
   finishOpeningDrag();
   finishWallDrag();
 });
 
 svg.addEventListener('click', (event) => {
-  if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]')) return;
+  if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-roof-id]') || event.target.closest?.('[data-stairs-id]') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]') || event.target.closest?.('[data-roof-handle]')) return;
   const point = svgPointFromEvent(event);
   const world = svgToWorld(point.x, point.y);
   const snappedWorld = snapWorldPoint(world);
@@ -1051,9 +2039,20 @@ svg.addEventListener('click', (event) => {
     renderPlan();
   } else if (mode === 'add-room') {
     pushHistory();
-    const room = testMap.addRoom({ x: snapped[0], z: snapped[1], name: `新房间 ${roomCounter++}` });
+    const room = testMap.addRoom({ x: snapped[0], z: snapped[1], name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
     refreshShadows();
     selectRoom(room.id);
+  } else if (mode === 'add-roof') {
+    pushHistory();
+    const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped[0], snapped[1]);
+    const roof = testMap.addRoof({ x: room?.x ?? snapped[0], z: room?.z ?? snapped[1], width: room?.width ?? 6, depth: room?.depth ?? 6 });
+    refreshShadows();
+    selectRoof(roof.id);
+  } else if (mode === 'add-stairs') {
+    pushHistory();
+    const stairs = testMap.addStairs({ x: snapped[0], z: snapped[1] });
+    refreshShadows();
+    selectStairs(stairs.id);
   } else {
     clearSelection();
   }
@@ -1084,19 +2083,112 @@ function findRoomIdFromNode(node) {
   return findMetadataFromNode(node, 'blueprintRoomId');
 }
 
+function findRoofIdFromNode(node) {
+  return findMetadataFromNode(node, 'blueprintRoofId');
+}
+
+function findStairsIdFromNode(node) {
+  return findMetadataFromNode(node, 'blueprintStairsId');
+}
+
 function groundPointFromPointer() {
   const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
-  const distance = ray.intersectsPlane(groundPlane);
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const distance = ray.intersectsPlane(new BABYLON.Plane(0, 1, 0, -floorY));
   if (distance === null || distance === undefined || distance < 0) return null;
   return ray.origin.add(ray.direction.scale(distance));
 }
 
-function pickNearest3DTarget() {
-  const pick = scene.pick(scene.pointerX, scene.pointerY, (mesh) => (
+function clear3DEditHandles() {
+  editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
+  active3DEditTarget = null;
+}
+
+function get3DEditTargetBounds(type, id) {
+  const target = type === 'room' ? testMap.getRoom(id) : getStructure(type, id);
+  if (!target) return null;
+  return {
+    target,
+    x: Number(target.x || 0),
+    z: Number(target.z || 0),
+    width: Number(target.width || (type === 'stairs' ? 1.2 : 4)),
+    depth: Number(target.depth || (type === 'stairs' ? 3.2 : 4)),
+    height: Number(target.height || 0),
+    floorId: target.floorId || testMap.floorplan.currentFloorId
+  };
+}
+
+function get3DEditHandleY(type, bounds) {
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(bounds.floorId) : 0;
+  if (type === 'roof') return floorY + (testMap.floorplan.wallHeight || 2.8) + bounds.height + 0.18;
+  if (type === 'stairs') return floorY + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
+  return floorY + 0.18;
+}
+
+function create3DEditHandle(type, id, action, side, position, size, color) {
+  const handle = BABYLON.MeshBuilder.CreateBox('edit_handle_' + type + '_' + id + '_' + action + '_' + (side || 'center'), size, scene);
+  handle.position.set(position.x, position.y, position.z);
+  handle.material = new BABYLON.StandardMaterial(handle.name + '_mat', scene);
+  handle.material.diffuseColor = BABYLON.Color3.FromHexString(color);
+  handle.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.35);
+  handle.material.specularColor = new BABYLON.Color3(0, 0, 0);
+  handle.material.disableDepthWrite = true;
+  handle.material.depthFunction = BABYLON.Engine.ALWAYS;
+  handle.metadata = { blueprintEditHandle: { type, id, action, side } };
+  handle.isPickable = true;
+  handle.renderingGroupId = 3;
+  handle.alwaysSelectAsActiveMesh = true;
+  handle.renderOutline = true;
+  handle.outlineWidth = 0.035;
+  handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
+  editHandleNodes.push(handle);
+  return handle;
+}
+
+function refresh3DEditHandles() {
+  if (!active3DEditTarget || currentView !== '3d') return;
+  const { type, id } = active3DEditTarget;
+  const bounds = get3DEditTargetBounds(type, id);
+  editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
+  if (!bounds) {
+    active3DEditTarget = null;
+    return;
+  }
+  const y = get3DEditHandleY(type, bounds);
+  const halfW = bounds.width / 2;
+  const halfD = bounds.depth / 2;
+  create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, { width: 0.42, height: 0.14, depth: 0.42 }, '#1f8fff');
+  create3DEditHandle(type, id, 'resize', 'north', { x: bounds.x, y, z: bounds.z - halfD }, { width: 0.72, height: 0.12, depth: 0.22 }, '#ff9f1c');
+  create3DEditHandle(type, id, 'resize', 'south', { x: bounds.x, y, z: bounds.z + halfD }, { width: 0.72, height: 0.12, depth: 0.22 }, '#ff9f1c');
+  create3DEditHandle(type, id, 'resize', 'east', { x: bounds.x + halfW, y, z: bounds.z }, { width: 0.22, height: 0.12, depth: 0.72 }, '#ff9f1c');
+  create3DEditHandle(type, id, 'resize', 'west', { x: bounds.x - halfW, y, z: bounds.z }, { width: 0.22, height: 0.12, depth: 0.72 }, '#ff9f1c');
+}
+
+function set3DEditTarget(type, id) {
+  active3DEditTarget = { type, id };
+  refresh3DEditHandles();
+}
+
+function same3DEditTarget(type, id) {
+  return active3DEditTarget?.type === type && active3DEditTarget?.id === id;
+}
+
+function findEditHandleFromNode(node) {
+  return findMetadataFromNode(node, 'blueprintEditHandle');
+}
+
+function pickNearest3DTarget(pointerX = scene.pointerX, pointerY = scene.pointerY) {
+  const handlePick = scene.pick(pointerX, pointerY, (mesh) => !!findEditHandleFromNode(mesh));
+  const pickedHandle = handlePick?.pickedMesh ? findEditHandleFromNode(handlePick.pickedMesh) : null;
+  if (pickedHandle) return { type: 'edit-handle', id: pickedHandle.id, handle: pickedHandle, pick: handlePick };
+
+  const pick = scene.pick(pointerX, pointerY, (mesh) => (
     !!findOpeningIdFromNode(mesh)
     || !!findItemIdFromNode(mesh)
     || !!findWallIdFromNode(mesh)
     || !!findRoomIdFromNode(mesh)
+    || !!findRoofIdFromNode(mesh)
+    || !!findStairsIdFromNode(mesh)
   ));
   const mesh = pick?.pickedMesh;
   if (!mesh) return null;
@@ -1106,18 +2198,184 @@ function pickNearest3DTarget() {
   if (wallId) return { type: 'wall', id: wallId, pick };
   const itemId = findItemIdFromNode(mesh);
   if (itemId) return { type: 'item', id: itemId, pick };
+  const roofId = findRoofIdFromNode(mesh);
+  if (roofId) return { type: 'roof', id: roofId, pick };
+  const stairsId = findStairsIdFromNode(mesh);
+  if (stairsId) return { type: 'stairs', id: stairsId, pick };
   const roomId = findRoomIdFromNode(mesh);
   if (roomId) return { type: 'room', id: roomId, pick };
   return null;
+}
+
+
+function begin3DEditHandleDrag(handle, event) {
+  const bounds = get3DEditTargetBounds(handle.type, handle.id);
+  const groundPoint = groundPointFromPointer();
+  if (!bounds || !groundPoint) return false;
+  active3DEditTarget = { type: handle.type, id: handle.id };
+  editHandleDragState = {
+    type: handle.type,
+    id: handle.id,
+    action: handle.action,
+    side: handle.side,
+    pointerId: event.pointerId,
+    original: { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth },
+    offsetX: bounds.x - groundPoint.x,
+    offsetZ: bounds.z - groundPoint.z,
+    historyPushed: false
+  };
+  drag3DState = { type: 'edit-handle', pointerId: event.pointerId };
+  document.body.classList.add('is-dragging-3d');
+  canvas.setPointerCapture?.(event.pointerId);
+  camera.detachControl(canvas);
+  event.preventDefault();
+  return true;
+}
+
+function syncRoomMovePreview(roomId) {
+  const room = testMap.getRoom(roomId);
+  if (!room) return;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(room.floorId) : 0;
+  const floor = testMap.floorNodes?.get(room.id);
+  if (floor) floor.position.set(room.x, floorY - (testMap.floorplan.floorHeight || 0.08) / 2, room.z);
+
+  const wallIds = new Set(Object.values(room.wallIds || {}));
+  wallIds.forEach((wallId) => {
+    const wall = testMap.getWall(wallId);
+    const node = testMap.wallNodes?.get(wallId);
+    if (!wall || !node) return;
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    node.position.set(x1, 0, z1);
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+  });
+
+  testMap.floorplan.openings.forEach((opening) => {
+    if (!wallIds.has(opening.wallId)) return;
+    const wall = testMap.getWall(opening.wallId);
+    const node = testMap.openingNodes?.get(opening.id);
+    if (!wall || !node) return;
+    const point = wallPointAt(wall, opening.t ?? 0.5);
+    const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
+    const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    node.position.set(point.x, floorY + localY, point.z);
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+  });
+
+  testMap.floorplan.items.forEach((item) => {
+    if (item.roomId !== room.id) return;
+    const node = testMap.itemNodes?.get(item.id);
+    if (node) node.position.set(item.x, floorY + (item.elevation || 0) / 24, item.z);
+  });
+}
+
+function update3DEditTarget(type, id, patch, options = {}) {
+  if (type === 'room') {
+    const rebuild = options.rebuild !== false;
+    const moveItems = options.moveItems !== false;
+    testMap.updateRoom(id, patch, { moveItems, rebuild });
+    if (rebuild) refreshShadows();
+    else if (moveItems) syncRoomMovePreview(id);
+  } else {
+    const rebuild = options.rebuild !== false;
+    const updated = updateStructure(type, id, patch, rebuild);
+    if (!rebuild && updated) {
+      const node = type === 'roof' ? testMap.roofNodes?.get(id) : testMap.stairNodes?.get(id);
+      if (node) {
+        node.position.x = updated.x || 0;
+        node.position.z = updated.z || 0;
+      }
+    } else {
+      refreshShadows();
+    }
+  }
+  updateEditor();
+  refresh3DEditHandles();
+}
+
+function move3DEditHandle(groundPoint) {
+  if (!editHandleDragState) return;
+  const state = editHandleDragState;
+  const original = state.original;
+  const snapped = snapWorldPoint({ x: groundPoint.x, z: groundPoint.z });
+  let patch = null;
+  let moveItems = false;
+  let rebuild = true;
+
+  if (state.action === 'move') {
+    patch = {
+      x: snapNumber(groundPoint.x + state.offsetX),
+      z: snapNumber(groundPoint.z + state.offsetZ)
+    };
+    moveItems = true;
+    rebuild = false;
+  } else {
+    const minWidth = state.type === 'stairs' ? 0.6 : (state.type === 'room' ? 1.2 : 1);
+    const minDepth = state.type === 'stairs' ? 1.2 : (state.type === 'room' ? 1.2 : 1);
+    const left = original.x - original.width / 2;
+    const right = original.x + original.width / 2;
+    const top = original.z - original.depth / 2;
+    const bottom = original.z + original.depth / 2;
+    let nextLeft = left;
+    let nextRight = right;
+    let nextTop = top;
+    let nextBottom = bottom;
+    if (state.side === 'west') nextLeft = Math.min(snapped.x, right - minWidth);
+    if (state.side === 'east') nextRight = Math.max(snapped.x, left + minWidth);
+    if (state.side === 'north') nextTop = Math.min(snapped.z, bottom - minDepth);
+    if (state.side === 'south') nextBottom = Math.max(snapped.z, top + minDepth);
+    patch = {
+      x: snapNumber((nextLeft + nextRight) / 2),
+      z: snapNumber((nextTop + nextBottom) / 2),
+      width: snapNumber(nextRight - nextLeft),
+      depth: snapNumber(nextBottom - nextTop)
+    };
+    moveItems = false;
+    rebuild = state.type !== 'room';
+  }
+
+  const moved = Math.hypot((patch.x ?? original.x) - original.x, (patch.z ?? original.z) - original.z);
+  const resized = Math.abs((patch.width ?? original.width) - original.width) + Math.abs((patch.depth ?? original.depth) - original.depth);
+  if (!state.historyPushed && (moved > 0.02 || resized > 0.02)) {
+    pushHistory();
+    state.historyPushed = true;
+  }
+  update3DEditTarget(state.type, state.id, patch, { moveItems, rebuild });
 }
 
 function begin3DDrag(pointerInfo) {
   const event = pointerInfo.event;
   if (event.button !== 0 && event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
 
+  if (mode === 'add-room' || mode === 'add-roof' || mode === 'add-stairs') {
+    const point = groundPointFromPointer();
+    if (point) {
+      const snapped = snapWorldPoint({ x: point.x, z: point.z });
+      pushHistory();
+      if (mode === 'add-room') {
+        const room = testMap.addRoom({ x: snapped.x, z: snapped.z, name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
+        refreshShadows();
+        selectRoom(room.id);
+      } else if (mode === 'add-roof') {
+        const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
+        const roof = testMap.addRoof({ x: room?.x ?? snapped.x, z: room?.z ?? snapped.z, width: room?.width ?? 6, depth: room?.depth ?? 6 });
+        refreshShadows();
+        selectRoof(roof.id);
+      } else {
+        const stairs = testMap.addStairs({ x: snapped.x, z: snapped.z });
+        refreshShadows();
+        selectStairs(stairs.id);
+      }
+      event.preventDefault();
+      return;
+    }
+  }
+
   if (mode === 'add-door' || mode === 'add-window') {
     const target = pickNearest3DTarget();
-    if (target && target.type === 'wall') {
+    if (target && target.type === 'wall' && isTargetOnCurrentFloor(target)) {
       const wallId = target.id;
       const wall = testMap.getWall(wallId);
       if (wall && target.pick.pickedPoint) {
@@ -1135,6 +2393,16 @@ function begin3DDrag(pointerInfo) {
   const target = pickNearest3DTarget();
   if (!target) {
     clearSelection();
+    return;
+  }
+
+  if (target.type === 'edit-handle') {
+    begin3DEditHandleDrag(target.handle, event);
+    return;
+  }
+
+  if (!isTargetOnCurrentFloor(target)) {
+    event.preventDefault();
     return;
   }
 
@@ -1163,7 +2431,25 @@ function begin3DDrag(pointerInfo) {
   }
 
   if (target.type === 'room') {
-    selectRoom(target.id);
+    if (selectedRoomId === target.id) {
+      if (!same3DEditTarget('room', target.id)) set3DEditTarget('room', target.id);
+    } else {
+      selectRoom(target.id);
+    }
+    event.preventDefault();
+    return;
+  }
+
+  if (target.type === 'roof' || target.type === 'stairs') {
+    const isSame = target.type === 'roof' ? selectedRoofId === target.id : selectedStairsId === target.id;
+    if (isSame) {
+      if (!same3DEditTarget(target.type, target.id)) set3DEditTarget(target.type, target.id);
+    } else if (target.type === 'roof') {
+      selectRoof(target.id);
+    } else {
+      selectStairs(target.id);
+    }
+    event.preventDefault();
     return;
   }
 
@@ -1194,7 +2480,9 @@ function move3DDrag(pointerInfo) {
   if (!drag3DState) return;
   const groundPoint = groundPointFromPointer();
   if (!groundPoint) return;
-  if (drag3DState.type === 'item') {
+  if (drag3DState.type === 'edit-handle') {
+    move3DEditHandle(groundPoint);
+  } else if (drag3DState.type === 'item') {
     const nextX = groundPoint.x + drag3DState.offsetX;
     const nextZ = groundPoint.z + drag3DState.offsetZ;
     if (!drag3DState.historyPushed && Math.hypot(nextX - drag3DState.originalX, nextZ - drag3DState.originalZ) > 0.02) {
@@ -1206,6 +2494,14 @@ function move3DDrag(pointerInfo) {
     moveOpeningToWorld(drag3DState.openingId, { x: groundPoint.x, z: groundPoint.z }, drag3DState);
     testMap.build();
     refreshShadows();
+  } else if (drag3DState.type === 'roof' || drag3DState.type === 'stairs') {
+    const nextX = groundPoint.x + drag3DState.offsetX;
+    const nextZ = groundPoint.z + drag3DState.offsetZ;
+    if (!drag3DState.historyPushed && Math.hypot(nextX - drag3DState.originalX, nextZ - drag3DState.originalZ) > 0.02) {
+      pushHistory();
+      drag3DState.historyPushed = true;
+    }
+    moveStructureTo(drag3DState.type, drag3DState.structureId, nextX, nextZ, { rebuild: false, refresh: false });
   }
   pointerInfo.event.preventDefault();
 }
@@ -1215,12 +2511,79 @@ function end3DDrag(event) {
   if (event?.pointerId !== undefined && drag3DState.pointerId !== event.pointerId) return;
   canvas.releasePointerCapture?.(drag3DState.pointerId);
   const openingId = drag3DState.type === 'opening' ? drag3DState.openingId : null;
+  const roofId = drag3DState.type === 'roof' ? drag3DState.structureId : null;
+  const stairsId = drag3DState.type === 'stairs' ? drag3DState.structureId : null;
+  const completedEditHandle = drag3DState.type === 'edit-handle' ? editHandleDragState : null;
+  const editTarget = drag3DState.type === 'edit-handle' ? active3DEditTarget : null;
   drag3DState = null;
+  editHandleDragState = null;
   document.body.classList.remove('is-dragging-3d');
-  camera.attachControl(canvas, true);
+  camera.attachControl(canvas, true, false, 1);
   if (openingId) selectOpening(openingId);
+  if (roofId) selectRoof(roofId);
+  if (stairsId) selectStairs(stairsId);
+  if (completedEditHandle?.type === 'room') {
+    testMap.build();
+    refreshShadows();
+  }
+  if (editTarget) {
+    active3DEditTarget = editTarget;
+    refresh3DEditHandles();
+  }
 }
 
+function getCanvasPickFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  return pickNearest3DTarget(event.clientX - rect.left, event.clientY - rect.top);
+}
+
+function get3DContextTarget(event) {
+  const target = getCanvasPickFromEvent(event);
+  if (!target || target.type === 'edit-handle') return null;
+  return isAllowedContextTarget(target) ? { type: target.type, id: target.id } : null;
+}
+
+// 阻止鼠标中键(1)在 canvas 上触发浏览器的自动滚动行为，确保中键平移流畅
+canvas.addEventListener('mousedown', (event) => {
+  if (event.button === 1) {
+    event.preventDefault();
+  }
+});
+
+canvas.addEventListener('contextmenu', (event) => {
+  const target = get3DContextTarget(event);
+  if (!target) return;
+  event.preventDefault();
+  event.stopPropagation();
+  showObjectContextMenu(target, event.clientX, event.clientY);
+});
+
+canvas.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'mouse' || event.button === 2) return;
+  const target = get3DContextTarget(event);
+  if (!target) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  cancelLongPress();
+  longPressState = {
+    pointerId: event.pointerId,
+    startX,
+    startY,
+    timer: window.setTimeout(() => {
+      longPressState = null;
+      cancelObjectInteractions();
+      showObjectContextMenu(target, startX, startY);
+    }, 620)
+  };
+});
+
+canvas.addEventListener('pointermove', (event) => {
+  if (!longPressState || longPressState.pointerId !== event.pointerId) return;
+  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > 8) cancelLongPress();
+});
+
+canvas.addEventListener('pointerup', cancelLongPress);
+canvas.addEventListener('pointercancel', cancelLongPress);
 scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
@@ -1232,10 +2595,13 @@ canvas.addEventListener('pointercancel', end3DDrag);
 window.addEventListener('pointerup', end3DDrag);
 
 function clearSelection() {
+  clear3DEditHandles();
   selectedRoomId = null;
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   updateEditor();
@@ -1243,10 +2609,13 @@ function clearSelection() {
 }
 
 function selectRoom(roomId) {
+  clear3DEditHandles();
   selectedRoomId = roomId;
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   updateEditor();
@@ -1254,10 +2623,13 @@ function selectRoom(roomId) {
 }
 
 function selectWall(wallId) {
+  clear3DEditHandles();
   selectedWallId = wallId;
   selectedRoomId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(wallId);
   updateEditor();
@@ -1265,10 +2637,13 @@ function selectWall(wallId) {
 }
 
 function selectItem(itemId) {
+  clear3DEditHandles();
   selectedItemId = itemId;
   selectedRoomId = null;
   selectedWallId = null;
   selectedOpeningId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
   testMap.setSelectedWall(null);
   testMap.setSelectedItem(itemId);
   updateEditor();
@@ -1276,10 +2651,41 @@ function selectItem(itemId) {
 }
 
 function selectOpening(openingId) {
+  clear3DEditHandles();
   selectedOpeningId = openingId;
   selectedRoomId = null;
   selectedWallId = null;
   selectedItemId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
+  testMap.setSelectedItem(null);
+  testMap.setSelectedWall(null);
+  updateEditor();
+  renderPlan();
+}
+
+function selectRoof(roofId) {
+  clear3DEditHandles();
+  selectedRoofId = roofId;
+  selectedStairsId = null;
+  selectedRoomId = null;
+  selectedWallId = null;
+  selectedItemId = null;
+  selectedOpeningId = null;
+  testMap.setSelectedItem(null);
+  testMap.setSelectedWall(null);
+  updateEditor();
+  renderPlan();
+}
+
+function selectStairs(stairsId) {
+  clear3DEditHandles();
+  selectedStairsId = stairsId;
+  selectedRoofId = null;
+  selectedRoomId = null;
+  selectedWallId = null;
+  selectedItemId = null;
+  selectedOpeningId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   updateEditor();
@@ -1335,17 +2741,23 @@ function updateEditor() {
   const wallEditor = document.getElementById('wall-editor');
   const itemEditor = document.getElementById('item-editor');
   const openingEditor = document.getElementById('opening-editor');
+  const structureEditor = document.getElementById('structure-editor');
   const emptyState = document.getElementById('empty-state');
   const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
   const wall = selectedWallId ? testMap.getWall(selectedWallId) : null;
   const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
   const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
+  const roof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
+  const stairs = selectedStairsId ? testMap.getStairs?.(selectedStairsId) : null;
+  const structure = roof || stairs;
+  const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
   roomEditor.classList.toggle('hidden', !room);
   wallEditor.classList.toggle('hidden', !wall);
   itemEditor.classList.toggle('hidden', !item);
   openingEditor.classList.toggle('hidden', !opening);
-  emptyState.classList.toggle('hidden', !!room || !!wall || !!item || !!opening);
+  structureEditor?.classList.toggle('hidden', !structure);
+  emptyState.classList.toggle('hidden', !!room || !!wall || !!item || !!opening || !!structure);
 
   document.getElementById('floor-color').value = room?.color || testMap.floorplan.floor.color || '#f4efe6';
 
@@ -1415,6 +2827,22 @@ function updateEditor() {
     }
   }
 
+  if (structure) {
+    document.getElementById('selected-structure-name').textContent = structureType === 'roof' ? '\u5c4b\u9876' : '\u697c\u68af';
+    document.getElementById('structure-x').value = Number((structure.x || 0).toFixed(2));
+    document.getElementById('structure-z').value = Number((structure.z || 0).toFixed(2));
+    document.getElementById('structure-width').value = Number((structure.width || 1).toFixed(2));
+    document.getElementById('structure-depth').value = Number((structure.depth || 1).toFixed(2));
+    document.getElementById('structure-height').value = Number((structure.height || 1).toFixed(2));
+    const rotationDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
+    document.getElementById('structure-rotation').value = rotationDegrees;
+    document.getElementById('structure-rotation-range').value = rotationDegrees;
+    const stepsField = document.getElementById('structure-steps').closest('label');
+    stepsField.classList.toggle('hidden', structureType !== 'stairs');
+    document.getElementById('structure-steps').value = structure.steps || 9;
+    document.getElementById('structure-color').value = structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0');
+  }
+
   if (opening) {
     document.getElementById('selected-opening-name').textContent = opening.type === 'door' ? '门' : '窗';
     document.getElementById('opening-position').value = Math.round((opening.t ?? 0.5) * 100);
@@ -1444,15 +2872,15 @@ function updateEditor() {
     }
   }
 
-  renderDesignPanel(room, wall, item);
-  revealRightPanelIfNeeded(room || wall || item || opening);
+  renderDesignPanel(room, wall, item, structure, structureType);
+  revealRightPanelIfNeeded(room || wall || item || opening || structure);
 }
 
-function renderDesignPanel(room, wall, item) {
+function renderDesignPanel(room, wall, item, structure = null, structureType = null) {
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
-    btnResetMaterial.disabled = !(room || wall || item);
+    btnResetMaterial.disabled = !(room || wall || item || structure);
   }
   const floorColorField = document.getElementById('floor-color-field');
   if (floorColorField) floorColorField.classList.toggle('hidden', !room);
@@ -1478,6 +2906,22 @@ function renderDesignPanel(room, wall, item) {
     }));
     designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质到墙的正面', () => applyMaterialToWallFront(activeMaterialDescriptor)));
     designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质到墙的背面', () => applyMaterialToWallBack(activeMaterialDescriptor)));
+    return;
+  }
+
+  if (structure) {
+    const title = document.createElement('p');
+    title.className = 'selection-title';
+    title.textContent = structureType === 'roof' ? '\u5c4b\u9876\u989c\u8272 / \u6750\u8d28' : '\u697c\u68af\u989c\u8272 / \u6750\u8d28';
+    designSelectionPanel.appendChild(title);
+    designSelectionPanel.appendChild(createColorField('\u989c\u8272', structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0'), (color) => {
+      pushHistory();
+      updateStructure(structureType, structure.id, { color, material: color });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    }));
+    designSelectionPanel.appendChild(createApplyMaterialButton('\u5e94\u7528\u5f53\u524d\u6750\u8d28', () => applyMaterialToStructure(activeMaterialDescriptor)));
     return;
   }
 
@@ -1532,11 +2976,73 @@ function createColorField(labelText, value, onChange) {
 
 function revealRightPanelIfNeeded(hasSelection) {
   if (!hasSelection) return;
+  let changed = false;
   const rightPanel = document.getElementById('right-panel');
-  if (rightPanel.classList.contains('collapsed')) {
+  if (rightPanel && rightPanel.classList.contains('collapsed')) {
     rightPanel.classList.remove('collapsed');
-    document.getElementById('btn-toggle-right').textContent = '›';
+    const btnToggleRight = document.getElementById('btn-toggle-right');
+    if (btnToggleRight) btnToggleRight.textContent = '›';
+    changed = true;
   }
+  const leftPanel = document.querySelector('.left-panel');
+  if (leftPanel && leftPanel.classList.contains('collapsed')) {
+    leftPanel.classList.remove('collapsed');
+    const btnToggleLeft = document.getElementById('btn-toggle-left');
+    if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    changed = true;
+  }
+  if (changed) {
+    setTimeout(() => {
+      if (engine) engine.resize();
+    }, 300);
+  }
+}
+
+function getSelectedStructure() {
+  if (selectedRoofId) return { type: 'roof', id: selectedRoofId, value: testMap.getRoof?.(selectedRoofId) };
+  if (selectedStairsId) return { type: 'stairs', id: selectedStairsId, value: testMap.getStairs?.(selectedStairsId) };
+  return null;
+}
+
+function updateSelectedStructure() {
+  const selected = getSelectedStructure();
+  if (!selected?.value) return;
+  pushHistory();
+  const patch = {
+    x: Number(document.getElementById('structure-x').value),
+    z: Number(document.getElementById('structure-z').value),
+    width: Number(document.getElementById('structure-width').value),
+    depth: Number(document.getElementById('structure-depth').value),
+    height: Number(document.getElementById('structure-height').value),
+    rotation: (Number(document.getElementById('structure-rotation').value) || 0) * Math.PI / 180,
+    color: document.getElementById('structure-color').value,
+    material: document.getElementById('structure-color').value
+  };
+  if (selected.type === 'stairs') patch.steps = Number(document.getElementById('structure-steps').value);
+  updateStructure(selected.type, selected.id, patch);
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedStructureRotation(degrees) {
+  const selected = getSelectedStructure();
+  if (!selected?.value) return;
+  pushHistory();
+  updateStructure(selected.type, selected.id, { rotation: (Number(degrees) || 0) * Math.PI / 180 });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function deleteSelectedStructure() {
+  const selected = getSelectedStructure();
+  if (!selected?.value) return;
+  pushHistory();
+  if (selected.type === 'roof') testMap.deleteRoof?.(selected.id);
+  if (selected.type === 'stairs') testMap.deleteStairs?.(selected.id);
+  clearSelection();
+  refreshShadows();
 }
 
 function updateSelectedRoom() {
@@ -1610,9 +3116,18 @@ function updateSelectedRotation() {
 
 function updateSelectedScale(value) {
   if (!selectedItemId) return;
+  const item = testMap.getItem(selectedItemId);
+  if (!item) return;
+  const definition = testMap.getFurnitureDefinition(item.type);
   pushHistory();
   const scale = Math.max(0.5, Math.min(4, Number(value) || 1));
-  testMap.updateItem(selectedItemId, { scale });
+  
+  let patch = { scale };
+  if (definition.placeType === 'ceiling') {
+    patch.elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - item.height * scale;
+  }
+  
+  testMap.updateItem(selectedItemId, patch);
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -1620,12 +3135,28 @@ function updateSelectedScale(value) {
 
 function updateSelectedSize() {
   if (!selectedItemId) return;
+  const item = testMap.getItem(selectedItemId);
+  if (!item) return;
+  const definition = testMap.getFurnitureDefinition(item.type);
   pushHistory();
+  
+  let elevation = Number(document.getElementById('item-elevation').value || 0) * 24;
+  const nextHeight = Number(document.getElementById('item-height').value) * 24;
+  const nextScale = Number(document.getElementById('item-scale').value || 1);
+  
+  if (definition.placeType === 'ceiling') {
+    const curElev = Number(((item.elevation || 0) / 24).toFixed(2));
+    const inputElev = Number(document.getElementById('item-elevation').value || 0);
+    if (curElev === inputElev) {
+      elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - nextHeight * nextScale;
+    }
+  }
+
   testMap.updateItem(selectedItemId, {
     width: Number(document.getElementById('item-width').value) * 24,
     depth: Number(document.getElementById('item-depth').value) * 24,
-    height: Number(document.getElementById('item-height').value) * 24,
-    elevation: Number(document.getElementById('item-elevation').value || 0) * 24
+    height: nextHeight,
+    elevation: elevation
   });
   refreshShadows();
   updateEditor();
@@ -1673,6 +3204,7 @@ function initMaterialControls() {
     const option = document.createElement('option');
     option.value = category.id;
     option.textContent = category.label;
+    if (category.icon) option.setAttribute('data-icon', category.icon);
     materialCategorySelect.appendChild(option);
   });
   materialCategorySelect.value = 'paint';
@@ -1689,11 +3221,11 @@ function renderMaterialLibrary() {
   header.className = 'material-library-header';
   const activeName = activeMaterialDescriptor?.name || '未选择材质';
   header.innerHTML = `<strong>${activeName}</strong>`;
-  const applyFloorButton = document.createElement('button');
-  applyFloorButton.type = 'button';
-  applyFloorButton.textContent = '应用到地板';
-  applyFloorButton.addEventListener('click', () => applyMaterialToFloor(activeMaterialDescriptor));
-  header.appendChild(applyFloorButton);
+  // const applyFloorButton = document.createElement('button');
+  // applyFloorButton.type = 'button';
+  // applyFloorButton.textContent = '应用到地板';
+  // applyFloorButton.addEventListener('click', () => applyMaterialToFloor(activeMaterialDescriptor));
+  // header.appendChild(applyFloorButton);
   materialLibraryPanel.appendChild(header);
 
   const grid = document.createElement('div');
@@ -1787,6 +3319,16 @@ function applyMaterialToItemComponent(componentId, material) {
   renderPlan();
 }
 
+function applyMaterialToStructure(material) {
+  const selected = getSelectedStructure();
+  if (!selected?.value || !material) return;
+  pushHistory();
+  updateStructure(selected.type, selected.id, { material, color: material.color || selected.value.color });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1804,6 +3346,7 @@ function initFurnitureButtons() {
       const opt = document.createElement('option');
       opt.value = cat.id;
       opt.textContent = cat.label;
+      if (cat.icon) opt.setAttribute('data-icon', cat.icon);
       categorySelect.appendChild(opt);
     });
     
@@ -2039,6 +3582,14 @@ document.addEventListener('keydown', (event) => {
       refreshShadows();
       return;
     }
+    if (selectedRoomId) {
+      event.preventDefault();
+      pushHistory();
+      testMap.deleteRoom(selectedRoomId);
+      clearSelection();
+      refreshShadows();
+      return;
+    }
   }
 
   // Ctrl/Meta 撤销与重做
@@ -2112,16 +3663,127 @@ document.querySelectorAll('.mode').forEach((button) => {
   });
 });
 
+const floorFloatingGroup = document.getElementById('floor-floating-group');
+if (floorFloatingGroup) {
+  floorFloatingGroup.addEventListener('click', (event) => {
+    const toggleBtn = event.target.closest('.btn-floor-toggle-expanded');
+    if (toggleBtn) {
+      floorPanelCollapsed = false;
+      syncFloorControls();
+      return;
+    }
+
+    const foldBtn = event.target.closest('.btn-floor-fold');
+    if (foldBtn) {
+      floorPanelCollapsed = true;
+      syncFloorControls();
+      return;
+    }
+
+    const addBtn = event.target.closest('#btn-add-floor');
+    if (addBtn) {
+      showCustomConfirm('复制户型', '是否复制当前户型？').then((copyCurrentFloor) => {
+        const sourceFloorId = testMap.floorplan.currentFloorId;
+        pushHistory();
+        testMap.addFloor(copyCurrentFloor ? { copyFromFloorId: sourceFloorId } : {});
+        clearSelection();
+        syncFloorControls();
+        refreshShadows();
+        renderPlan();
+      });
+      return;
+    }
+
+    const floorBtn = event.target.closest('[data-floor-id]');
+    if (floorBtn) {
+      const floorId = floorBtn.dataset.floorId;
+      testMap.setCurrentFloor(floorId);
+      clearSelection();
+      syncFloorControls();
+      refreshShadows();
+      renderPlan();
+    }
+  });
+}
+
+stage.addEventListener('contextmenu', (event) => {
+  const alreadyHandled = event.defaultPrevented;
+  event.preventDefault();
+  if (alreadyHandled) return;
+  const target = currentView === '2d' ? get2DContextTargetFromElement(event.target) : null;
+  if (target) {
+    event.stopPropagation();
+    showObjectContextMenu(target, event.clientX, event.clientY);
+  }
+});
+
+stage.addEventListener('pointerdown', (event) => {
+  if (currentView !== '2d' || event.pointerType === 'mouse' || event.button === 2) return;
+  const target = get2DContextTargetFromElement(event.target);
+  if (!target) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  cancelLongPress();
+  longPressState = {
+    pointerId: event.pointerId,
+    startX,
+    startY,
+    timer: window.setTimeout(() => {
+      longPressState = null;
+      cancelObjectInteractions();
+      showObjectContextMenu(target, startX, startY);
+    }, 620)
+  };
+});
+
+['copy', 'cut', 'paste', 'selectstart', 'dragstart'].forEach((eventName) => {
+  stage.addEventListener(eventName, (event) => event.preventDefault());
+});
+document.addEventListener('pointermove', (event) => {
+  if (!longPressState || longPressState.pointerId !== event.pointerId) return;
+  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > 8) cancelLongPress();
+});
+
+document.addEventListener('pointerup', cancelLongPress);
+document.addEventListener('pointercancel', cancelLongPress);
+document.addEventListener('pointerdown', (event) => {
+  if (!contextMenuElement || contextMenuElement.contains(event.target)) return;
+  hideContextMenu();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') hideContextMenu();
+});
+window.addEventListener('resize', hideContextMenu);
 document.getElementById('item-grid').addEventListener('click', (event) => {
   const button = event.target.closest('[data-add-item]');
   if (!button) return;
   const type = button.dataset.addItem;
   const definition = testMap.getFurnitureDefinition(type);
-  const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.floorplan.floor.rooms[0];
+  const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : currentRooms()[0];
   const x = room ? room.x : 0;
   const z = room ? room.z : 0;
   pushHistory();
-  const item = testMap.addItem({ type, ...definition.defaultSize, x, z, roomId: room?.id });
+  let elevation = undefined;
+  if (definition.placeType === 'ceiling') {
+    elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - (definition.defaultSize.height || 0);
+  } else if (canPlaceOnTable({ x, z, floorId: testMap.floorplan.currentFloorId, width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
+    const tableBelow = findTableBelow({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
+    if (tableBelow) {
+      const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
+      elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+    } else {
+      elevation = 0;
+    }
+  }
+  const item = testMap.addItem({ 
+    type, 
+    ...definition.defaultSize, 
+    x, 
+    z, 
+    elevation,
+    roomId: room?.id, 
+    floorId: testMap.floorplan.currentFloorId 
+  });
   if (room) testMap.assignItemToRoom(item.id, room.id);
   refreshShadows();
   selectItem(item.id);
@@ -2130,6 +3792,20 @@ document.getElementById('item-grid').addEventListener('click', (event) => {
 ['room-width', 'room-depth', 'room-name'].forEach((id) => {
   document.getElementById(id).addEventListener('change', updateSelectedRoom);
 });
+
+['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-color'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
+});
+document.getElementById('structure-rotation')?.addEventListener('change', (event) => {
+  const degrees = (Number(event.target.value) || 0) % 360;
+  document.getElementById('structure-rotation-range').value = degrees;
+  updateSelectedStructureRotation(degrees);
+});
+document.getElementById('structure-rotation-range')?.addEventListener('input', (event) => {
+  document.getElementById('structure-rotation').value = event.target.value;
+  updateSelectedStructureRotation(event.target.value);
+});
+document.getElementById('btn-delete-structure')?.addEventListener('click', deleteSelectedStructure);
 
 ['item-width', 'item-depth', 'item-height', 'item-elevation'].forEach((id) => {
   document.getElementById(id).addEventListener('change', updateSelectedSize);
@@ -2229,12 +3905,14 @@ document.getElementById('opening-flip-io').addEventListener('change', (event) =>
 document.getElementById('snap-enabled').addEventListener('change', (event) => {
   snapEnabled = event.target.checked;
   renderPlan();
+  refresh3DGrid();
 });
 
 document.getElementById('snap-size').addEventListener('change', (event) => {
   snapSize = 1;
   event.target.value = '1';
   renderPlan();
+  refresh3DGrid();
 });
 
 document.getElementById('btn-delete-item').addEventListener('click', () => {
@@ -2250,6 +3928,14 @@ document.getElementById('btn-delete-opening').addEventListener('click', () => {
   if (!selectedOpeningId) return;
   pushHistory();
   testMap.deleteOpening(selectedOpeningId);
+  clearSelection();
+  refreshShadows();
+});
+
+document.getElementById('btn-delete-room').addEventListener('click', () => {
+  if (!selectedRoomId) return;
+  pushHistory();
+  testMap.deleteRoom(selectedRoomId);
   clearSelection();
   refreshShadows();
 });
@@ -2329,6 +4015,7 @@ async function loadBuildingFile(file) {
   const text = await file.text();
   pushHistory();
   testMap.loadBuildingFile(text);
+  syncFloorControls();
   resetInteractionState();
   refreshShadows();
   updateEditor();
@@ -2355,13 +4042,14 @@ buildingFileInput.addEventListener('change', async (event) => {
     await loadBuildingFile(event.target.files?.[0]);
   } catch (error) {
     console.error(error);
-    alert('建筑文件加载失败，请确认它是 blueprint3d-babylon 建筑文件。');
+    await showCustomAlert('加载失败', '建筑文件加载失败，请确认它是 blueprint3d-babylon 建筑文件。');
   }
 });
 
 document.getElementById('btn-new').addEventListener('click', () => {
   pushHistory();
   testMap.loadJSON(BLUEPRINT3D_TEST_FLOORPLAN);
+  syncFloorControls();
   resetInteractionState();
   refreshShadows();
   updateEditor();
@@ -2386,7 +4074,311 @@ btnToggleRight.addEventListener('click', (event) => {
   event.stopPropagation();
   const isCollapsed = rightPanel.classList.toggle('collapsed');
   btnToggleRight.textContent = isCollapsed ? '‹' : '›';
+  setTimeout(() => {
+    if (engine) engine.resize();
+  }, 300);
 });
+
+const btnToggleLeft = document.getElementById('btn-toggle-left');
+const leftPanel = document.querySelector('.left-panel');
+
+if (btnToggleLeft && leftPanel) {
+  btnToggleLeft.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const isCollapsed = leftPanel.classList.toggle('collapsed');
+    btnToggleLeft.textContent = isCollapsed ? '›' : '‹';
+    setTimeout(() => {
+      if (engine) engine.resize();
+    }, 300);
+  });
+}
+
+// ==========================================
+// 自定义弹窗系统 (已去除磨砂玻璃)
+// ==========================================
+
+function showCustomConfirm(title, message = '') {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'custom-modal-backdrop';
+    
+    let finalTitle = title;
+    let finalMessage = message;
+    if (!message) {
+      finalTitle = '提示';
+      finalMessage = title;
+    }
+
+    backdrop.innerHTML = `
+      <div class="custom-modal-container">
+        <div class="custom-modal-header">
+          <div class="custom-modal-icon-wrapper confirm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 class="custom-modal-title">${finalTitle}</h3>
+        </div>
+        <div class="custom-modal-body">${finalMessage}</div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">取消</button>
+          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-confirm">确认</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(backdrop);
+    backdrop.getBoundingClientRect();
+    backdrop.classList.add('active');
+    
+    let isCleaned = false;
+    const cleanup = (value) => {
+      if (isCleaned) return;
+      isCleaned = true;
+      backdrop.classList.remove('active');
+      window.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => {
+        backdrop.remove();
+      }, 200);
+      resolve(value);
+    };
+
+    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(false));
+    backdrop.querySelector('#custom-modal-confirm').addEventListener('click', () => cleanup(true));
+    
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        cleanup(false);
+      }
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+  });
+}
+
+function showCustomAlert(title, message = '') {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'custom-modal-backdrop';
+    
+    let finalTitle = title;
+    let finalMessage = message;
+    if (!message) {
+      finalTitle = '提示';
+      finalMessage = title;
+    }
+
+    backdrop.innerHTML = `
+      <div class="custom-modal-container">
+        <div class="custom-modal-header">
+          <div class="custom-modal-icon-wrapper alert">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 class="custom-modal-title">${finalTitle}</h3>
+        </div>
+        <div class="custom-modal-body">${finalMessage}</div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-ok">确定</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(backdrop);
+    backdrop.getBoundingClientRect();
+    backdrop.classList.add('active');
+    
+    let isCleaned = false;
+    const cleanup = () => {
+      if (isCleaned) return;
+      isCleaned = true;
+      backdrop.classList.remove('active');
+      window.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => {
+        backdrop.remove();
+      }, 200);
+      resolve();
+    };
+
+    backdrop.querySelector('#custom-modal-ok').addEventListener('click', cleanup);
+    
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        cleanup();
+      }
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        cleanup();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+  });
+}
+
+// ==========================================
+// 自定义下拉选择器组件
+// ==========================================
+
+function createCustomDropdown(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return null;
+
+  // 隐藏原生的 select 标签
+  select.style.display = 'none';
+
+  // 创建自定义下拉框的外层容器
+  const container = document.createElement('div');
+  container.className = 'custom-dropdown';
+  container.id = `${selectId}-custom-container`;
+  
+  // 创建触发按钮 Trigger
+  const trigger = document.createElement('div');
+  trigger.className = 'custom-dropdown-trigger';
+  
+  trigger.innerHTML = `
+    <span class="custom-dropdown-text"></span>
+    <svg class="custom-dropdown-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+  `;
+  
+  // 创建选项浮层 Menu
+  const menu = document.createElement('div');
+  menu.className = 'custom-dropdown-menu';
+  
+  container.appendChild(trigger);
+  container.appendChild(menu);
+  
+  // 插入到 DOM 中，紧随在原生 select 后面
+  select.parentNode.insertBefore(container, select.nextSibling);
+
+  // 更新触发器文本和图标
+  function updateTriggerDisplay(selectedOption) {
+    if (!selectedOption) return;
+    const iconContent = selectedOption.getAttribute('data-icon') || '';
+    trigger.querySelector('.custom-dropdown-text').innerHTML = `
+      ${iconContent ? `<svg class="custom-dropdown-trigger-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconContent}</svg>` : ''}
+      <span>${selectedOption.textContent}</span>
+    `;
+  }
+
+  // 渲染菜单选项列表
+  function syncOptions() {
+    menu.innerHTML = '';
+    const options = Array.from(select.options);
+    
+    if (options.length === 0) {
+      trigger.querySelector('.custom-dropdown-text').textContent = '无选项';
+      return;
+    }
+
+    // 选中值
+    const selectedOption = select.options[select.selectedIndex] || options[0];
+    updateTriggerDisplay(selectedOption);
+
+    options.forEach((opt) => {
+      const item = document.createElement('div');
+      item.className = 'custom-dropdown-item';
+      if (opt.value === select.value) {
+        item.classList.add('selected');
+      }
+      
+      const iconContent = opt.getAttribute('data-icon') || '';
+      item.innerHTML = `
+        ${iconContent ? `<svg class="custom-dropdown-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconContent}</svg>` : ''}
+        <span class="custom-dropdown-item-text">${opt.textContent}</span>
+      `;
+      item.dataset.value = opt.value;
+      
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // 设值并触发 change 事件
+        select.value = opt.value;
+        select.dispatchEvent(new Event('change'));
+        
+        // 更新 UI
+        updateTriggerDisplay(opt);
+        Array.from(menu.children).forEach(child => child.classList.remove('selected'));
+        item.classList.add('selected');
+        
+        closeMenu();
+      });
+      
+      menu.appendChild(item);
+    });
+  }
+
+  function openMenu() {
+    container.classList.add('active');
+    document.addEventListener('click', handleOutsideClick);
+  }
+
+  function closeMenu() {
+    container.classList.remove('active');
+    document.removeEventListener('click', handleOutsideClick);
+  }
+
+  function handleOutsideClick(e) {
+    if (!container.contains(e.target)) {
+      closeMenu();
+    }
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (container.classList.contains('active')) {
+      closeMenu();
+    } else {
+      // 关闭页面上其他已激活的下拉框
+      document.querySelectorAll('.custom-dropdown.active').forEach(dropdown => {
+        if (dropdown !== container) {
+          dropdown.classList.remove('active');
+        }
+      });
+      openMenu();
+    }
+  });
+
+  // 1. 监听原生 select 选项的动态变化 (通过 MutationObserver 自动更新)
+  const observer = new MutationObserver(() => {
+    syncOptions();
+  });
+  observer.observe(select, { childList: true, subtree: true });
+
+  // 2. 监听原生 select 值的变更 (防范代码层面的修改，确保数据回流更新)
+  select.addEventListener('change', () => {
+    const selectedOpt = select.options[select.selectedIndex];
+    if (selectedOpt) {
+      updateTriggerDisplay(selectedOpt);
+      Array.from(menu.children).forEach(child => {
+        if (child.dataset.value === select.value) {
+          child.classList.add('selected');
+        } else {
+          child.classList.remove('selected');
+        }
+      });
+    }
+  });
+
+  // 初始化首次同步
+  syncOptions();
+
+  return {
+    destroy() {
+      observer.disconnect();
+      container.remove();
+      select.style.display = '';
+    }
+  };
+}
 
 
 

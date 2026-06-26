@@ -447,3 +447,408 @@ export const mannequinFurniture = {
   }
 };
 
+// 13. 球形仙人掌 (Cactus)
+export const cactusFurniture = {
+  type: 'cactus',
+  name: '球形仙人掌',
+  defaultSize: { width: 14, depth: 14, height: 16 },
+  components: [
+    { id: 'cactus-body', label: '仙人掌球', defaultColor: '#4caf50' },
+    { id: 'cactus-pot', label: '红陶小花盆', defaultColor: '#d7ccc8' },
+    { id: 'cactus-flower', label: '顶部小红花', defaultColor: '#ff4081' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.38;
+    const bodyD = size.width * 0.86;
+    const flowerD = size.width * 0.22;
+
+    cylinderComponent(registry, item, cactusFurniture, 'cactus-pot', {
+      diameterTop: size.width * 0.86, diameterBottom: size.width * 0.72, height: potH, tessellation: 12
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    sphereComponent(registry, item, cactusFurniture, 'cactus-body', {
+      diameter: bodyD, segments: 12
+    }, { position: { x: 0, y: potH + bodyD / 2 - 0.01, z: 0 } }, { parent: node });
+
+    sphereComponent(registry, item, cactusFurniture, 'cactus-flower', {
+      diameter: flowerD, segments: 8
+    }, { position: { x: 0, y: potH + bodyD - 0.02, z: 0 } }, { parent: node });
+  }
+};
+
+// 14. 北欧龟背竹 (Monstera)
+export const monsteraFurniture = {
+  type: 'monstera',
+  name: '北欧龟背竹',
+  defaultSize: { width: 32, depth: 32, height: 48 },
+  components: [
+    { id: 'monstera-pot', label: '极简白瓷盆', defaultColor: '#eceff1' },
+    { id: 'monstera-stem', label: '龟背竹叶茎', defaultColor: '#4caf50' },
+    { id: 'monstera-leaf', label: '龟背竹叶片', defaultColor: '#2e7d32' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.25;
+    const stemH = size.height * 0.75;
+
+    cylinderComponent(registry, item, monsteraFurniture, 'monstera-pot', {
+      diameterTop: size.width * 0.62, diameterBottom: size.width * 0.50, height: potH, tessellation: 16
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, monsteraFurniture, 'monstera-stem', {
+      diameterTop: 0.012, diameterBottom: 0.016, height: stemH, tessellation: 8
+    }, { position: { x: 0, y: potH + stemH / 2, z: 0 } }, { parent: node });
+
+    const leafCount = 4;
+    for (let i = 0; i < leafCount; i++) {
+      const angle = (i * Math.PI * 2) / leafCount;
+      const leafH = potH + stemH * (0.4 + i * 0.18);
+      
+      const subStem = cylinderComponent(registry, item, monsteraFurniture, 'monstera-stem', {
+        diameterTop: 0.008, diameterBottom: 0.008, height: size.width * 0.38, tessellation: 6
+      }, { position: { x: Math.cos(angle) * size.width * 0.12, y: leafH, z: Math.sin(angle) * size.width * 0.12 } }, { parent: node });
+      subStem.rotation.z = Math.sin(angle) * 0.4;
+      subStem.rotation.x = Math.cos(angle) * 0.4;
+
+      const leaf = boxComponent(registry, item, monsteraFurniture, 'monstera-leaf', {
+        width: size.width * 0.38, height: 0.008, depth: size.width * 0.44
+      }, { position: { x: Math.cos(angle) * size.width * 0.3, y: leafH + 0.06, z: Math.sin(angle) * size.width * 0.3 } }, { parent: node });
+      leaf.rotation.y = -angle;
+      leaf.rotation.x = 0.25;
+    }
+  }
+};
+
+// 15. 多肉小盆栽 (Succulent)
+export const succulentFurniture = {
+  type: 'succulent',
+  name: '多肉小盆栽',
+  defaultSize: { width: 10, depth: 10, height: 10 },
+  components: [
+    { id: 'succulent-pot', label: '马卡龙矮盆', defaultColor: '#ffffff' },
+    { id: 'succulent-leaves', label: '多肉饱满叶瓣', defaultColor: '#80cbc4' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.44;
+    const leafSize = size.width * 0.24;
+
+    cylinderComponent(registry, item, succulentFurniture, 'succulent-pot', {
+      diameterTop: size.width * 0.94, diameterBottom: size.width * 0.84, height: potH, tessellation: 12
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    const leafCount = 6;
+    for (let i = 0; i < leafCount; i++) {
+      const angle = (i * Math.PI * 2) / leafCount;
+      const radius = size.width * 0.22;
+      const leaf = sphereComponent(registry, item, succulentFurniture, 'succulent-leaves', {
+        diameter: leafSize, segments: 8
+      }, { position: { x: Math.cos(angle) * radius, y: potH + 0.01, z: Math.sin(angle) * radius } }, { parent: node });
+      leaf.scaling.y = 0.6;
+    }
+    const centerLeaf = sphereComponent(registry, item, succulentFurniture, 'succulent-leaves', {
+      diameter: leafSize * 0.8, segments: 8
+    }, { position: { x: 0, y: potH + 0.02, z: 0 } }, { parent: node });
+    centerLeaf.scaling.y = 0.8;
+  }
+};
+
+// 16. 水培富贵竹 (Bamboo)
+export const bambooFurniture = {
+  type: 'bamboo',
+  name: '水培富贵竹',
+  defaultSize: { width: 16, depth: 16, height: 54 },
+  components: [
+    { id: 'bamboo-vase', label: '玻璃水培瓶', defaultColor: '#e0f7fa' },
+    { id: 'bamboo-stem', label: '富贵竹青干', defaultColor: '#388e3c' }
+  ],
+  build(registry, item, node, size) {
+    const vaseH = size.height * 0.35;
+    const stemH = size.height * 0.94;
+
+    cylinderComponent(registry, item, bambooFurniture, 'bamboo-vase', {
+      diameterTop: size.width * 0.52, diameterBottom: size.width * 0.62, height: vaseH, tessellation: 16
+    }, { position: { x: 0, y: vaseH / 2, z: 0 } }, { parent: node });
+
+    const offsets = [
+      { x: -0.015, z: -0.015, rx: 0.08, rz: -0.04, h: stemH },
+      { x: 0.02, z: -0.01, rx: -0.06, rz: 0.06, h: stemH * 0.92 },
+      { x: -0.005, z: 0.02, rx: 0.04, rz: -0.08, h: stemH * 0.86 }
+    ];
+
+    offsets.forEach((offset) => {
+      const stem = cylinderComponent(registry, item, bambooFurniture, 'bamboo-stem', {
+        diameterTop: 0.01, diameterBottom: 0.014, height: offset.h, tessellation: 8
+      }, { position: { x: offset.x, y: offset.h / 2, z: offset.z } }, { parent: node });
+      stem.rotation.x = offset.rx;
+      stem.rotation.z = offset.rz;
+    });
+  }
+};
+
+// 17. 绿意垂耳蕨 (Fern)
+export const fernFurniture = {
+  type: 'fern',
+  name: '绿意垂耳蕨',
+  defaultSize: { width: 28, depth: 28, height: 26 },
+  components: [
+    { id: 'fern-pot', label: '红陶阔口盆', defaultColor: '#b0bec5' },
+    { id: 'fern-leaves', label: '下垂羽状蕨叶', defaultColor: '#1b5e20' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.38;
+
+    cylinderComponent(registry, item, fernFurniture, 'fern-pot', {
+      diameterTop: size.width * 0.58, diameterBottom: size.width * 0.44, height: potH, tessellation: 12
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    const leafCount = 8;
+    for (let i = 0; i < leafCount; i++) {
+      const angle = (i * Math.PI * 2) / leafCount;
+      const leafL = size.width * 0.48;
+      const leafW = size.width * 0.16;
+
+      const leaf = boxComponent(registry, item, fernFurniture, 'fern-leaves', {
+        width: leafW, height: 0.006, depth: leafL
+      }, { position: { x: Math.cos(angle) * leafL * 0.38, y: potH + 0.02, z: Math.sin(angle) * leafL * 0.38 } }, { parent: node });
+      
+      leaf.rotation.y = -angle;
+      leaf.rotation.x = 0.4;
+    }
+  }
+};
+
+// 18. 罗汉松古朴盆景 (Bonsai)
+export const bonsaiFurniture = {
+  type: 'bonsai',
+  name: '古朴迎客松盆景',
+  defaultSize: { width: 36, depth: 24, height: 32 },
+  components: [
+    { id: 'bonsai-pot', label: '紫砂长方浅盆', defaultColor: '#5d4037' },
+    { id: 'bonsai-trunk', label: '苍劲曲折树干', defaultColor: '#3e2723' },
+    { id: 'bonsai-leaves', label: '葱郁松针簇', defaultColor: '#004d40' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.18;
+
+    boxComponent(registry, item, bonsaiFurniture, 'bonsai-pot', {
+      width: size.width * 0.86, height: potH, depth: size.depth * 0.86
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    const trunkH = size.height * 0.58;
+    const trunk = cylinderComponent(registry, item, bonsaiFurniture, 'bonsai-trunk', {
+      diameterTop: 0.016, diameterBottom: 0.026, height: trunkH, tessellation: 8
+    }, { position: { x: -size.width * 0.1, y: potH + trunkH / 2 - 0.01, z: 0 } }, { parent: node });
+    trunk.rotation.z = -0.38;
+
+    const clusterPositions = [
+      { x: size.width * 0.1, y: potH + trunkH - 0.01, z: 0, d: size.width * 0.38 },
+      { x: size.width * 0.22, y: potH + trunkH * 0.86, z: size.depth * 0.15, d: size.width * 0.3 },
+      { x: size.width * 0.18, y: potH + trunkH * 0.74, z: -size.depth * 0.15, d: size.width * 0.32 }
+    ];
+
+    clusterPositions.forEach((pos) => {
+      sphereComponent(registry, item, bonsaiFurniture, 'bonsai-leaves', {
+        diameter: pos.d, segments: 12
+      }, { position: { x: pos.x, y: pos.y, z: pos.z } }, { parent: node });
+    });
+  }
+};
+
+// 19. 经典红玫瑰盆栽 (Rose Pot)
+export const flowerRoseFurniture = {
+  type: 'flower_rose',
+  name: '红玫瑰陶瓷盆栽',
+  defaultSize: { width: 18, depth: 18, height: 28 },
+  components: [
+    { id: 'rose-pot', label: '北欧浮雕白盆', defaultColor: '#f5f5f5' },
+    { id: 'rose-stem', label: '带刺青绿枝条', defaultColor: '#2e7d32' },
+    { id: 'rose-bloom', label: '娇艳红玫瑰花', defaultColor: '#e91e63' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.28;
+    const stemH = size.height * 0.58;
+
+    cylinderComponent(registry, item, flowerRoseFurniture, 'rose-pot', {
+      diameterTop: size.width * 0.78, diameterBottom: size.width * 0.58, height: potH, tessellation: 12
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, flowerRoseFurniture, 'rose-stem', {
+      diameterTop: 0.008, diameterBottom: 0.012, height: stemH, tessellation: 6
+    }, { position: { x: 0, y: potH + stemH / 2, z: 0 } }, { parent: node });
+
+    const blooms = [
+      { x: 0, y: potH + stemH, z: 0, d: size.width * 0.28 },
+      { x: -size.width * 0.12, y: potH + stemH * 0.86, z: size.depth * 0.08, d: size.width * 0.24 },
+      { x: size.width * 0.1, y: potH + stemH * 0.78, z: -size.depth * 0.1, d: size.width * 0.22 }
+    ];
+
+    blooms.forEach((bloom) => {
+      if (bloom.x !== 0) {
+        const subStem = cylinderComponent(registry, item, flowerRoseFurniture, 'rose-stem', {
+          diameterTop: 0.006, diameterBottom: 0.006, height: size.width * 0.22, tessellation: 6
+        }, { position: { x: bloom.x * 0.5, y: bloom.y - 0.02, z: bloom.z * 0.5 } }, { parent: node });
+        subStem.rotation.z = bloom.x < 0 ? 0.6 : -0.6;
+      }
+
+      sphereComponent(registry, item, flowerRoseFurniture, 'rose-bloom', {
+        diameter: bloom.d, segments: 10
+      }, { position: { x: bloom.x, y: bloom.y, z: bloom.z } }, { parent: node });
+    });
+  }
+};
+
+// 20. 虎尾兰盆栽 (Snake Plant)
+export const snakePlantFurniture = {
+  type: 'snake_plant',
+  name: '虎尾兰盆栽',
+  defaultSize: { width: 16, depth: 16, height: 42 },
+  components: [
+    { id: 'snake-pot', label: '北欧水泥直筒盆', defaultColor: '#cfd8dc' },
+    { id: 'snake-leaves', label: '挺拔虎纹剑叶', defaultColor: '#2d5a27' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.32;
+
+    cylinderComponent(registry, item, snakePlantFurniture, 'snake-pot', {
+      diameterTop: size.width * 0.84, diameterBottom: size.width * 0.84, height: potH, tessellation: 16
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    const leaves = [
+      { ry: 0, h: size.height * 0.64, w: size.width * 0.24, x: -size.width * 0.1, z: 0, rx: 0.1, rz: 0.05 },
+      { ry: Math.PI * 0.4, h: size.height * 0.58, w: size.width * 0.22, x: size.width * 0.08, z: -size.width * 0.06, rx: -0.08, rz: -0.06 },
+      { ry: Math.PI * 0.8, h: size.height * 0.68, w: size.width * 0.24, x: size.width * 0.05, z: size.width * 0.08, rx: 0.05, rz: -0.1 },
+      { ry: Math.PI * 1.2, h: size.height * 0.52, w: size.width * 0.20, x: -size.width * 0.08, z: -size.width * 0.08, rx: -0.1, rz: 0.08 },
+      { ry: Math.PI * 1.6, h: size.height * 0.48, w: size.width * 0.18, x: 0, z: -size.width * 0.1, rx: -0.05, rz: 0.05 }
+    ];
+
+    leaves.forEach((l) => {
+      const leaf = boxComponent(registry, item, snakePlantFurniture, 'snake-leaves', {
+        width: l.w, height: l.h, depth: size.width * 0.038
+      }, { position: { x: l.x, y: potH + l.h / 2 - 0.02, z: l.z } }, { parent: node });
+      
+      leaf.rotation.y = l.ry;
+      leaf.rotation.x = l.rx;
+      leaf.rotation.z = l.rz;
+    });
+  }
+};
+
+// 21. 叠放书籍摆件 (Books Stack)
+export const booksStackFurniture = {
+  type: 'books_stack',
+  name: '叠放书籍摆件',
+  defaultSize: { width: 22, depth: 18, height: 10 },
+  components: [
+    { id: 'book-bottom', label: '底册经典红', defaultColor: '#c62828' },
+    { id: 'book-mid', label: '中册学术蓝', defaultColor: '#1565c0' },
+    { id: 'book-top', label: '顶册活力橙', defaultColor: '#ef6c00' }
+  ],
+  build(registry, item, node, size) {
+    const bottomH = size.height * 0.35;
+    const midH = size.height * 0.30;
+    const topH = size.height * 0.25;
+
+    boxComponent(registry, item, booksStackFurniture, 'book-bottom', {
+      width: size.width * 0.94, height: bottomH, depth: size.depth * 0.94
+    }, { position: { x: 0, y: bottomH / 2, z: 0 } }, { parent: node });
+
+    const mid = boxComponent(registry, item, booksStackFurniture, 'book-mid', {
+      width: size.width * 0.86, height: midH, depth: size.depth * 0.86
+    }, { position: { x: size.width * 0.02, y: bottomH + midH / 2, z: -size.depth * 0.02 } }, { parent: node });
+    mid.rotation.y = 0.26;
+
+    const top = boxComponent(registry, item, booksStackFurniture, 'book-top', {
+      width: size.width * 0.78, height: topH, depth: size.depth * 0.78
+    }, { position: { x: -size.width * 0.02, y: bottomH + midH + topH / 2, z: size.depth * 0.01 } }, { parent: node });
+    top.rotation.y = -0.35;
+  }
+};
+
+// 22. 现代抽象雕塑摆件 (Sculpture)
+export const sculptureFurniture = {
+  type: 'sculpture',
+  name: '现代抽象雕塑',
+  defaultSize: { width: 16, depth: 16, height: 32 },
+  components: [
+    { id: 'sculpture-base', label: '爵士黑底座', defaultColor: '#212121' },
+    { id: 'sculpture-body', label: '青铜抽象体', defaultColor: '#ffb300' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.22;
+    const bodyH = size.height * 0.78;
+
+    boxComponent(registry, item, sculptureFurniture, 'sculpture-base', {
+      width: size.width * 0.78, height: baseH, depth: size.depth * 0.78
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    const bodyNode = cylinderComponent(registry, item, sculptureFurniture, 'sculpture-body', {
+      diameterTop: size.width * 0.62, diameterBottom: size.width * 0.62, height: 0.03, tessellation: 24
+    }, { position: { x: 0, y: baseH + bodyH * 0.46, z: 0 } }, { parent: node });
+    bodyNode.rotation.x = Math.PI * 0.25;
+    bodyNode.rotation.y = Math.PI * 0.12;
+
+    sphereComponent(registry, item, sculptureFurniture, 'sculpture-body', {
+      diameter: size.width * 0.32, segments: 12
+    }, { position: { x: 0, y: baseH + bodyH * 0.46, z: 0 } }, { parent: node });
+  }
+};
+
+// 23. 椭圆地毯 (Oval Rug)
+export const ovalRugFurniture = {
+  type: 'oval_rug',
+  name: '椭圆地毯',
+  defaultSize: { width: 60, depth: 84, height: 0.4 },
+  components: [
+    { id: 'fabric', label: '地毯织面', defaultColor: '#8fa6cc' }
+  ],
+  build(registry, item, node, size) {
+    const rugThickness = 0.008;
+    const mesh = cylinderComponent(registry, item, ovalRugFurniture, 'fabric', {
+      diameterTop: 1, diameterBottom: 1, height: rugThickness, tessellation: 32
+    }, { position: { x: 0, y: rugThickness / 2 + 0.002, z: 0 } }, { parent: node });
+    mesh.scaling.x = size.width;
+    mesh.scaling.z = size.depth;
+  }
+};
+
+// 24. 圆角地毯 (Rounded Rug)
+export const roundedRugFurniture = {
+  type: 'rounded_rug',
+  name: '圆角地毯',
+  defaultSize: { width: 60, depth: 84, height: 0.4 },
+  components: [
+    { id: 'fabric', label: '地毯织面', defaultColor: '#cc8fa6' }
+  ],
+  build(registry, item, node, size) {
+    const rugThickness = 0.008;
+    const r = Math.min(size.width, size.depth) * 0.15;
+    const w = size.width;
+    const d = size.depth;
+    const h = rugThickness;
+
+    // 1. 横向主盒子
+    boxComponent(registry, item, roundedRugFurniture, 'fabric', {
+      width: w - 2 * r, height: h, depth: d
+    }, { position: { x: 0, y: h / 2 + 0.002, z: 0 } }, { parent: node });
+
+    // 2. 纵向横跨剩余的中间区域盒子
+    boxComponent(registry, item, roundedRugFurniture, 'fabric', {
+      width: w, height: h, depth: d - 2 * r
+    }, { position: { x: 0, y: h / 2 + 0.002, z: 0 } }, { parent: node });
+
+    // 3. 四个角的圆柱
+    const corners = [
+      { x: w / 2 - r, z: d / 2 - r },
+      { x: -w / 2 + r, z: d / 2 - r },
+      { x: w / 2 - r, z: -d / 2 + r },
+      { x: -w / 2 + r, z: -d / 2 + r }
+    ];
+    corners.forEach(pos => {
+      cylinderComponent(registry, item, roundedRugFurniture, 'fabric', {
+        diameterTop: 2 * r, diameterBottom: 2 * r, height: h, tessellation: 16
+      }, { position: { x: pos.x, y: h / 2 + 0.002, z: pos.z } }, { parent: node });
+    });
+  }
+};
+
+
+

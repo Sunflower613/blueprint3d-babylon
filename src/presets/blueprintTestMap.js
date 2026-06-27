@@ -146,6 +146,7 @@ function normalizeFloorplan(floorplan) {
     if (!room.material || room.material === room.color || room.material === DEFAULT_FLOOR_COLOR) {
       room.material = normalized.floor.material;
     }
+    room.locked = !!room.locked;
   });
   normalized.walls ||= [];
   normalized.openings ||= [];
@@ -165,6 +166,7 @@ function normalizeFloorplan(floorplan) {
     opening.floorId ||= wall?.floorId || DEFAULT_FLOOR_ID;
     opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
     opening.width ||= opening.type === 'door' ? 0.9 : 1.25;
+    opening.locked = !!opening.locked;
     if (opening.type === 'window') {
       opening.height ||= 0.85;
       opening.sillHeight = Math.max(0, Number(opening.sillHeight ?? 1.05));
@@ -184,6 +186,7 @@ function normalizeFloorplan(floorplan) {
     roof.color ||= '#b75b54';
     roof.material ||= roof.color;
     roof.color = materialPreviewColor(roof.material, roof.color || '#b75b54');
+    roof.locked = !!roof.locked;
   });
 
   normalized.stairs.forEach((stairs) => {
@@ -199,6 +202,7 @@ function normalizeFloorplan(floorplan) {
     stairs.color ||= '#d8c0a0';
     stairs.material ||= stairs.color;
     stairs.color = materialPreviewColor(stairs.material, stairs.color || '#d8c0a0');
+    stairs.locked = !!stairs.locked;
   });
 
   normalized.fences.forEach((fence) => {
@@ -212,6 +216,7 @@ function normalizeFloorplan(floorplan) {
     fence.color ||= '#8d6e63';
     fence.material ||= fence.color;
     fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
+    fence.locked = !!fence.locked;
   });
 
   normalized.items.forEach((item) => {
@@ -539,7 +544,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       receiveShadows: true,
       shadowCaster: false
     });
-    piece.metadata = { blueprintRoomId: room.id };
+    piece.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
 
     const ceilingThickness = 0.002;
     const ceilingPiece = createBox(this, `ceiling_${room.id}_${index}`, {
@@ -554,7 +559,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       receiveShadows: true,
       shadowCaster: false
     });
-    ceilingPiece.metadata = { blueprintRoomId: room.id };
+    ceilingPiece.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
   }
 
   buildFloors() {
@@ -568,7 +573,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       });
       const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
       group.position.set(room.x, floorY - this.floorplan.floorHeight / 2, room.z);
-      group.metadata = { blueprintRoomId: room.id };
+      group.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
       this.add(group, { shadowCaster: false });
 
       const roomRect = {
@@ -920,7 +925,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const openingGroup = new BABYLON.TransformNode(`opening_group_${opening.id}`, this.scene);
       openingGroup.position.set(pos.x, floorY + localY, pos.z);
       openingGroup.rotation.y = angle;
-      openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, wallId: opening.wallId, floorId: opening.floorId };
+      openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, wallId: opening.wallId, floorId: opening.floorId, locked: !!opening.locked };
 
       const wallT = this.floorplan.wallThickness;
       const frameT = wallT + 0.02;
@@ -959,7 +964,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       mesh.position.set(roof.x || 0, eaveY, roof.z || 0);
       mesh.rotation.y = roof.rotation || 0;
       mesh.material = material;
-      mesh.metadata = { blueprintRoofId: roof.id, floorId: roof.floorId };
+      mesh.metadata = { blueprintRoofId: roof.id, floorId: roof.floorId, locked: !!roof.locked };
       mesh.receiveShadows = true;
       mesh.parent = this.root;
       this.shadowCasters.push(mesh);
@@ -974,7 +979,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       group.position.set(stairs.x || 0, floorY, stairs.z || 0);
       group.rotation.y = stairs.rotation || 0;
       group.parent = this.root;
-      group.metadata = { blueprintStairsId: stairs.id, floorId: stairs.floorId };
+      group.metadata = { blueprintStairsId: stairs.id, floorId: stairs.floorId, locked: !!stairs.locked };
       const material = createBlueprintMaterial(this.scene, `stairs_${stairs.id}_mat`, stairs.material || stairs.color || '#d8c0a0', {
         fallbackColor: stairs.color || '#d8c0a0',
         flatShading: false
@@ -1009,7 +1014,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       group.position.set((x1 + x2) / 2, floorY, (z1 + z2) / 2);
       group.rotation.y = -angle;
       group.parent = this.root;
-      group.metadata = { blueprintFenceId: fence.id, floorId: fence.floorId, originalLength: length };
+      group.metadata = { blueprintFenceId: fence.id, floorId: fence.floorId, originalLength: length, locked: !!fence.locked };
       
       const material = createBlueprintMaterial(this.scene, `fence_${fence.id}_mat`, fence.material || fence.color || '#8d6e63', {
         fallbackColor: fence.color || '#8d6e63',
@@ -1376,6 +1381,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       width,
       depth,
       floorId: partialRoom.floorId || this.floorplan.currentFloorId,
+      locked: !!partialRoom.locked,
       wallIds: {
         north: `${id}_north`,
         east: `${id}_east`,
@@ -1408,6 +1414,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateRoom(roomId, patch, options = {}) {
     const room = this.getRoom(roomId);
     if (!room) return null;
+    if (room.locked && !('locked' in patch)) return room;
     const previous = { x: room.x, z: room.z, width: room.width, depth: room.depth };
     Object.assign(room, patch);
     room.width = Math.max(1.2, Number(room.width));
@@ -1439,7 +1446,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
   deleteRoom(roomId) {
     const room = this.getRoom(roomId);
-    if (!room) return false;
+    if (!room || room.locked) return false;
     const wallIds = new Set(Object.values(room.wallIds || {}));
     this.floorplan.items = this.floorplan.items.filter((item) => item.floorId !== room.floorId || (item.roomId !== room.id && !pointInRoom(room, item.x, item.z)));
     this.floorplan.openings = this.floorplan.openings.filter((opening) => !wallIds.has(opening.wallId));
@@ -1462,7 +1469,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       type: partialRoof.type || partialRoof.subtype || 'gable',
       subtype: partialRoof.subtype || partialRoof.type || 'gable',
       color: partialRoof.color || '#b75b54',
-      material: partialRoof.material || partialRoof.color || '#b75b54'
+      material: partialRoof.material || partialRoof.color || '#b75b54',
+      locked: !!partialRoof.locked
     };
     this.floorplan.roofs.push(roof);
     this.build();
@@ -1482,7 +1490,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       subtype: partialStairs.subtype || 'straight',
       rotation: partialStairs.rotation || 0,
       color: partialStairs.color || '#d8c0a0',
-      material: partialStairs.material || partialStairs.color || '#d8c0a0'
+      material: partialStairs.material || partialStairs.color || '#d8c0a0',
+      locked: !!partialStairs.locked
     };
     this.floorplan.stairs.push(stairs);
     this.build();
@@ -1496,6 +1505,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateRoof(roofId, patch, rebuild = true) {
     const roof = this.getRoof(roofId);
     if (!roof) return null;
+    if (roof.locked && !('locked' in patch)) return roof;
     Object.assign(roof, patch);
     roof.x = Number(roof.x || 0);
     roof.z = Number(roof.z || 0);
@@ -1512,6 +1522,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   deleteRoof(roofId) {
+    const roof = this.getRoof(roofId);
+    if (!roof || roof.locked) return false;
     const before = this.floorplan.roofs.length;
     this.floorplan.roofs = this.floorplan.roofs.filter((roof) => roof.id !== roofId);
     if (before !== this.floorplan.roofs.length) this.build();
@@ -1525,6 +1537,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateStairs(stairsId, patch, rebuild = true) {
     const stairs = this.getStairs(stairsId);
     if (!stairs) return null;
+    if (stairs.locked && !('locked' in patch)) return stairs;
     Object.assign(stairs, patch);
     stairs.x = Number(stairs.x || 0);
     stairs.z = Number(stairs.z || 0);
@@ -1542,6 +1555,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   deleteStairs(stairsId) {
+    const stairs = this.getStairs(stairsId);
+    if (!stairs || stairs.locked) return false;
     const before = this.floorplan.stairs.length;
     this.floorplan.stairs = this.floorplan.stairs.filter((stairs) => stairs.id !== stairsId);
     if (before !== this.floorplan.stairs.length) this.build();
@@ -1558,7 +1573,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       height: Math.max(0.2, Number(partialFence.height || 1.1)),
       thickness: Math.max(0.04, Number(partialFence.thickness || 0.1)),
       color: partialFence.color || '#8d6e63',
-      material: partialFence.material || partialFence.color || '#8d6e63'
+      material: partialFence.material || partialFence.color || '#8d6e63',
+      locked: !!partialFence.locked
     };
     this.floorplan.fences.push(fence);
     this.build();
@@ -1572,6 +1588,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateFence(fenceId, patch, rebuild = true) {
     const fence = this.getFence(fenceId);
     if (!fence) return null;
+    if (fence.locked && !('locked' in patch)) return fence;
     Object.assign(fence, patch);
     if (patch.from) fence.from = [...patch.from];
     if (patch.to) fence.to = [...patch.to];
@@ -1586,6 +1603,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   deleteFence(fenceId) {
+    const fence = this.getFence(fenceId);
+    if (!fence || fence.locked) return false;
     const before = this.floorplan.fences.length;
     this.floorplan.fences = this.floorplan.fences.filter((fence) => fence.id !== fenceId);
     if (before !== this.floorplan.fences.length) this.build();
@@ -1613,7 +1632,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       wallId,
       t: clamp(t, 0.08, 0.92),
       width: type === 'door' ? 0.9 : 1.25,
-      floorId: wall.floorId || this.floorplan.currentFloorId
+      floorId: wall.floorId || this.floorplan.currentFloorId,
+      locked: false
     };
     if (type === 'window') opening.height = 0.85;
     this.floorplan.openings.push(opening);
@@ -1624,6 +1644,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateOpening(openingId, patch, rebuild = true) {
     const opening = this.getOpening(openingId);
     if (!opening) return null;
+    if (opening.locked && !('locked' in patch)) return opening;
     Object.assign(opening, patch);
     opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
     opening.width = Math.max(0.25, Number(opening.width || (opening.type === 'door' ? 0.9 : 1.25)));
@@ -1661,8 +1682,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
 
   deleteOpening(openingId) {
+    const opening = this.getOpening(openingId);
+    if (!opening || opening.locked) return false;
     this.floorplan.openings = this.floorplan.openings.filter((opening) => opening.id !== openingId);
     this.build();
+    return true;
   }
 
   setFloorColor(color) {

@@ -1401,6 +1401,52 @@ select {
   flex-shrink: 0;
 }
 
+
+.building-tool-group {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tool-group-toggle {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  background: rgba(42, 65, 92, 0.06);
+  border-color: rgba(42, 65, 92, 0.08);
+  color: #2a415c;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tool-group-toggle:hover {
+  background: rgba(42, 65, 92, 0.1);
+  border-color: rgba(42, 65, 92, 0.12);
+  color: #172033;
+}
+
+.tool-group-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.tool-group-toggle[aria-expanded="false"] .tool-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.building-tool-group .segmented {
+  margin-bottom: 0;
+}
+
+.building-tool-group .segmented.hidden {
+  display: none !important;
+}
 /* 建筑工具网格排布 (4列网格卡片化) */
 .floor-tools,
 .roof-tools,

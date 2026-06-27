@@ -63,8 +63,12 @@
               </button>
             </div>
 
-            <h2>屋顶工具</h2>
-            <div class="segmented roof-tools">
+            <div class="building-tool-group" data-tool-group="roof">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="roof-tools">
+                <span>屋顶工具</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="roof-tools" class="segmented roof-tools">
               <button class="mode" type="button" data-mode="add-roof-gable">
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m12 2-8 8h16Z"/></svg>
                 <span class="mode-text">双斜坡</span>
@@ -93,10 +97,15 @@
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><rect x="4" y="14" width="16" height="4" rx="1"/></svg>
                 <span class="mode-text">平屋顶</span>
               </button>
+              </div>
             </div>
 
-            <h2>楼梯工具</h2>
-            <div class="segmented stairs-tools">
+            <div class="building-tool-group" data-tool-group="stairs">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="stairs-tools">
+                <span>楼梯工具</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="stairs-tools" class="segmented stairs-tools">
               <button class="mode" type="button" data-mode="add-stairs-straight">
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20h14"/><path d="M10 16h10"/><path d="M14 12h6"/><path d="M18 8h2"/><path d="M2 20h4v-4h4v-4h4V8h4V4h4"/></svg>
                 <span class="mode-text">直跑楼梯</span>
@@ -121,10 +130,15 @@
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h6 M8 14h6 M14 10h6"/><path d="M2 20 L22 8" stroke-dasharray="2,2"/></svg>
                 <span class="mode-text">悬浮楼梯</span>
               </button>
+              </div>
             </div>
 
-            <h2>栅栏工具</h2>
-            <div class="segmented fence-tools">
+            <div class="building-tool-group" data-tool-group="fence">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="fence-tools">
+                <span>栅栏工具</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="fence-tools" class="segmented fence-tools">
               <button class="mode" type="button" data-mode="draw-fence-picket_wood">
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 8h16M4 16h16"/></svg>
                 <span class="mode-text">木栅栏</span>
@@ -149,6 +163,7 @@
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 6h16M4 20h16M9 6v14M15 6v14"/></svg>
                 <span class="mode-text">玻璃护栏</span>
               </button>
+              </div>
             </div>
 
             <label class="check-field">
@@ -252,6 +267,10 @@
                 <span>宽度（米）</span>
                 <input id="room-depth" type="number" min="1.2" step="0.1" />
               </label>
+              <label class="check-field">
+                <input id="room-locked" type="checkbox" />
+                <span>锁定位置</span>
+              </label>
               <button id="btn-delete-room" type="button" class="danger">删除房间</button>
             </div>
 
@@ -299,6 +318,10 @@
               <label class="field">
                 <span>颜色</span>
                 <input id="fence-color" type="color" />
+              </label>
+              <label class="check-field">
+                <input id="fence-locked" type="checkbox" />
+                <span>锁定位置</span>
               </label>
               <button id="btn-delete-fence" type="button" class="danger">删除栅栏</button>
             </div>
@@ -379,6 +402,10 @@
               <label id="opening-flip-io-field" class="check-field hidden">
                 <input id="opening-flip-io" type="checkbox" />
                 <span>内外翻转</span>
+              </label>
+              <label class="check-field">
+                <input id="opening-locked" type="checkbox" />
+                <span>锁定位置</span>
               </label>
               <button id="btn-delete-opening" type="button" class="danger">删除门窗</button>
             </div>

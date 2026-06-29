@@ -12,10 +12,13 @@
     "./presets/pink-castle": "./src/presets/pinkCastle.js",
     "./presets/blueprint-test-map": "./src/presets/blueprintTestMap.js",
     "./furniture": "./src/furniture/index.js",
+    "./rooms": "./src/rooms/index.js",
+    "./openings": "./src/openings/index.js",
     "./materials": "./src/core/materialCatalog.js"
   },
   "scripts": {
-    "build": "vite build example --outDir ../../dist-blueprint-test --emptyOutDir"
+    "build": "vite build example --outDir ../../dist-blueprint-test --emptyOutDir",
+    "test": "node --test tests/*.test.mjs"
   },
   "peerDependencies": {
     "@babylonjs/core": "^7.11.0"

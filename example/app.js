@@ -1,5 +1,10 @@
 import './styles.css';
+import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners } from './js/editorUi.js';
+import { Store, showToast, formatTimestamp } from './js/Store.js';
+import { EntityManager } from './js/EntityManager.js';
+import { Viewer3D } from './js/Viewer3D.js';
 import * as BABYLON from '@babylonjs/core';
+const furnitureImages = import.meta.glob('../src/furniture/image/*.png', { eager: true });
 import {
   Blueprint3DTestMap,
   BLUEPRINT3D_TEST_FLOORPLAN,
@@ -12,14 +17,35 @@ import {
   stringifyDXF,
   create3MFPackage,
   createDXFFileName,
-  create3MFFileName
+  create3MFFileName,
+  getRoomVertices,
+  pointInRoom,
+  isSymmetricShape
 } from '../src/index.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const INCHES_PER_UNIT = 39.37;
 const view = { width: 720, height: 520, pad: 42, minX: -6.4, maxX: 6.8, minZ: -9.2, maxZ: 4.2 };
-const groundPlane = new BABYLON.Plane(0, 1, 0, 0);
+// groundPlane 已移至 Viewer3D
 
 let mode = 'select';
+
+function isAddRoomMode(value = mode) {
+  return value === 'add-room' || value.startsWith('add-room-');
+}
+
+function roomShapeFromMode(value = mode) {
+  return value === 'add-room' ? 'square' : value.replace('add-room-', '') || 'square';
+}
+
+function getOpeningModeInfo(value = mode) {
+  const match = /^add-(door|window)(?:-(.+))?$/.exec(value);
+  return match ? { type: match[1], shape: match[2] || 'square' } : null;
+}
+
+function isAddOpeningMode(value = mode) {
+  return !!getOpeningModeInfo(value);
+}
 
 function switchToSelectMode() {
   const selectButton = document.querySelector('.mode[data-mode="select"]');
@@ -42,7 +68,6 @@ let selectedRoofId = null;
 let selectedStairsId = null;
 let selectedFenceId = null;
 let drawStart = null;
-let dragState = null;
 let openingDragState = null;
 let wallDragState = null;
 let roomDragState = null;
@@ -58,15 +83,13 @@ let fenceHandleDragState = null;
 let contextMenuElement = null;
 let longPressState = null;
 let snapEnabled = true;
-let show3DGrid = true;
-const grid3DNodes = [];
+// show3DGrid / grid3DNodes 已移至 viewer3d 实例
 let active3DEditTarget = null;
 const editHandleNodes = [];
 let editHandleDragState = null;
 let snapSize = 1;
 let activeMaterialDescriptor = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
-let itemGestureState = null;
 const activePointers = new Map();
 let hasUserZoomedOrPanned = false;
 const viewPointers = new Map();
@@ -75,8 +98,7 @@ let panStart2D = null;
 let prevTouchDist2D = 0;
 let prevTouchCenter2D = null;
 let roomCounter = 1;
-let undoStack = [];
-let redoStack = [];
+// 撤销/重做栈已迁移到 Store.js 管理
 let floorPanelCollapsed = false;
 
 const stage = document.getElementById('stage');
@@ -91,34 +113,110 @@ const materialCategorySelect = document.getElementById('material-category');
 const materialUploadInput = document.getElementById('material-upload');
 const materialLibraryPanel = document.getElementById('material-library');
 
-const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
-const scene = new BABYLON.Scene(engine);
-scene.clearColor = BABYLON.Color4.FromHexString('#eef4fbff');
+// ========== 3D 渲染引擎（Viewer3D 封装） ==========
+const viewer3d = new Viewer3D(canvas);
+const { engine, scene, camera, shadowGenerator } = viewer3d;
 
-const camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 3, Math.PI / 3, 15, new BABYLON.Vector3(0, 0, -2.2), scene);
-camera.attachControl(canvas, true, false, 1);
-// 彻底移除相机自带的键盘输入移动模块，防止其默认的键盘行为（包含旋转和方向键监听）干扰自定义操作
-camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
-camera.lowerRadiusLimit = 5;
-camera.upperRadiusLimit = 28;
-camera.wheelDeltaPercentage = 0.02;
-camera.panningSensibility = 1200;
-camera.panningMouseButton = 1; // 设置鼠标中键为平移控制键
-if (camera.inputs.attached.pointers) {
-  camera.inputs.attached.pointers.buttons = [0, 1]; // 只允许鼠标左键(0)和中键(1)控制相机，避免右键(2)导致相机在右键呼出复制菜单时晃动
-}
-
-const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-hemi.intensity = 0.72;
-const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-0.4, -1, -0.5), scene);
-sun.position.set(8, 12, 8);
-sun.intensity = 0.78;
-
-const shadowGenerator = new BABYLON.ShadowGenerator(1024, sun);
-shadowGenerator.useBlurExponentialShadowMap = true;
-shadowGenerator.blurKernel = 24;
+// 3D 轴/手柄在相机移动时动态调节 scaling，保持在屏幕上的物理大小固定，使缩放太小时也能轻松选中
+scene.onBeforeRenderObservable.add(() => {
+  if (currentView !== '3d' || editHandleNodes.length === 0) return;
+  const cameraPosition = camera.position;
+  editHandleNodes.forEach((node) => {
+    if (node && !node.isDisposed()) {
+      const distance = BABYLON.Vector3.Distance(cameraPosition, node.position);
+      // 距离乘以常数因子，并且设置最小值防止极端情况穿模，默认绝对大小为 1
+      const factor = Math.max(0.1, distance * 0.08);
+      node.scaling.set(factor, factor, factor);
+    }
+  });
+});
 
 let testMap = new Blueprint3DTestMap(scene);
+
+// 初始化物体管理器 EntityManager
+let entityManager = new EntityManager({
+  testMap,
+  getSnapEnabled: () => snapEnabled,
+  getSnapSize: () => snapSize,
+  inchesToWorld: (val) => inchesToWorld(val),
+  getMode: () => mode,
+  getWalls: () => currentWalls(),
+  getRooms: () => currentRooms(),
+  pushHistory: () => pushHistory(),
+  refreshShadows: () => refreshShadows(),
+  updateEditor: () => updateEditor(),
+  renderPlan: () => renderPlan(),
+  clear3DEditHandles: () => clear3DEditHandles(),
+  getSelectedItemId: () => selectedItemId,
+  setSelectedItemId: (val) => { selectedItemId = val; },
+  onSelectionChanged: (type, id) => {
+    if (type === 'item') {
+      selectedRoomId = null;
+      selectedWallId = null;
+      selectedOpeningId = null;
+      selectedRoofId = null;
+      selectedStairsId = null;
+      selectedFenceId = null;
+      testMap.setSelectedWall(null);
+      testMap.setSelectedFence(null);
+    }
+  },
+  svgPointFromEvent: (event) => svgPointFromEvent(event),
+  svgToWorld: (x, y) => svgToWorld(x, y),
+  rememberPointer: (event) => rememberPointer(event),
+  setPointerCapture: (pointerId) => svg.setPointerCapture(pointerId),
+  activePointers: activePointers,
+  pointerDistance: (a, b) => pointerDistance(a, b),
+  pointerAngle: (a, b) => pointerAngle(a, b),
+  canPlaceOnTable: (item, def) => canPlaceOnTable(item, def),
+  findTableBelow: (item) => findTableBelow(item),
+  findNearestSeat: (item) => findNearestSeat(item)
+});
+
+// ==========================================
+// 初始化数据中心 Store
+// ==========================================
+const store = new Store({
+  getSnapshot: () => testMap.exportJSON(),
+  applySnapshot: (data) => {
+    testMap.loadJSON(data);
+    syncFloorControls();
+    selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
+    selectedWallId = selectedWallId && testMap.getWall(selectedWallId) ? selectedWallId : null;
+    selectedItemId = selectedItemId && testMap.getItem(selectedItemId) ? selectedItemId : null;
+    selectedOpeningId = selectedOpeningId && testMap.getOpening(selectedOpeningId) ? selectedOpeningId : null;
+    selectedRoofId = selectedRoofId && testMap.getRoof?.(selectedRoofId) ? selectedRoofId : null;
+    selectedStairsId = selectedStairsId && testMap.getStairs?.(selectedStairsId) ? selectedStairsId : null;
+    selectedFenceId = selectedFenceId && testMap.getFence?.(selectedFenceId) ? selectedFenceId : null;
+    testMap.setSelectedItem(selectedItemId);
+    testMap.setSelectedWall(selectedWallId);
+    refreshShadows();
+    updateEditor();
+    renderPlan();
+  },
+});
+
+// 监听历史栈变化，同步撤销/重做按钮状态
+store.on('historyChanged', updateHistoryButtons);
+
+// 监听自动保存完成，显示 toast 提示
+store.on('autoSaved', () => {
+  showToast('✓ 已自动保存');
+});
+
+// 监听保存失败
+store.on('saveError', () => {
+  showToast('⚠ 自动保存失败，localStorage 空间可能不足');
+});
+
+// 启动 10 分钟自动保存
+store.startAutoSave(() => ({
+  materialLibrary: materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id)),
+  uiState: {
+    currentFloorId: testMap.floorplan.currentFloorId,
+    currentView,
+  },
+}));
 
 ensureBuildingToolControls();
 ensure3DGridControls();
@@ -132,112 +230,109 @@ refreshShadows();
 selectItem(testMap.floorplan.items[0]?.id || null);
 setView('2d');
 updateHistoryButtons();
-
-engine.runRenderLoop(() => scene.render());
-window.addEventListener('resize', () => engine.resize());
-
-function cloneData(value) {
-  return JSON.parse(JSON.stringify(value));
+const snapToggleBtn = document.getElementById('btn-snap-toggle');
+if (snapToggleBtn) {
+  snapToggleBtn.classList.toggle('deactivated', !snapEnabled);
 }
 
-function snapshot() {
-  return cloneData(testMap.exportJSON());
-}
+// 启动时检查是否有本地保存的数据，直接恢复（不再弹出确认框）
+(function autoRestoreLocalSave() {
+  if (store.hasLocalSave()) {
+    const saved = store.loadFromLocal();
+    if (saved.buildingData) {
+      testMap.loadJSON(saved.buildingData);
+      syncFloorControls();
+      hasUserZoomedOrPanned = false;
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+      showToast('已自动恢复本地数据');
+    }
+    if (saved.materialLibrary && saved.materialLibrary.length) {
+      saved.materialLibrary.forEach((m) => {
+        if (!materialLibrary.some((existing) => existing.id === m.id)) {
+          materialLibrary.push(m);
+        }
+      });
+    }
+  }
+})();
+
+viewer3d.startRenderLoop();
+
+// ==========================================
+// 历史管理代理函数（委托给 Store）
+// ==========================================
 
 function pushHistory() {
-  undoStack.push(snapshot());
-  if (undoStack.length > 80) undoStack.shift();
-  redoStack = [];
-  updateHistoryButtons();
-}
-
-function restoreSnapshot(data) {
-  testMap.loadJSON(data);
-  syncFloorControls();
-  selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
-  selectedWallId = selectedWallId && testMap.getWall(selectedWallId) ? selectedWallId : null;
-  selectedItemId = selectedItemId && testMap.getItem(selectedItemId) ? selectedItemId : null;
-  selectedOpeningId = selectedOpeningId && testMap.getOpening(selectedOpeningId) ? selectedOpeningId : null;
-  selectedRoofId = selectedRoofId && testMap.getRoof?.(selectedRoofId) ? selectedRoofId : null;
-  selectedStairsId = selectedStairsId && testMap.getStairs?.(selectedStairsId) ? selectedStairsId : null;
-  testMap.setSelectedItem(selectedItemId);
-  testMap.setSelectedWall(selectedWallId);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  store.pushHistory();
 }
 
 function undo() {
-  if (!undoStack.length) return;
-  redoStack.push(snapshot());
-  restoreSnapshot(undoStack.pop());
-  updateHistoryButtons();
+  store.undo();
 }
 
 function redo() {
-  if (!redoStack.length) return;
-  undoStack.push(snapshot());
-  restoreSnapshot(redoStack.pop());
-  updateHistoryButtons();
+  store.redo();
 }
 
 function updateHistoryButtons() {
-  undoButton.disabled = undoStack.length === 0;
-  redoButton.disabled = redoStack.length === 0;
+  undoButton.disabled = !store.canUndo;
+  redoButton.disabled = !store.canRedo;
 }
 
+// getMeshFloorId 已移至 Viewer3D，此处保留代理函数供局部引用
 function getMeshFloorId(mesh) {
-  let current = mesh;
-  while (current) {
-    if (current.metadata && current.metadata.floorId) {
-      return current.metadata.floorId;
-    }
-    current = current.parent;
-  }
-  return null;
+  return viewer3d.getMeshFloorId(mesh);
 }
 
 function refreshShadows() {
-  shadowGenerator.getShadowMap().renderList = [];
-  const currentFloorId = testMap.floorplan.currentFloorId;
-  testMap.getShadowCasters().forEach((mesh) => {
-    const floorId = getMeshFloorId(mesh);
-    if (!floorId || floorId === currentFloorId) {
-      shadowGenerator.addShadowCaster(mesh);
-    }
-  });
+  viewer3d.refreshShadowCasters(
+    () => testMap.getShadowCasters(),
+    testMap.floorplan.currentFloorId
+  );
   refresh3DGrid();
 }
 
 function resetCamera() {
-  camera.setTarget(new BABYLON.Vector3(0, 0, -2.2));
-  camera.alpha = -Math.PI / 3;
-  camera.beta = Math.PI / 3;
-  camera.radius = 15;
+  viewer3d.resetCamera();
+}
+
+function clear3DGrid() {
+  viewer3d.clear3DGrid();
+}
+
+function refresh3DGrid() {
+  viewer3d.refresh3DGrid({
+    currentView,
+    snapEnabled,
+    snapSize,
+    walls: currentWalls(),
+    rooms: currentRooms(),
+    roofs: currentRoofs(),
+    stairs: currentStairs(),
+    items: currentItems(),
+    currentFloorId: testMap.floorplan.currentFloorId,
+    floorElevation: testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0,
+    inchesToWorld,
+    hasTestMap: !!testMap
+  });
 }
 
 function resetCurrentMaterial() {
   if (selectedItemId) {
-    pushHistory();
-    const item = testMap.getItem(selectedItemId);
-    if (item) {
-      const definition = testMap.getFurnitureDefinition(item.type);
-      item.colors = {};
-      item.materials = {};
-      if (definition && definition.components) {
-        definition.components.forEach((component) => {
-          item.colors[component.id] = component.defaultColor;
-          item.materials[component.id] = component.defaultColor;
-        });
-      }
-      testMap.updateItem(selectedItemId, { colors: item.colors, materials: item.materials });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+    if (isTargetLocked({ type: 'item', id: selectedItemId })) {
+      showToast('该物体已锁定');
+      return;
     }
+    entityManager.resetItemMaterial(selectedItemId);
   } else if (selectedWallId) {
-    pushHistory();
     const wall = testMap.getWall(selectedWallId);
+    if (wall && wall.locked) {
+      showToast('该物体已锁定');
+      return;
+    }
+    pushHistory();
     if (wall) {
       testMap.updateWall(selectedWallId, { material: '#f9fbff', color: '#f9fbff' });
       refreshShadows();
@@ -245,6 +340,10 @@ function resetCurrentMaterial() {
       renderPlan();
     }
   } else if (selectedRoomId) {
+    if (isTargetLocked({ type: 'room', id: selectedRoomId })) {
+      showToast('该物体已锁定');
+      return;
+    }
     pushHistory();
     const defaultFloorMaterial = DEFAULT_MATERIAL_PACKS.find(p => p.id === 'wood-light-fine');
     testMap.setRoomFloorMaterial(selectedRoomId, defaultFloorMaterial);
@@ -252,126 +351,28 @@ function resetCurrentMaterial() {
     updateEditor();
     renderPlan();
   } else if (selectedFenceId) {
+    if (isTargetLocked({ type: 'fence', id: selectedFenceId })) {
+      showToast('该物体已锁定');
+      return;
+    }
     pushHistory();
     testMap.updateFence(selectedFenceId, { material: '#8d6e63', color: '#8d6e63' });
+    refreshShadows();
+    updateEditor();
+    renderPlan();
+  } else if (selectedOpeningId) {
+    if (isTargetLocked({ type: 'opening', id: selectedOpeningId })) {
+      showToast('该物体已锁定');
+      return;
+    }
+    pushHistory();
+    testMap.resetOpeningMaterial(selectedOpeningId);
     refreshShadows();
     updateEditor();
     renderPlan();
   }
 }
 
-function clear3DGrid() {
-  grid3DNodes.splice(0).forEach((node) => node.dispose(false, true));
-}
-
-function get3DGridBounds() {
-  const points = [];
-  currentWalls().forEach((wall) => {
-    points.push({ x: wall.from[0], z: wall.from[1] }, { x: wall.to[0], z: wall.to[1] });
-  });
-  currentRooms().forEach((room) => {
-    points.push(
-      { x: room.x - room.width / 2, z: room.z - room.depth / 2 },
-      { x: room.x + room.width / 2, z: room.z + room.depth / 2 }
-    );
-  });
-  currentRoofs().forEach((roof) => {
-    points.push(
-      { x: (roof.x || 0) - (roof.width || 6) / 2, z: (roof.z || 0) - (roof.depth || 6) / 2 },
-      { x: (roof.x || 0) + (roof.width || 6) / 2, z: (roof.z || 0) + (roof.depth || 6) / 2 }
-    );
-  });
-  currentStairs().forEach((stairs) => {
-    points.push(
-      { x: (stairs.x || 0) - (stairs.width || 1.2) / 2, z: (stairs.z || 0) - (stairs.depth || 3.2) / 2 },
-      { x: (stairs.x || 0) + (stairs.width || 1.2) / 2, z: (stairs.z || 0) + (stairs.depth || 3.2) / 2 }
-    );
-  });
-  currentItems().forEach((item) => {
-    const scale = Number(item.scale || 1);
-    const width = inchesToWorld(item.width || 24) * scale;
-    const depth = inchesToWorld(item.depth || 24) * scale;
-    points.push(
-      { x: item.x - width / 2, z: item.z - depth / 2 },
-      { x: item.x + width / 2, z: item.z + depth / 2 }
-    );
-  });
-  if (!points.length) return { minX: -8, maxX: 8, minZ: -8, maxZ: 8 };
-  const xs = points.map((point) => point.x);
-  const zs = points.map((point) => point.z);
-  const step = Math.max(0.25, snapEnabled && snapSize ? snapSize : 1);
-  const pad = Math.max(4, step * 3);
-  return {
-    minX: Math.floor((Math.min(...xs) - pad) / step) * step,
-    maxX: Math.ceil((Math.max(...xs) + pad) / step) * step,
-    minZ: Math.floor((Math.min(...zs) - pad) / step) * step,
-    maxZ: Math.ceil((Math.max(...zs) + pad) / step) * step
-  };
-}
-
-function createDashedLineSegments(p1, p2, dashSize = 0.08, gapSize = 0.08) {
-  const segments = [];
-  const dir = p2.subtract(p1);
-  const totalLength = dir.length();
-  if (totalLength <= 0.001) return segments;
-
-  const stepVec = dir.normalize();
-  let currentLength = 0;
-
-  while (currentLength < totalLength) {
-    const start = p1.add(stepVec.scale(currentLength));
-    currentLength = Math.min(totalLength, currentLength + dashSize);
-    const end = p1.add(stepVec.scale(currentLength));
-    segments.push([start, end]);
-    currentLength += gapSize;
-  }
-  return segments;
-}
-
-function refresh3DGrid() {
-  clear3DGrid();
-  if (!show3DGrid || currentView !== '3d' || !scene || !testMap) return;
-  const step = Math.max(0.25, snapEnabled && snapSize ? snapSize : 1);
-  const bounds = get3DGridBounds();
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
-  const y = floorY + 0.012;
-  const lines = [];
-  const axisLines = [];
-  for (let x = bounds.minX; x <= bounds.maxX + 0.001; x += step) {
-    if (Math.abs(x) < 0.001) {
-      axisLines.push([new BABYLON.Vector3(x, y, bounds.minZ), new BABYLON.Vector3(x, y, bounds.maxZ)]);
-    } else {
-      const p1 = new BABYLON.Vector3(x, y, bounds.minZ);
-      const p2 = new BABYLON.Vector3(x, y, bounds.maxZ);
-      lines.push(...createDashedLineSegments(p1, p2, 0.08, 0.08));
-    }
-  }
-  for (let z = bounds.minZ; z <= bounds.maxZ + 0.001; z += step) {
-    if (Math.abs(z) < 0.001) {
-      axisLines.push([new BABYLON.Vector3(bounds.minX, y, z), new BABYLON.Vector3(bounds.maxX, y, z)]);
-    } else {
-      const p1 = new BABYLON.Vector3(bounds.minX, y, z);
-      const p2 = new BABYLON.Vector3(bounds.maxX, y, z);
-      lines.push(...createDashedLineSegments(p1, p2, 0.08, 0.08));
-    }
-  }
-  if (lines.length) {
-    const grid = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d', { lines }, scene);
-    grid.color = BABYLON.Color3.FromHexString('#c2cbd6');
-    grid.alpha = 0.08;
-    grid.isPickable = false;
-    grid.renderingGroupId = 0;
-    grid3DNodes.push(grid);
-  }
-  if (axisLines.length) {
-    const axes = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d_axes', { lines: axisLines }, scene);
-    axes.color = BABYLON.Color3.FromHexString('#8fb8e8');
-    axes.alpha = 0.28;
-    axes.isPickable = false;
-    axes.renderingGroupId = 0;
-    grid3DNodes.push(axes);
-  }
-}
 function setView(nextView) {
   currentView = nextView;
   stage.dataset.view = nextView;
@@ -418,7 +419,7 @@ function svgToWorld(x, y) {
 }
 
 function inchesToWorld(value) {
-  return Number(value || 0) / 24;
+  return Number(value || 0) / INCHES_PER_UNIT;
 }
 
 function createSvgElement(name, attrs = {}) {
@@ -506,7 +507,10 @@ function iconSvg(name) {
     lock: `<svg ${attrs}><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
     unlock: `<svg ${attrs}><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M16 11V7a4 4 0 0 0-7.6-1.8"/></svg>`,
     power: `<svg ${attrs}><path d="M12 2v10"/><path d="M18.36 6.36a9 9 0 1 1-12.73 0"/></svg>`,
-    door: `<svg ${attrs}><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M15 6 L10.5 4.5 A2 2 0 0 0 9 6.5 L9 17.5 A2 2 0 0 0 10.5 19.5 L15 18 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`
+    door: `<svg ${attrs}><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M15 6 L10.5 4.5 A2 2 0 0 0 9 6.5 L9 17.5 A2 2 0 0 0 10.5 19.5 L15 18 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+    edit: `<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+    droplet: `<svg ${attrs}><path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z"/></svg>`,
+    flip: `<svg ${attrs}><path d="M12 2v20 M9 7v10H3z M15 7v10H21z"/></svg>`
   };
   return icons[name] || '';
 }
@@ -553,6 +557,11 @@ function cancelLongPress() {
 
 function attachContextMenuTrigger(element, getTarget, showMenu = showObjectContextMenu) {
   element.addEventListener('contextmenu', (event) => {
+    if (mode === 'view') {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const target = getTarget(event);
     if (!target) return;
     event.preventDefault();
@@ -560,6 +569,7 @@ function attachContextMenuTrigger(element, getTarget, showMenu = showObjectConte
     showMenu(target, event.clientX, event.clientY);
   });
   element.addEventListener('pointerdown', (event) => {
+    if (mode === 'view') return;
     if (event.pointerType === 'mouse' || event.button === 2) return;
     const target = getTarget(event);
     if (!target) return;
@@ -576,6 +586,16 @@ function attachContextMenuTrigger(element, getTarget, showMenu = showObjectConte
       }, 560)
     };
   });
+}
+
+function getSelectedTarget() {
+  if (selectedItemId) return { type: 'item', id: selectedItemId };
+  if (selectedOpeningId) return { type: 'opening', id: selectedOpeningId };
+  if (selectedRoofId) return { type: 'roof', id: selectedRoofId };
+  if (selectedStairsId) return { type: 'stairs', id: selectedStairsId };
+  if (selectedRoomId) return { type: 'room', id: selectedRoomId };
+  if (selectedFenceId) return { type: 'fence', id: selectedFenceId };
+  return null;
 }
 
 function isAllowedContextTarget(target) {
@@ -675,13 +695,49 @@ function isLightingTarget(target) {
 function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedContextTarget(target)) return;
   const isRotatable = ['item', 'roof', 'stairs', 'opening'].includes(target.type);
+  const isMirrorable = ['item', 'roof', 'stairs', 'opening'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
   const isLocked = isTargetLocked(target);
   
+  // 检查是否是具有水体的容器家具 (浴缸、厨房水槽、洗手台) 及其放水状态
+  let isWaterContainer = false;
+  let isWaterOn = true;
+  if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom'].includes(item.type)) {
+      isWaterContainer = true;
+      isWaterOn = item.waterEnabled !== false;
+    }
+  }
+
+  // 检查是否是马桶 (toilet) 及其开盖状态
+  let isToilet = false;
+  let isLidOpen = false;
+  if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (item && item.type === 'toilet') {
+      isToilet = true;
+      isLidOpen = item.lidOpen === true;
+    }
+  }
+  
   showIconMenu(clientX, clientY, [
     { icon: 'copy', title: '\u590d\u5236', onClick: () => copyContextTarget(target) },
     isRotatable && { icon: 'rotate', title: '\u65cb\u8f6c', disabled: isLocked, onClick: () => rotateContextTarget(target) },
+    isMirrorable && { icon: 'flip', title: '镜像', disabled: isLocked, onClick: () => mirrorContextTarget(target) },
+    isWaterContainer && {
+      icon: 'droplet',
+      title: isWaterOn ? '排水' : '放水',
+      disabled: isLocked,
+      onClick: () => entityManager.toggleItemWater(target.id)
+    },
+    isToilet && {
+      icon: 'door',
+      title: isLidOpen ? '合盖' : '开盖',
+      disabled: isLocked,
+      onClick: () => entityManager.toggleItemLid(target.id)
+    },
     isSwitchable && { 
       icon: isLighting ? 'power' : (target.type === 'opening' ? 'door' : 'power'), 
       title: '\u5f00\u5173', 
@@ -695,6 +751,10 @@ function showObjectContextMenu(target, clientX, clientY) {
 
 function toggleTargetLock(target) {
   if (!isAllowedContextTarget(target)) return;
+  if (target.type === 'item') {
+    entityManager.toggleItemLock(target.id);
+    return;
+  }
   const object = getContextTargetObject(target);
   if (!object) return;
   pushHistory();
@@ -707,24 +767,16 @@ function toggleTargetLock(target) {
 function toggleContextTarget(target) {
   if (!isAllowedContextTarget(target)) return;
   if (isTargetLocked(target)) return;
+  if (target.type === 'item') {
+    entityManager.toggleItemPower(target.id);
+    return;
+  }
   pushHistory();
   if (target.type === 'opening') {
     const opening = testMap.getOpening(target.id);
     if (!opening) return;
     testMap.updateOpening(target.id, { isOpen: !opening.isOpen });
     if (selectedOpeningId === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (!item) return;
-    const def = testMap.getFurnitureDefinition(item.type);
-    if (def && (def.category === 'lighting' || def.lightSource)) {
-      testMap.updateItem(target.id, { lightOn: item.lightOn === false });
-    } else {
-      testMap.updateItem(target.id, { isOn: item.isOn === false });
-    }
-    if (selectedItemId === target.id) {
       updateEditor();
     }
   }
@@ -735,17 +787,12 @@ function toggleContextTarget(target) {
 function rotateContextTarget(target) {
   if (!isAllowedContextTarget(target)) return;
   if (isTargetLocked(target)) return;
-  pushHistory();
   if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (!item) return;
-    const currentDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
-    const nextDegrees = (currentDegrees + 90) % 360;
-    testMap.rotateItem(target.id, nextDegrees * Math.PI / 180);
-    if (selectedItemId === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'roof' || target.type === 'stairs') {
+    entityManager.rotateItem(target.id);
+    return;
+  }
+  pushHistory();
+  if (target.type === 'roof' || target.type === 'stairs') {
     const structure = getStructure(target.type, target.id);
     if (!structure) return;
     const currentDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
@@ -806,32 +853,46 @@ function findMatchingCurrentFloorWall(sourceWall, sourcePoint) {
   });
   return bestWall;
 }
-function copyContextTarget(target) {
+
+function mirrorContextTarget(target) {
   if (!isAllowedContextTarget(target)) return;
+  if (isTargetLocked(target)) return;
   pushHistory();
-  let nextSelection = null;
   if (target.type === 'item') {
     const item = testMap.getItem(target.id);
-    if (!item) return;
-    const copyX = (item.x || 0) + 0.4;
-    const copyZ = (item.z || 0) + 0.4;
-    const targetRoom = currentRooms().find((room) => (
-      copyX >= room.x - room.width / 2
-      && copyX <= room.x + room.width / 2
-      && copyZ >= room.z - room.depth / 2
-      && copyZ <= room.z + room.depth / 2
-    ));
-    const copy = testMap.addItem({
-      ...JSON.parse(JSON.stringify(item)),
-      id: undefined,
-      name: item.name,
-      x: copyX,
-      z: copyZ,
-      roomId: targetRoom?.id,
-      floorId: testMap.floorplan.currentFloorId
-    });
-    nextSelection = { type: 'item', id: copy.id };
+    if (item) {
+      testMap.updateItem(target.id, { mirrored: !item.mirrored });
+    }
   } else if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    if (opening) {
+      testMap.updateOpening(target.id, { isFlippedLR: !opening.isFlippedLR });
+    }
+  } else if (target.type === 'roof') {
+    const roof = testMap.getRoof?.(target.id);
+    if (roof) {
+      testMap.updateRoof?.(target.id, { mirrored: !roof.mirrored });
+    }
+  } else if (target.type === 'stairs') {
+    const stairs = testMap.getStairs?.(target.id);
+    if (stairs) {
+      testMap.updateStairs?.(target.id, { mirrored: !stairs.mirrored });
+    }
+  }
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function copyContextTarget(target) {
+  if (!isAllowedContextTarget(target)) return;
+  if (target.type === 'item') {
+    entityManager.copyItem(target.id);
+    return;
+  }
+  pushHistory();
+  let nextSelection = null;
+  if (target.type === 'opening') {
     const opening = testMap.getOpening(target.id);
     const sourceWall = opening ? testMap.getWall(opening.wallId) : null;
     if (!opening || !sourceWall) return;
@@ -839,7 +900,7 @@ function copyContextTarget(target) {
     const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
     if (!targetWall) return;
     const nextT = Math.min(0.92, getWallProjectionT(targetWall, sourcePoint) + 0.08);
-    const next = testMap.addOpening(targetWall.id, opening.type, nextT);
+    const next = testMap.addOpening(targetWall.id, opening.type, nextT, opening.shape);
     if (next) {
       testMap.updateOpening(next.id, {
         width: opening.width,
@@ -848,6 +909,8 @@ function copyContextTarget(target) {
         isOpen: opening.isOpen,
         isFlippedLR: opening.isFlippedLR,
         isFlippedIO: opening.isFlippedIO,
+        panelHidden: opening.panelHidden,
+        glassHidden: opening.glassHidden,
         floorId: testMap.floorplan.currentFloorId
       });
       nextSelection = { type: 'opening', id: next.id };
@@ -901,6 +964,10 @@ function copyContextTarget(target) {
 function deleteContextTarget(target) {
   if (!isAllowedContextTarget(target)) return;
   if (isTargetLocked(target)) return;
+  if (target.type === 'item') {
+    entityManager.deleteItem(target.id);
+    return;
+  }
   if (target.type === 'room') {
     showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
       if (confirmed) {
@@ -914,7 +981,6 @@ function deleteContextTarget(target) {
     return;
   }
   pushHistory();
-  if (target.type === 'item') testMap.deleteItem(target.id);
   if (target.type === 'opening') testMap.deleteOpening(target.id);
   if (target.type === 'roof') testMap.deleteRoof?.(target.id);
   if (target.type === 'stairs') testMap.deleteStairs?.(target.id);
@@ -935,29 +1001,31 @@ function selectContextTarget(target) {
 }
 
 function showFloorContextMenu(target, clientX, clientY) {
-  if (!target?.id || target.id !== testMap.floorplan.currentFloorId) return;
+  if (!target?.id) return;
   const sorted = [...testMap.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
   const index = sorted.findIndex((floor) => floor.id === target.id);
+  if (index < 0) return;
   showIconMenu(clientX, clientY, [
-    { icon: 'up', title: '\u4e0a\u79fb', disabled: index === sorted.length - 1, onClick: () => moveCurrentFloor('up') },
-    { icon: 'down', title: '\u4e0b\u79fb', disabled: index <= 0, onClick: () => moveCurrentFloor('down') },
-    { icon: 'trash', title: '\u5220\u9664', disabled: testMap.floorplan.floors.length <= 1, onClick: deleteCurrentFloor }
+    { icon: 'edit', title: '\u547d\u540d', onClick: () => renameCurrentFloor(target.id) },
+    { icon: 'up', title: '\u4e0a\u79fb', disabled: index === sorted.length - 1, onClick: () => moveFloorAction(target.id, 'up') },
+    { icon: 'down', title: '\u4e0b\u79fb', disabled: index <= 0, onClick: () => moveFloorAction(target.id, 'down') },
+    { icon: 'trash', title: '\u5220\u9664', disabled: testMap.floorplan.floors.length <= 1, onClick: () => deleteFloorAction(target.id) }
   ]);
 }
 
-function moveCurrentFloor(direction) {
+function moveFloorAction(floorId, direction) {
   pushHistory();
-  if (testMap.moveFloor?.(testMap.floorplan.currentFloorId, direction)) {
+  if (testMap.moveFloor?.(floorId, direction)) {
     syncFloorControls();
     refreshShadows();
     renderPlan();
   }
 }
 
-function deleteCurrentFloor() {
+function deleteFloorAction(floorId) {
   if (testMap.floorplan.floors.length <= 1) return;
   pushHistory();
-  if (testMap.deleteFloor?.(testMap.floorplan.currentFloorId)) {
+  if (testMap.deleteFloor?.(floorId)) {
     clearSelection();
     syncFloorControls();
     refreshShadows();
@@ -965,8 +1033,26 @@ function deleteCurrentFloor() {
   }
 }
 
+async function renameCurrentFloor(floorId) {
+  const floor = testMap.floorplan.floors.find((f) => f.id === floorId);
+  if (!floor) return;
+  const currentName = floor.name || `${Number(floor.level || 0) + 1}F`;
+  const newName = await showCustomPrompt('楼层命名', '请输入新的楼层名称：', currentName);
+  if (newName !== null) {
+    const trimmed = newName.trim();
+    if (trimmed && trimmed !== currentName) {
+      pushHistory();
+      if (testMap.renameFloor?.(floorId, trimmed)) {
+        syncFloorControls();
+        refreshShadows();
+        renderPlan();
+      }
+    }
+  }
+}
+
 function cancelObjectInteractions() {
-  dragState = null;
+  entityManager.dragState = null;
   openingDragState = null;
   wallDragState = null;
   roomDragState = null;
@@ -982,99 +1068,16 @@ function ensureBuildingToolControls() {
   // 静态 HTML 已经包含了按钮，此方法已废弃
 }
 
-function ensure3DGridControls() {
-  if (document.getElementById('show-3d-grid')) return;
-  const snapSizeField = document.getElementById('snap-size')?.closest('.field');
-  const snapEnabledField = document.getElementById('snap-enabled')?.closest('.check-field');
-  const anchor = snapSizeField || snapEnabledField;
-  if (!anchor?.parentElement) return;
-  const label = document.createElement('label');
-  label.className = 'check-field';
-  const input = document.createElement('input');
-  input.id = 'show-3d-grid';
-  input.type = 'checkbox';
-  input.checked = show3DGrid;
-  const span = document.createElement('span');
-  span.textContent = '\u663e\u793a3D\u7f51\u683c';
-  label.append(input, span);
-  anchor.insertAdjacentElement('afterend', label);
-  input.addEventListener('change', (event) => {
-    show3DGrid = event.target.checked;
-    refresh3DGrid();
-  });
-}
 
-function createStructureField(labelText, inputId, attrs = {}) {
-  const label = document.createElement('label');
-  label.className = 'field';
-  const span = document.createElement('span');
-  span.textContent = labelText;
-  const input = document.createElement('input');
-  input.id = inputId;
-  Object.entries(attrs).forEach(([key, value]) => input.setAttribute(key, value));
-  label.append(span, input);
-  return label;
-}
 
-function ensureStructureEditor() {
-  if (document.getElementById('structure-editor')) return;
-  const content = document.querySelector('#right-panel .right-panel-content');
-  if (!content) return;
-  const editor = document.createElement('div');
-  editor.id = 'structure-editor';
-  editor.className = 'editor hidden';
-  const title = document.createElement('strong');
-  title.id = 'selected-structure-name';
-  title.textContent = '\u5efa\u7b51\u7ec4\u4ef6';
-  editor.appendChild(title);
-  
-  // 插入“类型”下拉框
-  const subtypeLabel = document.createElement('label');
-  subtypeLabel.className = 'field';
-  const subtypeSpan = document.createElement('span');
-  subtypeSpan.textContent = '\u7c7b\u578b'; // 类型
-  const subtypeSelect = document.createElement('select');
-  subtypeSelect.id = 'structure-subtype';
-  subtypeLabel.append(subtypeSpan, subtypeSelect);
-  editor.appendChild(subtypeLabel);
-
-  editor.appendChild(createStructureField('X (m)', 'structure-x', { type: 'number', step: '0.1' }));
-  editor.appendChild(createStructureField('Z (m)', 'structure-z', { type: 'number', step: '0.1' }));
-  editor.appendChild(createStructureField('\u5bbd\u5ea6 (m)', 'structure-width', { type: 'number', min: '0.6', step: '0.1' }));
-  editor.appendChild(createStructureField('\u6df1\u5ea6 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
-  editor.appendChild(createStructureField('\u9ad8\u5ea6 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
-  const rotationLabel = createStructureField('\u65cb\u8f6c (\u5ea6)', 'structure-rotation', { type: 'number', min: '0', max: '359', step: '15' });
-  const rotationRange = document.createElement('input');
-  rotationRange.id = 'structure-rotation-range';
-  rotationRange.type = 'range';
-  rotationRange.min = '0';
-  rotationRange.max = '360';
-  rotationRange.step = '1';
-  rotationLabel.appendChild(rotationRange);
-  editor.appendChild(rotationLabel);
-  editor.appendChild(createStructureField('\u8e0f\u6b65\u6570', 'structure-steps', { type: 'number', min: '3', max: '32', step: '1' }));
-  editor.appendChild(createStructureField('\u989c\u8272', 'structure-color', { type: 'color' }));
-  const lockedLabel = document.createElement('label');
-  lockedLabel.className = 'check-field';
-  const lockedInput = document.createElement('input');
-  lockedInput.id = 'structure-locked';
-  lockedInput.type = 'checkbox';
-  const lockedSpan = document.createElement('span');
-  lockedSpan.textContent = '\u9501\u5b9a\u4f4d\u7f6e';
-  lockedLabel.append(lockedInput, lockedSpan);
-  editor.appendChild(lockedLabel);
-  const deleteButton = document.createElement('button');
-  deleteButton.id = 'btn-delete-structure';
-  deleteButton.type = 'button';
-  deleteButton.className = 'danger';
-  deleteButton.textContent = '\u5220\u9664\u7ec4\u4ef6';
-  editor.appendChild(deleteButton);
-  const openingEditor = document.getElementById('opening-editor');
-  if (openingEditor) {
-    openingEditor.insertAdjacentElement('afterend', editor);
-  } else {
-    content.appendChild(editor);
+function formatFloorDisplayName(name) {
+  if (!name) return '';
+  const hasChinese = /[\u4e00-\u9fa5]/.test(name);
+  if (hasChinese) {
+    const match = name.match(/[\u4e00-\u9fa5]/);
+    return match ? match[0] : name.slice(0, 2);
   }
+  return name.slice(0, 2);
 }
 
 function syncFloorControls() {
@@ -1104,14 +1107,14 @@ function syncFloorControls() {
     btn.type = 'button';
     btn.className = 'btn-icon btn-floor-item';
     btn.dataset.floorId = floor.id;
-    btn.textContent = floorName;
+    btn.textContent = formatFloorDisplayName(floorName);
     btn.title = `切换到 ${floorName}`;
     btn.setAttribute('aria-label', `切换到 ${floorName}`);
 
     if (floor.id === testMap.floorplan.currentFloorId) {
       btn.classList.add('active');
-      attachContextMenuTrigger(btn, () => ({ type: 'floor', id: floor.id }), showFloorContextMenu);
     }
+    attachContextMenuTrigger(btn, () => ({ type: 'floor', id: floor.id }), showFloorContextMenu);
 
     container.appendChild(btn);
   });
@@ -1172,8 +1175,7 @@ function updateViewBounds() {
     corners.push({ x: wall.to[0], z: wall.to[1] });
   });
   currentRooms().forEach((room) => {
-    corners.push({ x: room.x - room.width / 2, z: room.z - room.depth / 2 });
-    corners.push({ x: room.x + room.width / 2, z: room.z + room.depth / 2 });
+    corners.push(...getRoomVertices(room));
   });
   currentItems().forEach((item) => {
     const w = inchesToWorld(item.width) / 2;
@@ -1277,23 +1279,19 @@ function renderPlan() {
 }
 
 function renderRoom(room) {
-  const a = worldToSvg(room.x - room.width / 2, room.z - room.depth / 2);
-  const b = worldToSvg(room.x + room.width / 2, room.z + room.depth / 2);
-  const rect = createSvgElement('rect', {
+  const points = getRoomVertices(room).map((point) => worldToSvg(point.x, point.z));
+  const polygon = createSvgElement('polygon', {
     class: `room-rect ${selectedRoomId === room.id ? 'selected' : ''}`,
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(b.x - a.x),
-    height: Math.abs(b.y - a.y),
+    points: points.map((point) => `${point.x},${point.y}`).join(' '),
     'data-room-id': room.id
   });
-  attachContextMenuTrigger(rect, () => ({ type: 'room', id: room.id }));
-  rect.addEventListener('click', (event) => {
+  attachContextMenuTrigger(polygon, () => ({ type: 'room', id: room.id }));
+  polygon.addEventListener('click', (event) => {
     if (mode !== 'select') return;
     event.stopPropagation();
     selectRoom(room.id);
   });
-  svg.appendChild(rect);
+  svg.appendChild(polygon);
 
 }
 
@@ -1311,11 +1309,11 @@ function renderRoomHandles(room, a, b) {
   handles.forEach((handle) => {
     const node = createSvgElement('rect', {
       class: `room-resize-handle handle-${handle.side}`,
-      x: handle.x - 6,
-      y: handle.y - 6,
-      width: 12,
-      height: 12,
-      rx: 3,
+      x: handle.x - 8,
+      y: handle.y - 8,
+      width: 16,
+      height: 16,
+      rx: 4,
       'data-room-handle': handle.side
     });
     node.addEventListener('pointerdown', (event) => beginRoomResize(event, room.id, handle.side));
@@ -1324,24 +1322,21 @@ function renderRoomHandles(room, a, b) {
 }
 function renderRoomInteraction(room) {
   if (mode !== 'select') return;
-  const a = worldToSvg(room.x - room.width / 2, room.z - room.depth / 2);
-  const b = worldToSvg(room.x + room.width / 2, room.z + room.depth / 2);
-  const rect = createSvgElement('rect', {
+  const points = getRoomVertices(room).map((point) => worldToSvg(point.x, point.z));
+  const polygon = createSvgElement('polygon', {
     class: 'room-hit-rect',
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(b.x - a.x),
-    height: Math.abs(b.y - a.y),
+    points: points.map((point) => `${point.x},${point.y}`).join(' '),
     'data-room-hit-id': room.id,
     fill: 'rgba(54, 194, 255, 0.001)'
   });
-  attachContextMenuTrigger(rect, () => ({ type: 'room', id: room.id }));
-  rect.addEventListener('pointerdown', (event) => beginRoomDrag(event, room.id));
-  rect.addEventListener('click', (event) => {
+  attachContextMenuTrigger(polygon, () => ({ type: 'room', id: room.id }));
+  polygon.addEventListener('pointerdown', (event) => beginRoomDrag(event, room.id));
+  polygon.addEventListener('click', (event) => {
+    if (mode !== 'select') return;
     event.stopPropagation();
     selectRoom(room.id);
   });
-  svg.appendChild(rect);
+  svg.appendChild(polygon);
 }
 
 function renderSelectedRoomHandles(room) {
@@ -1377,11 +1372,11 @@ function renderRoofHandles(roof, a, b) {
   handles.forEach((handle) => {
     const node = createSvgElement('rect', {
       class: `roof-resize-handle handle-${handle.side}`,
-      x: handle.x - 6,
-      y: handle.y - 6,
-      width: 12,
-      height: 12,
-      rx: 3,
+      x: handle.x - 8,
+      y: handle.y - 8,
+      width: 16,
+      height: 16,
+      rx: 4,
       'data-roof-handle': handle.side
     });
     node.addEventListener('pointerdown', (event) => beginRoofResize(event, roof.id, handle.side));
@@ -1412,7 +1407,7 @@ function renderWall(wall) {
     beginWallDrag(event, wall.id);
   });
   line.addEventListener('click', (event) => {
-    if (mode === 'delete-wall' || mode === 'add-door' || mode === 'add-window' || mode === 'select') {
+    if (mode === 'delete-wall' || isAddOpeningMode() || mode === 'select') {
       event.stopPropagation();
       const point = svgPointFromEvent(event);
       const world = svgToWorld(point.x, point.y);
@@ -1422,9 +1417,10 @@ function renderWall(wall) {
         clearSelection();
         refreshShadows();
         renderPlan();
-      } else if (mode === 'add-door' || mode === 'add-window') {
+      } else if (isAddOpeningMode()) {
         pushHistory();
-        const opening = testMap.addOpening(wall.id, mode === 'add-door' ? 'door' : 'window', getWallProjectionT(wall, world));
+        const openingMode = getOpeningModeInfo();
+        const opening = testMap.addOpening(wall.id, openingMode.type, getWallProjectionT(wall, world), openingMode.shape);
         refreshShadows();
         selectOpening(opening?.id || null);
         switchToSelectMode();
@@ -1625,11 +1621,18 @@ function renderRoof(roof) {
   attachContextMenuTrigger(rect, () => ({ type: 'roof', id: roof.id }));
   svg.appendChild(group);
 }
- 
+
 function renderStairs(stairs) {
-  const a = worldToSvg((stairs.x || 0) - (stairs.width || 1.2) / 2, (stairs.z || 0) - (stairs.depth || 3.2) / 2);
-  const b = worldToSvg((stairs.x || 0) + (stairs.width || 1.2) / 2, (stairs.z || 0) + (stairs.depth || 3.2) / 2);
-  
+  const subtype = stairs.subtype || 'straight';
+  let wVal = stairs.width || 1.2;
+  let dVal = stairs.depth || 3.2;
+  if (subtype === 'spiral') {
+    const size = Math.max(wVal, dVal);
+    wVal = size;
+    dVal = size;
+  }
+  const a = worldToSvg((stairs.x || 0) - wVal / 2, (stairs.z || 0) - dVal / 2);
+  const b = worldToSvg((stairs.x || 0) + wVal / 2, (stairs.z || 0) + dVal / 2);
   const minX = Math.min(a.x, b.x);
   const minY = Math.min(a.y, b.y);
   const w = Math.abs(b.x - a.x);
@@ -1637,9 +1640,13 @@ function renderStairs(stairs) {
   const centerX = minX + w / 2;
   const centerY = minY + h / 2;
   
+  const flipX = stairs.mirrored ? -1 : 1;
+  const rotateStr = `rotate(${((stairs.rotation || 0) * 180 / Math.PI) || 0} ${centerX} ${centerY})`;
+  const scaleStr = flipX === -1 ? ` translate(${centerX} ${centerY}) scale(-1, 1) translate(${-centerX} ${-centerY})` : '';
+
   const group = createSvgElement('g', {
     class: `stairs-symbol ${selectedStairsId === stairs.id ? 'selected' : ''}`,
-    transform: `rotate(${((stairs.rotation || 0) * 180 / Math.PI) || 0} ${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`,
+    transform: `${rotateStr}${scaleStr}`,
     'data-stairs-id': stairs.id
   });
   
@@ -1653,7 +1660,6 @@ function renderStairs(stairs) {
   });
   group.appendChild(rect);
  
-  const subtype = stairs.subtype || 'straight';
   const steps = 6;
  
   if (subtype === 'straight') {
@@ -1918,7 +1924,7 @@ function renderPlanItem(item) {
   group.appendChild(rect);
   group.appendChild(label);
   attachContextMenuTrigger(group, () => ({ type: 'item', id: item.id }));
-  group.addEventListener('pointerdown', (event) => beginItemDrag(event, item.id));
+  group.addEventListener('pointerdown', (event) => entityManager.beginItemDrag(event, item.id));
   svg.appendChild(group);
 }
 
@@ -2088,31 +2094,6 @@ function finishRoofResize() {
   roofResizeState = null;
 }
 
-function beginItemDrag(event, itemId) {
-  if (event.button === 2) return;
-  if (mode !== 'select') return;
-  event.preventDefault();
-  event.stopPropagation();
-  rememberPointer(event);
-  selectItem(itemId);
-  const item = testMap.getItem(itemId);
-  if (!item || item.locked) return;
-  if (maybeBeginItemGesture(itemId)) {
-    dragState = null;
-    return;
-  }
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  dragState = {
-    itemId,
-    offsetX: item.x - world.x,
-    offsetZ: item.z - world.z,
-    originalX: item.x,
-    originalZ: item.z,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
-}
 
 function rememberPointer(event) {
   activePointers.set(event.pointerId, {
@@ -2133,48 +2114,12 @@ function forgetPointer(event) {
   activePointers.delete(event.pointerId);
 }
 
-function getItemGesturePointers(itemId) {
-  return [...activePointers.values()].filter((pointer) => pointer.targetItemId === itemId).slice(0, 2);
-}
-
 function pointerDistance(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
 function pointerAngle(a, b) {
   return Math.atan2(b.y - a.y, b.x - a.x);
-}
-
-function maybeBeginItemGesture(itemId) {
-  const item = testMap.getItem(itemId);
-  const pointers = getItemGesturePointers(itemId);
-  if (!item || pointers.length < 2) return false;
-  itemGestureState = {
-    itemId,
-    startDistance: Math.max(1, pointerDistance(pointers[0], pointers[1])),
-    startAngle: pointerAngle(pointers[0], pointers[1]),
-    startRotation: item.rotation || 0,
-    startScale: item.scale || 1,
-    historyPushed: false
-  };
-  return true;
-}
-
-function moveItemGesture() {
-  if (!itemGestureState) return;
-  const item = testMap.getItem(itemGestureState.itemId);
-  const pointers = getItemGesturePointers(itemGestureState.itemId);
-  if (!item || item.locked || pointers.length < 2) return;
-  const nextScale = Math.max(0.5, Math.min(4, itemGestureState.startScale * pointerDistance(pointers[0], pointers[1]) / itemGestureState.startDistance));
-  const nextRotation = itemGestureState.startRotation + pointerAngle(pointers[0], pointers[1]) - itemGestureState.startAngle;
-  if (!itemGestureState.historyPushed) {
-    pushHistory();
-    itemGestureState.historyPushed = true;
-  }
-  testMap.updateItem(item.id, { rotation: nextRotation, scale: Number(nextScale.toFixed(3)) });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
 }
 
 function beginOpeningDrag(event, openingId) {
@@ -2267,8 +2212,8 @@ function findTableBelow(item) {
     const localX = dx * cos - dz * sin;
     const localZ = dx * sin + dz * cos;
     
-    const halfW = ((other.width || otherDef.defaultSize.width) * (other.scale || 1)) / 48;
-    const halfD = ((other.depth || otherDef.defaultSize.depth) * (other.scale || 1)) / 48;
+    const halfW = ((other.width || otherDef.defaultSize.width) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
+    const halfD = ((other.depth || otherDef.defaultSize.depth) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
     
     if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
       const surface = (other.elevation || 0) + (other.height || otherDef.defaultSize.height) * (other.scale || 1);
@@ -2283,124 +2228,7 @@ function findTableBelow(item) {
 }
 
 function moveItemTo(itemId, x, z) {
-  const item = testMap.getItem(itemId);
-  if (!item || item.locked) return;
-  const snapped = snapWorldPoint({ x, z });
-
-  const definition = testMap.getFurnitureDefinition(item.type);
-  if (definition.placeType === 'wall') {
-    let minDistance = Infinity;
-    let bestProjX = snapped.x;
-    let bestProjZ = snapped.z;
-    let bestAngle = item.rotation || 0;
-    let bestWall = null;
-
-    currentWalls().forEach((wall) => {
-      const [x1, z1] = wall.from;
-      const [x2, z2] = wall.to;
-      const dx = x2 - x1;
-      const dz = z2 - z1;
-      const len2 = dx * dx + dz * dz;
-      if (len2 === 0) return;
-      let t = ((snapped.x - x1) * dx + (snapped.z - z1) * dz) / len2;
-      t = Math.max(0.08, Math.min(0.92, t)); // 限制在墙线段之内，稍微留点边距防止穿墙角
-      const projX = x1 + t * dx;
-      const projZ = z1 + t * dz;
-      const dist = Math.hypot(snapped.x - projX, snapped.z - projZ);
-      if (dist < minDistance) {
-        minDistance = dist;
-        bestProjX = projX;
-        bestProjZ = projZ;
-        bestAngle = -Math.atan2(dz, dx);
-        bestWall = wall;
-      }
-    });
-
-    if (bestWall) {
-      const wallThickness = testMap.floorplan.wallThickness || 0.18;
-      // 计算家具厚度 (米)
-      const itemScale = Number(item.scale || 1);
-      const itemDepth = (((item.depth || definition.defaultSize.depth) / 24) * itemScale);
-
-      // 从投影点指向拖拽点的向量
-      const vx = snapped.x - bestProjX;
-      const vz = snapped.z - bestProjZ;
-      const vLen = Math.hypot(vx, vz);
-
-      let offsetX = 0;
-      let offsetZ = 0;
-      const offsetDist = wallThickness / 2 + itemDepth / 2 + 0.002; // 墙半宽 + 家具半深 + 2毫米余量
-
-      if (vLen > 0.0001) {
-        offsetX = (vx / vLen) * offsetDist;
-        offsetZ = (vz / vLen) * offsetDist;
-      } else {
-        // 若完全重合，沿法线方向偏移
-        const [x1, z1] = bestWall.from;
-        const [x2, z2] = bestWall.to;
-        const dx = x2 - x1;
-        const dz = z2 - z1;
-        const len = Math.hypot(dx, dz) || 1;
-        offsetX = (-dz / len) * offsetDist;
-        offsetZ = (dx / len) * offsetDist;
-      }
-
-      item.x = bestProjX + offsetX;
-      item.z = bestProjZ + offsetZ;
-
-      // 使用点积法智能判断朝向：选择与偏移方向 (offsetX, offsetZ) 同向的那个旋转角度
-      const dot1 = Math.sin(bestAngle) * offsetX + Math.cos(bestAngle) * offsetZ;
-      const dot2 = Math.sin(bestAngle + Math.PI) * offsetX + Math.cos(bestAngle + Math.PI) * offsetZ;
-      item.rotation = dot1 >= dot2 ? bestAngle : bestAngle + Math.PI;
-    } else {
-      item.x = snapped.x;
-      item.z = snapped.z;
-    }
-
-    if (item.elevation === undefined || item.elevation === 0) {
-      item.elevation = 33.6; // 离地 1.4 米 (33.6 英寸)
-    }
-  } else if (definition.placeType === 'ceiling') {
-    item.x = snapped.x;
-    item.z = snapped.z;
-    item.elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - (item.height || definition.defaultSize.height) * (item.scale || 1); // 贴齐天花板下方
-  } else {
-    item.x = snapped.x;
-    item.z = snapped.z;
-    if (canPlaceOnTable(item, definition)) {
-      const tableBelow = findTableBelow(item);
-      if (tableBelow) {
-        const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
-        item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
-      } else {
-        item.elevation = 0;
-      }
-    }
-  }
-
-  const room = testMap.getRoomAt(item.x, item.z);
-  if (room) testMap.assignItemToRoom(item.id, room.id);
-  const node = testMap.itemNodes.get(item.id);
-
-  if (item.type === 'mannequin' && item.pose && item.pose !== 'stand') {
-    const seat = findNearestSeat(item);
-    if (!seat) {
-      item.pose = 'stand';
-      item.elevation = 0;
-      definition.build(testMap, item, node, {
-        width: (item.width / 24) * (item.scale || 1),
-        depth: (item.depth / 24) * (item.scale || 1),
-        height: (item.height / 24) * (item.scale || 1)
-      });
-    }
-  }
-
-  if (node) {
-    const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(item.floorId) : 0;
-    node.position.set(item.x, floorY + (item.elevation || 0) / 24, item.z);
-    node.rotation.y = item.rotation || 0;
-  }
-  renderPlan();
+  entityManager.moveItemTo(itemId, x, z);
 }
 
 function moveOpeningToWorld(openingId, world, dragMeta) {
@@ -2513,8 +2341,8 @@ svg.addEventListener('wheel', (event) => {
 
   const currentSpanX = view.maxX - view.minX;
   const nextSpanX = currentSpanX * factor;
-  // 限制视口世界坐标跨度在 0.5m 到 100m 之间
-  if (nextSpanX < 0.5 || nextSpanX > 100) return;
+  // 限制视口世界坐标跨度在 0.05m 到 300m 之间
+  if (nextSpanX < 0.05 || nextSpanX > 300) return;
 
   view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
   view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
@@ -2530,8 +2358,13 @@ svg.addEventListener('pointerdown', (event) => {
   // 记录到视图触点列表中
   viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-  // 鼠标中键平移
-  if (event.pointerType === 'mouse' && event.button === 1) {
+  // 鼠标中键平移，或在查看模式下鼠标左键平移，或在查看模式下触摸屏单指滑动平移
+  const isViewModePan = mode === 'view' && (
+    (event.pointerType === 'mouse' && event.button === 0) ||
+    (event.pointerType === 'touch' && viewPointers.size === 1)
+  );
+
+  if ((event.pointerType === 'mouse' && event.button === 1) || isViewModePan) {
     isPanning2D = true;
     panStart2D = { x: event.clientX, y: event.clientY };
     svg.setPointerCapture(event.pointerId);
@@ -2540,8 +2373,12 @@ svg.addEventListener('pointerdown', (event) => {
 
   // 双指手势
   if (viewPointers.size === 2) {
+    // 如果有单指平移状态，取消之，转入双指手势
+    isPanning2D = false;
+    panStart2D = null;
+
     // 取消其他物体的拖动和编辑状态，避免冲突
-    dragState = null;
+    entityManager.dragState = null;
     roomDragState = null;
     roomResizeState = null;
     openingDragState = null;
@@ -2599,7 +2436,7 @@ svg.addEventListener('pointermove', (event) => {
 
       const currentSpanX = view.maxX - view.minX;
       const nextSpanX = currentSpanX * factor;
-      if (nextSpanX >= 0.5 && nextSpanX <= 100) {
+      if (nextSpanX >= 0.05 && nextSpanX <= 300) {
         view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
         view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
         view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
@@ -2629,8 +2466,8 @@ svg.addEventListener('pointermove', (event) => {
   }
 
   updatePointer(event);
-  if (itemGestureState) {
-    moveItemGesture();
+  if (entityManager.itemGestureState) {
+    entityManager.moveItemGesture();
     return;
   }
   if (roomResizeState) {
@@ -2657,16 +2494,8 @@ svg.addEventListener('pointermove', (event) => {
     moveStructureTo(structureDragState.type, structureDragState.id, nextX, nextZ);
     return;
   }
-  if (dragState) {
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    const nextX = world.x + dragState.offsetX;
-    const nextZ = world.z + dragState.offsetZ;
-    if (!dragState.historyPushed && Math.hypot(nextX - dragState.originalX, nextZ - dragState.originalZ) > 0.02) {
-      pushHistory();
-      dragState.historyPushed = true;
-    }
-    moveItemTo(dragState.itemId, nextX, nextZ);
+  if (entityManager.dragState) {
+    entityManager.handleItemDrag(event);
   }
   if (openingDragState) {
     const point = svgPointFromEvent(event);
@@ -2726,8 +2555,8 @@ svg.addEventListener('pointerup', (event) => {
   }
 
   forgetPointer(event);
-  if (itemGestureState && activePointers.size < 2) itemGestureState = null;
-  dragState = null;
+  if (entityManager.itemGestureState && activePointers.size < 2) entityManager.itemGestureState = null;
+  entityManager.dragState = null;
   structureDragState = null;
   finishRoofResize();
   finishRoomEdit();
@@ -2749,8 +2578,8 @@ svg.addEventListener('pointercancel', (event) => {
   }
 
   forgetPointer(event);
-  if (itemGestureState && activePointers.size < 2) itemGestureState = null;
-  dragState = null;
+  if (entityManager.itemGestureState && activePointers.size < 2) entityManager.itemGestureState = null;
+  entityManager.dragState = null;
   structureDragState = null;
   finishRoofResize();
   finishRoomEdit();
@@ -2787,9 +2616,9 @@ svg.addEventListener('click', (event) => {
       refreshShadows();
     }
     renderPlan();
-  } else if (mode === 'add-room') {
+  } else if (isAddRoomMode()) {
     pushHistory();
-    const room = testMap.addRoom({ x: snapped[0], z: snapped[1], name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
+    const room = testMap.addRoom({ x: snapped[0], z: snapped[1], shape: roomShapeFromMode(), name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
     refreshShadows();
     selectRoom(room.id);
     switchToSelectMode();
@@ -2797,11 +2626,12 @@ svg.addEventListener('click', (event) => {
     pushHistory();
     const subtype = mode.replace('add-roof-', '') || 'gable';
     const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped[0], snapped[1]);
+    const wallThickness = testMap.floorplan.wallThickness || 0.15;
     const roof = testMap.addRoof({
       x: room?.x ?? snapped[0],
       z: room?.z ?? snapped[1],
-      width: room?.width ?? 6,
-      depth: room?.depth ?? 6,
+      width: room ? (room.width + wallThickness) : 6,
+      depth: room ? (room.depth + wallThickness) : 6,
       subtype: subtype
     });
     refreshShadows();
@@ -2866,7 +2696,17 @@ function findRoomIdFromNode(node) {
 }
 
 function findRoofIdFromNode(node) {
-  return findMetadataFromNode(node, 'blueprintRoofId');
+  const id = findMetadataFromNode(node, 'blueprintRoofId');
+  if (id) {
+    const roof = testMap.getRoof?.(id);
+    if (roof) {
+      const floor = testMap.floorplan.floors.find(f => f.id === roof.floorId);
+      if (floor && floor.hideRoof) {
+        return null;
+      }
+    }
+  }
+  return id;
 }
 
 function findStairsIdFromNode(node) {
@@ -2878,11 +2718,8 @@ function findFenceIdFromNode(node) {
 }
 
 function groundPointFromPointer() {
-  const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
-  const distance = ray.intersectsPlane(new BABYLON.Plane(0, 1, 0, -floorY));
-  if (distance === null || distance === undefined || distance < 0) return null;
-  return ray.origin.add(ray.direction.scale(distance));
+  return viewer3d.groundPointFromPointer(floorY);
 }
 
 function clear3DEditHandles() {
@@ -2933,7 +2770,7 @@ function get3DEditTargetBounds(type, id) {
     z: Number(target.z || 0),
     width: Number(target.width || (type === 'stairs' ? 1.2 : 4)),
     depth: Number(target.depth || (type === 'stairs' ? 3.2 : 4)),
-    height: Number(target.height || 0),
+    height: type === 'stairs' && testMap.getStairsAutoHeight ? testMap.getStairsAutoHeight(target) : Number(target.height || 0),
     floorId: target.floorId || testMap.floorplan.currentFloorId
   };
 }
@@ -2941,9 +2778,34 @@ function get3DEditTargetBounds(type, id) {
 function get3DEditHandleY(type, bounds) {
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(bounds.floorId) : 0;
   if (type === 'wall') return floorY + 1.2;
-  if (type === 'fence') return floorY + (bounds.height || 1.1) + 0.18;
-  if (type === 'roof') return floorY + (testMap.floorplan.wallHeight || 2.8) + bounds.height + 0.18;
-  if (type === 'stairs') return floorY + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
+  
+  if (type === 'fence') {
+    const fenceOffset = testMap.getFenceElevationOffset ? testMap.getFenceElevationOffset(bounds.target) : 0;
+    return floorY + fenceOffset + (bounds.height || 1.1) + 0.18;
+  }
+  
+  if (type === 'roof') {
+    const floor = testMap.floorplan.floors.find(f => f.id === bounds.floorId);
+    const roofWallHeight = floor ? (floor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+    return floorY + roofWallHeight + bounds.height + 0.18;
+  }
+  
+  if (type === 'stairs') {
+    const stairsOffset = testMap.getStairsElevationOffset ? testMap.getStairsElevationOffset(bounds.target) : 0;
+    return floorY + stairsOffset + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
+  }
+  
+  if (type === 'opening') {
+    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(bounds.target) : 0;
+    return floorY + openingOffset + 0.18;
+  }
+  
+  if (type === 'item') {
+    const item = bounds.target;
+    const roomOffset = testMap.getItemRoomElevationOffset ? testMap.getItemRoomElevationOffset(item) : 0;
+    return floorY + roomOffset + (item.elevation || 0) / INCHES_PER_UNIT + 0.18;
+  }
+  
   return floorY + 0.18;
 }
 
@@ -3235,18 +3097,21 @@ function syncRoomMovePreview(roomId) {
     const node = testMap.openingNodes?.get(opening.id);
     if (!wall || !node) return;
     const point = wallPointAt(wall, opening.t ?? 0.5);
-    const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
-    const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const localY = sillHeight + height / 2;
     const [x1, z1] = wall.from;
     const [x2, z2] = wall.to;
-    node.position.set(point.x, floorY + localY, point.z);
+    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(opening) : 0;
+    node.position.set(point.x, floorY + localY + openingOffset, point.z);
     node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
   });
 
   testMap.floorplan.items.forEach((item) => {
     if (item.roomId !== room.id) return;
     const node = testMap.itemNodes?.get(item.id);
-    if (node) node.position.set(item.x, floorY + (item.elevation || 0) / 24, item.z);
+    const roomOffset = testMap.getItemRoomElevationOffset ? testMap.getItemRoomElevationOffset(item) : 0;
+    if (node) node.position.set(item.x, floorY + (item.elevation || 0) / INCHES_PER_UNIT + roomOffset, item.z);
   });
 }
 
@@ -3268,11 +3133,13 @@ function syncWallMovePreview(wallId) {
     const opNode = testMap.openingNodes?.get(opening.id);
     if (!opNode) return;
     const point = wallPointAt(wall, opening.t ?? 0.5);
-    const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
-    const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const localY = sillHeight + height / 2;
     const [wx1, wz1] = wall.from;
     const [wx2, wz2] = wall.to;
-    opNode.position.set(point.x, floorY + localY, point.z);
+    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(opening) : 0;
+    opNode.position.set(point.x, floorY + localY + openingOffset, point.z);
     opNode.rotation.y = -Math.atan2(wz2 - wz1, wx2 - wx1);
   });
 }
@@ -3284,8 +3151,8 @@ function syncFenceMovePreview(fenceId) {
   const [x1, z1] = fence.from;
   const [x2, z2] = fence.to;
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(fence.floorId) : 0;
-  
-  node.position.set((x1 + x2) / 2, floorY, (z1 + z2) / 2);
+  const fenceOffset = testMap.getFenceElevationOffset ? testMap.getFenceElevationOffset(fence) : 0;
+  node.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
   
   const currentLength = Math.hypot(x2 - x1, z2 - z1);
   const originalLength = node.metadata?.originalLength || currentLength || 1;
@@ -3324,6 +3191,11 @@ function update3DEditTarget(type, id, patch, options = {}) {
       if (node) {
         node.position.x = updated.x || 0;
         node.position.z = updated.z || 0;
+        if (type === 'stairs') {
+          const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(updated.floorId) : 0;
+          const stairsOffset = testMap.getStairsElevationOffset ? testMap.getStairsElevationOffset(updated) : 0;
+          node.position.y = floorY + stairsOffset;
+        }
       }
     } else {
       refreshShadows();
@@ -3573,8 +3445,18 @@ function move3DEditHandle(groundPoint) {
 
 function begin3DDrag(pointerInfo) {
   const event = pointerInfo.event;
+  if (mode === 'view') {
+    // 查看模式下不进行任何3D物体的选中或拖拽
+    if (event.button === 0) {
+      const target = pickNearest3DTarget();
+      if (!target) {
+        clearSelection();
+      }
+    }
+    return;
+  }
   if (event.button === 2) {
-    if (mode === 'draw-wall' || mode === 'delete-wall' || mode === 'add-room' || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode === 'add-door' || mode === 'add-window') {
+    if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode()) {
       drawStart = null;
       clearDrawWallPreview();
       switchToSelectMode();
@@ -3615,7 +3497,7 @@ function begin3DDrag(pointerInfo) {
     }
   }
 
-  if (mode === 'add-room' || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode.startsWith('draw-fence')) {
+  if (isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode.startsWith('draw-fence')) {
     const point = groundPointFromPointer();
     if (point) {
       const snapped = snapWorldPoint({ x: point.x, z: point.z });
@@ -3638,18 +3520,19 @@ function begin3DDrag(pointerInfo) {
         }
       } else {
         pushHistory();
-        if (mode === 'add-room') {
-          const room = testMap.addRoom({ x: snapped.x, z: snapped.z, name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
+        if (isAddRoomMode()) {
+          const room = testMap.addRoom({ x: snapped.x, z: snapped.z, shape: roomShapeFromMode(), name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
           refreshShadows();
           selectRoom(room.id);
         } else if (mode.startsWith('add-roof')) {
           const subtype = mode.replace('add-roof-', '') || 'gable';
           const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
+          const wallThickness = testMap.floorplan.wallThickness || 0.15;
           const roof = testMap.addRoof({
             x: room?.x ?? snapped.x,
             z: room?.z ?? snapped.z,
-            width: room?.width ?? 6,
-            depth: room?.depth ?? 6,
+            width: room ? (room.width + wallThickness) : 6,
+            depth: room ? (room.depth + wallThickness) : 6,
             subtype: subtype
           });
           refreshShadows();
@@ -3671,7 +3554,7 @@ function begin3DDrag(pointerInfo) {
     }
   }
 
-  if (mode === 'add-door' || mode === 'add-window') {
+  if (isAddOpeningMode()) {
     const target = pickNearest3DTarget();
     if (target && target.type === 'wall' && isTargetOnCurrentFloor(target)) {
       const wallId = target.id;
@@ -3679,7 +3562,8 @@ function begin3DDrag(pointerInfo) {
       if (wall && target.pick.pickedPoint) {
         pushHistory();
         const pt = target.pick.pickedPoint;
-        const opening = testMap.addOpening(wallId, mode === 'add-door' ? 'door' : 'window', getWallProjectionT(wall, pt));
+        const openingMode = getOpeningModeInfo();
+        const opening = testMap.addOpening(wallId, openingMode.type, getWallProjectionT(wall, pt), openingMode.shape);
         refreshShadows();
         selectOpening(opening?.id || null);
         switchToSelectMode();
@@ -3869,6 +3753,10 @@ canvas.addEventListener('mousedown', (event) => {
 });
 
 canvas.addEventListener('contextmenu', (event) => {
+  if (mode === 'view') {
+    event.preventDefault();
+    return;
+  }
   const target = get3DContextTarget(event);
   if (!target) return;
   event.preventDefault();
@@ -3877,6 +3765,7 @@ canvas.addEventListener('contextmenu', (event) => {
 });
 
 canvas.addEventListener('pointerdown', (event) => {
+  if (mode === 'view') return;
   if (event.pointerType === 'mouse' || event.button === 2) return;
   const target = get3DContextTarget(event);
   if (!target) return;
@@ -4040,6 +3929,7 @@ function clearSelection() {
   selectedRoomId = null;
   selectedWallId = null;
   selectedItemId = null;
+  entityManager.selectedItemId = null;
   selectedOpeningId = null;
   selectedRoofId = null;
   selectedStairsId = null;
@@ -4084,19 +3974,7 @@ function selectWall(wallId) {
 }
 
 function selectItem(itemId) {
-  clear3DEditHandles();
-  selectedItemId = itemId;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedOpeningId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedFenceId = null;
-  testMap.setSelectedWall(null);
-  testMap.setSelectedItem(itemId);
-  testMap.setSelectedFence(null);
-  updateEditor();
-  renderPlan();
+  entityManager.selectItem(itemId);
 }
 
 function selectOpening(openingId) {
@@ -4330,10 +4208,10 @@ function renderSelectedFenceHandles(fence) {
     class: 'fence-handle',
     cx: a.x,
     cy: a.y,
-    r: 6,
+    r: 8,
     fill: '#ff9f1c',
     stroke: '#ffffff',
-    'stroke-width': 1.5,
+    'stroke-width': 2,
     cursor: 'pointer'
   });
   
@@ -4341,10 +4219,10 @@ function renderSelectedFenceHandles(fence) {
     class: 'fence-handle',
     cx: b.x,
     cy: b.y,
-    r: 6,
+    r: 8,
     fill: '#ff9f1c',
     stroke: '#ffffff',
-    'stroke-width': 1.5,
+    'stroke-width': 2,
     cursor: 'pointer'
   });
   
@@ -4457,9 +4335,9 @@ function findNearestSeat(mannequinItem) {
     
     const otherScale = Number(other.scale || 1);
     const otherSize = {
-      width: (other.width / 24) * otherScale,
-      depth: (other.depth / 24) * otherScale,
-      height: (other.height / 24) * otherScale
+      width: (other.width / INCHES_PER_UNIT) * otherScale,
+      depth: (other.depth / INCHES_PER_UNIT) * otherScale,
+      height: (other.height / INCHES_PER_UNIT) * otherScale
     };
     
     const localPoints = definition.interaction.getInteractionPoints(otherSize);
@@ -4469,7 +4347,7 @@ function findNearestSeat(mannequinItem) {
       const sin = Math.sin(other.rotation || 0);
       const wx = other.x + p.x * cos + p.z * sin;
       const wz = other.z - p.x * sin + p.z * cos;
-      const wy = (other.elevation || 0) / 24 + p.y;
+      const wy = (other.elevation || 0) / INCHES_PER_UNIT + p.y;
       
       const dx = mannequinItem.x - wx;
       const dz = mannequinItem.z - wz;
@@ -4490,323 +4368,7 @@ function findNearestSeat(mannequinItem) {
   return nearest;
 }
 
-function updateEditor() {
-  const roomEditor = document.getElementById('room-editor');
-  const wallEditor = document.getElementById('wall-editor');
-  const fenceEditor = document.getElementById('fence-editor');
-  const itemEditor = document.getElementById('item-editor');
-  const openingEditor = document.getElementById('opening-editor');
-  const structureEditor = document.getElementById('structure-editor');
-  const emptyState = document.getElementById('empty-state');
-  const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
-  const wall = selectedWallId ? testMap.getWall(selectedWallId) : null;
-  const fence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
-  const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
-  const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
-  const roof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
-  const stairs = selectedStairsId ? testMap.getStairs?.(selectedStairsId) : null;
-  const structure = roof || stairs;
-  const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
-  roomEditor.classList.toggle('hidden', !room);
-  wallEditor.classList.toggle('hidden', !wall);
-  if (fenceEditor) fenceEditor.classList.toggle('hidden', !fence);
-  itemEditor.classList.toggle('hidden', !item);
-  openingEditor.classList.toggle('hidden', !opening);
-  structureEditor?.classList.toggle('hidden', !structure);
-  emptyState.classList.toggle('hidden', !!room || !!wall || !!fence || !!item || !!opening || !!structure);
-
-  document.getElementById('floor-color').value = room?.color || testMap.floorplan.floor.color || '#f4efe6';
-
-  if (room) {
-    document.getElementById('selected-room-name').textContent = room.name || '房间';
-    document.getElementById('room-name').value = room.name || '';
-    document.getElementById('room-width').value = Number(room.width.toFixed(2));
-    document.getElementById('room-depth').value = Number(room.depth.toFixed(2));
-    document.getElementById('room-locked').checked = !!room.locked;
-    document.getElementById('btn-delete-room').disabled = !!room.locked;
-  }
-  if (wall) {
-    document.getElementById('selected-wall-name').textContent = wall.id;
-    document.getElementById('wall-length').value = Number(testMap.getWallLength(wall.id).toFixed(2));
-    const dx = wall.to[0] - wall.from[0];
-    const dz = wall.to[1] - wall.from[1];
-    const angleRad = Math.atan2(dz, dx);
-    const angleDeg = Math.round(((angleRad * 180 / Math.PI) + 360) % 360);
-    document.getElementById('wall-rotation').value = angleDeg;
-    document.getElementById('wall-rotation-range').value = angleDeg;
-  }
-  if (fence) {
-    document.getElementById('selected-fence-name').textContent = fence.id;
-    document.getElementById('fence-subtype').value = fence.subtype || 'picket_wood';
-    const dx = fence.to[0] - fence.from[0];
-    const dz = fence.to[1] - fence.from[1];
-    const length = Math.hypot(dx, dz);
-    document.getElementById('fence-length').value = Number(length.toFixed(2));
-    const angleRad = Math.atan2(dz, dx);
-    const angleDeg = Math.round(((angleRad * 180 / Math.PI) + 360) % 360);
-    document.getElementById('fence-rotation').value = angleDeg;
-    document.getElementById('fence-rotation-range').value = angleDeg;
-    document.getElementById('fence-height').value = fence.height || 1.1;
-    document.getElementById('fence-color').value = fence.color || '#8d6e63';
-    document.getElementById('fence-locked').checked = !!fence.locked;
-    document.getElementById('btn-delete-fence').disabled = !!fence.locked;
-  }
-
-  if (item) {
-    document.getElementById('selected-name').textContent = item.name;
-    document.getElementById('item-width').value = Number((item.width / 24).toFixed(2));
-    document.getElementById('item-depth').value = Number((item.depth / 24).toFixed(2));
-    document.getElementById('item-height').value = Number((item.height / 24).toFixed(2));
-    document.getElementById('item-elevation').value = Number(((item.elevation || 0) / 24).toFixed(2));
-    const rotationDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
-    document.getElementById('item-rotation').value = rotationDegrees;
-    document.getElementById('item-rotation-range').value = rotationDegrees;
-    document.getElementById('item-scale').value = Number((item.scale || 1).toFixed(2));
-    document.getElementById('item-scale-range').value = item.scale || 1;
-    document.getElementById('item-locked').checked = !!item.locked;
-
-    const poseField = document.getElementById('item-pose-field');
-    if (item.type === 'mannequin') {
-      const seat = findNearestSeat(item);
-      if (seat) {
-        poseField.classList.remove('hidden');
-        document.getElementById('item-pose').value = item.pose || 'stand';
-      } else {
-        poseField.classList.add('hidden');
-        if (item.pose && item.pose !== 'stand') {
-          setTimeout(() => {
-            const cur = testMap.getItem(item.id);
-            if (cur && cur.pose !== 'stand') {
-              testMap.updateItem(item.id, { pose: 'stand', elevation: 0 });
-              refreshShadows();
-              updateEditor();
-              renderPlan();
-            }
-          }, 0);
-        }
-      }
-    } else {
-      poseField.classList.add('hidden');
-    }
-
-    const lightField = document.getElementById('item-light-field');
-    if (lightField) {
-      const def = testMap.getFurnitureDefinition(item.type);
-      if (def.category === 'lighting' || def.lightSource) {
-        lightField.classList.remove('hidden');
-        document.getElementById('item-light-on').checked = item.lightOn !== false;
-      } else {
-        lightField.classList.add('hidden');
-      }
-    }
-  }
-
-  if (structure) {
-    document.getElementById('selected-structure-name').textContent = structureType === 'roof' ? '\u5c4b\u9876' : '\u697c\u68af';
-    document.getElementById('structure-x').value = Number((structure.x || 0).toFixed(2));
-    document.getElementById('structure-z').value = Number((structure.z || 0).toFixed(2));
-    document.getElementById('structure-width').value = Number((structure.width || 1).toFixed(2));
-    document.getElementById('structure-depth').value = Number((structure.depth || 1).toFixed(2));
-    document.getElementById('structure-height').value = Number((structure.height || 1).toFixed(2));
-    const rotationDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
-    document.getElementById('structure-rotation').value = rotationDegrees;
-    document.getElementById('structure-rotation-range').value = rotationDegrees;
-    const stepsField = document.getElementById('structure-steps').closest('label');
-    stepsField.classList.toggle('hidden', structureType !== 'stairs');
-    document.getElementById('structure-steps').value = structure.steps || 9;
-    document.getElementById('structure-color').value = structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0');
-    document.getElementById('structure-locked').checked = !!structure.locked;
-    document.getElementById('btn-delete-structure').disabled = !!structure.locked;
- 
-    const subtypeSelect = document.getElementById('structure-subtype');
-    if (subtypeSelect) {
-      subtypeSelect.innerHTML = '';
-      if (structureType === 'roof') {
-        const options = [
-          { value: 'gable', label: '双斜坡屋顶' },
-          { value: 'shed', label: '单斜坡屋顶' },
-          { value: 'arch', label: '拱形屋顶' },
-          { value: 'dome', label: '穹型屋顶' },
-          { value: 'trapezoid', label: '梯形屋顶' },
-          { value: 'hip', label: '四角屋顶' },
-          { value: 'flat', label: '平屋顶' }
-        ];
-        options.forEach(opt => {
-          const o = document.createElement('option');
-          o.value = opt.value;
-          o.textContent = opt.label;
-          subtypeSelect.appendChild(o);
-        });
-        subtypeSelect.value = structure.subtype || structure.type || 'gable';
-      } else {
-        const options = [
-          { value: 'straight', label: '直跑楼梯' },
-          { value: 'lshape', label: 'L形折返楼梯' },
-          { value: 'ushape', label: 'U形折返楼梯' },
-          { value: 'spiral', label: '旋转楼梯' },
-          { value: 'curved', label: '弧形楼梯' },
-          { value: 'floating', label: '悬浮楼梯' }
-        ];
-        options.forEach(opt => {
-          const o = document.createElement('option');
-          o.value = opt.value;
-          o.textContent = opt.label;
-          subtypeSelect.appendChild(o);
-        });
-        subtypeSelect.value = structure.subtype || 'straight';
-      }
-    }
-  }
-
-  if (opening) {
-    document.getElementById('selected-opening-name').textContent = opening.type === 'door' ? '门' : '窗';
-    document.getElementById('opening-position').value = Math.round((opening.t ?? 0.5) * 100);
-    document.getElementById('opening-width').value = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
-    const heightField = document.getElementById('opening-height-field');
-    heightField.classList.toggle('hidden', opening.type !== 'window');
-    const sillField = document.getElementById('opening-sill-field');
-    sillField.classList.toggle('hidden', opening.type !== 'window');
-    document.getElementById('opening-height').value = opening.height || 0.85;
-    document.getElementById('opening-sill-height').value = opening.sillHeight ?? 1.05;
-
-    const openField = document.getElementById('opening-open-field');
-    const flipLrField = document.getElementById('opening-flip-lr-field');
-    const flipIoField = document.getElementById('opening-flip-io-field');
-    const isDoor = opening.type === 'door';
-    if (openField) {
-      openField.classList.toggle('hidden', !isDoor);
-      document.getElementById('opening-open').checked = !!opening.isOpen;
-    }
-    if (flipLrField) {
-      flipLrField.classList.toggle('hidden', !isDoor);
-      document.getElementById('opening-flip-lr').checked = !!opening.isFlippedLR;
-    }
-    if (flipIoField) {
-      flipIoField.classList.toggle('hidden', !isDoor);
-      document.getElementById('opening-flip-io').checked = !!opening.isFlippedIO;
-    }
-    document.getElementById('opening-locked').checked = !!opening.locked;
-    document.getElementById('btn-delete-opening').disabled = !!opening.locked;
-  }
-
-  renderDesignPanel(room, wall, item, structure, structureType, fence);
-  revealRightPanelIfNeeded(room || wall || item || opening || structure || fence);
-}
-
-function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null) {
-  designSelectionPanel.innerHTML = '';
-  const btnResetMaterial = document.getElementById('btn-reset-material');
-  if (btnResetMaterial) {
-    btnResetMaterial.disabled = !(room || wall || item || structure || fence);
-  }
-  const floorColorField = document.getElementById('floor-color-field');
-  if (floorColorField) floorColorField.classList.toggle('hidden', !room);
-  if (room) {
-    designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质到房间地板', () => applyMaterialToRoomFloor(activeMaterialDescriptor)));
-    return;
-  }
-
-  if (wall) {
-    designSelectionPanel.appendChild(createColorField('墙正面颜色', wall.colorFront || wall.color || '#f9fbff', (color) => {
-      pushHistory();
-      testMap.updateWall(wall.id, { colorFront: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    }));
-    designSelectionPanel.appendChild(createColorField('墙背面颜色', wall.colorBack || wall.color || '#f9fbff', (color) => {
-      pushHistory();
-      testMap.updateWall(wall.id, { colorBack: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    }));
-    designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质到墙的正面', () => applyMaterialToWallFront(activeMaterialDescriptor)));
-    designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质到墙的背面', () => applyMaterialToWallBack(activeMaterialDescriptor)));
-    return;
-  }
-
-  if (structure) {
-    const title = document.createElement('p');
-    title.className = 'selection-title';
-    title.textContent = structureType === 'roof' ? '\u5c4b\u9876\u989c\u8272 / \u6750\u8d28' : '\u697c\u68af\u989c\u8272 / \u6750\u8d28';
-    designSelectionPanel.appendChild(title);
-    designSelectionPanel.appendChild(createColorField('\u989c\u8272', structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0'), (color) => {
-      pushHistory();
-      updateStructure(structureType, structure.id, { color, material: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    }));
-    designSelectionPanel.appendChild(createApplyMaterialButton('\u5e94\u7528\u5f53\u524d\u6750\u8d28', () => applyMaterialToStructure(activeMaterialDescriptor)));
-    return;
-  }
-
-  if (item) {
-    const definition = testMap.getFurnitureDefinition(item.type);
-    const title = document.createElement('p');
-    title.className = 'selection-title';
-    title.textContent = `${item.name} 组件颜色 / 材质`;
-    designSelectionPanel.appendChild(title);
-    definition.components.forEach((component) => {
-      const group = document.createElement('div');
-      group.className = 'component-material-row';
-      group.appendChild(createColorField(component.label, item.colors?.[component.id] || component.defaultColor, (color) => {
-        pushHistory();
-        testMap.updateItemComponentColor(item.id, component.id, color);
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }));
-      group.appendChild(createApplyMaterialButton(`应用当前材质到${component.label}`, () => applyMaterialToItemComponent(component.id, activeMaterialDescriptor)));
-      designSelectionPanel.appendChild(group);
-    });
-    return;
-  }
-
-  if (fence) {
-    const title = document.createElement('p');
-    title.className = 'selection-title';
-    title.textContent = '栅栏颜色 / 材质';
-    designSelectionPanel.appendChild(title);
-    designSelectionPanel.appendChild(createColorField('颜色', fence.color || '#8d6e63', (color) => {
-      pushHistory();
-      testMap.updateFence(fence.id, { color: color, material: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    }));
-    designSelectionPanel.appendChild(createApplyMaterialButton('应用当前材质', () => applyMaterialToFence(activeMaterialDescriptor)));
-    return;
-  }
-
-  const hint = document.createElement('p');
-  hint.className = 'hint';
-  hint.textContent = '选择墙面或家具后，这里会显示可调整的颜色和材质入口。材质库里的“应用到地板”可直接修改地面。';
-  designSelectionPanel.appendChild(hint);
-}
-
-function createApplyMaterialButton(text, onClick) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'apply-material-button';
-  button.textContent = text;
-  button.addEventListener('click', onClick);
-  return button;
-}
-function createColorField(labelText, value, onChange) {
-  const label = document.createElement('label');
-  label.className = 'field';
-  const span = document.createElement('span');
-  span.textContent = labelText;
-  const input = document.createElement('input');
-  input.type = 'color';
-  input.value = value;
-  input.addEventListener('change', () => onChange(input.value));
-  label.append(span, input);
-  return label;
-}
 
 function revealRightPanelIfNeeded(hasSelection) {
   if (!hasSelection) return;
@@ -4910,12 +4472,14 @@ function syncOpeningPreviewToWall(opening, wallLike) {
   const node = testMap.openingNodes?.get(opening.id);
   if (!node) return;
   const point = wallPointAt(wallLike, opening.t ?? 0.5);
-  const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
-  const localY = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
+  const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+  const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+  const localY = sillHeight + height / 2;
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(opening.floorId || wallLike.floorId) : 0;
   const [x1, z1] = wallLike.from;
   const [x2, z2] = wallLike.to;
-  node.position.set(point.x, floorY + localY, point.z);
+  const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(opening) : 0;
+  node.position.set(point.x, floorY + localY + openingOffset, point.z);
   node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
 }
 
@@ -4957,14 +4521,21 @@ function updateSelectedStructure() {
     depth: Number(document.getElementById('structure-depth').value),
     height: Number(document.getElementById('structure-height').value),
     rotation: normalizeRotationDegrees(document.getElementById('structure-rotation').value) * Math.PI / 180,
-    color: document.getElementById('structure-color').value,
-    material: document.getElementById('structure-color').value,
+    sideHidden: document.getElementById('structure-side-hidden').checked,
     subtype: document.getElementById('structure-subtype')?.value || (selected.type === 'roof' ? 'gable' : 'straight')
   };
   if (selected.type === 'roof') {
     patch.type = patch.subtype;
+    patch.bottomHidden = document.getElementById('structure-bottom-hidden').checked;
   }
-  if (selected.type === 'stairs') patch.steps = Number(document.getElementById('structure-steps').value);
+  if (selected.type === 'stairs') {
+    patch.steps = Number(document.getElementById('structure-steps').value);
+    patch.mirrored = document.getElementById('structure-mirrored').checked;
+    patch.spiralDegrees = Number(document.getElementById('structure-spiral-degrees').value);
+    patch.cornerStep = Number(document.getElementById('structure-corner-step').value);
+    patch.uSlotWidth = Number(document.getElementById('structure-u-slot-width').value);
+    patch.uVoidLength = Number(document.getElementById('structure-u-void-length').value);
+  }
   updateStructure(selected.type, selected.id, patch);
   refreshShadows();
   updateEditor();
@@ -4991,12 +4562,58 @@ function updateSelectedRoom() {
   if (!selectedRoomId) return;
   const room = testMap.getRoom(selectedRoomId);
   if (room?.locked) return;
+
+  const roomFloor = testMap.floorplan.floors.find(f => f.id === room.floorId);
+  const wallHeight = roomFloor ? (roomFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+  let elevation = Number(document.getElementById('room-elevation').value || 0);
+  if (elevation < 0) elevation = 0;
+  if (elevation > wallHeight) elevation = wallHeight;
+
   pushHistory();
   testMap.updateRoom(selectedRoomId, {
     name: document.getElementById('room-name').value,
     width: Number(document.getElementById('room-width').value),
-    depth: Number(document.getElementById('room-depth').value)
+    depth: Number(document.getElementById('room-depth').value),
+    elevation: elevation
   });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFloor() {
+  const currentFloorId = testMap.floorplan.currentFloorId;
+  const currentFloor = testMap.floorplan.floors.find((f) => f.id === currentFloorId);
+  if (!currentFloor) return;
+  pushHistory();
+
+  const nameInput = document.getElementById('floor-name').value.trim();
+  if (nameInput && nameInput !== currentFloor.name) {
+    testMap.renameFloor?.(currentFloorId, nameInput);
+  }
+
+  const heightInput = parseFloat(document.getElementById('floor-wall-height').value);
+  if (Number.isFinite(heightInput) && heightInput > 0) {
+    testMap.changeFloorHeight?.(currentFloorId, heightInput);
+  }
+
+  const floorHInput = parseFloat(document.getElementById('floor-height').value);
+  if (Number.isFinite(floorHInput) && floorHInput > 0) {
+    testMap.changeFloorDefaultFloorHeight?.(currentFloorId, floorHInput);
+  }
+
+  const hideRoofInput = document.getElementById('floor-hide-roof').checked;
+  const hideWallInput = document.getElementById('floor-hide-wall').checked;
+  testMap.changeFloorHideSettings?.(currentFloorId, hideRoofInput, hideWallInput);
+
+  if (hideRoofInput && selectedRoofId) {
+    const roof = testMap.getRoof?.(selectedRoofId);
+    if (roof && roof.floorId === currentFloorId) {
+      clearSelection();
+    }
+  }
+
+  syncFloorControls();
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -5121,87 +4738,28 @@ function updateSelectedWallRotation(deg) {
 
 function updateSelectedRotation() {
   if (!selectedItemId) return;
-  pushHistory();
   const degrees = Number(document.getElementById('item-rotation').value) || 0;
-  testMap.rotateItem(selectedItemId, degrees * Math.PI / 180);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  entityManager.updateItemRotation(selectedItemId, degrees);
 }
 
 function updateSelectedScale(value) {
   if (!selectedItemId) return;
-  const item = testMap.getItem(selectedItemId);
-  if (!item) return;
-  const definition = testMap.getFurnitureDefinition(item.type);
-  pushHistory();
-  const scale = Math.max(0.5, Math.min(4, Number(value) || 1));
-  
-  let patch = { scale };
-  if (definition.placeType === 'ceiling') {
-    patch.elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - item.height * scale;
-  }
-  
-  testMap.updateItem(selectedItemId, patch);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  entityManager.updateItemScale(selectedItemId, value);
 }
 
 function updateSelectedSize() {
   if (!selectedItemId) return;
-  const item = testMap.getItem(selectedItemId);
-  if (!item) return;
-  const definition = testMap.getFurnitureDefinition(item.type);
-  pushHistory();
-  
-  let elevation = Number(document.getElementById('item-elevation').value || 0) * 24;
-  const nextHeight = Number(document.getElementById('item-height').value) * 24;
-  const nextScale = Number(document.getElementById('item-scale').value || 1);
-  
-  if (definition.placeType === 'ceiling') {
-    const curElev = Number(((item.elevation || 0) / 24).toFixed(2));
-    const inputElev = Number(document.getElementById('item-elevation').value || 0);
-    if (curElev === inputElev) {
-      elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - nextHeight * nextScale;
-    }
-  }
-
-  testMap.updateItem(selectedItemId, {
-    width: Number(document.getElementById('item-width').value) * 24,
-    depth: Number(document.getElementById('item-depth').value) * 24,
-    height: nextHeight,
-    elevation: elevation
-  });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  const widthVal = Number(document.getElementById('item-width').value) * INCHES_PER_UNIT;
+  const depthVal = Number(document.getElementById('item-depth').value) * INCHES_PER_UNIT;
+  const heightVal = Number(document.getElementById('item-height').value) * INCHES_PER_UNIT;
+  const elevationVal = Number(document.getElementById('item-elevation').value || 0) * INCHES_PER_UNIT;
+  entityManager.updateItemSize(selectedItemId, widthVal, depthVal, heightVal, elevationVal);
 }
 
 function updateSelectedPose() {
   if (!selectedItemId) return;
-  const item = testMap.getItem(selectedItemId);
-  if (!item || item.type !== 'mannequin') return;
   const newPose = document.getElementById('item-pose').value;
-  pushHistory();
-  
-  let patch = { pose: newPose };
-  if (newPose !== 'stand') {
-    const seat = findNearestSeat(item);
-    if (seat) {
-      patch.x = seat.worldPos.x;
-      patch.z = seat.worldPos.z;
-      patch.elevation = seat.worldPos.y * 24;
-      patch.rotation = seat.item.rotation || 0;
-    }
-  } else {
-    patch.elevation = 0;
-  }
-  
-  testMap.updateItem(selectedItemId, patch);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  entityManager.updateItemPose(selectedItemId, newPose);
 }
 
 function updateSelectedOpening(patch) {
@@ -5244,19 +4802,74 @@ function renderMaterialLibrary() {
   // header.appendChild(applyFloorButton);
   materialLibraryPanel.appendChild(header);
 
+  // 如果是发光材质分类，添加自定义取色器卡片
+  if (category === 'emissive') {
+    const customEmissiveContainer = document.createElement('div');
+    customEmissiveContainer.className = 'custom-emissive-container';
+    customEmissiveContainer.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
+
+    const textWrapper = document.createElement('div');
+    textWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+    const label = document.createElement('span');
+    label.textContent = '自定义发光颜色';
+    label.style.cssText = 'font-size: 13px; font-weight: 500; color: #172033;';
+
+    textWrapper.appendChild(label);
+
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.id = 'emissive-color-picker';
+
+    const customEmissive = materialLibrary.find(m => m.id && m.id.startsWith('emissive-custom'));
+    picker.value = customEmissive ? customEmissive.color : '#ffffff';
+    picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
+
+    const handleColorChange = (color) => {
+      const customDesc = {
+        id: `emissive-custom-${color.replace('#', '')}`,
+        name: `自定义发光 (${color})`,
+        category: 'emissive',
+        kind: 'emissive',
+        color: color
+      };
+
+      const existingIdx = materialLibrary.findIndex(m => m.id && m.id.startsWith('emissive-custom'));
+      if (existingIdx >= 0) {
+        materialLibrary[existingIdx] = customDesc;
+      } else {
+        materialLibrary.push(customDesc);
+      }
+
+      activeMaterialDescriptor = customDesc;
+      renderMaterialLibrary();
+      updateEditor();
+    };
+
+    picker.addEventListener('change', (e) => {
+      handleColorChange(e.target.value);
+    });
+
+    customEmissiveContainer.appendChild(textWrapper);
+    customEmissiveContainer.appendChild(picker);
+    materialLibraryPanel.appendChild(customEmissiveContainer);
+  }
+
   const grid = document.createElement('div');
   grid.className = 'material-grid';
 
-  // 动态创建并插入第一个“+”号上传材质方格
-  const uploadButton = document.createElement('button');
-  uploadButton.type = 'button';
-  uploadButton.className = 'material-swatch upload-swatch';
-  uploadButton.title = '上传自定义材质';
-  uploadButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
-  uploadButton.addEventListener('click', () => {
-    document.getElementById('material-upload').click();
-  });
-  grid.appendChild(uploadButton);
+  // 仅在非发光分类下，动态创建并插入第一个“+”号上传材质方格
+  if (category !== 'emissive') {
+    const uploadButton = document.createElement('button');
+    uploadButton.type = 'button';
+    uploadButton.className = 'material-swatch upload-swatch';
+    uploadButton.title = '上传自定义材质';
+    uploadButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+    uploadButton.addEventListener('click', () => {
+      document.getElementById('material-upload').click();
+    });
+    grid.appendChild(uploadButton);
+  }
 
   materials.forEach((material) => {
     const button = document.createElement('button');
@@ -5265,6 +4878,20 @@ function renderMaterialLibrary() {
     button.title = material.name;
     if (material.kind === 'texture' && material.src) {
       button.style.backgroundImage = `url(${material.src})`;
+    } else if (material.kind === 'mirror') {
+      // 镜面：底色 + 对角线光泽渐变
+      const c = material.color || '#e8eef4';
+      button.style.background = `linear-gradient(135deg, ${c} 0%, #ffffff 45%, ${c} 55%, #ffffff 100%)`;
+    } else if (material.kind === 'glass') {
+      // 玻璃：棋盘格透明底 + 半透明颜色覆盖
+      const c = material.color || '#e8f4ff';
+      button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
+    } else if (material.kind === 'emissive') {
+      // 发光：颜色本身 + 发光外阴影
+      const c = material.color || '#ffffff';
+      button.style.backgroundColor = c;
+      button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
+      button.style.border = '1px solid rgba(255,255,255,0.4)';
     } else {
       button.style.backgroundColor = material.color || '#ffffff';
     }
@@ -5280,6 +4907,10 @@ function renderMaterialLibrary() {
 
 function applyMaterialToRoomFloor(material) {
   if (!selectedRoomId || !material) return;
+  if (isTargetLocked({ type: 'room', id: selectedRoomId })) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
   testMap.setRoomFloorMaterial(selectedRoomId, material);
   refreshShadows();
@@ -5298,6 +4929,11 @@ function applyMaterialToFloor(material) {
 
 function applyMaterialToWall(material) {
   if (!selectedWallId || !material) return;
+  const wall = testMap.getWall(selectedWallId);
+  if (wall && wall.locked) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
   const color = material.color || '#f9fbff';
   testMap.updateWall(selectedWallId, { material, color });
@@ -5308,6 +4944,11 @@ function applyMaterialToWall(material) {
 
 function applyMaterialToWallFront(material) {
   if (!selectedWallId || !material) return;
+  const wall = testMap.getWall(selectedWallId);
+  if (wall && wall.locked) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
   const colorFront = material.color || '#f9fbff';
   testMap.updateWall(selectedWallId, { materialFront: material, colorFront });
@@ -5318,6 +4959,11 @@ function applyMaterialToWallFront(material) {
 
 function applyMaterialToWallBack(material) {
   if (!selectedWallId || !material) return;
+  const wall = testMap.getWall(selectedWallId);
+  if (wall && wall.locked) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
   const colorBack = material.color || '#f9fbff';
   testMap.updateWall(selectedWallId, { materialBack: material, colorBack });
@@ -5328,18 +4974,28 @@ function applyMaterialToWallBack(material) {
 
 function applyMaterialToItemComponent(componentId, material) {
   if (!selectedItemId || !material) return;
-  pushHistory();
-  testMap.updateItemComponentMaterial(selectedItemId, componentId, material);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  if (isTargetLocked({ type: 'item', id: selectedItemId })) {
+    showToast('该物体已锁定');
+    return;
+  }
+  entityManager.updateItemComponentMaterial(selectedItemId, componentId, material);
 }
 
-function applyMaterialToStructure(material) {
+function applyMaterialToStructure(material, part = 'top') {
   const selected = getSelectedStructure();
   if (!selected?.value || !material) return;
+  if (selected.value.locked) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
-  updateStructure(selected.type, selected.id, { material, color: material.color || selected.value.color });
+  if (part === 'top') {
+    updateStructure(selected.type, selected.id, { material, color: material.color || selected.value.color });
+  } else if (part === 'side') {
+    updateStructure(selected.type, selected.id, { sideMaterial: material, sideColor: material.color || selected.value.sideColor });
+  } else if (part === 'bottom') {
+    updateStructure(selected.type, selected.id, { bottomMaterial: material, bottomColor: material.color || selected.value.bottomColor });
+  }
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -5347,6 +5003,10 @@ function applyMaterialToStructure(material) {
 
 function applyMaterialToFence(material) {
   if (!selectedFenceId || !material) return;
+  if (isTargetLocked({ type: 'fence', id: selectedFenceId })) {
+    showToast('该物体已锁定');
+    return;
+  }
   pushHistory();
   const color = material.color || '#8d6e63';
   testMap.updateFence(selectedFenceId, { material: material.url || color, color: color });
@@ -5401,7 +5061,22 @@ function renderFurnitureGrid() {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.addItem = definition.type;
-    button.textContent = definition.name;
+    button.className = 'furniture-item-btn';
+
+    const img = document.createElement('img');
+    const imgPath = `../src/furniture/image/${definition.type}.png`;
+    const resolvedUrl = furnitureImages[imgPath]?.default || furnitureImages['../src/furniture/image/placeholder.png']?.default || '';
+    img.src = resolvedUrl;
+    img.alt = definition.name;
+
+    img.onerror = () => {
+      img.style.display = 'none';
+    };
+
+    const span = document.createElement('span');
+    span.textContent = definition.name;
+
+    button.append(img, span);
     itemGrid.appendChild(button);
   });
 }
@@ -5428,11 +5103,164 @@ materialUploadInput.addEventListener('change', async (event) => {
   updateEditor();
 });
 
+function get2DPlanScreenshot() {
+  return new Promise((resolve, reject) => {
+    const svgEl = document.getElementById('floorplan');
+    if (!svgEl) {
+      reject(new Error('未找到 floorplan SVG 元素'));
+      return;
+    }
+    
+    const svgClone = svgEl.cloneNode(true);
+    
+    // 提取所有样式表中的样式规则并放入 style 标签中
+    let styleString = '';
+    for (const styleSheet of document.styleSheets) {
+      try {
+        const rules = styleSheet.cssRules || styleSheet.rules;
+        if (rules) {
+          for (const rule of rules) {
+            styleString += rule.cssText;
+          }
+        }
+      } catch (e) {
+        // 忽略跨域的样式表
+      }
+    }
+    
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styleString;
+    svgClone.insertBefore(styleEl, svgClone.firstChild);
+    
+    // 获取实际物理尺寸，避免渲染时Image拉伸异常
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width || 720;
+    const height = rect.height || 520;
+    svgClone.setAttribute('width', width);
+    svgClone.setAttribute('height', height);
+    
+    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(svgBlob);
+    
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = 2; // 2倍高分辨率
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          const pngUrl = canvas.toDataURL('image/png');
+          resolve(pngUrl);
+        } catch (e) {
+          reject(e);
+        }
+      } else {
+        reject(new Error('无法创建 2D canvas context'));
+      }
+      URL.revokeObjectURL(blobURL);
+    };
+    
+    image.onerror = (err) => {
+      URL.revokeObjectURL(blobURL);
+      reject(err);
+    };
+    
+    image.src = blobURL;
+  });
+}
+
+function takePhoto() {
+  if (currentView === '3d') {
+    showToast('正在生成 3D 截图...');
+    
+    // 1. 临时隐藏 3D 辅助网格和编辑手柄
+    const originalGridState = viewer3d.show3DGrid;
+    if (originalGridState) {
+      viewer3d.clear3DGrid();
+    }
+    const hiddenNodes = [];
+    editHandleNodes.forEach((node) => {
+      if (node && !node.isDisposed() && node.isEnabled()) {
+        node.setEnabled(false);
+        hiddenNodes.push(node);
+      }
+    });
+
+    // 2. 保证在此帧渲染隐藏后的效果
+    scene.render();
+
+    // 3. 调用 Babylon 截图
+    BABYLON.Tools.CreateScreenshotAsync(engine, camera, { precision: 1 })
+      .then((dataUrl) => {
+        const filename = `screenshot_3d_${Date.now()}.png`;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('✓ 3D 截图已下载');
+      })
+      .catch((err) => {
+        console.error('3D 截图失败:', err);
+        showToast('⚠ 3D 截图生成失败');
+      })
+      .finally(() => {
+        // 4. 恢复 3D 网格和编辑手柄
+        if (originalGridState) {
+          refresh3DGrid();
+        }
+        hiddenNodes.forEach((node) => {
+          if (node && !node.isDisposed()) {
+            node.setEnabled(true);
+          }
+        });
+      });
+  } else {
+    showToast('正在生成 2D 截图...');
+    get2DPlanScreenshot()
+      .then((dataUrl) => {
+        const filename = `screenshot_2d_${Date.now()}.png`;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('✓ 2D 截图已下载');
+      })
+      .catch((err) => {
+        console.error('2D 截图失败:', err);
+        showToast('⚠ 2D 截图生成失败');
+      });
+  }
+}
+
 viewToggleButton.addEventListener('click', () => setView(currentView === '2d' ? '3d' : '2d'));
 undoButton.addEventListener('click', undo);
 redoButton.addEventListener('click', redo);
 
+const takePhotoButton = document.getElementById('btn-take-photo');
+if (takePhotoButton) {
+  takePhotoButton.addEventListener('click', takePhoto);
+}
+
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'F12') {
+    event.preventDefault();
+    takePhoto();
+    return;
+  }
+
   // 输入焦点拦截器，防止打字时触发快捷键
   const activeEl = document.activeElement;
   if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
@@ -5452,8 +5280,37 @@ document.addEventListener('keydown', (event) => {
 
     if (key === 'w') camera.target.addInPlace(forward.scale(speed));
     if (key === 's') camera.target.subtractInPlace(forward.scale(speed));
-    if (key === 'a') camera.target.subtractInPlace(right.scale(speed));
-    if (key === 'd') camera.target.addInPlace(right.scale(speed));
+    // 修正3D下左右相反的问题：A 键原本是 subtract 导致相反，现修改为 add；D 键相应改动
+    if (key === 'a') camera.target.addInPlace(right.scale(speed));
+    if (key === 'd') camera.target.subtractInPlace(right.scale(speed));
+    return;
+  }
+
+  // 1.1 WASD 视角平移 (2D模式下)
+  if (currentView === '2d' && ['w', 'a', 's', 'd'].includes(key)) {
+    event.preventDefault();
+    // 采用自适应跨度作为平移步长，使缩放比例不同时平移体验高度一致
+    const stepX = (view.maxX - view.minX) * 0.05;
+    const stepZ = (view.maxZ - view.minZ) * 0.05;
+
+    if (key === 'w') {
+      view.minZ += stepZ;
+      view.maxZ += stepZ;
+    }
+    if (key === 's') {
+      view.minZ -= stepZ;
+      view.maxZ -= stepZ;
+    }
+    if (key === 'a') {
+      view.minX -= stepX;
+      view.maxX -= stepX;
+    }
+    if (key === 'd') {
+      view.minX += stepX;
+      view.maxX += stepX;
+    }
+    hasUserZoomedOrPanned = true;
+    renderPlan();
     return;
   }
 
@@ -5461,22 +5318,13 @@ document.addEventListener('keydown', (event) => {
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
     event.preventDefault();
     if (selectedItemId) {
-      const item = testMap.getItem(selectedItemId);
-      if (item && !item.locked) {
-        let dx = 0;
-        let dz = 0;
-        const step = 0.1; // 0.1 米
-        if (key === 'arrowup') dz = step;
-        if (key === 'arrowdown') dz = -step;
-        if (key === 'arrowleft') dx = -step;
-        if (key === 'arrowright') dx = step;
-
-        pushHistory();
-        testMap.updateItem(selectedItemId, { x: item.x + dx, z: item.z + dz });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
+      const step = 0.1; // 0.1 米
+      let dx = 0, dz = 0;
+      if (key === 'arrowup') dz = step;
+      if (key === 'arrowdown') dz = -step;
+      if (key === 'arrowleft') dx = -step;
+      if (key === 'arrowright') dx = step;
+      entityManager.nudgeItem(selectedItemId, dx, dz);
     } else if (selectedOpeningId && ['arrowleft', 'arrowright'].includes(key)) {
       const opening = testMap.getOpening(selectedOpeningId);
       const wall = opening ? testMap.getWall(opening.wallId) : null;
@@ -5503,19 +5351,9 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
     if (selectedItemId) {
-      const item = testMap.getItem(selectedItemId);
-      if (item && !item.locked) {
-        pushHistory();
-        const step = 2.4; // 2.4 英寸 (0.1 米)
-        let newElev = item.elevation || 0;
-        if (event.key === 'PageUp') newElev += step;
-        if (event.key === 'PageDown') newElev = Math.max(0, newElev - step);
-
-        testMap.updateItem(selectedItemId, { elevation: newElev });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
+      const step = 2.4; // 2.4 英寸 (0.1 米)
+      const delta = event.key === 'PageUp' ? step : -step;
+      entityManager.adjustItemElevation(selectedItemId, delta);
     } else if (selectedOpeningId) {
       const opening = testMap.getOpening(selectedOpeningId);
       if (opening && !opening.locked && opening.type === 'window') {
@@ -5538,22 +5376,8 @@ document.addEventListener('keydown', (event) => {
   if (key === '+' || key === '=' || key === '-') {
     event.preventDefault();
     if (selectedItemId) {
-      const item = testMap.getItem(selectedItemId);
-      if (item && !item.locked) {
-        pushHistory();
-        const currentScale = item.scale || 1;
-        let nextScale = currentScale;
-        if (key === '+' || key === '=') {
-          nextScale = Math.min(4.0, currentScale + 0.05);
-        } else if (key === '-') {
-          nextScale = Math.max(0.5, currentScale - 0.05);
-        }
-
-        testMap.updateItem(selectedItemId, { scale: nextScale });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
+      const delta = (key === '+' || key === '=') ? 0.05 : -0.05;
+      entityManager.adjustItemScale(selectedItemId, delta);
     }
     return;
   }
@@ -5562,21 +5386,8 @@ document.addEventListener('keydown', (event) => {
   if (key === '[' || key === ']') {
     event.preventDefault();
     if (selectedItemId) {
-      const item = testMap.getItem(selectedItemId);
-      if (item && !item.locked) {
-        pushHistory();
-        const stepDeg = 15; // 每次旋转 15 度
-        const radStep = stepDeg * Math.PI / 180;
-        let rotation = item.rotation || 0;
-        if (key === '[') rotation -= radStep;
-        if (key === ']') rotation += radStep;
-        rotation = (rotation % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-
-        testMap.updateItem(selectedItemId, { rotation });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
+      const deltaDeg = key === ']' ? 15 : -15;
+      entityManager.adjustItemRotation(selectedItemId, deltaDeg);
     }
     return;
   }
@@ -5585,11 +5396,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Delete' || event.key === 'Backspace') {
     if (selectedItemId) {
       event.preventDefault();
-      pushHistory();
-      if (testMap.deleteItem(selectedItemId)) {
-        clearSelection();
-        refreshShadows();
-      }
+      entityManager.deleteItem(selectedItemId);
       return;
     }
     if (selectedOpeningId) {
@@ -5651,16 +5458,58 @@ document.addEventListener('keydown', (event) => {
     }
   }
 
-  // Ctrl/Meta 撤销与重做
+  // Ctrl/Meta 快捷组合键
   if (event.ctrlKey || event.metaKey) {
     const key = event.key.toLowerCase();
     if (key === 'z' && !event.shiftKey) {
       event.preventDefault();
       undo();
+      return;
     } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
       event.preventDefault();
       redo();
+      return;
+    } else if (key === 's') {
+      event.preventDefault();
+      document.getElementById('btn-save-local')?.click();
+      return;
+    } else if (key === 'o') {
+      event.preventDefault();
+      document.getElementById('btn-open-local')?.click();
+      return;
+    } else if (key === 'e') {
+      event.preventDefault();
+      document.getElementById('btn-save')?.click();
+      return;
+    } else if (key === 'i') {
+      event.preventDefault();
+      document.getElementById('btn-load')?.click();
+      return;
+    } else if (key === 'n') {
+      event.preventDefault();
+      document.getElementById('btn-new')?.click();
+      return;
+    } else if (key === 'l') {
+      event.preventDefault();
+      const target = getSelectedTarget();
+      if (target) {
+        toggleTargetLock(target);
+      }
+      return;
+    } else if (key === 'c' || key === 'd') {
+      event.preventDefault();
+      const target = getSelectedTarget();
+      if (target) {
+        copyContextTarget(target);
+      }
+      return;
     }
+  }
+
+  // 备用快捷键 Ctrl+Alt+N (应对某些浏览器无法阻止默认 Ctrl+N)
+  if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'n') {
+    event.preventDefault();
+    document.getElementById('btn-new')?.click();
     return;
   }
 
@@ -5670,12 +5519,20 @@ document.addEventListener('keydown', (event) => {
     const definition = item ? testMap.getFurnitureDefinition(item.type) : null;
     if (item && (definition?.category === 'lighting' || definition?.lightSource)) {
       event.preventDefault();
-      pushHistory();
-      testMap.updateItem(selectedItemId, { lightOn: item.lightOn === false });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      entityManager.toggleItemPower(selectedItemId);
       return;
+    }
+  }
+
+  // 选中的物体旋转快捷键 (R 键)
+  if (key === 'r') {
+    const target = getSelectedTarget();
+    if (target) {
+      if (isAllowedContextTarget(target) && !isTargetLocked(target)) {
+        event.preventDefault();
+        rotateContextTarget(target);
+        return;
+      }
     }
   }
 
@@ -5691,9 +5548,10 @@ document.addEventListener('keydown', (event) => {
     const keyMap = {
       'l': 'draw-wall',
       'e': 'delete-wall',
-      'r': 'add-room',
-      'd': 'add-door',
-      'w': 'add-window'
+      'r': 'add-room-square',
+      'd': 'add-door-square',
+      'w': 'add-window-square',
+      'v': 'view'
     };
     targetMode = keyMap[key];
   }
@@ -5814,253 +5672,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') hideContextMenu();
 });
 window.addEventListener('resize', hideContextMenu);
-document.getElementById('item-grid').addEventListener('click', (event) => {
-  const button = event.target.closest('[data-add-item]');
-  if (!button) return;
-  const type = button.dataset.addItem;
-  const definition = testMap.getFurnitureDefinition(type);
-  const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : currentRooms()[0];
-  const x = room ? room.x : 0;
-  const z = room ? room.z : 0;
-  pushHistory();
-  let elevation = undefined;
-  if (definition.placeType === 'ceiling') {
-    elevation = (testMap.floorplan.wallHeight || 2.8) * 24 - (definition.defaultSize.height || 0);
-  } else if (canPlaceOnTable({ x, z, floorId: testMap.floorplan.currentFloorId, width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
-    const tableBelow = findTableBelow({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
-    if (tableBelow) {
-      const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
-      elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
-    } else {
-      elevation = 0;
-    }
-  }
-  const item = testMap.addItem({ 
-    type, 
-    ...definition.defaultSize, 
-    x, 
-    z, 
-    elevation,
-    roomId: room?.id, 
-    floorId: testMap.floorplan.currentFloorId 
-  });
-  if (room) testMap.assignItemToRoom(item.id, room.id);
-  refreshShadows();
-  selectItem(item.id);
-});
-
-['room-width', 'room-depth', 'room-name'].forEach((id) => {
-  document.getElementById(id).addEventListener('change', updateSelectedRoom);
-});
-
-['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-color', 'structure-subtype'].forEach((id) => {
-  document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
-});
-document.getElementById('structure-rotation')?.addEventListener('change', (event) => {
-  commitSelectedStructureRotation(event.target.value);
-});
-document.getElementById('structure-rotation-range')?.addEventListener('input', (event) => {
-  previewSelectedStructureRotation(event.target.value);
-});
-document.getElementById('structure-rotation-range')?.addEventListener('change', (event) => {
-  commitSelectedStructureRotation(event.target.value);
-});
-document.getElementById('structure-locked')?.addEventListener('change', (event) => {
-  const selected = getSelectedStructure();
-  if (!selected?.value) return;
-  pushHistory();
-  setContextTargetLocked({ type: selected.type, id: selected.id }, event.target.checked);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-});
-document.getElementById('btn-delete-structure')?.addEventListener('click', deleteSelectedStructure);
-
-['item-width', 'item-depth', 'item-height', 'item-elevation'].forEach((id) => {
-  document.getElementById(id).addEventListener('change', updateSelectedSize);
-});
-
-document.getElementById('item-rotation').addEventListener('change', updateSelectedRotation);
-document.getElementById('item-rotation-range').addEventListener('input', (event) => {
-  document.getElementById('item-rotation').value = event.target.value;
-  updateSelectedRotation();
-});
-document.getElementById('item-scale').addEventListener('change', (event) => updateSelectedScale(event.target.value));
-document.getElementById('item-scale-range').addEventListener('input', (event) => {
-  document.getElementById('item-scale').value = Number(event.target.value).toFixed(2);
-  updateSelectedScale(event.target.value);
-});
-document.getElementById('item-pose').addEventListener('change', updateSelectedPose);
-
-document.getElementById('wall-length').addEventListener('change', updateSelectedWallLength);
-
-document.getElementById('wall-rotation').addEventListener('change', (event) => {
-  updateSelectedWallRotation(event.target.value);
-});
-
-document.getElementById('wall-rotation-range').addEventListener('input', (event) => {
-  previewSelectedWallRotation(event.target.value);
-});
-
-document.getElementById('wall-rotation-range').addEventListener('change', (event) => {
-  updateSelectedWallRotation(event.target.value);
-});
-
-document.getElementById('btn-delete-wall').addEventListener('click', () => {
-  if (!selectedWallId) return;
-  pushHistory();
-  testMap.deleteWall(selectedWallId);
-  clearSelection();
-  refreshShadows();
-});
-
-document.getElementById('item-locked').addEventListener('change', (event) => {
-  const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
-  if (!item) return;
-  pushHistory();
-  item.locked = event.target.checked;
-  const node = testMap.itemNodes.get(item.id);
-  if (node) node.metadata.locked = item.locked;
-  updateHistoryButtons();
-});
-
-document.getElementById('room-locked').addEventListener('change', (event) => {
-  if (!selectedRoomId) return;
-  pushHistory();
-  setContextTargetLocked({ type: 'room', id: selectedRoomId }, event.target.checked);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-});
-
-document.getElementById('item-light-on').addEventListener('change', (event) => {
-  const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
-  if (!item) return;
-  pushHistory();
-  testMap.updateItem(selectedItemId, { lightOn: event.target.checked });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-});
-
-document.getElementById('opening-position').addEventListener('change', (event) => {
-  updateSelectedOpening({ t: Number(event.target.value) / 100 });
-});
-
-document.getElementById('opening-width').addEventListener('change', (event) => {
-  updateSelectedOpening({ width: Number(event.target.value) });
-});
-
-document.getElementById('opening-height').addEventListener('change', (event) => {
-  updateSelectedOpening({ height: Number(event.target.value) });
-});
-
-document.getElementById('opening-sill-height').addEventListener('change', (event) => {
-  updateSelectedOpening({ sillHeight: Number(event.target.value) });
-});
-
-document.getElementById('opening-open').addEventListener('change', (event) => {
-  updateSelectedOpening({ isOpen: event.target.checked });
-});
-
-document.getElementById('opening-flip-lr').addEventListener('change', (event) => {
-  updateSelectedOpening({ isFlippedLR: event.target.checked });
-});
-
-document.getElementById('opening-flip-io').addEventListener('change', (event) => {
-  updateSelectedOpening({ isFlippedIO: event.target.checked });
-});
-
-document.getElementById('opening-locked').addEventListener('change', (event) => {
-  if (!selectedOpeningId) return;
-  pushHistory();
-  setContextTargetLocked({ type: 'opening', id: selectedOpeningId }, event.target.checked);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-});
-
-document.getElementById('snap-enabled').addEventListener('change', (event) => {
-  snapEnabled = event.target.checked;
-  renderPlan();
-  refresh3DGrid();
-});
-
-document.getElementById('snap-size').addEventListener('change', (event) => {
-  snapSize = 1;
-  event.target.value = '1';
-  renderPlan();
-  refresh3DGrid();
-});
-
-document.getElementById('fence-subtype').addEventListener('change', updateSelectedFenceSubtype);
-document.getElementById('fence-length').addEventListener('change', updateSelectedFenceLength);
-
-document.getElementById('fence-rotation').addEventListener('change', (event) => {
-  updateSelectedFenceRotation(event.target.value);
-});
-
-document.getElementById('fence-rotation-range').addEventListener('input', (event) => {
-  previewSelectedFenceRotation(event.target.value);
-});
-
-document.getElementById('fence-rotation-range').addEventListener('change', (event) => {
-  updateSelectedFenceRotation(event.target.value);
-});
-
-document.getElementById('fence-height').addEventListener('change', updateSelectedFenceHeight);
-document.getElementById('fence-color').addEventListener('change', updateSelectedFenceColor);
-document.getElementById('fence-locked').addEventListener('change', (event) => {
-  if (!selectedFenceId) return;
-  pushHistory();
-  setContextTargetLocked({ type: 'fence', id: selectedFenceId }, event.target.checked);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-});
-document.getElementById('btn-delete-fence').addEventListener('click', deleteSelectedFence);
-
-document.getElementById('btn-delete-item').addEventListener('click', () => {
-  if (!selectedItemId) return;
-  pushHistory();
-  if (testMap.deleteItem(selectedItemId)) {
-    clearSelection();
-    refreshShadows();
-  }
-});
-
-document.getElementById('btn-delete-opening').addEventListener('click', () => {
-  if (!selectedOpeningId) return;
-  if (testMap.getOpening(selectedOpeningId)?.locked) return;
-  pushHistory();
-  testMap.deleteOpening(selectedOpeningId);
-  clearSelection();
-  refreshShadows();
-});
-
-document.getElementById('btn-delete-room').addEventListener('click', () => {
-  if (!selectedRoomId) return;
-  if (testMap.getRoom(selectedRoomId)?.locked) return;
-  showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
-    if (confirmed) {
-      pushHistory();
-      testMap.deleteRoom(selectedRoomId);
-      clearSelection();
-      refreshShadows();
-    }
-  });
-});
-
-document.getElementById('floor-color').addEventListener('change', (event) => {
-  pushHistory();
-  if (selectedRoomId) {
-    testMap.setRoomFloorMaterial(selectedRoomId, event.target.value);
-  } else {
-    testMap.setFloorColor(event.target.value);
-  }
-  updateEditor();
-  renderPlan();
-});
+initUiEventListeners();
 
 document.getElementById('btn-reset-camera').addEventListener('click', () => {
   if (currentView === '3d') {
@@ -6068,6 +5680,33 @@ document.getElementById('btn-reset-camera').addEventListener('click', () => {
   } else {
     hasUserZoomedOrPanned = false;
     renderPlan();
+  }
+
+  // 显式调出左右工具栏，防止查看模式下侧边栏收起后无法返回
+  let panelChanged = false;
+  const rightPanel = document.getElementById('right-panel');
+  if (rightPanel && rightPanel.classList.contains('collapsed')) {
+    rightPanel.classList.remove('collapsed');
+    const btnToggleRight = document.getElementById('btn-toggle-right');
+    if (btnToggleRight) btnToggleRight.textContent = '›';
+    panelChanged = true;
+  }
+  const leftPanel = document.querySelector('.left-panel');
+  if (leftPanel && leftPanel.classList.contains('collapsed')) {
+    leftPanel.classList.remove('collapsed');
+    const btnToggleLeft = document.getElementById('btn-toggle-left');
+    if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    panelChanged = true;
+  }
+  if (panelChanged) {
+    setTimeout(() => {
+      if (engine) engine.resize();
+    }, 300);
+  }
+
+  // 如果当前处于查看模式，自动切回选择模式，以确保用户能够继续交互
+  if (mode === 'view') {
+    switchToSelectMode();
   }
 });
 document.getElementById('btn-reset-material').addEventListener('click', resetCurrentMaterial);
@@ -6078,11 +5717,11 @@ function resetInteractionState() {
   selectedItemId = null;
   selectedOpeningId = null;
   drawStart = null;
-  dragState = null;
+  entityManager.dragState = null;
   openingDragState = null;
   roomDragState = null;
   roomResizeState = null;
-  itemGestureState = null;
+  entityManager.itemGestureState = null;
   activePointers.clear();
   viewPointers.clear();
   isPanning2D = false;
@@ -6153,12 +5792,65 @@ async function loadBuildingFile(file) {
 }
 
 document.getElementById('btn-save').addEventListener('click', downloadBuildingFile);
+document.getElementById('btn-save-local').addEventListener('click', async () => {
+  const defaultName = store.getCurrentProjectName() || testMap.floorplan.name || '';
+  const name = await showCustomPrompt('保存到本地', '请为项目命名：', defaultName || '我的蓝图');
+  if (!name) return;
+  const ok = store.saveProject(name, {
+    materialLibrary: materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id)),
+    uiState: { currentFloorId: testMap.floorplan.currentFloorId, currentView },
+  });
+  if (ok) {
+    updateLocalProjectCount();
+  }
+  showToast(ok ? `✓ 已保存「${name}」` : '⚠ 保存失败');
+});
 document.getElementById('btn-export-dxf').addEventListener('click', downloadDXFFile);
 document.getElementById('btn-export-3mf').addEventListener('click', download3MFFile);
 
 document.getElementById('btn-load').addEventListener('click', () => {
   buildingFileInput.value = '';
   buildingFileInput.click();
+});
+
+document.getElementById('btn-open-local').addEventListener('click', async () => {
+  const projects = store.listProjects();
+  if (!projects.length) {
+    await showCustomAlert('暂无本地项目', '还没有保存过项目到本地，请先使用「保存到本地」。');
+    return;
+  }
+  const result = await showProjectListModal(projects);
+  if (!result) return;
+  if (result.action === 'open') {
+    const data = store.loadProject(result.name);
+    if (data && data.buildingData) {
+      pushHistory();
+      testMap.loadJSON(data.buildingData);
+      syncFloorControls();
+      hasUserZoomedOrPanned = false;
+      resetInteractionState();
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+      if (data.materialLibrary && data.materialLibrary.length) {
+        data.materialLibrary.forEach((m) => {
+          if (!materialLibrary.some((existing) => existing.id === m.id)) {
+            materialLibrary.push(m);
+          }
+        });
+      }
+      showToast(`✓ 已打开「${result.name}」`);
+    } else {
+      await showCustomAlert('打开失败', '无法读取该项目的数据。');
+    }
+  } else if (result.action === 'delete') {
+    const confirmed = await showCustomConfirm('删除项目', `确定要删除「${result.name}」吗？此操作不可撤销。`);
+    if (confirmed) {
+      store.deleteProject(result.name);
+      updateLocalProjectCount();
+      showToast(`已删除「${result.name}」`);
+    }
+  }
 });
 
 buildingFileInput.addEventListener('change', async (event) => {
@@ -6170,15 +5862,33 @@ buildingFileInput.addEventListener('change', async (event) => {
   }
 });
 
+function updateLocalProjectCount() {
+  const badge = document.getElementById('open-project-badge');
+  if (badge) {
+    const count = store.listProjects().length;
+    badge.textContent = count;
+    if (count === 0) {
+      badge.classList.add('zero');
+    } else {
+      badge.classList.remove('zero');
+    }
+  }
+}
+
+// 页面初始化时刷新一次本地项目数量
+updateLocalProjectCount();
+
 document.getElementById('btn-new').addEventListener('click', () => {
   pushHistory();
   testMap.loadJSON(BLUEPRINT3D_TEST_FLOORPLAN);
+  store.clearLocal();
   syncFloorControls();
   hasUserZoomedOrPanned = false;
   resetInteractionState();
   refreshShadows();
   updateEditor();
   renderPlan();
+  updateLocalProjectCount();
 });
 
 const btnFileMenu = document.getElementById('btn-file-menu');
@@ -6189,8 +5899,43 @@ btnFileMenu.addEventListener('click', (event) => {
   fileMenuContent.classList.toggle('hidden');
 });
 
-fileMenuContent.addEventListener('click', () => fileMenuContent.classList.add('hidden'));
-document.addEventListener('click', () => fileMenuContent.classList.add('hidden'));
+fileMenuContent.addEventListener('click', (e) => {
+  // 如果点击的是子菜单触发按钮，不关闭主菜单
+  if (e.target.id === 'btn-export-menu') return;
+  fileMenuContent.classList.add('hidden');
+  // 同时关闭子菜单
+  const submenu = document.querySelector('.submenu-content');
+  if (submenu) submenu.classList.add('hidden');
+});
+document.addEventListener('click', () => {
+  fileMenuContent.classList.add('hidden');
+  const submenu = document.querySelector('.submenu-content');
+  if (submenu) submenu.classList.add('hidden');
+});
+
+// 导出子菜单交互
+const btnExportMenu = document.getElementById('btn-export-menu');
+const submenuContent = btnExportMenu?.nextElementSibling;
+if (btnExportMenu && submenuContent) {
+  const wrapper = btnExportMenu.closest('.submenu-wrapper');
+  // 悬停展开
+  wrapper.addEventListener('mouseenter', () => {
+    submenuContent.classList.remove('hidden');
+  });
+  wrapper.addEventListener('mouseleave', () => {
+    submenuContent.classList.add('hidden');
+  });
+  // 点击也可切换
+  btnExportMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+    submenuContent.classList.toggle('hidden');
+  });
+  // 子菜单按钮点击后关闭所有菜单
+  submenuContent.addEventListener('click', () => {
+    submenuContent.classList.add('hidden');
+    fileMenuContent.classList.add('hidden');
+  });
+}
 
 const btnToggleRight = document.getElementById('btn-toggle-right');
 const rightPanel = document.getElementById('right-panel');
@@ -6219,24 +5964,6 @@ if (btnToggleLeft && leftPanel) {
 }
 
 
-const TOOL_GROUP_STATE_KEY = 'blueprint3d-tool-groups';
-
-function readToolGroupState() {
-  try {
-    return JSON.parse(localStorage.getItem(TOOL_GROUP_STATE_KEY) || '{}');
-  } catch (error) {
-    return {};
-  }
-}
-
-function writeToolGroupState(state) {
-  try {
-    localStorage.setItem(TOOL_GROUP_STATE_KEY, JSON.stringify(state));
-  } catch (error) {
-    // Ignore storage errors; the UI still works for the current session.
-  }
-}
-
 function setToolGroupExpanded(toggle, expanded) {
   const targetId = toggle.getAttribute('aria-controls');
   const target = targetId ? document.getElementById(targetId) : null;
@@ -6245,7 +5972,7 @@ function setToolGroupExpanded(toggle, expanded) {
 }
 
 function initToolGroupToggles() {
-  const savedState = readToolGroupState();
+  const savedState = store.readToolGroupState();
   document.querySelectorAll('.tool-group-toggle').forEach((toggle) => {
     const group = toggle.closest('.building-tool-group')?.dataset.toolGroup || toggle.getAttribute('aria-controls');
     const expanded = savedState[group] !== false;
@@ -6254,7 +5981,7 @@ function initToolGroupToggles() {
       const nextExpanded = toggle.getAttribute('aria-expanded') === 'false';
       setToolGroupExpanded(toggle, nextExpanded);
       savedState[group] = nextExpanded;
-      writeToolGroupState(savedState);
+      store.writeToolGroupState(savedState);
     });
   });
 }
@@ -6386,6 +6113,179 @@ function showCustomAlert(title, message = '') {
       if (e.key === 'Escape' || e.key === 'Enter') {
         e.preventDefault();
         cleanup();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+  });
+}
+
+/**
+ * 显示带输入框的弹窗
+ * @param {string} title - 弹窗标题
+ * @param {string} message - 提示消息
+ * @param {string} [defaultValue=''] - 输入框默认值
+ * @returns {Promise<string|null>} 用户输入的值，取消返回 null
+ */
+function showCustomPrompt(title, message = '', defaultValue = '') {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'custom-modal-backdrop';
+
+    let finalTitle = title;
+    let finalMessage = message;
+    if (!message) {
+      finalTitle = '输入';
+      finalMessage = title;
+    }
+
+    backdrop.innerHTML = `
+      <div class="custom-modal-container">
+        <div class="custom-modal-header">
+          <div class="custom-modal-icon-wrapper confirm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <h3 class="custom-modal-title">${finalTitle}</h3>
+        </div>
+        <div class="custom-modal-body">
+          <p style="margin:0 0 12px 0">${finalMessage}</p>
+          <input type="text" id="custom-modal-input" class="custom-modal-input" value="${defaultValue.replace(/"/g, '&quot;')}" autocomplete="off" />
+        </div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">取消</button>
+          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-confirm">确定</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.getBoundingClientRect();
+    backdrop.classList.add('active');
+
+    const inputEl = backdrop.querySelector('#custom-modal-input');
+    requestAnimationFrame(() => {
+      inputEl.focus();
+      inputEl.select();
+    });
+
+    let isCleaned = false;
+    const cleanup = (value) => {
+      if (isCleaned) return;
+      isCleaned = true;
+      backdrop.classList.remove('active');
+      window.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => backdrop.remove(), 200);
+      resolve(value);
+    };
+
+    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(null));
+    backdrop.querySelector('#custom-modal-confirm').addEventListener('click', () => {
+      const val = inputEl.value.trim();
+      cleanup(val || null);
+    });
+
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) cleanup(null);
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(null);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = inputEl.value.trim();
+        cleanup(val || null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+  });
+}
+
+/**
+ * 显示本地项目列表弹窗，支持打开和删除
+ * @param {{ id: string, name: string, savedAt: number }[]} projects
+ * @returns {Promise<{ action: 'open'|'delete', name: string }|null>}
+ */
+function showProjectListModal(projects) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'custom-modal-backdrop';
+
+    const listHtml = projects.map((p) => {
+      const timeStr = formatTimestamp(p.savedAt);
+      return `
+        <div class="project-list-item" data-name="${p.name.replace(/"/g, '&quot;')}">
+          <div class="project-list-item-info">
+            <span class="project-list-item-name">${p.name}</span>
+            <span class="project-list-item-time">${timeStr}</span>
+          </div>
+          <div class="project-list-item-actions">
+            <button type="button" class="custom-modal-btn btn-primary btn-sm project-open-btn" title="打开">打开</button>
+            <button type="button" class="custom-modal-btn btn-danger btn-sm project-delete-btn" title="删除">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    backdrop.innerHTML = `
+      <div class="custom-modal-container" style="max-width:480px">
+        <div class="custom-modal-header">
+          <div class="custom-modal-icon-wrapper confirm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3 class="custom-modal-title">打开本地项目</h3>
+        </div>
+        <div class="custom-modal-body" style="margin-bottom:16px">
+          <div class="project-list">${listHtml}</div>
+        </div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">关闭</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.getBoundingClientRect();
+    backdrop.classList.add('active');
+
+    let isCleaned = false;
+    const cleanup = (value) => {
+      if (isCleaned) return;
+      isCleaned = true;
+      backdrop.classList.remove('active');
+      window.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => backdrop.remove(), 200);
+      resolve(value);
+    };
+
+    // 打开按钮
+    backdrop.querySelectorAll('.project-open-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const item = e.target.closest('.project-list-item');
+        cleanup({ action: 'open', name: item.dataset.name });
+      });
+    });
+
+    // 删除按钮
+    backdrop.querySelectorAll('.project-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const item = e.target.closest('.project-list-item');
+        cleanup({ action: 'delete', name: item.dataset.name });
+      });
+    });
+
+    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(null));
+
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) cleanup(null);
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -6548,6 +6448,77 @@ function createCustomDropdown(selectId) {
   };
 }
 
+export function getSnapEnabled() {
+  return snapEnabled;
+}
+export function setSnapEnabled(val) {
+  snapEnabled = val;
+}
+export function getSnapSize() {
+  return snapSize;
+}
+export function setSnapSize(val) {
+  snapSize = val;
+}
 
-
-
+export {
+  testMap,
+  viewer3d,
+  entityManager,
+  activeMaterialDescriptor,
+  selectedRoomId,
+  selectedWallId,
+  selectedFenceId,
+  selectedItemId,
+  selectedOpeningId,
+  selectedRoofId,
+  selectedStairsId,
+  
+  INCHES_PER_UNIT,
+  
+  updateSelectedRoom,
+  updateSelectedFloor,
+  updateSelectedStructure,
+  updateSelectedRotation,
+  updateSelectedScale,
+  updateSelectedPose,
+  updateSelectedWallLength,
+  updateSelectedWallRotation,
+  previewSelectedWallRotation,
+  commitSelectedStructureRotation,
+  previewSelectedStructureRotation,
+  deleteSelectedStructure,
+  
+  updateSelectedSize,
+  updateSelectedOpening,
+  updateSelectedFenceSubtype,
+  updateSelectedFenceLength,
+  updateSelectedFenceHeight,
+  updateSelectedFenceColor,
+  
+  applyMaterialToRoomFloor,
+  applyMaterialToWallFront,
+  applyMaterialToWallBack,
+  applyMaterialToStructure,
+  applyMaterialToItemComponent,
+  applyMaterialToFence,
+  
+  isTargetLocked,
+  showToast,
+  pushHistory,
+  refreshShadows,
+  renderPlan,
+  refresh3DGrid,
+  findNearestSeat,
+  isSymmetricShape,
+  syncRotationInputs,
+  setContextTargetLocked,
+  clearSelection,
+  revealRightPanelIfNeeded,
+  
+  showCustomConfirm,
+  currentRooms,
+  canPlaceOnTable,
+  findTableBelow,
+  getSelectedStructure
+};

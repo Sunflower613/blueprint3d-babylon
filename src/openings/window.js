@@ -1,50 +1,37 @@
-import { createBox } from '../core/primitives.js';
+import { createBlueprintMaterial } from '../core/materials.js';
+import { buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
 
 export function buildWindowOpening(registry, opening, parent, options = {}) {
   const width = options.width || opening.width || 1.25;
   const height = options.height || opening.height || 0.85;
   const frameT = options.frameT || 0.2;
   const frameW = options.frameW || 0.04;
-  const frameMat = registry.materials.trim;
-  const windowMat = registry.materials.window;
+  // 支持 per-opening 自定义材质
+  const frameMat = opening.frameMaterial
+    ? createBlueprintMaterial(registry.scene, `win_frame_${opening.id}`, opening.frameMaterial)
+    : registry.materials.trim;
+  const glassMat = opening.glassMaterial
+    ? createBlueprintMaterial(registry.scene, `win_glass_mat_${opening.id}`, opening.glassMaterial)
+    : registry.materials.window;
 
-  createBox(registry, `win_frame_l_${opening.id}`, {
-    width: frameW, height, depth: frameT
-  }, {
-    position: { x: -width / 2 + frameW / 2, y: 0, z: 0 }
-  }, {
-    material: frameMat, parent, shadowCaster: false
+  buildOpeningFrame(registry, opening, parent, {
+    width,
+    height,
+    frameT,
+    frameW,
+    material: frameMat
   });
+  createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
 
-  createBox(registry, `win_frame_r_${opening.id}`, {
-    width: frameW, height, depth: frameT
-  }, {
-    position: { x: width / 2 - frameW / 2, y: 0, z: 0 }
-  }, {
-    material: frameMat, parent, shadowCaster: false
-  });
+  if (opening.glassHidden) return;
 
-  createBox(registry, `win_frame_t_${opening.id}`, {
-    width: width - frameW * 2, height: frameW, depth: frameT
-  }, {
-    position: { x: 0, y: height / 2 - frameW / 2, z: 0 }
-  }, {
-    material: frameMat, parent, shadowCaster: false
-  });
-
-  createBox(registry, `win_frame_b_${opening.id}`, {
-    width: width - frameW * 2, height: frameW, depth: frameT
-  }, {
-    position: { x: 0, y: -height / 2 + frameW / 2, z: 0 }
-  }, {
-    material: frameMat, parent, shadowCaster: false
-  });
-
-  createBox(registry, `win_glass_${opening.id}`, {
-    width: width - frameW * 2, height: height - frameW * 2, depth: 0.012
-  }, {
-    position: { x: 0, y: 0, z: 0 }
-  }, {
-    material: windowMat, parent, shadowCaster: false
+  createOpeningProfileMesh(registry, `win_glass_${opening.id}`, opening, parent, {
+    width,
+    height,
+    depth: 0.012,
+    scaleX: Math.max(0.1, (width - frameW * 2) / width),
+    scaleY: Math.max(0.1, (height - frameW * 2) / height),
+    material: glassMat,
+    shadowCaster: false
   });
 }

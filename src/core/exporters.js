@@ -1,4 +1,6 @@
-const INCHES_PER_UNIT = 24;
+import { getRoomVertices, pointInRoom, triangulateRoom } from '../rooms/index.js';
+
+const INCHES_PER_UNIT = 39.37;
 
 function escXml(value) {
   return String(value ?? '').replace(/[<>&"']/g, (ch) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[ch]));
@@ -62,14 +64,11 @@ function dxfText(x, z, text, layer) {
 export function stringifyDXF(floorplan) {
   let body = '';
   for (const room of floorplan.floor?.rooms || []) {
-    const left = room.x - room.width / 2;
-    const right = room.x + room.width / 2;
-    const top = room.z - room.depth / 2;
-    const bottom = room.z + room.depth / 2;
-    body += dxfLine(left, top, right, top, 'ROOMS');
-    body += dxfLine(right, top, right, bottom, 'ROOMS');
-    body += dxfLine(right, bottom, left, bottom, 'ROOMS');
-    body += dxfLine(left, bottom, left, top, 'ROOMS');
+    const vertices = getRoomVertices(room);
+    vertices.forEach((point, index) => {
+      const next = vertices[(index + 1) % vertices.length];
+      body += dxfLine(point.x, point.z, next.x, next.z, 'ROOMS');
+    });
     body += dxfText(room.x, room.z, room.name || room.id, 'ROOM_LABELS');
   }
   for (const wall of floorplan.walls || []) body += dxfLine(wall.from[0], wall.from[1], wall.to[0], wall.to[1], 'WALLS');
@@ -130,12 +129,58 @@ function addRotatedBox(target, cx, cy, cz, width, height, depth, rotation = 0) {
   appendMesh(target, mesh);
 }
 
+function getFloor(floorplan, floorId) {
+  return floorplan.floors?.find((f) => f.id === floorId) || floorplan.floors?.[0];
+}
+
+function getFloorElevation(floorplan, floorId) {
+  const targetFloor = getFloor(floorplan, floorId);
+  if (!targetFloor) return 0;
+  const targetLevel = Number(targetFloor.level || 0);
+  
+  let elevation = 0;
+  (floorplan.floors || []).forEach((floor) => {
+    const level = Number(floor.level || 0);
+    if (level < targetLevel) {
+      const wh = Number(floor.wallHeight ?? floorplan.wallHeight ?? 3.0);
+      const fh = Number(floor.floorHeight ?? floorplan.floorHeight ?? 0.06);
+      elevation += wh + fh;
+    }
+  });
+  return elevation;
+}
+
+function getItemRoomElevationOffset(floorplan, item) {
+  const room = floorplan.floor?.rooms?.find(r => r.id === item.roomId) || 
+               floorplan.floor?.rooms?.find(r => r.floorId === item.floorId && pointInRoom(r, item.x, item.z));
+  return room ? (room.elevation || 0) : 0;
+}
+
 export function create3MFModelXml(floorplan) {
   const mesh = { vertices: [], triangles: [] };
-  const floorHeight = floorplan.floorHeight || 0.06;
-  const wallHeight = floorplan.wallHeight || 2.8;
   const wallThickness = floorplan.wallThickness || 0.18;
-  for (const room of floorplan.floor?.rooms || []) addRotatedBox(mesh, room.x, -floorHeight / 2, room.z, room.width, floorHeight, room.depth, 0);
+
+  for (const room of floorplan.floor?.rooms || []) {
+    const floor = getFloor(floorplan, room.floorId);
+    const fh = floor ? (floor.floorHeight ?? floorplan.floorHeight ?? 0.06) : (floorplan.floorHeight ?? 0.06);
+    const floorY = getFloorElevation(floorplan, room.floorId);
+    const triangulated = triangulateRoom(room);
+    const topY = floorY + (room.elevation || 0);
+    const bottomY = topY - fh;
+    const roomMesh = { vertices: [], triangles: [] };
+    triangulated.vertices.forEach((point) => roomMesh.vertices.push([room.x + point.x, topY, room.z + point.z]));
+    triangulated.vertices.forEach((point) => roomMesh.vertices.push([room.x + point.x, bottomY, room.z + point.z]));
+    const bottomOffset = triangulated.vertices.length;
+    triangulated.triangles.forEach(([a, b, c]) => {
+      roomMesh.triangles.push([a, c, b], [bottomOffset + a, bottomOffset + b, bottomOffset + c]);
+    });
+    triangulated.vertices.forEach((_, index) => {
+      const next = (index + 1) % triangulated.vertices.length;
+      roomMesh.triangles.push([index, next, bottomOffset + next], [index, bottomOffset + next, bottomOffset + index]);
+    });
+    appendMesh(mesh, roomMesh);
+  }
+
   for (const wall of floorplan.walls || []) {
     const x1 = wall.from[0];
     const z1 = wall.from[1];
@@ -143,8 +188,14 @@ export function create3MFModelXml(floorplan) {
     const z2 = wall.to[1];
     const length = Math.hypot(x2 - x1, z2 - z1);
     if (length <= 0.001) continue;
-    addRotatedBox(mesh, (x1 + x2) / 2, wallHeight / 2, (z1 + z2) / 2, length, wallHeight, wallThickness, -Math.atan2(z2 - z1, x2 - x1));
+
+    const wallFloor = getFloor(floorplan, wall.floorId);
+    const wallH = wallFloor ? (wallFloor.wallHeight ?? floorplan.wallHeight ?? 3.0) : (floorplan.wallHeight ?? 3.0);
+    const floorY = getFloorElevation(floorplan, wall.floorId);
+
+    addRotatedBox(mesh, (x1 + x2) / 2, floorY + wallH / 2, (z1 + z2) / 2, length, wallH, wallThickness, -Math.atan2(z2 - z1, x2 - x1));
   }
+
   for (const opening of floorplan.openings || []) {
     const wall = (floorplan.walls || []).find((candidate) => candidate.id === opening.wallId);
     if (!wall) continue;
@@ -153,11 +204,18 @@ export function create3MFModelXml(floorplan) {
     const angle = -Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
     const height = opening.type === 'door' ? 2.05 : (opening.height || 0.85);
     const y = opening.type === 'door' ? height / 2 : (opening.sillHeight ?? 1.05) + height / 2;
-    addRotatedBox(mesh, x, y, z, opening.width || 1, height, wallThickness + 0.04, angle);
+    const floorY = getFloorElevation(floorplan, opening.floorId || wall.floorId);
+
+    addRotatedBox(mesh, x, floorY + y, z, opening.width || 1, height, wallThickness + 0.04, angle);
   }
+
   for (const item of floorplan.items || []) {
     const size = itemSize(item);
-    addRotatedBox(mesh, item.x, size.height / 2, item.z, size.width, size.height, size.depth, item.rotation || 0);
+    const floorY = getFloorElevation(floorplan, item.floorId);
+    const roomOffset = getItemRoomElevationOffset(floorplan, item);
+    const cy = floorY + roomOffset + (item.elevation || 0) / INCHES_PER_UNIT + size.height / 2;
+
+    addRotatedBox(mesh, item.x, cy, item.z, size.width, size.height, size.depth, item.rotation || 0);
   }
   const vertices = mesh.vertices.map(([x, y, z]) => `<vertex x="${x.toFixed(5)}" y="${y.toFixed(5)}" z="${z.toFixed(5)}"/>`).join('');
   const triangles = mesh.triangles.map(([v1, v2, v3]) => `<triangle v1="${v1}" v2="${v2}" v3="${v3}"/>`).join('');

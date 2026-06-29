@@ -51,6 +51,7 @@ export {
 
 export * from './furniture/index.js';
 export * from './openings/index.js';
+export * from './rooms/index.js';
 
 export {
   PinkCastleGenerator

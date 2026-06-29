@@ -120,6 +120,11 @@ button:disabled {
   gap: 4px;
 }
 
+.editor strong {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
 .tabs {
   position: relative;
   display: grid;
@@ -219,6 +224,7 @@ button:disabled {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+  max-height: 100vh;
 }
 
 .stage *,
@@ -341,9 +347,102 @@ button:disabled {
 
 .dropdown-content button {
   width: 100%;
-  text-align: left;
   border: 0;
   box-shadow: none;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+/* 导出子菜单 */
+.submenu-wrapper {
+  position: relative;
+}
+
+.submenu-wrapper .has-submenu {
+  width: 100%;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.submenu-content {
+  position: absolute;
+  left: 100%;
+  top: -6px;
+  min-width: 152px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(42, 65, 92, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 30px rgba(31, 45, 61, 0.15);
+  z-index: 1001;
+}
+
+.submenu-content button {
+  width: 100%;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+/* 快捷键靠右 */
+.dropdown-content button .shortcut,
+.submenu-wrapper .has-submenu .shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(30, 41, 59, 0.4);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  pointer-events: none;
+}
+
+/* 项目数量圆形气泡 */
+.dropdown-content button .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* 零项目时的灰色气泡样式（可选，如不需要可隐藏或设为浅色） */
+.dropdown-content button .badge.zero {
+  background-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+/* 移动端/窄屏响应式隐藏快捷键，防止换行 */
+@media (max-width: 768px) {
+  .dropdown-content button .shortcut,
+  .submenu-wrapper .has-submenu .shortcut {
+    display: none !important;
+  }
 }
 
 .view-card {
@@ -557,6 +656,7 @@ body.is-dragging-3d * {
   transition: width 0.25s ease, padding 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
   overflow: visible;
   padding: 0 !important;
+  max-height: 100vh;
 }
 
 .left-panel {
@@ -565,6 +665,7 @@ body.is-dragging-3d * {
   transition: width 0.25s ease, padding 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
   overflow: visible !important;
   padding: 0 !important;
+  max-height: 100vh;
 }
 
 .right-panel-content {
@@ -573,6 +674,7 @@ body.is-dragging-3d * {
   overflow-y: auto;
   box-sizing: border-box;
   padding: 14px;
+  max-height: 100vh;
 }
 
 .left-panel-content {
@@ -581,6 +683,7 @@ body.is-dragging-3d * {
   overflow-y: auto;
   box-sizing: border-box;
   padding: 14px;
+  max-height: 100vh;
 }
 
 .right-panel.collapsed {
@@ -649,6 +752,8 @@ body.is-dragging-3d * {
   .left-panel-content {
     padding: 10px;
     height: auto;
+    max-height: 100vh;
+    overflow-y: auto;
   }
 
   .segmented,
@@ -667,6 +772,7 @@ body.is-dragging-3d * {
   .left-panel {
     transition: height 0.25s ease, padding 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
     overflow: visible !important;
+    max-height: 100vh;
   }
 
   .left-panel.collapsed {
@@ -701,6 +807,7 @@ body.is-dragging-3d * {
   .right-panel {
     transition: height 0.25s ease, padding 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
     overflow: visible;
+    max-height: 100vh;
   }
 
   .right-panel.collapsed {
@@ -1081,6 +1188,7 @@ select {
 
 .btn-floor-item.active:hover {
   background: #172033;
+  color: #ffffff;
 }
 
 .btn-floor-add {
@@ -1275,6 +1383,96 @@ select {
   background: #b42318;
 }
 
+.custom-modal-btn.btn-sm {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* 弹窗输入框 */
+.custom-modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid rgba(42, 65, 92, 0.2);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background: #fafbfc;
+  color: #172033;
+}
+
+.custom-modal-input:focus {
+  border-color: #1f8fff;
+  box-shadow: 0 0 0 3px rgba(31, 143, 255, 0.12);
+  background: #ffffff;
+}
+
+/* 项目列表 */
+.project-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(42, 65, 92, 0.1);
+  border-radius: 8px;
+  background: #fafbfc;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.project-list-item:hover {
+  background: #f0f5ff;
+  border-color: rgba(31, 143, 255, 0.25);
+}
+
+.project-list-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.project-list-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #172033;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-list-item-time {
+  font-size: 12px;
+  color: #7a8599;
+}
+
+.project-list-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.project-list-item-actions .btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 8px;
+}
+
 /* 自定义下拉选择器样式 */
 .custom-dropdown {
   position: relative;
@@ -1408,6 +1606,7 @@ select {
   margin-bottom: 12px;
 }
 
+
 .tool-group-toggle {
   min-height: 34px;
   display: flex;
@@ -1447,8 +1646,11 @@ select {
 .building-tool-group .segmented.hidden {
   display: none !important;
 }
+
 /* 建筑工具网格排布 (4列网格卡片化) */
 .floor-tools,
+.room-tools,
+.opening-tools,
 .roof-tools,
 .stairs-tools,
 .fence-tools {
@@ -1462,7 +1664,14 @@ select {
   margin-bottom: 12px;
 }
 
+.opening-tools .mode-text {
+  line-height: 1.2;
+  text-align: center;
+}
+
 .floor-tools .mode,
+.room-tools .mode,
+.opening-tools .mode,
 .roof-tools .mode,
 .stairs-tools .mode,
 .fence-tools .mode {
@@ -1486,7 +1695,13 @@ select {
   user-select: none;
 }
 
+.floor-tools .mode.hidden {
+  display: none !important;
+}
+
 .floor-tools .mode:hover,
+.room-tools .mode:hover,
+.opening-tools .mode:hover,
 .roof-tools .mode:hover,
 .stairs-tools .mode:hover,
 .fence-tools .mode:hover {
@@ -1495,6 +1710,8 @@ select {
 }
 
 .floor-tools .mode.active,
+.room-tools .mode.active,
+.opening-tools .mode.active,
 .roof-tools .mode.active,
 .stairs-tools .mode.active,
 .fence-tools .mode.active {
@@ -1523,6 +1740,8 @@ select {
 }
 
 .floor-tools .mode.active .mode-shortcut,
+.room-tools .mode.active .mode-shortcut,
+.opening-tools .mode.active .mode-shortcut,
 .roof-tools .mode.active .mode-shortcut,
 .stairs-tools .mode.active .mode-shortcut,
 .fence-tools .mode.active .mode-shortcut {
@@ -1535,6 +1754,8 @@ select {
     display: none !important;
   }
   .floor-tools .mode,
+  .room-tools .mode,
+  .opening-tools .mode,
   .roof-tools .mode,
   .stairs-tools .mode,
   .fence-tools .mode {
@@ -1548,6 +1769,8 @@ select {
     display: none !important;
   }
   .floor-tools .mode,
+  .room-tools .mode,
+  .opening-tools .mode,
   .roof-tools .mode,
   .stairs-tools .mode,
   .fence-tools .mode {
@@ -1556,3 +1779,173 @@ select {
     gap: 2px !important;
   }
 }
+
+/* Switch 开关样式 */
+.switch-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(42, 65, 92, 0.08);
+  margin-bottom: 12px;
+}
+
+.switch-field > span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #172033;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(42, 65, 92, 0.16);
+  transition: .25s ease;
+  border-radius: 22px;
+}
+
+.slider-button {
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .25s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(31, 45, 61, 0.15);
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slider-icon {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  color: #66758f;
+  transition: color .25s ease, opacity .15s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.slider .unlock-icon {
+  opacity: 1;
+}
+
+.slider .lock-icon {
+  opacity: 0;
+}
+
+input:checked + .slider {
+  background-color: #1f8fff;
+}
+
+input:checked + .slider .slider-button {
+  transform: translateX(18px);
+}
+
+input:checked + .slider .slider-icon {
+  color: #1f8fff;
+}
+
+input:checked + .slider .unlock-icon {
+  opacity: 0;
+}
+
+input:checked + .slider .lock-icon {
+  opacity: 1;
+}
+
+/* 顶部对齐网格按钮置灰样式 */
+.stage-controls .btn-icon.deactivated {
+  opacity: 0.45;
+}
+
+/* 属性栏头部及其锁定开关排版 */
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(42, 65, 92, 0.08);
+  margin-bottom: 16px;
+}
+
+.editor-header strong {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #172033;
+}
+
+/* 家具网格面板升级为精美图片卡片 */
+.item-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+
+.furniture-item-btn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(42, 65, 92, 0.12) !important;
+  border-radius: 8px !important;
+  padding: 4px 2px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  min-height: 82px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+.furniture-item-btn:hover {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+  transform: translateY(-2px) !important;
+  background: #fbfdff !important;
+}
+
+.furniture-item-btn img {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+  margin-bottom: 4px !important;
+  pointer-events: none !important;
+  transition: transform 0.2s ease !important;
+}
+
+.furniture-item-btn:hover img {
+  transform: scale(1.05);
+}
+
+.furniture-item-btn span {
+  font-size: 10.5px !important;
+  color: #334155 !important;
+  text-align: center !important;
+  word-break: break-all !important;
+  line-height: 1.2 !important;
+  font-weight: 500 !important;
+}
+
+

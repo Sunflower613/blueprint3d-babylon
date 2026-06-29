@@ -14,14 +14,14 @@ export function getComponentMaterialDescriptor(item, definition, componentId) {
 }
 
 export function getComponentMaterial(registry, item, definition, componentId) {
-  const descriptor = getComponentMaterialDescriptor(item, definition, componentId);
+  let descriptor = getComponentMaterialDescriptor(item, definition, componentId);
   const color = getComponentColor(item, definition, componentId);
   const options = { fallbackColor: color };
 
-  if (componentId.toLowerCase().includes('glass')) {
-    options.alpha = 0.25;
-    options.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
-    options.flatShading = false;
+  // 当组件 ID 包含 'glass' 且描述符还是普通颜色字符串时，自动升级为 kind: 'glass'
+  // 这确保了向后兼容：现有家具定义无需修改即可获得玻璃效果
+  if (componentId.toLowerCase().includes('glass') && (typeof descriptor === 'string' || descriptor?.kind === 'color')) {
+    descriptor = { kind: 'glass', color: color, alpha: 0.25 };
   }
 
   return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}_${Date.now()}`, descriptor, options);

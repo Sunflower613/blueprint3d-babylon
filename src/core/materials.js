@@ -16,7 +16,12 @@ export function createFlatMaterial(scene, name, colorHex, options = {}) {
       : color;
     material.disableLighting = options.disableLighting !== false;
   }
-  if (options.backFaceCulling !== undefined) material.backFaceCulling = options.backFaceCulling;
+  if (options.backFaceCulling !== undefined) {
+    material.backFaceCulling = options.backFaceCulling;
+    if (options.backFaceCulling === false) {
+      material.twoSidedLighting = true;
+    }
+  }
 
   return material;
 }
@@ -24,6 +29,50 @@ export function createFlatMaterial(scene, name, colorHex, options = {}) {
 export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   if (!value) return { kind: 'color', color: fallbackColor };
   if (typeof value === 'string') return { kind: 'color', color: value };
+
+  // 镜面材质
+  if (value.kind === 'mirror') {
+    return {
+      kind: 'mirror',
+      category: value.category || 'mirror',
+      name: value.name || '镜面',
+      color: value.color || fallbackColor
+    };
+  }
+
+  // 金属材质
+  if (value.kind === 'metal') {
+    return {
+      kind: 'metal',
+      category: value.category || 'metal',
+      name: value.name || '金属',
+      color: value.color || fallbackColor,
+      roughness: value.roughness !== undefined ? value.roughness : 0
+    };
+  }
+
+  // 玻璃材质
+  if (value.kind === 'glass') {
+    return {
+      kind: 'glass',
+      category: value.category || 'glass',
+      name: value.name || '玻璃',
+      color: value.color || fallbackColor,
+      alpha: value.alpha !== undefined ? value.alpha : 0.3
+    };
+  }
+
+  // 发光材质
+  if (value.kind === 'emissive') {
+    return {
+      kind: 'emissive',
+      category: value.category || 'emissive',
+      name: value.name || '发光',
+      color: value.color || fallbackColor
+    };
+  }
+
+  // 纹理材质
   if (value.kind === 'texture' || value.src) {
     return {
       kind: 'texture',
@@ -35,6 +84,8 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
       color: value.color || fallbackColor
     };
   }
+
+  // 默认：颜色材质
   return {
     kind: 'color',
     category: value.category || 'paint',
@@ -49,7 +100,110 @@ export function materialPreviewColor(value, fallbackColor = '#ffffff') {
 
 export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   const normalized = normalizeMaterialDescriptor(descriptor, options.fallbackColor || '#ffffff');
-  const material = createFlatMaterial(scene, name, normalized.color || options.fallbackColor || '#ffffff', options);
+  const baseColor = normalized.color || options.fallbackColor || '#ffffff';
+
+  // --- 镜面材质 ---
+  if (normalized.kind === 'mirror') {
+    const material = new BABYLON.StandardMaterial(name, scene);
+    const color = BABYLON.Color3.FromHexString(baseColor);
+    // 适度的漫反射底色（调低底色以防发白）
+    material.diffuseColor = color.scale(0.1);
+    material.specularColor = new BABYLON.Color3(1.0, 1.0, 1.0);
+    material.specularPower = 256;
+    material.backFaceCulling = false; // 正反面都可见
+    material.twoSidedLighting = true;
+    material.flatShading = false;
+    material.maxSimultaneousLights = 16;
+
+    // 升级为区域反射探针 (Reflection Probe)
+    const probe = new BABYLON.ReflectionProbe("probe_mirror_" + name, 512, scene, true);
+    probe.cubeTexture.level = 0.8; // 稍微降低探针反射等级，防止过曝
+    material.reflectionTexture = probe.cubeTexture;
+    material.customReflectionProbe = probe;
+
+    // 缩放反射采样的图案，使其在视觉上变小
+    material.reflectionTexture.uScale = 4.0;
+    material.reflectionTexture.vScale = 4.0;
+
+    // 降低 emissive 补偿，防止强光下过亮
+    material.emissiveColor = color.scale(0.08);
+
+    material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
+    return material;
+  }
+
+  // --- 金属材质 ---
+  if (normalized.kind === 'metal') {
+    const material = new BABYLON.StandardMaterial(name, scene);
+    const color = BABYLON.Color3.FromHexString(baseColor);
+    const isMatte = (normalized.roughness && normalized.roughness > 0.1) || normalized.name.includes('磨砂') || (normalized.id && normalized.id.includes('matte'));
+
+    material.backFaceCulling = false;
+    material.twoSidedLighting = true;
+    material.flatShading = false;
+    material.maxSimultaneousLights = 16;
+
+    // 升级为区域反射探针 (Reflection Probe)
+    const probe = new BABYLON.ReflectionProbe("probe_metal_" + name, 512, scene, true);
+    material.reflectionTexture = probe.cubeTexture;
+    material.customReflectionProbe = probe;
+
+    // 缩放反射采样的图案，使其在视觉上变小
+    material.reflectionTexture.uScale = 2.0;
+    material.reflectionTexture.vScale = 2.0;
+
+    if (isMatte) {
+      // 磨砂金属：漫反射多，高光散且暗，环境反射微弱
+      material.diffuseColor = color.scale(0.5);
+      material.specularColor = color.scale(0.4);
+      material.specularPower = 12; // 低 specularPower 使高光发散
+      material.emissiveColor = color.scale(0.1);
+      probe.cubeTexture.level = 0.15; // 磨砂表面反射强度变弱
+    } else {
+      // 亮面金属：漫反射少，高光亮且硬，环境反射明显
+      material.diffuseColor = color.scale(0.3);
+      material.specularColor = color.scale(0.7);
+      material.specularPower = 64; // 高 specularPower 使高光尖锐
+      material.emissiveColor = color.scale(0.15);
+      probe.cubeTexture.level = 0.55; // 亮面反射强度较高
+    }
+
+    material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
+    return material;
+  }
+
+  // --- 玻璃材质 ---
+  if (normalized.kind === 'glass') {
+    const material = new BABYLON.StandardMaterial(name, scene);
+    const color = BABYLON.Color3.FromHexString(baseColor);
+    material.diffuseColor = color;
+    material.alpha = normalized.alpha !== undefined ? normalized.alpha : 0.3;
+    material.specularColor = new BABYLON.Color3(0.6, 0.6, 0.6);
+    material.specularPower = 64;
+    material.backFaceCulling = false;
+    material.twoSidedLighting = true;
+    material.flatShading = false;
+    material.maxSimultaneousLights = 16;
+    // 不使用 opacityFresnelParameters —— 它会覆盖 alpha 导致正面看几乎完全不透明
+    material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
+    return material;
+  }
+
+  // --- 发光材质 ---
+  if (normalized.kind === 'emissive') {
+    const material = new BABYLON.StandardMaterial(name, scene);
+    const color = BABYLON.Color3.FromHexString(baseColor);
+    material.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    material.specularColor = new BABYLON.Color3(0, 0, 0);
+    material.emissiveColor = color;
+    material.disableLighting = true;
+    material.backFaceCulling = false;
+    material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
+    return material;
+  }
+
+  // --- 颜色/纹理材质（原有逻辑） ---
+  const material = createFlatMaterial(scene, name, baseColor, options);
   material.metadata = {
     ...(material.metadata || {}),
     blueprintMaterial: normalized

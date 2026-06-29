@@ -678,5 +678,21 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         });
       }
     }
+  } else if (subtype === 'concrete') {
+    // ==========================================
+    // 7. 混凝土矮墙 (concrete)
+    // ==========================================
+    createBox(registry, `concrete_body_${fence.id}`, {
+      width: length,
+      height: height,
+      depth: thickness
+    }, {
+      position: { x: 0, y: height / 2, z: 0 }
+    }, {
+      material,
+      parent: group,
+      receiveShadows: true,
+      shadowCaster: true
+    });
   }
 }

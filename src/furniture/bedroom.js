@@ -402,3 +402,341 @@ export const bedBenchFurniture = {
     });
   }
 };
+
+// 11. 梳妆化妆品组 (Cosmetics)
+export const cosmeticsFurniture = {
+  type: 'cosmetics',
+  name: '化妆品组合',
+  defaultSize: { width: 10, depth: 8, height: 8 },
+  components: [
+    { id: 'tray', label: '收纳托盘', defaultColor: '#d4af37' },
+    { id: 'perfume', label: '香水乳液', defaultColor: '#fff3cd' },
+    { id: 'lipstick', label: '口红', defaultColor: '#dc3545' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, cosmeticsFurniture, 'tray', {
+      width: size.width, height: size.height * 0.15, depth: size.depth
+    }, { position: { x: 0, y: size.height * 0.075, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, cosmeticsFurniture, 'perfume', {
+      diameterTop: size.width * 0.28, diameterBottom: size.width * 0.28, height: size.height * 0.72
+    }, { position: { x: -size.width * 0.22, y: size.height * 0.5, z: -size.depth * 0.1 } }, { parent: node });
+
+    sphereComponent(registry, item, cosmeticsFurniture, 'perfume', {
+      diameterX: size.width * 0.32, diameterY: size.height * 0.42, diameterZ: size.width * 0.32
+    }, { position: { x: size.width * 0.18, y: size.height * 0.36, z: -size.depth * 0.15 } }, { parent: node });
+
+    cylinderComponent(registry, item, cosmeticsFurniture, 'lipstick', {
+      diameterTop: size.width * 0.12, diameterBottom: size.width * 0.12, height: size.height * 0.48
+    }, { position: { x: size.width * 0.22, y: size.height * 0.38, z: size.depth * 0.22 } }, { parent: node });
+  }
+};
+
+// 12. 桌面文具盒 (Stationery)
+export const stationeryFurniture = {
+  type: 'stationery',
+  name: '桌面文具盒',
+  defaultSize: { width: 12, depth: 10, height: 6 },
+  components: [
+    { id: 'book', label: '笔记本笔记本电脑', defaultColor: '#fd7e14' },
+    { id: 'holder', label: '金属笔筒', defaultColor: '#2b2b2b' },
+    { id: 'pens', label: '签字笔', defaultColor: '#0056b3' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, stationeryFurniture, 'book', {
+      width: size.width * 0.55, height: 0.024, depth: size.depth * 0.8
+    }, { position: { x: -size.width * 0.18, y: 0.012, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, stationeryFurniture, 'holder', {
+      diameterTop: size.width * 0.28, diameterBottom: size.width * 0.28, height: size.height * 0.8
+    }, { position: { x: size.width * 0.28, y: size.height * 0.4, z: -size.depth * 0.1 } }, { parent: node });
+
+    const p1 = cylinderComponent(registry, item, stationeryFurniture, 'pens', {
+      diameterTop: 0.012, diameterBottom: 0.012, height: size.height * 1.1
+    }, { position: { x: size.width * 0.26, y: size.height * 0.72, z: -size.depth * 0.1 } }, { parent: node });
+    p1.rotation.z = Math.PI * 0.12;
+
+    const p2 = cylinderComponent(registry, item, stationeryFurniture, 'pens', {
+      diameterTop: 0.012, diameterBottom: 0.012, height: size.height * 1.1
+    }, { position: { x: size.width * 0.3, y: size.height * 0.72, z: -size.depth * 0.06 } }, { parent: node });
+    p2.rotation.z = -Math.PI * 0.08;
+    p2.rotation.x = Math.PI * 0.08;
+  }
+};
+
+// 13. 眼影盘与散粉 (eyeshadowCompact)
+export const eyeshadowCompactFurniture = {
+  type: 'eyeshadow_compact',
+  name: '眼影盘与散粉',
+  defaultSize: { width: 6, depth: 6, height: 3 },
+  components: [
+    { id: 'eyeshadow', label: '眼影盘', defaultColor: '#3e2723' },
+    { id: 'compact', label: '散粉盒', defaultColor: '#ffe0b2' },
+    { id: 'mirror', label: '粉扑镜', defaultColor: '#e0f7fa' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, eyeshadowCompactFurniture, 'eyeshadow', {
+      width: size.width * 0.48, height: size.height * 0.25, depth: size.depth * 0.9
+    }, { position: { x: -size.width * 0.22, y: size.height * 0.125, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, eyeshadowCompactFurniture, 'compact', {
+      diameterTop: size.width * 0.4, diameterBottom: size.width * 0.4, height: size.height * 0.35
+    }, { position: { x: size.width * 0.25, y: size.height * 0.175, z: -size.depth * 0.1 } }, { parent: node });
+
+    cylinderComponent(registry, item, eyeshadowCompactFurniture, 'mirror', {
+      diameterTop: size.width * 0.25, diameterBottom: size.width * 0.25, height: 0.005
+    }, { position: { x: size.width * 0.22, y: 0.003, z: size.depth * 0.3 } }, { parent: node });
+  }
+};
+
+// 14. 高端香水瓶 (luxuryPerfumes)
+export const luxuryPerfumesFurniture = {
+  type: 'luxury_perfumes',
+  name: '高端香水瓶',
+  defaultSize: { width: 8, depth: 6, height: 6 },
+  components: [
+    { id: 'bottleA', label: '玫瑰粉香水', defaultColor: '#f48fb1' },
+    { id: 'bottleB', label: '琥珀金香水', defaultColor: '#ffe082' },
+    { id: 'cap', label: '瓶盖喷头', defaultColor: '#ffffff' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, luxuryPerfumesFurniture, 'bottleA', {
+      width: size.width * 0.35, height: size.height * 0.72, depth: size.depth * 0.45
+    }, { position: { x: -size.width * 0.2, y: size.height * 0.36, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, luxuryPerfumesFurniture, 'cap', {
+      diameterTop: 0.015, diameterBottom: 0.015, height: size.height * 0.18
+    }, { position: { x: -size.width * 0.2, y: size.height * 0.81, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, luxuryPerfumesFurniture, 'bottleB', {
+      diameterTop: size.width * 0.3, diameterBottom: size.width * 0.3, height: size.height * 0.65
+    }, { position: { x: size.width * 0.22, y: size.height * 0.325, z: 0.02 } }, { parent: node });
+
+    sphereComponent(registry, item, luxuryPerfumesFurniture, 'cap', {
+      diameterX: 0.025, diameterY: 0.025, diameterZ: 0.025
+    }, { position: { x: size.width * 0.22, y: size.height * 0.72, z: 0.02 } }, { parent: node });
+  }
+};
+
+// 15. 保湿护肤套装 (skincareSet)
+export const skincareSetFurniture = {
+  type: 'skincare_set',
+  name: '保湿护肤套装',
+  defaultSize: { width: 8, depth: 8, height: 8 },
+  components: [
+    { id: 'holder', label: '收纳架', defaultColor: '#cfd8dc' },
+    { id: 'lotion', label: '面霜罐', defaultColor: '#e0f2f1' },
+    { id: 'toner', label: '精华水瓶', defaultColor: '#b2dfdb' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, skincareSetFurniture, 'holder', {
+      width: size.width, height: size.height * 0.12, depth: size.depth
+    }, { position: { x: 0, y: size.height * 0.06, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, skincareSetFurniture, 'lotion', {
+      diameterTop: size.width * 0.38, diameterBottom: size.width * 0.38, height: size.height * 0.42
+    }, { position: { x: -size.width * 0.22, y: size.height * 0.33, z: -size.depth * 0.12 } }, { parent: node });
+
+    cylinderComponent(registry, item, skincareSetFurniture, 'toner', {
+      diameterTop: size.width * 0.28, diameterBottom: size.width * 0.28, height: size.height * 0.82
+    }, { position: { x: size.width * 0.22, y: size.height * 0.53, z: 0.05 } }, { parent: node });
+  }
+};
+
+// 16. 化妆刷筒 (makeupBrushes)
+export const makeupBrushesFurniture = {
+  type: 'makeup_brushes',
+  name: '化妆刷筒',
+  defaultSize: { width: 6, depth: 6, height: 8 },
+  components: [
+    { id: 'holder', label: '刷筒', defaultColor: '#efebe9' },
+    { id: 'brush', label: '化妆刷杆', defaultColor: '#3e2723' },
+    { id: 'bristle', label: '刷头', defaultColor: '#ffe0b2' }
+  ],
+  build(registry, item, node, size) {
+    cylinderComponent(registry, item, makeupBrushesFurniture, 'holder', {
+      diameterTop: size.width, diameterBottom: size.width * 0.9, height: size.height * 0.65
+    }, { position: { x: 0, y: size.height * 0.325, z: 0 } }, { parent: node });
+
+    const offsets = [
+      { x: -0.02, y: 0.82, z: 0.015, rx: -0.12, rz: 0.08 },
+      { x: 0.02, y: 0.85, z: -0.015, rx: 0.12, rz: -0.08 },
+      { x: 0, y: 0.92, z: 0.01, rx: 0.05, rz: 0.05 }
+    ];
+
+    offsets.forEach(off => {
+      const handle = cylinderComponent(registry, item, makeupBrushesFurniture, 'brush', {
+        diameterTop: 0.008, diameterBottom: 0.008, height: size.height * 0.65
+      }, { position: { x: off.x, y: size.height * 0.45, z: off.z } }, { parent: node });
+      handle.rotation.x = off.rx;
+      handle.rotation.z = off.rz;
+
+      const br = sphereComponent(registry, item, makeupBrushesFurniture, 'bristle', {
+        diameterX: 0.024, diameterY: 0.035, diameterZ: 0.024
+      }, { position: { x: off.x * 1.6, y: size.height * 0.78, z: off.z * 1.6 } }, { parent: node });
+      br.rotation.x = off.rx;
+      br.rotation.z = off.rz;
+    });
+  }
+};
+
+// 17. 口红与指甲油 (lipstickNailPolish)
+export const lipstickNailPolishFurniture = {
+  type: 'lipstick_nail_polish',
+  name: '口红与指甲油',
+  defaultSize: { width: 6, depth: 4, height: 6 },
+  components: [
+    { id: 'lipstick', label: '口红', defaultColor: '#d81b60' },
+    { id: 'polish', label: '指甲油瓶', defaultColor: '#8e24aa' },
+    { id: 'cap', label: '黑色盖子', defaultColor: '#212121' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, lipstickNailPolishFurniture, 'cap', {
+      width: size.width * 0.22, height: size.height * 0.4, depth: size.depth * 0.35
+    }, { position: { x: -size.width * 0.2, y: size.height * 0.2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, lipstickNailPolishFurniture, 'lipstick', {
+      width: size.width * 0.16, height: size.height * 0.42, depth: size.depth * 0.28
+    }, { position: { x: -size.width * 0.2, y: size.height * 0.61, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, lipstickNailPolishFurniture, 'polish', {
+      diameterTop: size.width * 0.26, diameterBottom: size.width * 0.26, height: size.height * 0.45
+    }, { position: { x: size.width * 0.2, y: size.height * 0.225, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, lipstickNailPolishFurniture, 'cap', {
+      diameterTop: size.width * 0.1, diameterBottom: size.width * 0.1, height: size.height * 0.38
+    }, { position: { x: size.width * 0.2, y: size.height * 0.64, z: 0 } }, { parent: node });
+  }
+};
+
+// 18. 桌面台历 (deskCalendar)
+export const deskCalendarFurniture = {
+  type: 'desk_calendar',
+  name: '桌面台历',
+  defaultSize: { width: 8, depth: 4, height: 6 },
+  components: [
+    { id: 'stand', label: '折叠支架', defaultColor: '#795548' },
+    { id: 'paper', label: '月历页', defaultColor: '#ffffff' }
+  ],
+  build(registry, item, node, size) {
+    const side1 = boxComponent(registry, item, deskCalendarFurniture, 'stand', {
+      width: size.width, height: size.height * 0.95, depth: 0.015
+    }, { position: { x: 0, y: size.height * 0.48, z: -size.depth * 0.12 } }, { parent: node });
+    side1.rotation.x = Math.PI * 0.08;
+
+    const side2 = boxComponent(registry, item, deskCalendarFurniture, 'stand', {
+      width: size.width, height: size.height * 0.95, depth: 0.015
+    }, { position: { x: 0, y: size.height * 0.48, z: size.depth * 0.12 } }, { parent: node });
+    side2.rotation.x = -Math.PI * 0.08;
+
+    const pap = boxComponent(registry, item, deskCalendarFurniture, 'paper', {
+      width: size.width * 0.9, height: size.height * 0.8, depth: 0.005
+    }, { position: { x: 0, y: size.height * 0.48, z: size.depth * 0.13 + 0.004 } }, { parent: node });
+    pap.rotation.x = -Math.PI * 0.08;
+  }
+};
+
+// 19. 多层木纹笔架 (woodenPenStand)
+export const woodenPenStandFurniture = {
+  type: 'wooden_pen_stand',
+  name: '木纹笔架',
+  defaultSize: { width: 8, depth: 6, height: 8 },
+  components: [
+    { id: 'body', label: '木架身', defaultColor: '#a1887f' },
+    { id: 'compartment', label: '抽屉分隔', defaultColor: '#d7ccc8' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, woodenPenStandFurniture, 'body', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, woodenPenStandFurniture, 'compartment', {
+      width: size.width * 0.9, height: size.height * 0.03, depth: size.depth * 0.9
+    }, { position: { x: 0, y: size.height * 0.6, z: 0.01 } }, { parent: node });
+
+    boxComponent(registry, item, woodenPenStandFurniture, 'compartment', {
+      width: size.width * 0.9, height: size.height * 0.03, depth: size.depth * 0.9
+    }, { position: { x: 0, y: size.height * 0.35, z: 0.01 } }, { parent: node });
+  }
+};
+
+// 20. 科学计算器 (calculator)
+export const calculatorFurniture = {
+  type: 'calculator',
+  name: '科学计算器',
+  defaultSize: { width: 6, depth: 8, height: 2 },
+  components: [
+    { id: 'body', label: '计算器身', defaultColor: '#455a64' },
+    { id: 'screen', label: '绿背光屏幕', defaultColor: '#9ccc65' },
+    { id: 'buttons', label: '按键', defaultColor: '#eceff1' }
+  ],
+  build(registry, item, node, size) {
+    const base = boxComponent(registry, item, calculatorFurniture, 'body', {
+      width: size.width, height: size.height * 0.7, depth: size.depth
+    }, { position: { x: 0, y: size.height * 0.35, z: 0 } }, { parent: node });
+    base.rotation.x = Math.PI * 0.03;
+
+    const sc = boxComponent(registry, item, calculatorFurniture, 'screen', {
+      width: size.width * 0.8, height: 0.005, depth: size.depth * 0.22
+    }, { position: { x: 0, y: size.height * 0.66 + 0.005, z: -size.depth * 0.25 } }, { parent: node });
+    sc.rotation.x = Math.PI * 0.03;
+
+    const key = boxComponent(registry, item, calculatorFurniture, 'buttons', {
+      width: size.width * 0.8, height: 0.008, depth: size.depth * 0.5
+    }, { position: { x: 0, y: size.height * 0.62, z: size.depth * 0.16 } }, { parent: node });
+    key.rotation.x = Math.PI * 0.03;
+  }
+};
+
+// 21. 订书机与便签盒 (staplerNotes)
+export const staplerNotesFurniture = {
+  type: 'stapler_notes',
+  name: '订书机与便签',
+  defaultSize: { width: 8, depth: 6, height: 4 },
+  components: [
+    { id: 'notes', label: '五彩便签纸', defaultColor: '#fff59d' },
+    { id: 'stapler', label: '订书机', defaultColor: '#00e676' },
+    { id: 'holder', label: '便签盒', defaultColor: '#cfd8dc' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, staplerNotesFurniture, 'holder', {
+      width: size.width * 0.5, height: size.height * 0.7, depth: size.depth * 0.68
+    }, { position: { x: -size.width * 0.18, y: size.height * 0.35, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, staplerNotesFurniture, 'notes', {
+      width: size.width * 0.44, height: size.height * 0.6, depth: size.depth * 0.6
+    }, { position: { x: -size.width * 0.18, y: size.height * 0.35 + 0.015, z: 0 } }, { parent: node });
+
+    const st = boxComponent(registry, item, staplerNotesFurniture, 'stapler', {
+      width: size.width * 0.16, height: size.height * 0.65, depth: size.depth * 0.6
+    }, { position: { x: size.width * 0.28, y: size.height * 0.325, z: -0.01 } }, { parent: node });
+    st.rotation.y = -Math.PI * 0.08;
+  }
+};
+
+// 22. 签字笔底座 (premiumDeskPen)
+export const premiumDeskPenFurniture = {
+  type: 'premium_desk_pen',
+  name: '签字笔底座',
+  defaultSize: { width: 6, depth: 6, height: 10 },
+  components: [
+    { id: 'base', label: '底座', defaultColor: '#37474f' },
+    { id: 'pen', label: '金圈签字笔', defaultColor: '#212121' },
+    { id: 'accent', label: '黄铜转轴', defaultColor: '#ffd740' }
+  ],
+  build(registry, item, node, size) {
+    cylinderComponent(registry, item, premiumDeskPenFurniture, 'base', {
+      diameterTop: size.width * 0.6, diameterBottom: size.width * 0.8, height: size.height * 0.2
+    }, { position: { x: 0, y: size.height * 0.1, z: 0 } }, { parent: node });
+
+    sphereComponent(registry, item, premiumDeskPenFurniture, 'accent', {
+      diameterX: size.width * 0.2, diameterY: size.width * 0.2, diameterZ: size.width * 0.2
+    }, { position: { x: 0, y: size.height * 0.23, z: 0 } }, { parent: node });
+
+    const pen = cylinderComponent(registry, item, premiumDeskPenFurniture, 'pen', {
+      diameterTop: 0.012, diameterBottom: 0.016, height: size.height * 0.82
+    }, { position: { x: size.width * 0.12, y: size.height * 0.58, z: 0 } }, { parent: node });
+    pen.rotation.z = -Math.PI * 0.15;
+  }
+};
+

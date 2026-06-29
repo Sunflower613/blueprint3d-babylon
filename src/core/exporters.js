@@ -62,16 +62,17 @@ function dxfText(x, z, text, layer) {
 }
 
 export function stringifyDXF(floorplan) {
-  let body = '';
+  // --- 收集所有实体 ---
+  let entities = '';
   for (const room of floorplan.floor?.rooms || []) {
     const vertices = getRoomVertices(room);
     vertices.forEach((point, index) => {
       const next = vertices[(index + 1) % vertices.length];
-      body += dxfLine(point.x, point.z, next.x, next.z, 'ROOMS');
+      entities += dxfLine(point.x, point.z, next.x, next.z, 'ROOMS');
     });
-    body += dxfText(room.x, room.z, room.name || room.id, 'ROOM_LABELS');
+    entities += dxfText(room.x, room.z, room.name || room.id, 'ROOM_LABELS');
   }
-  for (const wall of floorplan.walls || []) body += dxfLine(wall.from[0], wall.from[1], wall.to[0], wall.to[1], 'WALLS');
+  for (const wall of floorplan.walls || []) entities += dxfLine(wall.from[0], wall.from[1], wall.to[0], wall.to[1], 'WALLS');
   for (const opening of floorplan.openings || []) {
     const wall = (floorplan.walls || []).find((candidate) => candidate.id === opening.wallId);
     if (!wall) continue;
@@ -81,25 +82,102 @@ export function stringifyDXF(floorplan) {
     const halfT = (opening.width || 1) / length / 2;
     const t1 = Math.max(0, (opening.t ?? 0.5) - halfT);
     const t2 = Math.min(1, (opening.t ?? 0.5) + halfT);
-    body += dxfLine(wall.from[0] + dx * t1, wall.from[1] + dz * t1, wall.from[0] + dx * t2, wall.from[1] + dz * t2, opening.type === 'door' ? 'DOORS' : 'WINDOWS');
+    entities += dxfLine(wall.from[0] + dx * t1, wall.from[1] + dz * t1, wall.from[0] + dx * t2, wall.from[1] + dz * t2, opening.type === 'door' ? 'DOORS' : 'WINDOWS');
   }
   for (const item of floorplan.items || []) {
     const corners = itemCorners(item);
     for (let i = 0; i < corners.length; i += 1) {
       const a = corners[i];
       const b = corners[(i + 1) % corners.length];
-      body += dxfLine(a.x, a.z, b.x, b.z, 'FURNITURE');
+      entities += dxfLine(a.x, a.z, b.x, b.z, 'FURNITURE');
     }
-    body += dxfText(item.x, item.z, item.name || item.type, 'FURNITURE_LABELS');
+    entities += dxfText(item.x, item.z, item.name || item.type, 'FURNITURE_LABELS');
   }
-  return [
-    dxfPair(0, 'SECTION'), dxfPair(2, 'HEADER'),
-    dxfPair(9, '$ACADVER'), dxfPair(1, 'AC1021'),
-    dxfPair(9, '$INSUNITS'), dxfPair(70, 6),
-    dxfPair(9, '$DWGCODEPAGE'), dxfPair(3, 'UTF-8'),
-    dxfPair(0, 'ENDSEC'),
-    dxfPair(0, 'SECTION'), dxfPair(2, 'ENTITIES'), body, dxfPair(0, 'ENDSEC'), dxfPair(0, 'EOF')
-  ].join('');
+
+  // --- 定义所有用到的图层及其颜色 ---
+  const layers = [
+    { name: 'WALLS', color: 7 },           // 白色
+    { name: 'ROOMS', color: 3 },            // 绿色
+    { name: 'ROOM_LABELS', color: 3 },      // 绿色
+    { name: 'DOORS', color: 1 },            // 红色
+    { name: 'WINDOWS', color: 5 },          // 蓝色
+    { name: 'FURNITURE', color: 4 },        // 青色
+    { name: 'FURNITURE_LABELS', color: 4 }, // 青色
+  ];
+
+  // --- HEADER section (AC1009 = DXF R12，兼容性最佳) ---
+  let header = '';
+  header += dxfPair(0, 'SECTION');
+  header += dxfPair(2, 'HEADER');
+  header += dxfPair(9, '$ACADVER');
+  header += dxfPair(1, 'AC1009');
+  header += dxfPair(9, '$INSUNITS');
+  header += dxfPair(70, 6);
+  header += dxfPair(0, 'ENDSEC');
+
+  // --- TABLES section (线型表 + 图层表) ---
+  let tables = '';
+  tables += dxfPair(0, 'SECTION');
+  tables += dxfPair(2, 'TABLES');
+
+  // 线型表 (LTYPE) —— 定义 CONTINUOUS 实线
+  tables += dxfPair(0, 'TABLE');
+  tables += dxfPair(2, 'LTYPE');
+  tables += dxfPair(70, 1);
+  tables += dxfPair(0, 'LTYPE');
+  tables += dxfPair(2, 'CONTINUOUS');
+  tables += dxfPair(70, 0);
+  tables += dxfPair(3, 'Solid line');
+  tables += dxfPair(72, 65);
+  tables += dxfPair(73, 0);
+  tables += dxfPair(40, '0.0');
+  tables += dxfPair(0, 'ENDTAB');
+
+  // 图层表 (LAYER) —— 为每个图层定义颜色和线型
+  tables += dxfPair(0, 'TABLE');
+  tables += dxfPair(2, 'LAYER');
+  tables += dxfPair(70, layers.length);
+  for (const layer of layers) {
+    tables += dxfPair(0, 'LAYER');
+    tables += dxfPair(2, layer.name);
+    tables += dxfPair(70, 0);
+    tables += dxfPair(62, layer.color);
+    tables += dxfPair(6, 'CONTINUOUS');
+  }
+  tables += dxfPair(0, 'ENDTAB');
+
+  // 文字样式表 (STYLE) —— 定义默认文字样式
+  tables += dxfPair(0, 'TABLE');
+  tables += dxfPair(2, 'STYLE');
+  tables += dxfPair(70, 1);
+  tables += dxfPair(0, 'STYLE');
+  tables += dxfPair(2, 'STANDARD');
+  tables += dxfPair(70, 0);
+  tables += dxfPair(40, '0.0');
+  tables += dxfPair(41, '1.0');
+  tables += dxfPair(50, '0.0');
+  tables += dxfPair(71, 0);
+  tables += dxfPair(42, '0.25');
+  tables += dxfPair(3, 'txt');
+  tables += dxfPair(4, '');
+  tables += dxfPair(0, 'ENDTAB');
+
+  tables += dxfPair(0, 'ENDSEC');
+
+  // --- BLOCKS section (空，但必须存在) ---
+  let blocks = '';
+  blocks += dxfPair(0, 'SECTION');
+  blocks += dxfPair(2, 'BLOCKS');
+  blocks += dxfPair(0, 'ENDSEC');
+
+  // --- ENTITIES section ---
+  let entitiesSection = '';
+  entitiesSection += dxfPair(0, 'SECTION');
+  entitiesSection += dxfPair(2, 'ENTITIES');
+  entitiesSection += entities;
+  entitiesSection += dxfPair(0, 'ENDSEC');
+
+  return header + tables + blocks + entitiesSection + dxfPair(0, 'EOF');
 }
 
 function boxMesh(cx, cy, cz, width, height, depth) {

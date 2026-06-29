@@ -15,6 +15,20 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
   const subtype = fence.subtype || 'picket_wood';
   const scene = registry.scene;
 
+  // 建立一个点击碰撞箱代理长方体 (pick_proxy)，防止射线穿过空隙 (NEW)
+  const proxyThickness = Math.max(0.12, thickness * 1.2);
+  const proxy = createBox(registry, `fence_pick_proxy_${fence.id}`, {
+    width: length,
+    height: height,
+    depth: proxyThickness
+  }, {
+    position: { x: 0, y: height / 2, z: 0 }
+  }, {
+    parent: group
+  });
+  proxy.visibility = 0; // 完全透明但可被 pick
+  proxy.isPickable = true;
+
   // 1. 创建几种辅助材质，使不同风格的栅栏拥有更高级的视觉效果 (WOW)
   const ironMaterial = new BABYLON.StandardMaterial(`fence_iron_mat_${fence.id}`, scene);
   ironMaterial.diffuseColor = BABYLON.Color3.FromHexString('#212121');
@@ -314,48 +328,64 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       shadowCaster: true
     });
 
-    // 细网格斜拉线 (每隔 0.2 米放置正反两条交叉斜圆柱)
-    const gridSpacing = 0.22;
+    // 细网格斜拉线 (每隔 0.1414 米放置正反两条交叉斜圆柱，边长10cm的正方形网格，水平间距 = 0.1 * sqrt(2) = 0.1414)
+    const gridSpacing = 0.141421356;
     const activeLen = length - postRadius * 4;
-    const meshCount = Math.max(1, Math.floor(activeLen / gridSpacing));
-    const startX = -(meshCount - 1) * gridSpacing / 2;
+    const xMin = -length / 2 + postRadius * 2;
+    const xMax = length / 2 - postRadius * 2;
     const gridHeight = height * 0.84;
     const gridCenterY = height / 2;
     
-    // 斜杆长度
-    const rodLen = Math.sqrt(gridSpacing * gridSpacing + gridHeight * gridHeight);
-    const rodAngle = Math.atan2(gridHeight, gridSpacing);
+    const totalW = activeLen + gridHeight;
+    const meshCount = Math.ceil(totalW / gridSpacing) + 1;
+    const startX = -(meshCount - 1) * gridSpacing / 2;
 
     for (let i = 0; i < meshCount; i++) {
       const curX = startX + i * gridSpacing;
-      // 正斜
-      createCylinder(registry, `rod_pos_${fence.id}_${i}`, {
-        diameterTop: 0.006,
-        diameterBottom: 0.006,
-        height: rodLen
-      }, {
-        position: { x: curX, y: gridCenterY, z: 0.005 },
-        rotation: { z: -rodAngle }
-      }, {
-        material: steelMaterial,
-        parent: group,
-        receiveShadows: false,
-        shadowCaster: false
-      });
-      // 反斜
-      createCylinder(registry, `rod_neg_${fence.id}_${i}`, {
-        diameterTop: 0.006,
-        diameterBottom: 0.006,
-        height: rodLen
-      }, {
-        position: { x: curX, y: gridCenterY, z: -0.005 },
-        rotation: { z: rodAngle }
-      }, {
-        material: steelMaterial,
-        parent: group,
-        receiveShadows: false,
-        shadowCaster: false
-      });
+
+      // 1. 正斜线裁切 (斜率 +1, 旋转角 -45度)
+      const xStartPos = Math.max(xMin, curX - gridHeight / 2);
+      const xEndPos = Math.min(xMax, curX + gridHeight / 2);
+      if (xStartPos < xEndPos - 0.001) {
+        const p1y = xStartPos - curX + gridCenterY;
+        const p2y = xEndPos - curX + gridCenterY;
+        const segLen = (xEndPos - xStartPos) * 1.41421356;
+        createCylinder(registry, `rod_pos_${fence.id}_${i}`, {
+          diameterTop: 0.006,
+          diameterBottom: 0.006,
+          height: segLen
+        }, {
+          position: { x: (xStartPos + xEndPos) / 2, y: (p1y + p2y) / 2, z: 0.005 },
+          rotation: { z: -Math.PI / 4 }
+        }, {
+          material: steelMaterial,
+          parent: group,
+          receiveShadows: false,
+          shadowCaster: false
+        });
+      }
+
+      // 2. 反斜线裁切 (斜率 -1, 旋转角 +45度)
+      const xStartNeg = Math.max(xMin, curX - gridHeight / 2);
+      const xEndNeg = Math.min(xMax, curX + gridHeight / 2);
+      if (xStartNeg < xEndNeg - 0.001) {
+        const p1y = -xStartNeg + curX + gridCenterY;
+        const p2y = -xEndNeg + curX + gridCenterY;
+        const segLen = (xEndNeg - xStartNeg) * 1.41421356;
+        createCylinder(registry, `rod_neg_${fence.id}_${i}`, {
+          diameterTop: 0.006,
+          diameterBottom: 0.006,
+          height: segLen
+        }, {
+          position: { x: (xStartNeg + xEndNeg) / 2, y: (p1y + p2y) / 2, z: -0.005 },
+          rotation: { z: Math.PI / 4 }
+        }, {
+          material: steelMaterial,
+          parent: group,
+          receiveShadows: false,
+          shadowCaster: false
+        });
+      }
     }
 
   } else if (subtype === 'stone_masonry') {
@@ -694,5 +724,119 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       receiveShadows: true,
       shadowCaster: true
     });
+  } else if (subtype === 'rope') {
+    // ==========================================
+    // 8. 绳索栅栏 (rope)
+    // ==========================================
+    const postRad = 0.04;
+    
+    // 1. 左右两个木立柱
+    createCylinder(registry, `post_start_${fence.id}`, {
+      diameterTop: postRad * 2,
+      diameterBottom: postRad * 2,
+      height: height * 1.05
+    }, {
+      position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
+    }, {
+      material: material,
+      parent: group,
+      receiveShadows: true,
+      shadowCaster: true
+    });
+
+    createCylinder(registry, `post_end_${fence.id}`, {
+      diameterTop: postRad * 2,
+      diameterBottom: postRad * 2,
+      height: height * 1.05
+    }, {
+      position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
+    }, {
+      material: material,
+      parent: group,
+      receiveShadows: true,
+      shadowCaster: true
+    });
+
+    // 柱子顶端圆形木帽
+    createSphere(registry, `post_start_cap_${fence.id}`, {
+      diameter: postRad * 2.2
+    }, {
+      position: { x: -length / 2, y: height * 1.05, z: 0 }
+    }, {
+      material: material,
+      parent: group
+    });
+
+    createSphere(registry, `post_end_cap_${fence.id}`, {
+      diameter: postRad * 2.2
+    }, {
+      position: { x: length / 2, y: height * 1.05, z: 0 }
+    }, {
+      material: material,
+      parent: group
+    });
+
+    // 2. 三根下垂绳索
+    const ropeHeights = [height * 0.25, height * 0.55, height * 0.85];
+    const segments = 8;
+    const sag = 0.05; // 抛物线下垂深度
+
+    ropeHeights.forEach((ropeH, hIdx) => {
+      const points = [];
+      for (let j = 0; j <= segments; j++) {
+        const t = j / segments;
+        const x = -length / 2 + t * length;
+        const dy = -sag * 4 * t * (1 - t);
+        points.push({ x, y: ropeH + dy });
+      }
+
+      for (let j = 0; j < segments; j++) {
+        const p1 = points[j];
+        const p2 = points[j + 1];
+        const dx_seg = p2.x - p1.x;
+        const dy_seg = p2.y - p1.y;
+        const segLen = Math.sqrt(dx_seg * dx_seg + dy_seg * dy_seg);
+        const segAngle = Math.atan2(dy_seg, dx_seg);
+        
+        createCylinder(registry, `rope_seg_${fence.id}_${hIdx}_${j}`, {
+          diameterTop: 0.016,
+          diameterBottom: 0.016,
+          height: segLen
+        }, {
+          position: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, z: 0 },
+          rotation: { z: segAngle - Math.PI / 2 }
+        }, {
+          material: ropeMaterial,
+          parent: group,
+          receiveShadows: true,
+          shadowCaster: true
+        });
+      }
+    });
   }
+
+  // 后处理：如果栅栏存在倾角(tilt)，将所有垂直构件的局部Z轴旋转抵消该倾角，使其保持直立状态 (NEW)
+  const tilt = fence.tilt || 0;
+  if (tilt !== 0) {
+    group.getChildMeshes().forEach(mesh => {
+      const name = mesh.name.toLowerCase();
+      const isVertical = name.includes('post') ||
+                         name.includes('picket') ||
+                         name.includes('bar') ||
+                         name.includes('spear') ||
+                         name.includes('pillar') ||
+                         name.includes('knot') ||
+                         name.includes('clip');
+      if (isVertical) {
+        mesh.rotation.z = (mesh.rotation.z || 0) - tilt;
+      }
+    });
+  }
+
+  // 限制点击只能点中长方体碰撞箱，防止射线穿透板间缝隙
+  group.getChildMeshes().forEach(mesh => {
+    if (mesh !== proxy) {
+      mesh.isPickable = false;
+    }
+  });
 }

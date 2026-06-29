@@ -10,6 +10,7 @@ import {
   selectedOpeningId,
   selectedRoofId,
   selectedStairsId,
+  selectedFenceGateId,
   
   INCHES_PER_UNIT,
   
@@ -28,10 +29,13 @@ import {
   
   updateSelectedSize,
   updateSelectedOpening,
+  updateSelectedFenceGate,
+  deleteSelectedFenceGate,
   updateSelectedFenceSubtype,
   updateSelectedFenceLength,
   updateSelectedFenceHeight,
   updateSelectedFenceColor,
+  updateSelectedFenceYOffset,
   
   applyMaterialToRoomFloor,
   applyMaterialToWallFront,
@@ -39,6 +43,8 @@ import {
   applyMaterialToStructure,
   applyMaterialToItemComponent,
   applyMaterialToFence,
+  applyMaterialToFenceGateFrame,
+  applyMaterialToFenceGatePanel,
   
   isTargetLocked,
   showToast,
@@ -148,9 +154,15 @@ export function ensureStructureEditor() {
 
   editor.appendChild(createStructureField('X (m)', 'structure-x', { type: 'number', step: '0.1' }));
   editor.appendChild(createStructureField('Z (m)', 'structure-z', { type: 'number', step: '0.1' }));
-  editor.appendChild(createStructureField('宽度 (m)', 'structure-width', { type: 'number', min: '0.6', step: '0.1' }));
-  editor.appendChild(createStructureField('深度 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
-  editor.appendChild(createStructureField('高度 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
+  const dimRow = document.createElement('div');
+  dimRow.className = 'fields-row';
+  dimRow.appendChild(createStructureField('宽度 (m)', 'structure-width', { type: 'number', min: '0.6', step: '0.1' }));
+  dimRow.appendChild(createStructureField('深度 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
+  dimRow.appendChild(createStructureField('高度 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
+  editor.appendChild(dimRow);
+  const elevationField = createStructureField('离地高度 (m)', 'structure-elevation', { type: 'number', step: '0.1' });
+  elevationField.id = 'structure-elevation-field';
+  editor.appendChild(elevationField);
   const rotationLabel = createStructureField('旋转 (度)', 'structure-rotation', { type: 'number', min: '0', max: '359', step: '15' });
   const rotationRange = document.createElement('input');
   rotationRange.id = 'structure-rotation-range';
@@ -199,6 +211,46 @@ export function ensureStructureEditor() {
   editor.appendChild(createStructureField('拐角台阶位置', 'structure-corner-step', { type: 'number', min: '1', step: '1' }));
   editor.appendChild(createStructureField('间层宽度 (m)', 'structure-u-slot-width', { type: 'number', min: '0', max: '1.0', step: '0.05' }));
   editor.appendChild(createStructureField('中空长度 (m)', 'structure-u-void-length', { type: 'number', min: '0', max: '3.0', step: '0.1' }));
+
+  // 弧度曲线调整把手 / 输入框
+  const curveLabel = document.createElement('label');
+  curveLabel.className = 'field';
+  curveLabel.id = 'structure-curve-field';
+  const curveSpan = document.createElement('span');
+  curveSpan.textContent = '弧度 (m)';
+  
+  const curveContainer = document.createElement('div');
+  curveContainer.style.display = 'flex';
+  curveContainer.style.alignItems = 'center';
+  curveContainer.style.gap = '5px';
+  curveContainer.style.width = '100%';
+
+  const btnDec = document.createElement('button');
+  btnDec.type = 'button';
+  btnDec.id = 'structure-curve-dec';
+  btnDec.textContent = '-';
+  btnDec.style.padding = '4px 8px';
+  btnDec.style.cursor = 'pointer';
+
+  const curveInput = document.createElement('input');
+  curveInput.id = 'structure-curve';
+  curveInput.type = 'number';
+  curveInput.step = '0.05';
+  curveInput.value = '0';
+  curveInput.style.flex = '1';
+  curveInput.style.minWidth = '0';
+
+  const btnInc = document.createElement('button');
+  btnInc.type = 'button';
+  btnInc.id = 'structure-curve-inc';
+  btnInc.textContent = '+';
+  btnInc.style.padding = '4px 8px';
+  btnInc.style.cursor = 'pointer';
+
+  curveContainer.append(btnDec, curveInput, btnInc);
+  curveLabel.append(curveSpan, curveContainer);
+  editor.appendChild(curveLabel);
+
   const deleteButton = document.createElement('button');
   deleteButton.id = 'btn-delete-structure';
   deleteButton.type = 'button';
@@ -225,6 +277,7 @@ export function updateEditor() {
   const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
   const wall = selectedWallId ? testMap.getWall(selectedWallId) : null;
   const fence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
+  const fenceGate = selectedFenceGateId ? testMap.getFenceGate(selectedFenceGateId) : null;
   const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
   const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
   const roof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
@@ -232,11 +285,13 @@ export function updateEditor() {
   const structure = roof || stairs;
   const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
-  const hasSelection = !!room || !!wall || !!fence || !!item || !!opening || !!structure;
+  const hasSelection = !!room || !!wall || !!fence || !!fenceGate || !!item || !!opening || !!structure;
   floorEditor?.classList.toggle('hidden', hasSelection);
   roomEditor.classList.toggle('hidden', !room);
   wallEditor.classList.toggle('hidden', !wall);
   if (fenceEditor) fenceEditor.classList.toggle('hidden', !fence);
+  const fenceGateEditor = document.getElementById('fence-gate-editor');
+  if (fenceGateEditor) fenceGateEditor.classList.toggle('hidden', !fenceGate);
   itemEditor.classList.toggle('hidden', !item);
   openingEditor.classList.toggle('hidden', !opening);
   structureEditor?.classList.toggle('hidden', !structure);
@@ -296,7 +351,11 @@ export function updateEditor() {
     document.getElementById('fence-rotation').value = angleDeg;
     document.getElementById('fence-rotation-range').value = angleDeg;
     document.getElementById('fence-height').value = fence.height || 1.1;
-    document.getElementById('fence-color').value = fence.color || '#8d6e63';
+    document.getElementById('fence-yoffset').value = fence.yOffset !== undefined ? Number(fence.yOffset.toFixed(2)) : 0;
+    const fenceColorEl = document.getElementById('fence-color');
+    if (fenceColorEl) {
+      fenceColorEl.value = fence.color || '#8d6e63';
+    }
     document.getElementById('fence-locked').checked = !!fence.locked;
     document.getElementById('btn-delete-fence').disabled = !!fence.locked;
   }
@@ -347,8 +406,8 @@ export function updateEditor() {
     
     const xLabel = document.getElementById('structure-x')?.closest('label');
     const zLabel = document.getElementById('structure-z')?.closest('label');
-    if (xLabel) xLabel.classList.toggle('hidden', structureType === 'stairs');
-    if (zLabel) zLabel.classList.toggle('hidden', structureType === 'stairs');
+    if (xLabel) xLabel.classList.add('hidden');
+    if (zLabel) zLabel.classList.add('hidden');
 
     document.getElementById('structure-x').value = Number((structure.x || 0).toFixed(2));
     document.getElementById('structure-z').value = Number((structure.z || 0).toFixed(2));
@@ -367,6 +426,27 @@ export function updateEditor() {
       bottomHiddenField.classList.toggle('hidden', structureType !== 'roof');
     }
     document.getElementById('structure-bottom-hidden').checked = !!structure.bottomHidden;
+
+    const curveField = document.getElementById('structure-curve-field');
+    if (curveField) {
+      curveField.classList.toggle('hidden', structureType !== 'roof');
+    }
+    const curveInput = document.getElementById('structure-curve');
+    if (curveInput) {
+      curveInput.value = Number((structure.curve || 0).toFixed(2));
+    }
+
+    const elevationField = document.getElementById('structure-elevation-field');
+    if (elevationField) {
+      elevationField.classList.toggle('hidden', structureType !== 'roof');
+    }
+    const elevationInput = document.getElementById('structure-elevation');
+    if (elevationInput) {
+      const roofFloor = testMap.getFloor?.(structure.floorId);
+      const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+      elevationInput.value = Number((structure.elevation ?? roofWallHeight).toFixed(2));
+    }
+
     document.getElementById('structure-locked').checked = !!structure.locked;
     document.getElementById('btn-delete-structure').disabled = !!structure.locked;
 
@@ -495,15 +575,40 @@ export function updateEditor() {
     document.getElementById('btn-delete-opening').disabled = !!opening.locked;
   }
 
-  renderDesignPanel(room, wall, item, structure, structureType, fence, opening);
-  revealRightPanelIfNeeded(room || wall || item || opening || structure || fence);
+  if (fenceGate) {
+    document.getElementById('fence-gate-locked').checked = !!fenceGate.locked;
+    document.getElementById('fence-gate-subtype').value = fenceGate.subtype || 'picket_wood';
+    document.getElementById('fence-gate-width').value = fenceGate.width || 1.0;
+    document.getElementById('fence-gate-height').value = fenceGate.height || 1.1;
+    document.getElementById('fence-gate-thickness').value = fenceGate.thickness || 0.08;
+    document.getElementById('fence-gate-yoffset').value = fenceGate.yOffset || 0.0;
+    document.getElementById('fence-gate-open').checked = !!fenceGate.isOpen;
+    document.getElementById('fence-gate-double-door').checked = !!fenceGate.doubleDoor;
+    document.getElementById('fence-gate-flip-lr').checked = !!fenceGate.isFlippedLR;
+    document.getElementById('fence-gate-flip-io').checked = !!fenceGate.isFlippedIO;
+    document.getElementById('fence-gate-content-hidden').checked = !!fenceGate.panelHidden;
+    document.getElementById('btn-delete-fence-gate').disabled = !!fenceGate.locked;
+
+    const posField = document.getElementById('fence-gate-position-field');
+    if (posField) {
+      if (fenceGate.fenceId) {
+        posField.classList.remove('hidden');
+        document.getElementById('fence-gate-position').value = Math.round(fenceGate.t * 100);
+      } else {
+        posField.classList.add('hidden');
+      }
+    }
+  }
+
+  renderDesignPanel(room, wall, item, structure, structureType, fence, opening, fenceGate);
+  revealRightPanelIfNeeded(room || wall || item || opening || structure || fence || fenceGate);
 }
 
-export function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null, opening = null) {
+export function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null, opening = null, fenceGate = null) {
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
-    btnResetMaterial.disabled = !(room || wall || item || structure || fence || opening);
+    btnResetMaterial.disabled = !(room || wall || item || structure || fence || opening || fenceGate);
   }
   const floorColorField = document.getElementById('floor-color-field');
   if (floorColorField) floorColorField.classList.toggle('hidden', !room);
@@ -726,6 +831,49 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     }));
     designSelectionPanel.appendChild(groupContent);
   }
+
+  if (fenceGate) {
+    const title = document.createElement('p');
+    title.className = 'selection-title';
+    title.textContent = '栏杆门框与门扇材质';
+    designSelectionPanel.appendChild(title);
+
+    const groupFrame = document.createElement('div');
+    groupFrame.className = 'component-material-row';
+    groupFrame.appendChild(createColorField('门框材质', fenceGate.frameMaterial || '#ffffff', (color) => {
+      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      applyMaterialToFenceGateFrame(color);
+    }, getMaterialFriendlyName(fenceGate.frameMaterial)));
+    groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => {
+      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      applyMaterialToFenceGateFrame(activeMaterialDescriptor);
+    }));
+    designSelectionPanel.appendChild(groupFrame);
+
+    const groupContent = document.createElement('div');
+    groupContent.className = 'component-material-row';
+    groupContent.appendChild(createColorField('门板材质', fenceGate.panelMaterial || '#ffffff', (color) => {
+      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      applyMaterialToFenceGatePanel(color);
+    }, getMaterialFriendlyName(fenceGate.panelMaterial)));
+    groupContent.appendChild(createApplyMaterialButton('应用当前材质', () => {
+      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      applyMaterialToFenceGatePanel(activeMaterialDescriptor);
+    }));
+    designSelectionPanel.appendChild(groupContent);
+  }
 }
 
 export function getMaterialFriendlyName(material) {
@@ -839,8 +987,26 @@ export function initUiEventListeners() {
     document.getElementById(id).addEventListener('change', updateSelectedFloor);
   });
 
-  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-u-slot-width', 'structure-u-void-length'].forEach((id) => {
+  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-u-slot-width', 'structure-u-void-length', 'structure-curve', 'structure-elevation'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
+  });
+
+  document.getElementById('structure-curve-dec')?.addEventListener('click', () => {
+    const input = document.getElementById('structure-curve');
+    if (input) {
+      const val = Math.max(-5, Number(input.value) - 0.05);
+      input.value = Number(val.toFixed(2));
+      updateSelectedStructure();
+    }
+  });
+
+  document.getElementById('structure-curve-inc')?.addEventListener('click', () => {
+    const input = document.getElementById('structure-curve');
+    if (input) {
+      const val = Math.min(5, Number(input.value) + 0.05);
+      input.value = Number(val.toFixed(2));
+      updateSelectedStructure();
+    }
   });
   
   document.getElementById('structure-rotation')?.addEventListener('change', (event) => {
@@ -983,6 +1149,67 @@ export function initUiEventListeners() {
     renderPlan();
   });
 
+  document.getElementById('fence-gate-locked').addEventListener('change', (event) => {
+    if (!selectedFenceGateId) return;
+    pushHistory();
+    setContextTargetLocked({ type: 'fence_gate', id: selectedFenceGateId }, event.target.checked);
+    refreshShadows();
+    updateEditor();
+    renderPlan();
+  });
+
+  document.getElementById('fence-gate-position').addEventListener('input', (event) => {
+    updateSelectedFenceGatePreview({ t: Number(event.target.value) / 100 });
+  });
+
+  document.getElementById('fence-gate-position').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ t: Number(event.target.value) / 100 });
+  });
+
+  document.getElementById('fence-gate-subtype').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ subtype: event.target.value });
+  });
+
+  document.getElementById('fence-gate-width').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ width: Number(event.target.value) });
+  });
+
+  document.getElementById('fence-gate-height').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ height: Number(event.target.value) });
+  });
+
+  document.getElementById('fence-gate-thickness').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ thickness: Number(event.target.value) });
+  });
+
+  document.getElementById('fence-gate-yoffset').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ yOffset: Number(event.target.value) });
+  });
+
+  document.getElementById('fence-gate-open').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ isOpen: event.target.checked });
+  });
+
+  document.getElementById('fence-gate-double-door').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ doubleDoor: event.target.checked });
+  });
+
+  document.getElementById('fence-gate-flip-lr').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ isFlippedLR: event.target.checked });
+  });
+
+  document.getElementById('fence-gate-flip-io').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ isFlippedIO: event.target.checked });
+  });
+
+  document.getElementById('fence-gate-content-hidden').addEventListener('change', (event) => {
+    updateSelectedFenceGate({ panelHidden: event.target.checked });
+  });
+
+  document.getElementById('btn-delete-fence-gate').addEventListener('click', () => {
+    deleteSelectedFenceGate();
+  });
+
   document.getElementById('snap-enabled').addEventListener('change', (event) => {
     setSnapEnabled(event.target.checked);
     const btn = document.getElementById('btn-snap-toggle');
@@ -1041,7 +1268,11 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('fence-height').addEventListener('change', updateSelectedFenceHeight);
-  document.getElementById('fence-color').addEventListener('change', updateSelectedFenceColor);
+  document.getElementById('fence-yoffset').addEventListener('change', updateSelectedFenceYOffset);
+  const fenceColorEl = document.getElementById('fence-color');
+  if (fenceColorEl) {
+    fenceColorEl.addEventListener('change', updateSelectedFenceColor);
+  }
   document.getElementById('fence-locked').addEventListener('change', (event) => {
     if (!selectedFenceId) return;
     pushHistory();

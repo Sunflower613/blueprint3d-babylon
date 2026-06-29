@@ -10,6 +10,7 @@ import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } 
 import { getRoofGeometryData } from '../geometry/roofGeometry.js';
 import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
+import { buildFenceGateGeometry } from '../geometry/fenceGateGeometry.js';
 import {
   normalizeRoomShape,
   getRoomVertices,
@@ -173,6 +174,7 @@ function normalizeFloorplan(floorplan) {
   normalized.roofs ||= [];
   normalized.stairs ||= [];
   normalized.fences ||= [];
+  normalized.fenceGates ||= [];
 
   normalized.walls.forEach((wall) => {
     wall.floorId ||= DEFAULT_FLOOR_ID;
@@ -215,6 +217,8 @@ function normalizeFloorplan(floorplan) {
     roof.sideHidden = !!roof.sideHidden;
     roof.bottomHidden = !!roof.bottomHidden;
     roof.locked = !!roof.locked;
+    roof.curve = Number(roof.curve || 0);
+    roof.elevation = roof.elevation !== undefined ? Number(roof.elevation) : undefined;
   });
 
   normalized.stairs.forEach((stairs) => {
@@ -253,6 +257,31 @@ function normalizeFloorplan(floorplan) {
     fence.material ||= fence.color;
     fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
     fence.locked = !!fence.locked;
+    fence.tilt = Number(fence.tilt || 0);
+    fence.yOffset = Number(fence.yOffset || 0);
+  });
+
+  normalized.fenceGates ||= [];
+  normalized.fenceGates.forEach((gate) => {
+    gate.id ||= `gate_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    gate.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
+    gate.width = Math.max(0.2, Number(gate.width || 1.0));
+    gate.height = Math.max(0.2, Number(gate.height || 1.1));
+    gate.thickness = Math.max(0.04, Number(gate.thickness || 0.08));
+    gate.yOffset = Number(gate.yOffset || 0);
+    gate.from ||= [0, 0];
+    gate.to ||= [gate.from[0] + gate.width, gate.from[1]];
+    gate.fenceId ||= null;
+    gate.t = gate.t !== undefined ? Number(gate.t) : 0.5;
+    gate.subtype ||= 'picket_wood';
+    gate.isOpen = !!gate.isOpen;
+    gate.doubleDoor = !!gate.doubleDoor;
+    gate.isFlippedLR = !!gate.isFlippedLR;
+    gate.isFlippedIO = !!gate.isFlippedIO;
+    gate.panelHidden = !!gate.panelHidden;
+    gate.locked = !!gate.locked;
+    gate.frameMaterial ||= gate.frameColor || '#8d6e63';
+    gate.panelMaterial ||= gate.panelColor || '#8d6e63';
   });
 
   normalized.items.forEach((item) => {
@@ -322,9 +351,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.roofNodes = new Map();
     this.stairNodes = new Map();
     this.fenceNodes = new Map();
+    this.fenceGateNodes = new Map();
     this.selectedItemId = null;
     this.selectedWallId = null;
     this.selectedFenceId = null;
+    this.selectedFenceGateId = null;
     this.build();
   }
 
@@ -349,10 +380,12 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.buildRoofs();
     this.buildStairs();
     this.buildFences();
+    this.buildFenceGates();
     this.floorplan.items.filter((item) => this.isFloorVisible(item.floorId)).forEach((item) => this.buildItem(item));
     this.setSelectedItem(this.selectedItemId);
     this.setSelectedWall(this.selectedWallId);
     this.setSelectedFence(this.selectedFenceId);
+    this.setSelectedFenceGate(this.selectedFenceGateId);
 
     // 统一处理所有镜面材质的区域反射探针
     this.scene.executeWhenReady(() => {
@@ -798,6 +831,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.roofNodes.forEach((node) => node.dispose(false, true));
     this.stairNodes.forEach((node) => node.dispose(false, true));
     this.fenceNodes.forEach((node) => node.dispose(false, true));
+    this.fenceGateNodes.forEach((node) => node.dispose(false, true));
     this.itemNodes.clear();
     this.wallNodes.clear();
     this.floorNodes.clear();
@@ -805,6 +839,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.roofNodes.clear();
     this.stairNodes.clear();
     this.fenceNodes.clear();
+    this.fenceGateNodes.clear();
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
     this.root.getChildren().forEach((child) => child.dispose(false, true));
@@ -1161,7 +1196,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const X_max = length + extLen_end;
 
       // 3. 收集并排序门窗区间
-      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.isFloorVisible(op.floorId));
+      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.isFloorVisible(op.floorId) && !op.isDragging);
       const hasProfiledOpenings = wallOpenings.some((opening) => normalizeOpeningShape(opening.shape) !== 'square');
       const intervals = [];
       wallOpenings.forEach((opening) => {
@@ -1465,6 +1500,26 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const frameW = 0.04;
       buildOpeningGeometry(this, opening, openingGroup, { width, height, frameT, frameW });
 
+      if (opening.isDragging) {
+        const dragPreviewBox = BABYLON.MeshBuilder.CreateBox(`opening_drag_preview_${opening.id}`, {
+          width: width,
+          height: height,
+          depth: wallT * 1.05
+        }, this.scene);
+        dragPreviewBox.parent = openingGroup;
+        dragPreviewBox.position.set(0, 0, 0);
+
+        const dragPreviewMat = new BABYLON.StandardMaterial(`opening_drag_preview_mat_${opening.id}`, this.scene);
+        dragPreviewMat.diffuseColor = BABYLON.Color3.FromHexString('#555555');
+        dragPreviewMat.alpha = 0;
+        dragPreviewMat.backFaceCulling = false;
+        dragPreviewBox.material = dragPreviewMat;
+
+        dragPreviewBox.enableEdgesRendering();
+        dragPreviewBox.edgesWidth = 3.0;
+        dragPreviewBox.edgesColor = new BABYLON.Color4(0.3, 0.6, 0.9, 1);
+      }
+
       this.openingNodes.set(opening.id, openingGroup);
     });
   }
@@ -1481,7 +1536,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const height = Math.max(0.2, Number(roof.height || 1.1));
       const roofFloor = this.getFloor(roof.floorId);
       const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? this.floorplan.wallHeight ?? 3.0) : (this.floorplan.wallHeight ?? 3.0);
-      const eaveY = floorY + roofWallHeight;
+      const eaveY = floorY + (roof.elevation !== undefined ? roof.elevation : roofWallHeight);
       const material = createBlueprintMaterial(this.scene, `roof_${roof.id}_mat`, roof.material || roof.color || '#b75b54', {
         fallbackColor: roof.color || '#b75b54',
         flatShading: true,
@@ -1496,7 +1551,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       group.metadata = { blueprintRoofId: roof.id, floorId: roof.floorId, locked: !!roof.locked };
 
       const subtype = roof.subtype || roof.type || 'gable';
-      const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height);
+      const curve = Number(roof.curve || 0);
+      const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve);
 
       // 1. 顶部 Mesh
       if (topIndices && topIndices.length > 0) {
@@ -1605,22 +1661,161 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       }
       
       const angle = Math.atan2(dz, dx);
-      const fenceOffset = this.getFenceElevationOffset(fence);
+      const fenceOffset = this.getFenceElevationOffset(fence) + (fence.yOffset || 0);
       group.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
       group.rotation.y = -angle;
+      if (fence.tilt) {
+        group.rotation.z = fence.tilt;
+      }
       group.parent = this.root;
       group.metadata = { blueprintFenceId: fence.id, floorId: fence.floorId, originalLength: length, locked: !!fence.locked };
       
-      const material = createBlueprintMaterial(this.scene, `fence_${fence.id}_mat`, fence.material || fence.color || '#8d6e63', {
-        fallbackColor: fence.color || '#8d6e63',
+      const fenceDefaultColor = fence.subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+      const material = createBlueprintMaterial(this.scene, `fence_${fence.id}_mat`, fence.material || fence.color || fenceDefaultColor, {
+        fallbackColor: fence.color || fenceDefaultColor,
         flatShading: false
       });
-      
-      buildFenceGeometry(this, group, fence, material, length, fence.height || 1.1, fence.thickness || 0.1);
+
+      const occupiedIntervals = [];
+      (this.floorplan.fenceGates || []).forEach(gate => {
+        const gFrom = gate.from || [0, 0];
+        const gTo = gate.to || [1, 0];
+        const gcx = (gFrom[0] + gTo[0]) / 2;
+        const gcz = (gFrom[1] + gTo[1]) / 2;
+
+        const fenceDX = x2 - x1;
+        const fenceDZ = z2 - z1;
+        const fenceLenSq = fenceDX * fenceDX + fenceDZ * fenceDZ;
+        if (fenceLenSq <= 0.001) return;
+
+        let t_proj = ((gcx - x1) * fenceDX + (gcz - z1) * fenceDZ) / fenceLenSq;
+        const projX = x1 + fenceDX * t_proj;
+        const projZ = z1 + fenceDZ * t_proj;
+        const dist = Math.hypot(gcx - projX, gcz - projZ);
+
+        if (dist < 0.25 && t_proj >= -0.05 && t_proj <= 1.05) {
+          const halfT = (gate.width || 1.0) / length / 2;
+          const startT = Math.max(0, t_proj - halfT);
+          const endT = Math.min(1, t_proj + halfT);
+          occupiedIntervals.push([startT, endT]);
+        }
+      });
+
+      occupiedIntervals.sort((a, b) => a[0] - b[0]);
+      const mergedIntervals = [];
+      for (const interval of occupiedIntervals) {
+        if (mergedIntervals.length === 0) {
+          mergedIntervals.push(interval);
+        } else {
+          const last = mergedIntervals[mergedIntervals.length - 1];
+          if (interval[0] <= last[1]) {
+            last[1] = Math.max(last[1], interval[1]);
+          } else {
+            mergedIntervals.push(interval);
+          }
+        }
+      }
+
+      const freeIntervals = [];
+      let currentT = 0;
+      for (const [startT, endT] of mergedIntervals) {
+        if (startT > currentT + 0.001) {
+          freeIntervals.push([currentT, startT]);
+        }
+        currentT = Math.max(currentT, endT);
+      }
+      if (currentT < 0.999) {
+        freeIntervals.push([currentT, 1.0]);
+      }
+
+      freeIntervals.forEach(([s, e], idx) => {
+        const t_mid = (s + e) / 2;
+        const subLen = (e - s) * length;
+        if (subLen <= 0.01) return;
+
+        const subGroup = new BABYLON.TransformNode(`fence_sub_${fence.id}_${idx}`, this.scene);
+        subGroup.parent = group;
+        subGroup.position.set((t_mid - 0.5) * length, 0, 0);
+
+        let renderLength = subLen;
+        if (fence.tilt) {
+          renderLength = subLen / Math.cos(fence.tilt);
+        }
+        buildFenceGeometry(this, subGroup, fence, material, renderLength, fence.height || 1.1, fence.thickness || 0.1);
+      });
       
       this.fenceNodes.set(fence.id, group);
     });
   }
+
+  buildFenceGates() {
+    this.floorplan.fenceGates ||= [];
+    this.floorplan.fenceGates.filter((gate) => this.isFloorVisible(gate.floorId)).forEach((gate) => {
+      const floorY = this.getFloorElevation(gate.floorId);
+      const group = new BABYLON.TransformNode(`gate_${gate.id}`, this.scene);
+
+      let [x1, z1] = gate.from || [0, 0];
+      let [x2, z2] = gate.to || [1, 0];
+
+      if (gate.fenceId) {
+        const fence = this.getFence(gate.fenceId);
+        if (fence) {
+          const [fx1, fz1] = fence.from;
+          const [fx2, fz2] = fence.to;
+          const dx = fx2 - fx1;
+          const dz = fz2 - fz1;
+          const fenceLen = Math.sqrt(dx * dx + dz * dz) || 1;
+          const halfT = (gate.width) / fenceLen / 2;
+          const t1 = Math.max(0, gate.t - halfT);
+          const t2 = Math.min(1, gate.t + halfT);
+          x1 = fx1 + dx * t1;
+          z1 = fz1 + dz * t1;
+          x2 = fx1 + dx * t2;
+          z2 = fz1 + dz * t2;
+          gate.from = [x1, z1];
+          gate.to = [x2, z2];
+        }
+      }
+
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const length = Math.sqrt(dx * dx + dz * dz);
+      if (length <= 0.01) {
+        group.dispose();
+        return;
+      }
+
+      const angle = Math.atan2(dz, dx);
+      const gateOffset = (gate.fenceId ? this.getFenceElevationOffset(this.getFence(gate.fenceId)) : 0) + (gate.yOffset || 0);
+      group.position.set((x1 + x2) / 2, floorY + gateOffset, (z1 + z2) / 2);
+      group.rotation.y = -angle;
+
+      const fenceTilt = gate.fenceId ? (this.getFence(gate.fenceId)?.tilt || 0) : 0;
+      const tilt = gate.tilt || fenceTilt;
+      if (tilt) {
+        group.rotation.z = tilt;
+      }
+
+      group.parent = this.root;
+      group.metadata = { blueprintFenceGateId: gate.id, floorId: gate.floorId, originalLength: length, locked: !!gate.locked };
+
+      const gateDefaultColor = gate.subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+      const material = createBlueprintMaterial(this.scene, `gate_${gate.id}_mat`, gate.panelMaterial || gate.frameMaterial || gateDefaultColor, {
+        fallbackColor: gateDefaultColor,
+        flatShading: false
+      });
+
+      let renderLength = length;
+      if (tilt) {
+        renderLength = length / Math.cos(tilt);
+      }
+
+      buildFenceGateGeometry(this, group, gate, material, renderLength, gate.height || 1.1, gate.thickness || 0.08);
+
+      this.fenceGateNodes.set(gate.id, group);
+    });
+  }
+
 
   buildItem(item) {
     const definition = getFurnitureDefinition(item.type);
@@ -2099,7 +2294,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       bottomMaterial: partialRoof.bottomMaterial || partialRoof.bottomColor || '#f9fbff',
       sideHidden: !!partialRoof.sideHidden,
       bottomHidden: !!partialRoof.bottomHidden,
-      locked: !!partialRoof.locked
+      locked: !!partialRoof.locked,
+      curve: Number(partialRoof.curve || 0),
+      elevation: partialRoof.elevation !== undefined ? Number(partialRoof.elevation) : undefined
     };
     this.floorplan.roofs.push(roof);
     this.build();
@@ -2139,6 +2336,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (!roof) return null;
     if (roof.locked && !('locked' in patch)) return roof;
     Object.assign(roof, patch);
+    if ('elevation' in patch) roof.elevation = patch.elevation !== undefined ? Number(patch.elevation) : undefined;
     roof.x = Number(roof.x || 0);
     roof.z = Number(roof.z || 0);
     roof.width = Math.max(1, Number(roof.width || 1));
@@ -2208,17 +2406,21 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   addFence(partialFence = {}) {
+    const subtype = partialFence.subtype || 'picket_wood';
+    const defaultColor = subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
     const fence = {
       id: partialFence.id || `fence_${Date.now()}`,
       floorId: partialFence.floorId || this.floorplan.currentFloorId,
       from: partialFence.from ? [...partialFence.from] : [0, 0],
       to: partialFence.to ? [...partialFence.to] : [2, 0],
-      subtype: partialFence.subtype || 'picket_wood',
+      subtype,
       height: Math.max(0.2, Number(partialFence.height || 1.1)),
       thickness: Math.max(0.04, Number(partialFence.thickness || 0.1)),
-      color: partialFence.color || '#8d6e63',
-      material: partialFence.material || partialFence.color || '#8d6e63',
-      locked: !!partialFence.locked
+      color: partialFence.color || defaultColor,
+      material: partialFence.material || partialFence.color || defaultColor,
+      locked: !!partialFence.locked,
+      tilt: Number(partialFence.tilt || 0),
+      yOffset: Number(partialFence.yOffset || 0)
     };
     this.floorplan.fences.push(fence);
     this.build();
@@ -2233,15 +2435,26 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const fence = this.getFence(fenceId);
     if (!fence) return null;
     if (fence.locked && !('locked' in patch)) return fence;
+
+    if (patch.subtype === 'concrete' && (fence.color === '#8d6e63' || !fence.color || fence.color === '')) {
+      patch.color = DEFAULT_WALL_COLOR;
+      patch.material = DEFAULT_WALL_COLOR;
+    } else if (patch.subtype && patch.subtype !== 'concrete' && fence.color === DEFAULT_WALL_COLOR) {
+      patch.color = '#8d6e63';
+      patch.material = '#8d6e63';
+    }
+
     Object.assign(fence, patch);
     if (patch.from) fence.from = [...patch.from];
     if (patch.to) fence.to = [...patch.to];
     fence.height = Math.max(0.2, Number(fence.height || 0.2));
     fence.thickness = Math.max(0.04, Number(fence.thickness || 0.04));
     if (patch.color && !patch.material) fence.material = patch.color;
-    fence.color ||= '#8d6e63';
+    
+    const defaultColor = fence.subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+    fence.color ||= defaultColor;
     fence.material ||= fence.color;
-    fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
+    fence.color = materialPreviewColor(fence.material, fence.color || defaultColor);
     if (rebuild) this.build();
     return fence;
   }
@@ -2259,6 +2472,174 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.selectedFenceId = fenceId;
     this.fenceNodes.forEach((node, id) => {
       const isSelected = (id === fenceId);
+      node.getChildMeshes().forEach((mesh) => {
+        mesh.renderOutline = isSelected;
+        mesh.outlineWidth = 0.04;
+        mesh.outlineColor = BABYLON.Color3.FromHexString('#36c2ff');
+      });
+    });
+  }
+
+  addFenceGate(partialFenceGate = {}) {
+    const subtype = partialFenceGate.subtype || 'picket_wood';
+    const defaultColor = subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+    const gate = {
+      id: partialFenceGate.id || `gate_${Date.now()}`,
+      floorId: partialFenceGate.floorId || this.floorplan.currentFloorId,
+      width: Math.max(0.2, Number(partialFenceGate.width || 1.0)),
+      height: Math.max(0.2, Number(partialFenceGate.height || 1.1)),
+      thickness: Math.max(0.04, Number(partialFenceGate.thickness || 0.08)),
+      yOffset: Number(partialFenceGate.yOffset || 0),
+      from: partialFenceGate.from ? [...partialFenceGate.from] : [0, 0],
+      to: partialFenceGate.to ? [...partialFenceGate.to] : [1, 0],
+      fenceId: partialFenceGate.fenceId || null,
+      t: partialFenceGate.t !== undefined ? Number(partialFenceGate.t) : 0.5,
+      subtype,
+      isOpen: !!partialFenceGate.isOpen,
+      doubleDoor: !!partialFenceGate.doubleDoor,
+      isFlippedLR: !!partialFenceGate.isFlippedLR,
+      isFlippedIO: !!partialFenceGate.isFlippedIO,
+      panelHidden: !!partialFenceGate.panelHidden,
+      locked: !!partialFenceGate.locked,
+      frameMaterial: partialFenceGate.frameMaterial || defaultColor,
+      panelMaterial: partialFenceGate.panelMaterial || defaultColor
+    };
+    if (gate.fenceId) {
+      const fence = this.getFence(gate.fenceId);
+      if (fence) {
+        const [x1, z1] = fence.from;
+        const [x2, z2] = fence.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const fenceLen = Math.sqrt(dx * dx + dz * dz) || 1;
+        const halfT = (gate.width) / fenceLen / 2;
+        const t1 = Math.max(0, gate.t - halfT);
+        const t2 = Math.min(1, gate.t + halfT);
+        gate.from = [x1 + dx * t1, z1 + dz * t1];
+        gate.to = [x1 + dx * t2, z1 + dz * t2];
+      }
+    }
+    this.floorplan.fenceGates ||= [];
+    this.floorplan.fenceGates.push(gate);
+    this.build();
+    return gate;
+  }
+
+  getFenceGate(gateId) {
+    this.floorplan.fenceGates ||= [];
+    return this.floorplan.fenceGates.find((gate) => gate.id === gateId);
+  }
+
+  updateFenceGate(gateId, patch, rebuild = true) {
+    const gate = this.getFenceGate(gateId);
+    if (!gate) return null;
+    if (gate.locked && !('locked' in patch)) return gate;
+
+    if (patch.subtype === 'concrete' && (gate.frameMaterial === '#8d6e63' || !gate.frameMaterial || gate.frameMaterial === '')) {
+      patch.frameMaterial = DEFAULT_WALL_COLOR;
+      patch.panelMaterial = DEFAULT_WALL_COLOR;
+    } else if (patch.subtype && patch.subtype !== 'concrete' && gate.frameMaterial === DEFAULT_WALL_COLOR) {
+      patch.frameMaterial = '#8d6e63';
+      patch.panelMaterial = '#8d6e63';
+    }
+
+    Object.assign(gate, patch);
+    if (patch.from) gate.from = [...patch.from];
+    if (patch.to) gate.to = [...patch.to];
+
+    if (gate.fenceId) {
+      const fence = this.getFence(gate.fenceId);
+      if (fence) {
+        const [x1, z1] = fence.from;
+        const [x2, z2] = fence.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const fenceLen = Math.sqrt(dx * dx + dz * dz) || 1;
+        const halfT = (gate.width) / fenceLen / 2;
+        const t1 = Math.max(0, gate.t - halfT);
+        const t2 = Math.min(1, gate.t + halfT);
+        gate.from = [x1 + dx * t1, z1 + dz * t1];
+        gate.to = [x1 + dx * t2, z1 + dz * t2];
+      }
+    } else {
+      if (patch.width && !patch.from && !patch.to) {
+        const cx = (gate.from[0] + gate.to[0]) / 2;
+        const cz = (gate.from[1] + gate.to[1]) / 2;
+        const dx = gate.to[0] - gate.from[0];
+        const dz = gate.to[1] - gate.from[1];
+        const angle = Math.atan2(dz, dx);
+        const halfW = gate.width / 2;
+        gate.from = [cx - Math.cos(angle) * halfW, cz - Math.sin(angle) * halfW];
+        gate.to = [cx + Math.cos(angle) * halfW, cz + Math.sin(angle) * halfW];
+      }
+    }
+
+    if (rebuild) {
+      this.build();
+    } else {
+      this.updateFenceGateNodeTransform(gateId);
+    }
+    return gate;
+  }
+
+  updateFenceGateNodeTransform(gateId) {
+    const gate = this.getFenceGate(gateId);
+    if (!gate) return;
+    const node = this.fenceGateNodes.get(gate.id);
+    if (!node) return;
+
+    let [x1, z1] = gate.from || [0, 0];
+    let [x2, z2] = gate.to || [1, 0];
+
+    if (gate.fenceId) {
+      const fence = this.getFence(gate.fenceId);
+      if (fence) {
+        const [fx1, fz1] = fence.from;
+        const [fx2, fz2] = fence.to;
+        const dx = fx2 - fx1;
+        const dz = fz2 - fz1;
+        const fenceLen = Math.sqrt(dx * dx + dz * dz) || 1;
+        const halfT = (gate.width) / fenceLen / 2;
+        const t1 = Math.max(0, gate.t - halfT);
+        const t2 = Math.min(1, gate.t + halfT);
+        x1 = fx1 + dx * t1;
+        z1 = fz1 + dz * t1;
+        x2 = fx1 + dx * t2;
+        z2 = fz1 + dz * t2;
+      }
+    }
+
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    if (length <= 0.01) return;
+
+    const angle = Math.atan2(dz, dx);
+    const centerX = (x1 + x2) / 2;
+    const centerZ = (z1 + z2) / 2;
+    const floorY = this.getFloorElevation(gate.floorId);
+    const gateOffset = (gate.fenceId ? this.getFenceElevationOffset(this.getFence(gate.fenceId)) : 0) + (gate.yOffset || 0);
+
+    node.position.set(centerX, floorY + gateOffset, centerZ);
+    node.rotation.y = -angle;
+
+    const fenceTilt = gate.fenceId ? (this.getFence(gate.fenceId)?.tilt || 0) : 0;
+    node.rotation.z = fenceTilt;
+  }
+
+  deleteFenceGate(gateId) {
+    const gate = this.getFenceGate(gateId);
+    if (!gate || gate.locked) return false;
+    const before = this.floorplan.fenceGates.length;
+    this.floorplan.fenceGates = this.floorplan.fenceGates.filter((gate) => gate.id !== gateId);
+    if (before !== this.floorplan.fenceGates.length) this.build();
+    return before !== this.floorplan.fenceGates.length;
+  }
+
+  setSelectedFenceGate(gateId) {
+    this.selectedFenceGateId = gateId;
+    this.fenceGateNodes.forEach((node, id) => {
+      const isSelected = (id === gateId);
       node.getChildMeshes().forEach((mesh) => {
         mesh.renderOutline = isSelected;
         mesh.outlineWidth = 0.04;

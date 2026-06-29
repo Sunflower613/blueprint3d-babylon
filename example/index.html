@@ -217,6 +217,51 @@
                 <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                 <span class="mode-text">混凝土墙</span>
               </button>
+              <button class="mode" type="button" data-mode="draw-fence-rope">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 8c4 3 12 3 16 0M4 14c4 3 12 3 16 0"/></svg>
+                <span class="mode-text">绳索栏</span>
+              </button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="fence-gate">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="fence-gate-tools">
+                <span>栅栏门</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="fence-gate-tools" class="segmented fence-gate-tools">
+                <button class="mode" type="button" data-mode="add-fence-gate-picket_wood">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4h3v18M18 22V4h3v18M6 8h12M6 16h12M9 8v8M15 8v8"/></svg>
+                  <span class="mode-text">木大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-iron_ornamental">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4M21 22V4M6 6h12M6 18h12M12 22V4M9 10a3 3 0 0 1 6 0"/></svg>
+                  <span class="mode-text">铁艺门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-wire_mesh">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4M21 22V4M3 8l18 4M3 14l18-4M3 18l18 2"/></svg>
+                  <span class="mode-text">铁丝网门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-stone_masonry">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6h4v16M17 22V6h4v16M7 10h10M7 16h10M12 22V10"/></svg>
+                  <span class="mode-text">石砌大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-bamboo">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M9 22V4M15 22V4M4 8h16M4 16h16"/></svg>
+                  <span class="mode-text">竹大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-glass_rail">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 6h16M4 18h16"/></svg>
+                  <span class="mode-text">玻璃门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-concrete">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18"/></svg>
+                  <span class="mode-text">混凝土门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-rope">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 10c3 2 6 2 9 0M12 10c3 2 6 2 9 0M3 15c3 2 6 2 9 0M12 15c3 2 6 2 9 0"/></svg>
+                  <span class="mode-text">绳索门</span>
+                </button>
               </div>
             </div>
 
@@ -396,16 +441,18 @@
                 <span>房间名称</span>
                 <input id="room-name" type="text" />
               </label>
+              <div class="fields-row">
+                <label class="field">
+                  <span>长度 (m)</span>
+                  <input id="room-width" type="number" min="1.2" step="0.1" />
+                </label>
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="room-depth" type="number" min="1.2" step="0.1" />
+                </label>
+              </div>
               <label class="field">
-                <span>长度（米）</span>
-                <input id="room-width" type="number" min="1.2" step="0.1" />
-              </label>
-              <label class="field">
-                <span>宽度（米）</span>
-                <input id="room-depth" type="number" min="1.2" step="0.1" />
-              </label>
-              <label class="field">
-                <span>地板高度（米）</span>
+                <span>地板高度 (m)</span>
                 <input id="room-elevation" type="number" min="0" step="0.05" />
               </label>
               <button id="btn-delete-room" type="button" class="danger">删除房间</button>
@@ -414,7 +461,7 @@
             <div id="wall-editor" class="editor hidden">
               <strong id="selected-wall-name">墙面</strong>
               <label class="field">
-                <span>墙体长度（米）</span>
+                <span>墙体长度 (m)</span>
                 <input id="wall-length" type="number" min="0.2" step="0.1" />
               </label>
               <label class="field">
@@ -445,34 +492,39 @@
                   </span>
                 </label>
               </div>
-              <label class="field">
+              <div class="field">
                 <span>栅栏类型</span>
                 <select id="fence-subtype">
-                  <option value="picket_wood">竖板木栅栏</option>
-                  <option value="iron_ornamental">铁艺栏杆</option>
-                  <option value="wire_mesh">铁丝网栏</option>
-                  <option value="stone_masonry">石砌矮墙</option>
-                  <option value="bamboo">竹制篱笆</option>
-                  <option value="glass_rail">玻璃护栏</option>
-                  <option value="concrete">混凝土矮墙</option>
+                  <option value="picket_wood" data-icon='<path d="M4 22V4M20 22V4M4 8h16M4 16h16"/>'>木栅栏</option>
+                  <option value="iron_ornamental" data-icon='<path d="M6 22V2M18 22V2M2 6h20M2 18h20M12 22V2"/>'>铁艺栏</option>
+                  <option value="wire_mesh" data-icon='<path d="M4 22V2M20 22V2M4 6l16 4M4 12l16 4M4 18l16-4"/>'>铁丝网</option>
+                  <option value="stone_masonry" data-icon='<path d="M3 22V10h18v12M3 14h18M3 18h18M9 10v12M15 10v12"/>'>石砌矮墙</option>
+                  <option value="bamboo" data-icon='<path d="M5 22V2M12 22V2M19 22V2M3 10h18M3 16h18"/>'>竹篱笆</option>
+                  <option value="glass_rail" data-icon='<path d="M4 22V4M20 22V4M4 6h16M4 20h16M9 6v14M15 6v14"/>'>玻璃护栏</option>
+                  <option value="concrete" data-icon='<rect x="3" y="3" width="18" height="18" rx="2"/>'>混凝土墙</option>
+                  <option value="rope" data-icon='<path d="M4 22V4M20 22V4M4 8c4 3 12 3 16 0M4 14c4 3 12 3 16 0"/>'>绳索栏</option>
                 </select>
-              </label>
-              <label class="field">
-                <span>栅栏长度（米）</span>
-                <input id="fence-length" type="number" min="0.2" step="0.1" />
-              </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>栅栏长度 (m)</span>
+                  <input id="fence-length" type="number" min="0.2" step="0.1" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="fence-height" type="number" min="0.2" max="3.0" step="0.1" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>离地高度 (m)</span>
+                  <input id="fence-yoffset" type="number" step="0.05" />
+                </label>
+              </div>
               <label class="field">
                 <span>旋转（度）</span>
                 <input id="fence-rotation" type="number" min="0" max="359" step="15" />
                 <input id="fence-rotation-range" type="range" min="0" max="360" step="1" />
-              </label>
-              <label class="field">
-                <span>高度（米）</span>
-                <input id="fence-height" type="number" min="0.2" max="3.0" step="0.1" />
-              </label>
-              <label class="field">
-                <span>颜色</span>
-                <input id="fence-color" type="color" />
               </label>
               <button id="btn-delete-fence" type="button" class="danger">删除栅栏</button>
             </div>
@@ -496,18 +548,20 @@
                   </span>
                 </label>
               </div>
-              <label class="field">
-                <span>宽度 (m)</span>
-                <input id="item-width" type="number" min="0.1" step="0.01" />
-              </label>
-              <label class="field">
-                <span>深度 (m)</span>
-                <input id="item-depth" type="number" min="0.1" step="0.01" />
-              </label>
-              <label class="field">
-                <span>高度 (m)</span>
-                <input id="item-height" type="number" min="0.1" step="0.01" />
-              </label>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="item-width" type="number" min="0.1" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>深度 (m)</span>
+                  <input id="item-depth" type="number" min="0.1" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="item-height" type="number" min="0.1" step="0.01" />
+                </label>
+              </div>
               <label class="field">
                 <span>离地高度 (m)</span>
                 <input id="item-elevation" type="number" min="0" step="0.01" />
@@ -564,29 +618,31 @@
                 <span>沿墙位置</span>
                 <input id="opening-position" type="range" min="8" max="92" step="1" />
               </label>
-              <label class="field">
-                <span>宽度（米）</span>
-                <input id="opening-width" type="number" min="0.25" max="3.6" step="0.05" />
-              </label>
-              <label class="field">
+              <div class="field">
                 <span>轮廓</span>
                 <select id="opening-shape">
-                  <option value="square">方形</option>
-                  <option value="diamond">四角</option>
-                  <option value="circle">圆形</option>
-                  <option value="semicircle">半圆形</option>
-                  <option value="round-arch">半圆顶方形</option>
-                  <option value="pointed-arch">尖顶方形</option>
-                  <option value="quarter-sector">1/4扇形</option>
-                  <option value="right-triangle">直角三角形</option>
+                  <option value="square" data-icon='<rect x="5" y="3" width="14" height="18"/>'>方形</option>
+                  <option value="diamond" data-icon='<path d="m12 3 8 9-8 9-8-9z"/>'>四角</option>
+                  <option value="circle" data-icon='<circle cx="12" cy="12" r="8"/>'>圆形</option>
+                  <option value="semicircle" data-icon='<path d="M4 18a8 8 0 0 1 16 0z"/>'>半圆形</option>
+                  <option value="round-arch" data-icon='<path d="M5 21V10a7 7 0 0 1 14 0v11z"/>'>半圆顶方形</option>
+                  <option value="pointed-arch" data-icon='<path d="M5 21V10l7-7 7 7v11z"/>'>尖顶方形</option>
+                  <option value="quarter-sector" data-icon='<path d="M4 4a16 16 0 0 1 16 16H4z"/>'>1/4扇形</option>
+                  <option value="right-triangle" data-icon='<path d="M4 4v16h16z"/>'>直角三角形</option>
                 </select>
-              </label>
-              <label id="opening-height-field" class="field hidden">
-                <span>高度（米）</span>
-                <input id="opening-height" type="number" min="0.3" max="2.2" step="0.05" />
-              </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="opening-width" type="number" min="0.25" max="3.6" step="0.05" />
+                </label>
+                <label id="opening-height-field" class="field hidden">
+                  <span>高度 (m)</span>
+                  <input id="opening-height" type="number" min="0.3" max="2.2" step="0.05" />
+                </label>
+              </div>
               <label id="opening-sill-field" class="field hidden">
-                <span>离地高度（米）</span>
+                <span>离地高度 (m)</span>
                 <input id="opening-sill-height" type="number" min="0" max="2.4" step="0.05" />
               </label>
               <label id="opening-open-field" class="check-field hidden">
@@ -610,6 +666,89 @@
                 <span id="opening-content-hidden-label">隐藏门板</span>
               </label>
               <button id="btn-delete-opening" type="button" class="danger">删除门窗</button>
+            </div>
+
+            <div id="fence-gate-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong>栅栏门属性</strong>
+                <label class="switch">
+                  <input id="fence-gate-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <div class="field">
+                <span>样式</span>
+                <select id="fence-gate-subtype">
+                  <option value="picket_wood" data-icon='<path d="M3 22V4h3v18M18 22V4h3v18M6 8h12M6 16h12M9 8v8M15 8v8"/>'>木栅栏门</option>
+                  <option value="iron_ornamental" data-icon='<path d="M3 22V4M21 22V4M6 6h12M6 18h12M12 22V4M9 10a3 3 0 0 1 6 0"/>'>铁艺栏杆门</option>
+                  <option value="wire_mesh" data-icon='<path d="M3 22V4M21 22V4M3 8l18 4M3 14l18-4M3 18l18 2"/>'>铁丝网门</option>
+                  <option value="stone_masonry" data-icon='<path d="M3 22V6h4v16M17 22V6h4v16M7 10h10M7 16h10M12 22V10"/>'>石砌矮墙门</option>
+                  <option value="bamboo" data-icon='<path d="M4 22V4M20 22V4M9 22V4M15 22V4M4 8h16M4 16h16"/>'>竹大门</option>
+                  <option value="glass_rail" data-icon='<path d="M4 22V4M20 22V4M4 6h16M4 18h16"/>'>玻璃门</option>
+                  <option value="concrete" data-icon='<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18"/>'>混凝土门</option>
+                  <option value="rope" data-icon='<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 10c3 2 6 2 9 0M12 10c3 2 6 2 9 0M3 15c3 2 6 2 9 0M12 15c3 2 6 2 9 0"/>'>绳索栅栏门</option>
+                </select>
+              </div>
+              <label id="fence-gate-position-field" class="field hidden">
+                <span>沿栏位置</span>
+                <input id="fence-gate-position" type="range" min="2" max="98" step="1" />
+              </label>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="fence-gate-width" type="number" min="0.4" max="3.0" step="0.05" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="fence-gate-height" type="number" min="0.2" max="2.5" step="0.05" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>厚度 (m)</span>
+                  <input id="fence-gate-thickness" type="number" min="0.04" max="0.5" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>离地高度 (m)</span>
+                  <input id="fence-gate-yoffset" type="number" min="-1" max="2" step="0.05" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="check-field">
+                  <input id="fence-gate-open" type="checkbox" />
+                  <span>开启状态</span>
+                </label>
+                <label class="check-field">
+                  <input id="fence-gate-double-door" type="checkbox" />
+                  <span>双开门</span>
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="check-field">
+                  <input id="fence-gate-flip-lr" type="checkbox" />
+                  <span>左右翻转</span>
+                </label>
+                <label class="check-field">
+                  <input id="fence-gate-flip-io" type="checkbox" />
+                  <span>内外翻转</span>
+                </label>
+              </div>
+              <label class="check-field">
+                <input id="fence-gate-content-hidden" type="checkbox" />
+                <span>隐藏门板</span>
+              </label>
+              <button id="btn-delete-fence-gate" type="button" class="danger">删除栅栏门</button>
             </div>
           </div>
         </aside>

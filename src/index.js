@@ -65,3 +65,10 @@ export {
   createTextureMaterialDescriptor
 } from './core/materialCatalog.js';
 
+export {
+  buildFenceGeometry
+} from './geometry/fenceGeometry.js';
+
+export {
+  buildFenceGateGeometry
+} from './geometry/fenceGateGeometry.js';

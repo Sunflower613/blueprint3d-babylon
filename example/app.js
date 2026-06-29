@@ -1,8 +1,47 @@
 import './styles.css';
-import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners } from './js/editorUi.js';
+import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
+import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners } from './js/EditorUi.js';
+import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal } from './js/Dialogs.js';
+import { createCustomDropdown } from './js/Dropdown.js';
+import { handleHotkeys } from './js/Hotkeys.js';
 import { Store, showToast, formatTimestamp } from './js/Store.js';
 import { EntityManager } from './js/EntityManager.js';
 import { Viewer3D } from './js/Viewer3D.js';
+import * as Topology from './js/Topology.js';
+import * as DragHandler from './js/DragHandler.js';
+import * as SvgEvents from './js/SvgEvents.js';
+import * as FileManager from './js/FileManager.js';
+import { iconSvg } from './js/Icons.js';
+import {
+  initRender2D,
+  renderPlan,
+  worldToSvg,
+  svgToWorld,
+  inchesToWorld,
+  createSvgElement,
+  svgPointFromEvent,
+  wallPointAt,
+  getWallProjectionT
+} from './js/Render2D.js';
+import {
+  initViewer3DHandles,
+  clear3DEditHandles,
+  refresh3DEditHandles,
+  begin3DEditHandleDrag,
+  move3DEditHandle,
+  pickNearest3DTarget,
+  getEditHandleNodes,
+  getEditHandleDragState,
+  setEditHandleDragState,
+  get3DEditTargetBounds,
+  get3DEditHandleY,
+  create3DEditHandle,
+  set3DEditTarget,
+  same3DEditTarget,
+  syncRoomMovePreview,
+  syncWallMovePreview,
+  syncFenceMovePreview
+} from './js/Viewer3DHandles.js';
 import * as BABYLON from '@babylonjs/core';
 const furnitureImages = import.meta.glob('../src/furniture/image/*.png', { eager: true });
 import {
@@ -13,11 +52,6 @@ import {
   MATERIAL_CATEGORIES,
   DEFAULT_MATERIAL_PACKS,
   createTextureMaterialDescriptor,
-  createBuildingFileName,
-  stringifyDXF,
-  create3MFPackage,
-  createDXFFileName,
-  create3MFFileName,
   getRoomVertices,
   pointInRoom,
   isSymmetricShape
@@ -48,6 +82,8 @@ function isAddOpeningMode(value = mode) {
 }
 
 function switchToSelectMode() {
+  clear2DStairsRailingPreview();
+  clear3DStairsRailingPreview();
   const selectButton = document.querySelector('.mode[data-mode="select"]');
   if (selectButton) {
     selectButton.click();
@@ -67,43 +103,37 @@ let selectedOpeningId = null;
 let selectedRoofId = null;
 let selectedStairsId = null;
 let selectedFenceId = null;
+let selectedFenceGateId = null;
 let drawStart = null;
-let openingDragState = null;
-let wallDragState = null;
-let roomDragState = null;
-let roomResizeState = null;
 let drag3DState = null;
-let structureDragState = null;
 let drawWallPreviewCylinder = null;
 let drawWallPreviewStartCylinder = null;
 let drawWallPreviewWall = null;
 let roofResizeState = null;
-let fenceDragState = null;
-let fenceHandleDragState = null;
+let stairsRailingPreview2DGroup = null;
+let stairsRailingPreview3DGroup = null;
+let currentPreviewStairsId = null;
+let floorEdgeRailingPreview2DGroup = null;
+let floorEdgeRailingPreview3DGroup = null;
+let currentPreviewFloorEdgeIndex = null;
 let contextMenuElement = null;
 let longPressState = null;
 let snapEnabled = true;
 // show3DGrid / grid3DNodes 已移至 viewer3d 实例
 let active3DEditTarget = null;
-const editHandleNodes = [];
-let editHandleDragState = null;
+function getActive3DEditTarget() { return active3DEditTarget; }
+function setActive3DEditTarget(val) { active3DEditTarget = val; }
 let snapSize = 1;
 let activeMaterialDescriptor = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
 const activePointers = new Map();
 let hasUserZoomedOrPanned = false;
-const viewPointers = new Map();
-let isPanning2D = false;
-let panStart2D = null;
-let prevTouchDist2D = 0;
-let prevTouchCenter2D = null;
 let roomCounter = 1;
 // 撤销/重做栈已迁移到 Store.js 管理
 let floorPanelCollapsed = false;
 
 const stage = document.getElementById('stage');
 const viewToggleButton = document.getElementById('btn-view-toggle');
-const buildingFileInput = document.getElementById('building-file-input');
 const undoButton = document.getElementById('btn-undo');
 const redoButton = document.getElementById('btn-redo');
 const canvas = document.getElementById('render-canvas');
@@ -119,9 +149,10 @@ const { engine, scene, camera, shadowGenerator } = viewer3d;
 
 // 3D 轴/手柄在相机移动时动态调节 scaling，保持在屏幕上的物理大小固定，使缩放太小时也能轻松选中
 scene.onBeforeRenderObservable.add(() => {
-  if (currentView !== '3d' || editHandleNodes.length === 0) return;
+  const handles = getEditHandleNodes();
+  if (currentView !== '3d' || handles.length === 0) return;
   const cameraPosition = camera.position;
-  editHandleNodes.forEach((node) => {
+  handles.forEach((node) => {
     if (node && !node.isDisposed()) {
       const distance = BABYLON.Vector3.Distance(cameraPosition, node.position);
       // 距离乘以常数因子，并且设置最小值防止极端情况穿模，默认绝对大小为 1
@@ -173,6 +204,186 @@ let entityManager = new EntityManager({
   findNearestSeat: (item) => findNearestSeat(item)
 });
 
+DragHandler.initDragHandler({
+  testMap,
+  svg,
+  get mode() { return mode; },
+  svgPointFromEvent,
+  svgToWorld,
+  snapRoomPosition,
+  snapWorldPoint,
+  snapNumber,
+  pushHistory,
+  syncRoomMovePreview,
+  refreshShadows,
+  updateEditor,
+  renderPlan,
+  selectRoom,
+  selectWall,
+  selectOpening,
+  clearSelection,
+  selectRoof,
+  selectStairs,
+  selectFence,
+  selectFenceGate,
+  getStructure,
+  moveStructureTo,
+  get snapEnabled() { return snapEnabled; },
+  get snapSize() { return snapSize; },
+  rememberPointer,
+  syncWallMovePreview,
+  syncFenceMovePreview,
+  snapToGridSegmentCenter,
+  getWallProjectionT
+});
+
+SvgEvents.initSvgEvents({
+  svg,
+  view,
+  get currentView() { return currentView; },
+  get mode() { return mode; },
+  get snapEnabled() { return snapEnabled; },
+  get snapSize() { return snapSize; },
+  get activePointers() { return activePointers; },
+  testMap,
+  entityManager,
+  svgToWorld,
+  svgPointFromEvent,
+  snapWorldPoint,
+  snapNumber,
+  renderPlan,
+  get2DContextTargetFromElement,
+  clear2DStairsRailingPreview,
+  clear2DFloorEdgeRailingPreview,
+  update2DStairsRailingPreview,
+  update2DFloorEdgeRailingPreview,
+  forgetPointer,
+  updatePointer,
+  finishRoofResize,
+  selectRoom,
+  selectRoof,
+  selectStairs,
+  selectFence,
+  selectFenceGate,
+  switchToSelectMode,
+  pushHistory,
+  refreshShadows,
+  clearSelection,
+  isAddRoomMode,
+  roomShapeFromMode,
+  addRailingToStairs,
+  clear3DStairsRailingPreview,
+  clear3DFloorEdgeRailingPreview,
+  rememberPointer,
+  moveRoofResize,
+  getRoofResizeState() { return roofResizeState; },
+  setRoofResizeState(val) { roofResizeState = val; },
+  getDrawStart() { return drawStart; },
+  setDrawStart(val) { drawStart = val; },
+  getRoomCounter() { return roomCounter; },
+  incrementRoomCounter() { roomCounter++; },
+  getHasUserZoomedOrPanned() { return hasUserZoomedOrPanned; },
+  setHasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
+  pointInRoom
+});
+
+
+
+initRender2D({
+  svg,
+  get snapEnabled() { return snapEnabled; },
+  get snapSize() { return snapSize; },
+  view,
+  currentRooms,
+  referenceFloorWalls,
+  currentWalls,
+  currentOpenings,
+  currentRoofs,
+  currentStairs,
+  currentFences,
+  currentItems,
+  getFreeFloorEdges,
+  get drawStart() { return drawStart; },
+  get selectedRoomId() { return selectedRoomId; },
+  get selectedWallId() { return selectedWallId; },
+  get selectedItemId() { return selectedItemId; },
+  get selectedOpeningId() { return selectedOpeningId; },
+  get selectedRoofId() { return selectedRoofId; },
+  get selectedStairsId() { return selectedStairsId; },
+  get selectedFenceId() { return selectedFenceId; },
+  get selectedFenceGateId() { return selectedFenceGateId; },
+  testMap,
+  entityManager,
+  get mode() { return mode; },
+  get currentView() { return currentView; },
+  SVG_NS,
+  INCHES_PER_UNIT,
+  updateViewBounds,
+  attachContextMenuTrigger,
+  selectRoom,
+  selectWall,
+  selectOpening,
+  selectRoof,
+  selectStairs,
+  selectFence,
+  selectFenceGate,
+  beginRoomResize,
+  beginRoomDrag,
+  beginWallDrag,
+  beginOpeningDrag,
+  beginStructureDrag,
+  beginFenceDrag,
+  beginFenceGateDrag,
+  beginFenceResize,
+  isAddOpeningMode,
+  getOpeningModeInfo,
+  pushHistory,
+  clearSelection,
+  refreshShadows,
+  switchToSelectMode,
+  showCustomConfirm,
+  Topology
+});
+
+initViewer3DHandles({
+  get selectedItemId() { return selectedItemId; },
+  get selectedWallId() { return selectedWallId; },
+  get selectedFenceId() { return selectedFenceId; },
+  get selectedRoofId() { return selectedRoofId; },
+  get selectedStairsId() { return selectedStairsId; },
+  get selectedFenceGateId() { return selectedFenceGateId; },
+  testMap,
+  entityManager,
+  viewer3d,
+  canvas,
+  get currentView() { return currentView; },
+  pushHistory,
+  refreshShadows,
+  updateEditor,
+  renderPlan,
+  get snapEnabled() { return snapEnabled; },
+  get snapSize() { return snapSize; },
+  snapNumber,
+  snapValue,
+  snapWorldPoint,
+  findMetadataFromNode,
+  getActive3DEditTarget() { return active3DEditTarget; },
+  setActive3DEditTarget(val) { active3DEditTarget = val; },
+  isTargetLocked,
+  INCHES_PER_UNIT,
+  wallPointAt,
+  findOpeningIdFromNode,
+  findItemIdFromNode,
+  findWallIdFromNode,
+  findRoomIdFromNode,
+  findRoofIdFromNode,
+  findStairsIdFromNode,
+  findFenceIdFromNode,
+  findFenceGateIdFromNode,
+  groundPointFromPointer,
+  setDrag3DState(state) { drag3DState = state; }
+});
+
 // ==========================================
 // 初始化数据中心 Store
 // ==========================================
@@ -218,6 +429,28 @@ store.startAutoSave(() => ({
   },
 }));
 
+FileManager.initFileManager({
+  testMap,
+  store,
+  getMaterialLibrary() { return materialLibrary; },
+  DEFAULT_MATERIAL_PACKS,
+  get currentView() { return currentView; },
+  engine,
+  scene,
+  pushHistory,
+  syncFloorControls,
+  setHasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
+  resetInteractionState,
+  refreshShadows,
+  updateEditor,
+  renderPlan,
+  showCustomPrompt,
+  showCustomAlert,
+  showCustomConfirm,
+  showProjectListModal,
+  showToast
+});
+
 ensureBuildingToolControls();
 ensure3DGridControls();
 ensureStructureEditor();
@@ -226,6 +459,9 @@ initFurnitureButtons();
 initMaterialControls();
 createCustomDropdown('furniture-category-select');
 createCustomDropdown('material-category');
+createCustomDropdown('fence-subtype');
+createCustomDropdown('fence-gate-subtype');
+createCustomDropdown('opening-shape');
 refreshShadows();
 selectItem(testMap.floorplan.items[0]?.id || null);
 setView('2d');
@@ -399,57 +635,20 @@ function setView(nextView) {
   }
 }
 
-function worldToSvg(x, z) {
-  const innerW = view.width - view.pad * 2;
-  const innerH = view.height - view.pad * 2;
-  const zRatio = (z - view.minZ) / (view.maxZ - view.minZ);
-  return {
-    x: view.pad + ((x - view.minX) / (view.maxX - view.minX)) * innerW,
-    y: view.height - view.pad - zRatio * innerH
-  };
-}
-
-function svgToWorld(x, y) {
-  const innerW = view.width - view.pad * 2;
-  const innerH = view.height - view.pad * 2;
-  return {
-    x: view.minX + ((x - view.pad) / innerW) * (view.maxX - view.minX),
-    z: view.minZ + ((view.height - view.pad - y) / innerH) * (view.maxZ - view.minZ)
-  };
-}
-
-function inchesToWorld(value) {
-  return Number(value || 0) / INCHES_PER_UNIT;
-}
-
-function createSvgElement(name, attrs = {}) {
-  const element = document.createElementNS(SVG_NS, name);
-  Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
-  return element;
-}
-
-function svgPointFromEvent(event) {
-  const rect = svg.getBoundingClientRect();
-  return {
-    x: ((event.clientX - rect.left) / rect.width) * view.width,
-    y: ((event.clientY - rect.top) / rect.height) * view.height
-  };
-}
-
 function snapValue(value) {
-  if (!snapEnabled || !snapSize) return value;
-  return Math.round(value / snapSize) * snapSize;
+  return Topology.snapValue(value, snapEnabled, snapSize);
 }
 
 function snapWorldPoint(world) {
-  return {
-    x: Number(snapValue(world.x).toFixed(3)),
-    z: Number(snapValue(world.z).toFixed(3))
-  };
+  return Topology.snapWorldPoint(world, snapEnabled, snapSize);
+}
+
+function snapToGridSegmentCenter(point) {
+  return Topology.snapToGridSegmentCenter(point, snapEnabled, snapSize);
 }
 
 function snapNumber(value) {
-  return Number(snapValue(value).toFixed(3));
+  return Topology.snapNumber(value, snapEnabled, snapSize);
 }
 
 function currentRooms() {
@@ -496,24 +695,7 @@ function makeButton(id, label, className = '') {
   return button;
 }
 
-function iconSvg(name) {
-  const attrs = 'class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-  const icons = {
-    copy: `<svg ${attrs}><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
-    rotate: `<svg ${attrs}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>`,
-    trash: `<svg ${attrs}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`,
-    up: `<svg ${attrs}><path d="m18 15-6-6-6 6"/></svg>`,
-    down: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`,
-    lock: `<svg ${attrs}><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
-    unlock: `<svg ${attrs}><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M16 11V7a4 4 0 0 0-7.6-1.8"/></svg>`,
-    power: `<svg ${attrs}><path d="M12 2v10"/><path d="M18.36 6.36a9 9 0 1 1-12.73 0"/></svg>`,
-    door: `<svg ${attrs}><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M15 6 L10.5 4.5 A2 2 0 0 0 9 6.5 L9 17.5 A2 2 0 0 0 10.5 19.5 L15 18 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`,
-    edit: `<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
-    droplet: `<svg ${attrs}><path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z"/></svg>`,
-    flip: `<svg ${attrs}><path d="M12 2v20 M9 7v10H3z M15 7v10H21z"/></svg>`
-  };
-  return icons[name] || '';
-}
+
 
 function hideContextMenu() {
   contextMenuElement?.remove();
@@ -595,11 +777,12 @@ function getSelectedTarget() {
   if (selectedStairsId) return { type: 'stairs', id: selectedStairsId };
   if (selectedRoomId) return { type: 'room', id: selectedRoomId };
   if (selectedFenceId) return { type: 'fence', id: selectedFenceId };
+  if (selectedFenceGateId) return { type: 'fence_gate', id: selectedFenceGateId };
   return null;
 }
 
 function isAllowedContextTarget(target) {
-  return ['item', 'opening', 'roof', 'stairs', 'room', 'fence'].includes(target?.type);
+  return ['item', 'opening', 'roof', 'stairs', 'room', 'fence', 'fence_gate'].includes(target?.type);
 }
 
 function getContextTargetObject(target) {
@@ -610,6 +793,7 @@ function getContextTargetObject(target) {
   if (target.type === 'stairs') return testMap.getStairs?.(target.id);
   if (target.type === 'room') return testMap.getRoom(target.id);
   if (target.type === 'fence') return testMap.getFence?.(target.id);
+  if (target.type === 'fence_gate') return testMap.getFenceGate?.(target.id);
   return null;
 }
 
@@ -636,6 +820,8 @@ function setContextTargetLocked(target, locked) {
     testMap.updateRoom(target.id, { locked: value });
   } else if (target.type === 'fence') {
     testMap.updateFence?.(target.id, { locked: value });
+  } else if (target.type === 'fence_gate') {
+    testMap.updateFenceGate?.(target.id, { locked: value });
   }
 }
 
@@ -648,6 +834,7 @@ function getTargetFloorId(target) {
   if (target.type === 'roof') return testMap.getRoof?.(target.id)?.floorId || 'floor_1';
   if (target.type === 'stairs') return testMap.getStairs?.(target.id)?.floorId || 'floor_1';
   if (target.type === 'fence') return testMap.getFence?.(target.id)?.floorId || 'floor_1';
+  if (target.type === 'fence_gate') return testMap.getFenceGate?.(target.id)?.floorId || 'floor_1';
   return testMap.floorplan.currentFloorId;
 }
 
@@ -666,6 +853,8 @@ function get2DContextTargetFromElement(element) {
   if (stairs?.dataset.stairsId) return { type: 'stairs', id: stairs.dataset.stairsId };
   const fence = element.closest?.('[data-fence-id]');
   if (fence?.dataset.fenceId) return { type: 'fence', id: fence.dataset.fenceId };
+  const fenceGate = element.closest?.('[data-fence-gate-id]');
+  if (fenceGate?.dataset.fenceGateId) return { type: 'fence_gate', id: fenceGate.dataset.fenceGateId };
   const roomHit = element.closest?.('[data-room-hit-id]');
   if (roomHit?.dataset.roomHitId) return { type: 'room', id: roomHit.dataset.roomHitId };
   const room = element.closest?.('[data-room-id]');
@@ -674,7 +863,7 @@ function get2DContextTargetFromElement(element) {
 }
 function isSwitchableTarget(target) {
   if (!target) return false;
-  if (target.type === 'opening') return true;
+  if (target.type === 'opening' || target.type === 'fence_gate') return true;
   if (target.type === 'item') {
     const item = testMap.getItem(target.id);
     if (!item) return false;
@@ -694,11 +883,16 @@ function isLightingTarget(target) {
 
 function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedContextTarget(target)) return;
-  const isRotatable = ['item', 'roof', 'stairs', 'opening'].includes(target.type);
-  const isMirrorable = ['item', 'roof', 'stairs', 'opening'].includes(target.type);
+  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate'].includes(target.type);
+  const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
   const isLocked = isTargetLocked(target);
+
+  const isDoorLike = (target.type === 'fence_gate') || (target.type === 'opening' && testMap.getOpening(target.id)?.type === 'door');
+  const isDouble = target.type === 'opening'
+    ? !!testMap.getOpening(target.id)?.doubleDoor
+    : (target.type === 'fence_gate' ? !!testMap.getFenceGate(target.id)?.doubleDoor : false);
   
   // 检查是否是具有水体的容器家具 (浴缸、厨房水槽、洗手台) 及其放水状态
   let isWaterContainer = false;
@@ -723,9 +917,30 @@ function showObjectContextMenu(target, clientX, clientY) {
   }
   
   showIconMenu(clientX, clientY, [
-    { icon: 'copy', title: '\u590d\u5236', onClick: () => copyContextTarget(target) },
-    isRotatable && { icon: 'rotate', title: '\u65cb\u8f6c', disabled: isLocked, onClick: () => rotateContextTarget(target) },
+    { icon: 'copy', title: '复制', onClick: () => copyContextTarget(target) },
+    isRotatable && {
+      icon: 'rotate',
+      title: '旋转',
+      disabled: isLocked || (target.type === 'fence_gate' && !!testMap.getFenceGate(target.id)?.fenceId),
+      onClick: () => rotateContextTarget(target)
+    },
     isMirrorable && { icon: 'flip', title: '镜像', disabled: isLocked, onClick: () => mirrorContextTarget(target) },
+    isDoorLike && {
+      icon: 'double_door',
+      title: isDouble ? '单开' : '双开',
+      disabled: isLocked,
+      onClick: () => {
+        pushHistory();
+        if (target.type === 'opening') {
+          testMap.updateOpening(target.id, { doubleDoor: !isDouble });
+        } else if (target.type === 'fence_gate') {
+          testMap.updateFenceGate(target.id, { doubleDoor: !isDouble });
+        }
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    },
     isWaterContainer && {
       icon: 'droplet',
       title: isWaterOn ? '排水' : '放水',
@@ -739,8 +954,8 @@ function showObjectContextMenu(target, clientX, clientY) {
       onClick: () => entityManager.toggleItemLid(target.id)
     },
     isSwitchable && { 
-      icon: isLighting ? 'power' : (target.type === 'opening' ? 'door' : 'power'), 
-      title: '\u5f00\u5173', 
+      icon: isLighting ? 'power' : (['opening', 'fence_gate'].includes(target.type) ? 'door' : 'power'), 
+      title: '开关', 
       disabled: isLocked,
       onClick: () => toggleContextTarget(target) 
     },
@@ -777,6 +992,13 @@ function toggleContextTarget(target) {
     if (!opening) return;
     testMap.updateOpening(target.id, { isOpen: !opening.isOpen });
     if (selectedOpeningId === target.id) {
+      updateEditor();
+    }
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (!gate) return;
+    testMap.updateFenceGate(target.id, { isOpen: !gate.isOpen });
+    if (selectedFenceGateId === target.id) {
       updateEditor();
     }
   }
@@ -823,6 +1045,23 @@ function rotateContextTarget(target) {
     if (selectedOpeningId === target.id) {
       updateEditor();
     }
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (!gate) return;
+    const cx = (gate.from[0] + gate.to[0]) / 2;
+    const cz = (gate.from[1] + gate.to[1]) / 2;
+    const dx = gate.to[0] - gate.from[0];
+    const dz = gate.to[1] - gate.from[1];
+    // 顺时针旋转 90 度：(x, z) -> (-z, x)
+    const nextFrom = [cx + dz / 2, cz - dx / 2];
+    const nextTo = [cx - dz / 2, cz + dx / 2];
+    testMap.updateFenceGate(target.id, {
+      from: nextFrom,
+      to: nextTo
+    });
+    if (selectedFenceGateId === target.id) {
+      updateEditor();
+    }
   }
   refreshShadows();
   renderPlan();
@@ -867,6 +1106,11 @@ function mirrorContextTarget(target) {
     const opening = testMap.getOpening(target.id);
     if (opening) {
       testMap.updateOpening(target.id, { isFlippedLR: !opening.isFlippedLR });
+    }
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (gate) {
+      testMap.updateFenceGate(target.id, { isFlippedLR: !gate.isFlippedLR });
     }
   } else if (target.type === 'roof') {
     const roof = testMap.getRoof?.(target.id);
@@ -956,6 +1200,19 @@ function copyContextTarget(target) {
     if (!room) return;
     const copy = testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: room.floorId, locked: false });
     nextSelection = { type: 'room', id: copy.id };
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (!gate) return;
+    const copy = testMap.addFenceGate({
+      ...JSON.parse(JSON.stringify(gate)),
+      id: undefined,
+      fenceId: null,
+      from: [(gate.from?.[0] || 0) + 0.5, (gate.from?.[1] || 0) + 0.5],
+      to: [(gate.to?.[0] || 0) + 0.5, (gate.to?.[1] || 0) + 0.5],
+      floorId: testMap.floorplan.currentFloorId,
+      locked: false
+    });
+    nextSelection = { type: 'fence_gate', id: copy.id };
   }
   refreshShadows();
   selectContextTarget(nextSelection || target);
@@ -985,6 +1242,7 @@ function deleteContextTarget(target) {
   if (target.type === 'roof') testMap.deleteRoof?.(target.id);
   if (target.type === 'stairs') testMap.deleteStairs?.(target.id);
   if (target.type === 'fence') testMap.deleteFence?.(target.id);
+  if (target.type === 'fence_gate') testMap.deleteFenceGate(target.id);
   clearSelection();
   refreshShadows();
   renderPlan();
@@ -998,6 +1256,7 @@ function selectContextTarget(target) {
   if (target.type === 'stairs') selectStairs(target.id);
   if (target.type === 'fence') selectFence(target.id);
   if (target.type === 'room') selectRoom(target.id);
+  if (target.type === 'fence_gate') selectFenceGate(target.id);
 }
 
 function showFloorContextMenu(target, clientX, clientY) {
@@ -1059,10 +1318,21 @@ function cancelObjectInteractions() {
   roomResizeState = null;
   structureDragState = null;
   roofResizeState = null;
-  editHandleDragState = null;
+  setEditHandleDragState(null);
   drag3DState = null;
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
+
+  let needBuild = false;
+  testMap.floorplan.openings.forEach((op) => {
+    if (op.isDragging) {
+      op.isDragging = false;
+      needBuild = true;
+    }
+  });
+  if (needBuild) {
+    testMap.build();
+  }
 }
 function ensureBuildingToolControls() {
   // 静态 HTML 已经包含了按钮，此方法已废弃
@@ -1148,25 +1418,6 @@ function snapRoomPosition(room, x, z) {
   };
 }
 
-function getWallProjectionT(wall, world) {
-  const ax = wall.from[0];
-  const az = wall.from[1];
-  const bx = wall.to[0];
-  const bz = wall.to[1];
-  const dx = bx - ax;
-  const dz = bz - az;
-  const lengthSq = dx * dx + dz * dz;
-  if (!lengthSq) return 0.5;
-  return Math.max(0.08, Math.min(0.92, ((world.x - ax) * dx + (world.z - az) * dz) / lengthSq));
-}
-
-function wallPointAt(wall, t) {
-  return {
-    x: wall.from[0] + (wall.to[0] - wall.from[0]) * t,
-    z: wall.from[1] + (wall.to[1] - wall.from[1]) * t
-  };
-}
-
 function updateViewBounds() {
   if (hasUserZoomedOrPanned) return;
   const corners = [];
@@ -1234,599 +1485,8 @@ function updateViewBounds() {
   }
 }
 
-function renderPlan() {
-  updateViewBounds();
-  svg.innerHTML = '';
+// 2D 户型图平面渲染逻辑已抽离至 Render2D.js
 
-  const grid = createSvgElement('g', { class: 'grid-layer' });
-  const gridStep = snapEnabled ? snapSize : 1;
-  const startX = Math.ceil(view.minX / gridStep) * gridStep;
-  const startZ = Math.ceil(view.minZ / gridStep) * gridStep;
-  for (let x = startX; x <= view.maxX; x += gridStep) {
-    const a = worldToSvg(x, view.minZ);
-    const b = worldToSvg(x, view.maxZ);
-    grid.appendChild(createSvgElement('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: Math.abs(x) < 0.001 ? 'axis-line' : 'grid-line' }));
-  }
-  for (let z = startZ; z <= view.maxZ; z += gridStep) {
-    const a = worldToSvg(view.minX, z);
-    const b = worldToSvg(view.maxX, z);
-    grid.appendChild(createSvgElement('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: Math.abs(z) < 0.001 ? 'axis-line' : 'grid-line' }));
-  }
-  svg.appendChild(grid);
-
-  currentRooms().forEach((room) => renderRoom(room));
-  referenceFloorWalls().forEach((wall) => renderReferenceWall(wall));
-  currentWalls().forEach((wall) => renderWall(wall));
-  currentRooms().forEach((room) => renderRoomInteraction(room));
-  currentOpenings().forEach((opening) => renderOpening(opening));
-
-  currentRoofs().forEach((roof) => renderRoof(roof));
-  currentStairs().forEach((stairs) => renderStairs(stairs));
-  currentFences().forEach((fence) => renderFence(fence));
-
-  if (drawStart) {
-    const a = worldToSvg(drawStart[0], drawStart[1]);
-    svg.appendChild(createSvgElement('circle', { class: 'draw-anchor', cx: a.x, cy: a.y, r: 6 }));
-  }
-
-  currentItems().forEach((item) => renderPlanItem(item));
-  const selectedRoom = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
-  if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
-  const selectedRoof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
-  if (selectedRoof) renderSelectedRoofHandles(selectedRoof);
-  const selectedFence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
-  if (selectedFence) renderSelectedFenceHandles(selectedFence);
-}
-
-function renderRoom(room) {
-  const points = getRoomVertices(room).map((point) => worldToSvg(point.x, point.z));
-  const polygon = createSvgElement('polygon', {
-    class: `room-rect ${selectedRoomId === room.id ? 'selected' : ''}`,
-    points: points.map((point) => `${point.x},${point.y}`).join(' '),
-    'data-room-id': room.id
-  });
-  attachContextMenuTrigger(polygon, () => ({ type: 'room', id: room.id }));
-  polygon.addEventListener('click', (event) => {
-    if (mode !== 'select') return;
-    event.stopPropagation();
-    selectRoom(room.id);
-  });
-  svg.appendChild(polygon);
-
-}
-
-function renderRoomHandles(room, a, b) {
-  const minX = Math.min(a.x, b.x);
-  const maxX = Math.max(a.x, b.x);
-  const minY = Math.min(a.y, b.y);
-  const maxY = Math.max(a.y, b.y);
-  const handles = [
-    { side: 'north', x: (minX + maxX) / 2, y: minY },
-    { side: 'east', x: maxX, y: (minY + maxY) / 2 },
-    { side: 'south', x: (minX + maxX) / 2, y: maxY },
-    { side: 'west', x: minX, y: (minY + maxY) / 2 }
-  ];
-  handles.forEach((handle) => {
-    const node = createSvgElement('rect', {
-      class: `room-resize-handle handle-${handle.side}`,
-      x: handle.x - 8,
-      y: handle.y - 8,
-      width: 16,
-      height: 16,
-      rx: 4,
-      'data-room-handle': handle.side
-    });
-    node.addEventListener('pointerdown', (event) => beginRoomResize(event, room.id, handle.side));
-    svg.appendChild(node);
-  });
-}
-function renderRoomInteraction(room) {
-  if (mode !== 'select') return;
-  const points = getRoomVertices(room).map((point) => worldToSvg(point.x, point.z));
-  const polygon = createSvgElement('polygon', {
-    class: 'room-hit-rect',
-    points: points.map((point) => `${point.x},${point.y}`).join(' '),
-    'data-room-hit-id': room.id,
-    fill: 'rgba(54, 194, 255, 0.001)'
-  });
-  attachContextMenuTrigger(polygon, () => ({ type: 'room', id: room.id }));
-  polygon.addEventListener('pointerdown', (event) => beginRoomDrag(event, room.id));
-  polygon.addEventListener('click', (event) => {
-    if (mode !== 'select') return;
-    event.stopPropagation();
-    selectRoom(room.id);
-  });
-  svg.appendChild(polygon);
-}
-
-function renderSelectedRoomHandles(room) {
-  if (room.locked) return;
-  const a = worldToSvg(room.x - room.width / 2, room.z - room.depth / 2);
-  const b = worldToSvg(room.x + room.width / 2, room.z + room.depth / 2);
-  renderRoomHandles(room, a, b);
-}
-
-function renderReferenceWall(wall) {
-  const a = worldToSvg(wall.from[0], wall.from[1]);
-  const b = worldToSvg(wall.to[0], wall.to[1]);
-  svg.appendChild(createSvgElement('line', {
-    class: 'reference-wall-line',
-    x1: a.x,
-    y1: a.y,
-    x2: b.x,
-    y2: b.y
-  }));
-}
-
-function renderRoofHandles(roof, a, b) {
-  const minX = Math.min(a.x, b.x);
-  const maxX = Math.max(a.x, b.x);
-  const minY = Math.min(a.y, b.y);
-  const maxY = Math.max(a.y, b.y);
-  const handles = [
-    { side: 'north', x: (minX + maxX) / 2, y: minY },
-    { side: 'east', x: maxX, y: (minY + maxY) / 2 },
-    { side: 'south', x: (minX + maxX) / 2, y: maxY },
-    { side: 'west', x: minX, y: (minY + maxY) / 2 }
-  ];
-  handles.forEach((handle) => {
-    const node = createSvgElement('rect', {
-      class: `roof-resize-handle handle-${handle.side}`,
-      x: handle.x - 8,
-      y: handle.y - 8,
-      width: 16,
-      height: 16,
-      rx: 4,
-      'data-roof-handle': handle.side
-    });
-    node.addEventListener('pointerdown', (event) => beginRoofResize(event, roof.id, handle.side));
-    svg.appendChild(node);
-  });
-}
-
-function renderSelectedRoofHandles(roof) {
-  if (roof.locked) return;
-  const a = worldToSvg((roof.x || 0) - (roof.width || 6) / 2, (roof.z || 0) - (roof.depth || 6) / 2);
-  const b = worldToSvg((roof.x || 0) + (roof.width || 6) / 2, (roof.z || 0) + (roof.depth || 6) / 2);
-  renderRoofHandles(roof, a, b);
-}
-
-function renderWall(wall) {
-  const a = worldToSvg(wall.from[0], wall.from[1]);
-  const b = worldToSvg(wall.to[0], wall.to[1]);
-  const line = createSvgElement('line', {
-    class: `wall-line ${selectedWallId === wall.id ? 'selected' : ''}`,
-    x1: a.x,
-    y1: a.y,
-    x2: b.x,
-    y2: b.y,
-    stroke: wall.color || '#f9fbff',
-    'data-wall-id': wall.id
-  });
-  line.addEventListener('pointerdown', (event) => {
-    beginWallDrag(event, wall.id);
-  });
-  line.addEventListener('click', (event) => {
-    if (mode === 'delete-wall' || isAddOpeningMode() || mode === 'select') {
-      event.stopPropagation();
-      const point = svgPointFromEvent(event);
-      const world = svgToWorld(point.x, point.y);
-      if (mode === 'delete-wall') {
-        pushHistory();
-        testMap.deleteWall(wall.id);
-        clearSelection();
-        refreshShadows();
-        renderPlan();
-      } else if (isAddOpeningMode()) {
-        pushHistory();
-        const openingMode = getOpeningModeInfo();
-        const opening = testMap.addOpening(wall.id, openingMode.type, getWallProjectionT(wall, world), openingMode.shape);
-        refreshShadows();
-        selectOpening(opening?.id || null);
-        switchToSelectMode();
-      } else if (mode === 'select') {
-        selectWall(wall.id);
-      }
-    }
-  });
-  svg.appendChild(line);
-}
-
-function renderOpening(opening) {
-  const wall = testMap.getWall(opening.wallId);
-  if (!wall) return;
-  const [x1, z1] = wall.from;
-  const [x2, z2] = wall.to;
-  const dx = x2 - x1;
-  const dz = z2 - z1;
-  const length = Math.sqrt(dx * dx + dz * dz) || 1;
-  const halfT = (opening.width || 1) / length / 2;
-  const start = wallPointAt(wall, Math.max(0, (opening.t ?? 0.5) - halfT));
-  const end = wallPointAt(wall, Math.min(1, (opening.t ?? 0.5) + halfT));
-  const a = worldToSvg(start.x, start.z);
-  const b = worldToSvg(end.x, end.z);
-  const line = createSvgElement('line', {
-    class: `opening-line ${opening.type === 'door' ? 'door-line' : 'window-line'} ${selectedOpeningId === opening.id ? 'selected' : ''}`,
-    x1: a.x,
-    y1: a.y,
-    x2: b.x,
-    y2: b.y,
-    'data-opening-id': opening.id
-  });
-  attachContextMenuTrigger(line, () => ({ type: 'opening', id: opening.id }));
-  line.addEventListener('pointerdown', (event) => beginOpeningDrag(event, opening.id));
-  line.addEventListener('click', (event) => {
-    if (mode === 'delete-wall') {
-      event.stopPropagation();
-      pushHistory();
-      testMap.deleteOpening(opening.id);
-      clearSelection();
-      refreshShadows();
-      renderPlan();
-    }
-  });
-  svg.appendChild(line);
-}
-
-function renderRoof(roof) {
-  const a = worldToSvg((roof.x || 0) - (roof.width || 6) / 2, (roof.z || 0) - (roof.depth || 6) / 2);
-  const b = worldToSvg((roof.x || 0) + (roof.width || 6) / 2, (roof.z || 0) + (roof.depth || 6) / 2);
-  
-  const minX = Math.min(a.x, b.x);
-  const minY = Math.min(a.y, b.y);
-  const w = Math.abs(b.x - a.x);
-  const h = Math.abs(b.y - a.y);
-  const centerX = minX + w / 2;
-  const centerY = minY + h / 2;
-  
-  const group = createSvgElement('g', {
-    class: `roof-group ${selectedRoofId === roof.id ? 'selected' : ''}`,
-    'data-roof-id': roof.id
-  });
-  
-  const rect = createSvgElement('rect', {
-    class: 'roof-rect',
-    x: minX,
-    y: minY,
-    width: w,
-    height: h,
-    rx: 4,
-    fill: roof.color || '#b75b54'
-  });
-  group.appendChild(rect);
-  
-  const subtype = roof.subtype || roof.type || 'gable';
-  const strokeColor = 'rgba(255,255,255,0.6)';
-  const strokeWidth = 1.5;
-  
-  if (subtype === 'gable') {
-    const line = createSvgElement('line', {
-      x1: centerX, y1: minY,
-      x2: centerX, y2: minY + h,
-      stroke: strokeColor,
-      'stroke-width': strokeWidth
-    });
-    group.appendChild(line);
-  } else if (subtype === 'shed') {
-    const arrow = createSvgElement('path', {
-      d: `M ${minX + w * 0.8} ${centerY} L ${minX + w * 0.2} ${centerY} M ${minX + w * 0.3} ${centerY - 6} L ${minX + w * 0.2} ${centerY} M ${minX + w * 0.3} ${centerY + 6} L ${minX + w * 0.2} ${centerY}`,
-      stroke: strokeColor,
-      fill: 'none',
-      'stroke-width': strokeWidth
-    });
-    group.appendChild(arrow);
-  } else if (subtype === 'arch') {
-    const step = w / 6;
-    for (let i = 1; i < 6; i++) {
-      const line = createSvgElement('line', {
-        x1: minX + step * i, y1: minY,
-        x2: minX + step * i, y2: minY + h,
-        stroke: strokeColor,
-        'stroke-width': 1,
-        'stroke-dasharray': '2,2'
-      });
-      group.appendChild(line);
-    }
-  } else if (subtype === 'dome') {
-    const circle = createSvgElement('circle', {
-      cx: centerX, cy: centerY,
-      r: Math.min(w, h) * 0.3,
-      stroke: strokeColor,
-      fill: 'none',
-      'stroke-width': strokeWidth,
-      'stroke-dasharray': '2,2'
-    });
-    const lineH = createSvgElement('line', {
-      x1: minX, y1: centerY, x2: minX + w, y2: centerY,
-      stroke: strokeColor, 'stroke-width': 1, 'stroke-dasharray': '4,4'
-    });
-    const lineV = createSvgElement('line', {
-      x1: centerX, y1: minY, x2: centerX, y2: minY + h,
-      stroke: strokeColor, 'stroke-width': 1, 'stroke-dasharray': '4,4'
-    });
-    group.appendChild(circle);
-    group.appendChild(lineH);
-    group.appendChild(lineV);
-  } else if (subtype === 'trapezoid') {
-    const innerW = w * 0.5;
-    const innerH = h * 0.5;
-    const innerRect = createSvgElement('rect', {
-      x: centerX - innerW / 2,
-      y: centerY - innerH / 2,
-      width: innerW,
-      height: innerH,
-      stroke: strokeColor,
-      fill: 'none',
-      'stroke-width': strokeWidth
-    });
-    group.appendChild(innerRect);
-    const lines = [
-      { x1: minX, y1: minY, x2: centerX - innerW / 2, y2: centerY - innerH / 2 },
-      { x1: minX + w, y1: minY, x2: centerX + innerW / 2, y2: centerY - innerH / 2 },
-      { x1: minX + w, y1: minY + h, x2: centerX + innerW / 2, y2: centerY + innerH / 2 },
-      { x1: minX, y1: minY + h, x2: centerX - innerW / 2, y2: centerY + innerH / 2 }
-    ];
-    lines.forEach(l => {
-      const line = createSvgElement('line', {
-        x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2,
-        stroke: strokeColor, 'stroke-width': strokeWidth
-      });
-      group.appendChild(line);
-    });
-  } else if (subtype === 'hip') {
-    if (w > h) {
-      const rw = (w - h) / 2;
-      const lx = centerX - rw;
-      const rx = centerX + rw;
-      const ridge = createSvgElement('line', {
-        x1: lx, y1: centerY, x2: rx, y2: centerY,
-        stroke: strokeColor, 'stroke-width': strokeWidth
-      });
-      group.appendChild(ridge);
-      group.appendChild(createSvgElement('line', { x1: minX, y1: minY, x2: lx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX, y1: minY + h, x2: lx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY, x2: rx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY + h, x2: rx, y2: centerY, stroke: strokeColor, 'stroke-width': strokeWidth }));
-    } else {
-      const rh = (h - w) / 2;
-      const ty = centerY - rh;
-      const by = centerY + rh;
-      const ridge = createSvgElement('line', {
-        x1: centerX, y1: ty, x2: centerX, y2: by,
-        stroke: strokeColor, 'stroke-width': strokeWidth
-      });
-      group.appendChild(ridge);
-      group.appendChild(createSvgElement('line', { x1: minX, y1: minY, x2: centerX, y2: ty, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY, x2: centerX, y2: ty, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX, y1: minY + h, x2: centerX, y2: by, stroke: strokeColor, 'stroke-width': strokeWidth }));
-      group.appendChild(createSvgElement('line', { x1: minX + w, y1: minY + h, x2: centerX, y2: by, stroke: strokeColor, 'stroke-width': strokeWidth }));
-    }
-  } else if (subtype === 'flat') {
-    const border = createSvgElement('rect', {
-      x: minX + 4, y: minY + 4,
-      width: w - 8, height: h - 8,
-      stroke: strokeColor, fill: 'none',
-      'stroke-width': 1, 'stroke-dasharray': '2,2'
-    });
-    group.appendChild(border);
-  }
-  
-  rect.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'roof', roof.id));
-  rect.addEventListener('click', (event) => {
-    if (mode === 'select') {
-      event.stopPropagation();
-      selectRoof(roof.id);
-    }
-  });
-  attachContextMenuTrigger(rect, () => ({ type: 'roof', id: roof.id }));
-  svg.appendChild(group);
-}
-
-function renderStairs(stairs) {
-  const subtype = stairs.subtype || 'straight';
-  let wVal = stairs.width || 1.2;
-  let dVal = stairs.depth || 3.2;
-  if (subtype === 'spiral') {
-    const size = Math.max(wVal, dVal);
-    wVal = size;
-    dVal = size;
-  }
-  const a = worldToSvg((stairs.x || 0) - wVal / 2, (stairs.z || 0) - dVal / 2);
-  const b = worldToSvg((stairs.x || 0) + wVal / 2, (stairs.z || 0) + dVal / 2);
-  const minX = Math.min(a.x, b.x);
-  const minY = Math.min(a.y, b.y);
-  const w = Math.abs(b.x - a.x);
-  const h = Math.abs(b.y - a.y);
-  const centerX = minX + w / 2;
-  const centerY = minY + h / 2;
-  
-  const flipX = stairs.mirrored ? -1 : 1;
-  const rotateStr = `rotate(${((stairs.rotation || 0) * 180 / Math.PI) || 0} ${centerX} ${centerY})`;
-  const scaleStr = flipX === -1 ? ` translate(${centerX} ${centerY}) scale(-1, 1) translate(${-centerX} ${-centerY})` : '';
-
-  const group = createSvgElement('g', {
-    class: `stairs-symbol ${selectedStairsId === stairs.id ? 'selected' : ''}`,
-    transform: `${rotateStr}${scaleStr}`,
-    'data-stairs-id': stairs.id
-  });
-  
-  const rect = createSvgElement('rect', {
-    x: minX,
-    y: minY,
-    width: w,
-    height: h,
-    rx: 4,
-    fill: stairs.color || '#d8c0a0'
-  });
-  group.appendChild(rect);
- 
-  const steps = 6;
- 
-  if (subtype === 'straight') {
-    for (let i = 1; i < steps; i += 1) {
-      const y = minY + (h / steps) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + h * 0.2} M ${centerX - 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2} M ${centerX + 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'lshape') {
-    const landSize = w;
-    const subSteps = 3;
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    for (let i = 1; i <= subSteps; i++) {
-      const x = minX + w + ((h - w) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: x, y1: minY,
-        x2: x, y2: minY + w,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + w / 2} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 - 4} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 + 4} L ${minX + h * 0.8} ${minY + w / 2}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'ushape') {
-    const landSize = w;
-    const subSteps = 4;
-    group.appendChild(createSvgElement('line', {
-      x1: centerX, y1: minY + landSize,
-      x2: centerX, y2: minY + h,
-      stroke: 'rgba(0,0,0,0.2)',
-      'stroke-width': 1
-    }));
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: centerX, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: centerX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${minX + w * 0.25} ${minY + h * 0.8} L ${minX + w * 0.25} ${minY + landSize / 2} C ${minX + w * 0.25} ${minY + 6}, ${minX + w * 0.75} ${minY + 6}, ${minX + w * 0.75} ${minY + landSize / 2} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.7} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.8} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'spiral') {
-    const r = Math.min(w, h) / 2;
-    group.appendChild(createSvgElement('circle', {
-      cx: centerX, cy: centerY,
-      r: r - 2,
-      stroke: 'rgba(0,0,0,0.2)',
-      fill: 'none',
-      'stroke-width': 1
-    }));
-    for (let i = 0; i < 12; i++) {
-      const angle = (i * 30 * Math.PI) / 180;
-      group.appendChild(createSvgElement('line', {
-        x1: centerX, y1: centerY,
-        x2: centerX + (r - 2) * Math.sin(angle), y2: centerY - (r - 2) * Math.cos(angle),
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('circle', {
-      cx: centerX, cy: centerY,
-      r: r * 0.15,
-      fill: 'rgba(0,0,0,0.3)',
-      stroke: 'none'
-    }));
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX + r * 0.5} ${centerY} A ${r * 0.5} ${r * 0.5} 0 1 0 ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 + 4} L ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 - 4} L ${centerX} ${centerY - r * 0.5}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.2
-    }));
-  } else if (subtype === 'curved') {
-    const R = Math.max(w, h);
-    const r = R - w;
-    const segments = 6;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * (Math.PI / 2);
-      group.appendChild(createSvgElement('line', {
-        x1: minX + r * Math.sin(angle), y1: minY + h - r * Math.cos(angle),
-        x2: minX + R * Math.sin(angle), y2: minY + h - R * Math.cos(angle),
-        class: 'stairs-step-line'
-      }));
-    }
-    const arrowR = (R + r) / 2;
-    const arrowSegments = 20;
-    let pathD = '';
-    for (let i = 0; i <= arrowSegments; i++) {
-      const t = i / arrowSegments;
-      const angle = 0.2 * Math.PI / 2 + t * 0.6 * Math.PI / 2;
-      const ax = minX + arrowR * Math.sin(angle);
-      const ay = minY + h - arrowR * Math.cos(angle);
-      if (i === 0) pathD += `M ${ax} ${ay}`;
-      else pathD += ` L ${ax} ${ay}`;
-    }
-    group.appendChild(createSvgElement('path', {
-      d: pathD,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'floating') {
-    rect.setAttribute('fill', 'none');
-    rect.setAttribute('stroke', 'rgba(0,0,0,0.15)');
-    rect.setAttribute('stroke-dasharray', '2,2');
-    for (let i = 0; i < steps; i++) {
-      const sy = minY + (h / steps) * i + 2;
-      const sh = (h / steps) - 4;
-      group.appendChild(createSvgElement('rect', {
-        x: minX + 2,
-        y: sy,
-        width: w - 4,
-        height: sh,
-        rx: 1,
-        fill: '#f0d8b8',
-        stroke: 'rgba(0,0,0,0.2)',
-        'stroke-width': 0.8
-      }));
-    }
-    group.appendChild(createSvgElement('line', {
-      x1: centerX, y1: minY,
-      x2: centerX, y2: minY + h,
-      stroke: 'rgba(0,0,0,0.3)',
-      'stroke-width': 3
-    }));
-  }
- 
-  attachContextMenuTrigger(group, () => ({ type: 'stairs', id: stairs.id }));
-  group.addEventListener('pointerdown', (event) => beginStructureDrag(event, 'stairs', stairs.id));
-  group.addEventListener('click', (event) => {
-    if (mode === 'select') {
-      event.stopPropagation();
-      selectStairs(stairs.id);
-    }
-  });
-  svg.appendChild(group);
-}
 
 function getStructure(type, id) {
   if (type === 'roof') return testMap.getRoof?.(id);
@@ -1843,26 +1503,7 @@ function updateStructure(type, id, patch, rebuild = true) {
 }
 
 function beginStructureDrag(event, type, id) {
-  if (event.button === 2) return;
-  if (mode !== 'select') return;
-  event.preventDefault();
-  event.stopPropagation();
-  if (type === 'roof') selectRoof(id);
-  if (type === 'stairs') selectStairs(id);
-  const structure = getStructure(type, id);
-  if (!structure || structure.locked) return;
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  structureDragState = {
-    type,
-    id,
-    offsetX: (structure.x || 0) - world.x,
-    offsetZ: (structure.z || 0) - world.z,
-    originalX: structure.x || 0,
-    originalZ: structure.z || 0,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginStructureDrag(event, type, id);
 }
 
 function moveStructureTo(type, id, x, z, options = {}) {
@@ -1929,111 +1570,23 @@ function renderPlanItem(item) {
 }
 
 function beginRoomDrag(event, roomId) {
-  if (event.button === 2) return;
-  if (mode !== 'select') return;
-  event.preventDefault();
-  event.stopPropagation();
-  selectRoom(roomId);
-  const room = testMap.getRoom(roomId);
-  if (!room || room.locked) return;
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  roomDragState = {
-    roomId,
-    offsetX: room.x - world.x,
-    offsetZ: room.z - world.z,
-    originalX: room.x,
-    originalZ: room.z,
-    width: room.width,
-    depth: room.depth,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginRoomDrag(event, roomId);
 }
 
 function beginRoomResize(event, roomId, side) {
-  if (event.button === 2) return;
-  if (mode !== 'select') return;
-  event.preventDefault();
-  event.stopPropagation();
-  selectRoom(roomId);
-  const room = testMap.getRoom(roomId);
-  if (!room || room.locked) return;
-  roomResizeState = {
-    roomId,
-    side,
-    original: { x: room.x, z: room.z, width: room.width, depth: room.depth },
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginRoomResize(event, roomId, side);
 }
 
 function moveRoomDrag(event) {
-  if (!roomDragState) return;
-  const room = testMap.getRoom(roomDragState.roomId);
-  if (!room || room.locked) return;
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  const snappedRoom = snapRoomPosition(room, world.x + roomDragState.offsetX, world.z + roomDragState.offsetZ);
-  const nextX = snappedRoom.x;
-  const nextZ = snappedRoom.z;
-  if (!roomDragState.historyPushed && Math.hypot(nextX - roomDragState.originalX, nextZ - roomDragState.originalZ) > 0.02) {
-    pushHistory();
-    roomDragState.historyPushed = true;
-  }
-  testMap.updateRoom(room.id, { x: nextX, z: nextZ }, { moveItems: true, rebuild: false });
-  syncRoomMovePreview(room.id);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  DragHandler.moveRoomDrag(event);
 }
 
 function moveRoomResize(event) {
-  if (!roomResizeState) return;
-  const room = testMap.getRoom(roomResizeState.roomId);
-  if (!room || room.locked) return;
-  const point = svgPointFromEvent(event);
-  const world = snapWorldPoint(svgToWorld(point.x, point.y));
-  const original = roomResizeState.original;
-  const left = original.x - original.width / 2;
-  const right = original.x + original.width / 2;
-  const top = original.z - original.depth / 2;
-  const bottom = original.z + original.depth / 2;
-  let nextLeft = left;
-  let nextRight = right;
-  let nextTop = top;
-  let nextBottom = bottom;
-
-  if (roomResizeState.side === 'west') nextLeft = Math.min(world.x, right - 1.2);
-  if (roomResizeState.side === 'east') nextRight = Math.max(world.x, left + 1.2);
-  if (roomResizeState.side === 'north') nextTop = Math.min(world.z, bottom - 1.2);
-  if (roomResizeState.side === 'south') nextBottom = Math.max(world.z, top + 1.2);
-
-  const patch = {
-    x: snapNumber((nextLeft + nextRight) / 2),
-    z: snapNumber((nextTop + nextBottom) / 2),
-    width: snapNumber(nextRight - nextLeft),
-    depth: snapNumber(nextBottom - nextTop)
-  };
-  if (!roomResizeState.historyPushed && (Math.abs(patch.width - original.width) > 0.02 || Math.abs(patch.depth - original.depth) > 0.02)) {
-    pushHistory();
-    roomResizeState.historyPushed = true;
-  }
-  testMap.updateRoom(room.id, patch, { moveItems: false, rebuild: false });
-  syncRoomMovePreview(room.id);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
+  DragHandler.moveRoomResize(event);
 }
 
 function finishRoomEdit() {
-  const needRebuild = !!(roomDragState || roomResizeState);
-  roomDragState = null;
-  roomResizeState = null;
-  if (needRebuild) {
-    testMap.build();
-    refreshShadows();
-  }
+  DragHandler.finishRoomEdit();
 }
 
 function beginRoofResize(event, roofId, side) {
@@ -2123,552 +1676,42 @@ function pointerAngle(a, b) {
 }
 
 function beginOpeningDrag(event, openingId) {
-  if (event.button === 2) return;
-  event.preventDefault();
-  event.stopPropagation();
-  selectOpening(openingId);
-  const opening = testMap.getOpening(openingId);
-  if (mode === 'delete-wall') {
-    if (opening?.locked) return;
-    pushHistory();
-    testMap.deleteOpening(openingId);
-    clearSelection();
-    refreshShadows();
-    renderPlan();
-    return;
-  }
-  if (mode !== 'select') return;
-  const wall = opening ? testMap.getWall(opening.wallId) : null;
-  if (!opening || opening.locked || !wall) return;
-  openingDragState = {
-    openingId,
-    originalT: opening.t ?? 0.5,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginOpeningDrag(event, openingId);
+}
+
+function finishOpeningDrag() {
+  DragHandler.finishOpeningDrag();
 }
 
 function canPlaceOnTable(item, definition) {
-  if (!definition) return false;
-  if (definition.placeType === 'wall' || definition.placeType === 'ceiling') {
-    return false;
-  }
-  const category = definition.category;
-  if (category === 'seating' || category === 'bedroom' || category === 'kitchen-bath') {
-    if (definition.type !== 'cushion') {
-      return false;
-    }
-  }
-  if (category === 'tables' || category === 'storage') {
-    return false;
-  }
-  if (category === 'lighting') {
-    if (definition.type.includes('floor')) {
-      return false;
-    }
-    if (!definition.type.includes('lamp') && !definition.type.includes('light')) {
-      return false;
-    }
-  }
-  
-  // 限制尺寸：底面积较小，长宽均在24英寸(60厘米)以下
-  const w = item.width || definition.defaultSize.width;
-  const d = item.depth || definition.defaultSize.depth;
-  if (w > 24 || d > 24) {
-    return false;
-  }
-  return true;
+  return Topology.canPlaceOnTable(item, definition);
 }
 
 function findTableBelow(item) {
-  let highestTable = null;
-  let highestSurface = -Infinity;
-  
-  const items = testMap.floorplan.items || [];
-  const itemFloorId = item.floorId || testMap.floorplan.currentFloorId;
-  for (const other of items) {
-    if (other.id === item.id) continue;
-    if (other.floorId !== itemFloorId) continue;
-    
-    const otherDef = testMap.getFurnitureDefinition(other.type);
-    if (!otherDef) continue;
-    
-    if (otherDef.category !== 'tables' && otherDef.category !== 'storage') {
-      continue;
-    }
-    if (otherDef.placeType === 'wall' || otherDef.placeType === 'ceiling') {
-      continue;
-    }
-    
-    const cx = other.x;
-    const cz = other.z;
-    const angle = other.rotation || 0;
-    
-    const dx = item.x - cx;
-    const dz = item.z - cz;
-    
-    const cos = Math.cos(-angle);
-    const sin = Math.sin(-angle);
-    const localX = dx * cos - dz * sin;
-    const localZ = dx * sin + dz * cos;
-    
-    const halfW = ((other.width || otherDef.defaultSize.width) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
-    const halfD = ((other.depth || otherDef.defaultSize.depth) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
-    
-    if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
-      const surface = (other.elevation || 0) + (other.height || otherDef.defaultSize.height) * (other.scale || 1);
-      if (surface > highestSurface) {
-        highestSurface = surface;
-        highestTable = other;
-      }
-    }
-  }
-  
-  return highestTable;
+  return Topology.findTableBelow(
+    item,
+    testMap.floorplan.items,
+    testMap.floorplan.currentFloorId,
+    (type) => testMap.getFurnitureDefinition(type)
+  );
 }
 
 function moveItemTo(itemId, x, z) {
   entityManager.moveItemTo(itemId, x, z);
 }
 
-function moveOpeningToWorld(openingId, world, dragMeta) {
-  const opening = testMap.getOpening(openingId);
-  const wall = opening ? testMap.getWall(opening.wallId) : null;
-  if (!opening || opening.locked || !wall) return;
-  const nextT = getWallProjectionT(wall, world);
-  if (dragMeta && !dragMeta.historyPushed && Math.abs(nextT - dragMeta.originalT) > 0.01) {
-    pushHistory();
-    dragMeta.historyPushed = true;
-  }
-  testMap.updateOpening(openingId, { t: nextT }, false);
-  updateEditor();
-  renderPlan();
-}
-
-function finishOpeningDrag() {
-  if (!openingDragState) return;
-  const openingId = openingDragState.openingId;
-  openingDragState = null;
-  testMap.build();
-  refreshShadows();
-  selectOpening(openingId);
-}
-
 function beginWallDrag(event, wallId) {
-  if (event.button === 2) return;
-  if (mode !== 'select') return;
-  event.preventDefault();
-  event.stopPropagation();
-  rememberPointer(event);
-  selectWall(wallId);
-  const wall = testMap.getWall(wallId);
-  if (!wall) return;
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  wallDragState = {
-    wallId,
-    originalFrom: [...wall.from],
-    originalTo: [...wall.to],
-    startWorldX: world.x,
-    startWorldZ: world.z,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginWallDrag(event, wallId);
 }
 
 function finishWallDrag() {
-  if (!wallDragState) return;
-  const wallId = wallDragState.wallId;
-  wallDragState = null;
-  testMap.build();
-  refreshShadows();
-  selectWall(wallId);
+  DragHandler.finishWallDrag();
 }
 
 function moveWallBy(wallId, dx, dz) {
-  const wall = testMap.getWall(wallId);
-  if (!wall) return;
-  
-  let nextFromX = wallDragState.originalFrom[0] + dx;
-  let nextFromZ = wallDragState.originalFrom[1] + dz;
-  let nextToX = wallDragState.originalTo[0] + dx;
-  let nextToZ = wallDragState.originalTo[1] + dz;
-  
-  if (snapEnabled && snapSize) {
-    const origDx = wallDragState.originalTo[0] - wallDragState.originalFrom[0];
-    const origDz = wallDragState.originalTo[1] - wallDragState.originalFrom[1];
-    const snappedFrom = snapWorldPoint({ x: nextFromX, z: nextFromZ });
-    nextFromX = snappedFrom.x;
-    nextFromZ = snappedFrom.z;
-    nextToX = Number((nextFromX + origDx).toFixed(3));
-    nextToZ = Number((nextFromZ + origDz).toFixed(3));
-  } else {
-    nextFromX = Number(nextFromX.toFixed(3));
-    nextFromZ = Number(nextFromZ.toFixed(3));
-    nextToX = Number(nextToX.toFixed(3));
-    nextToZ = Number(nextToZ.toFixed(3));
-  }
-  
-  testMap.updateWall(wallId, {
-    from: [nextFromX, nextFromZ],
-    to: [nextToX, nextToZ]
-  }, { rebuild: false });
-  syncWallMovePreview(wallId);
-  
-  updateEditor();
-  renderPlan();
+  DragHandler.moveWallBy(wallId, dx, dz);
 }
-
-// 阻止鼠标中键触发浏览器默认的自动滚动行为，确保平移顺畅
-svg.addEventListener('mousedown', (event) => {
-  if (event.button === 1) {
-    event.preventDefault();
-  }
-});
-
-// 2D 视图滚轮缩放（以鼠标为缩放中心）
-svg.addEventListener('wheel', (event) => {
-  if (currentView !== '2d') return;
-  event.preventDefault();
-
-  const rect = svg.getBoundingClientRect();
-  const svgX = ((event.clientX - rect.left) / rect.width) * view.width;
-  const svgY = ((event.clientY - rect.top) / rect.height) * view.height;
-  const worldCenter = svgToWorld(svgX, svgY);
-
-  const zoomStep = 0.08;
-  const factor = event.deltaY < 0 ? 1 - zoomStep : 1 + zoomStep;
-
-  const currentSpanX = view.maxX - view.minX;
-  const nextSpanX = currentSpanX * factor;
-  // 限制视口世界坐标跨度在 0.05m 到 300m 之间
-  if (nextSpanX < 0.05 || nextSpanX > 300) return;
-
-  view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
-  view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
-  view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
-  view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
-
-  hasUserZoomedOrPanned = true;
-  renderPlan();
-}, { passive: false });
-
-svg.addEventListener('pointerdown', (event) => {
-  if (currentView !== '2d') return;
-  // 记录到视图触点列表中
-  viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-  // 鼠标中键平移，或在查看模式下鼠标左键平移，或在查看模式下触摸屏单指滑动平移
-  const isViewModePan = mode === 'view' && (
-    (event.pointerType === 'mouse' && event.button === 0) ||
-    (event.pointerType === 'touch' && viewPointers.size === 1)
-  );
-
-  if ((event.pointerType === 'mouse' && event.button === 1) || isViewModePan) {
-    isPanning2D = true;
-    panStart2D = { x: event.clientX, y: event.clientY };
-    svg.setPointerCapture(event.pointerId);
-    hasUserZoomedOrPanned = true;
-  }
-
-  // 双指手势
-  if (viewPointers.size === 2) {
-    // 如果有单指平移状态，取消之，转入双指手势
-    isPanning2D = false;
-    panStart2D = null;
-
-    // 取消其他物体的拖动和编辑状态，避免冲突
-    entityManager.dragState = null;
-    roomDragState = null;
-    roomResizeState = null;
-    openingDragState = null;
-    wallDragState = null;
-    structureDragState = null;
-    roofResizeState = null;
-
-    const pts = Array.from(viewPointers.values());
-    prevTouchDist2D = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    prevTouchCenter2D = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-    hasUserZoomedOrPanned = true;
-  }
-});
-
-svg.addEventListener('pointermove', (event) => {
-  // 更新我们的 viewPointers
-  if (viewPointers.has(event.pointerId)) {
-    viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-  }
-
-  // 处理中键平移
-  if (isPanning2D && panStart2D) {
-    const dx = event.clientX - panStart2D.x;
-    const dy = event.clientY - panStart2D.y;
-    const rect = svg.getBoundingClientRect();
-    const innerW = view.width - view.pad * 2;
-    const innerH = view.height - view.pad * 2;
-    const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW;
-    const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH;
-
-    view.minX -= worldDx;
-    view.maxX -= worldDx;
-    view.minZ -= worldDz;
-    view.maxZ -= worldDz;
-
-    panStart2D = { x: event.clientX, y: event.clientY };
-    renderPlan();
-    return;
-  }
-
-  // 处理双指缩放和平移
-  if (viewPointers.size === 2 && prevTouchCenter2D) {
-    const pts = Array.from(viewPointers.values());
-    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    const center = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-
-    if (prevTouchDist2D > 0 && prevTouchCenter2D) {
-      const factor = prevTouchDist2D / dist;
-      const rect = svg.getBoundingClientRect();
-      const centerPoint = {
-        x: ((center.x - rect.left) / rect.width) * view.width,
-        y: ((center.y - rect.top) / rect.height) * view.height
-      };
-      const worldCenter = svgToWorld(centerPoint.x, centerPoint.y);
-
-      const currentSpanX = view.maxX - view.minX;
-      const nextSpanX = currentSpanX * factor;
-      if (nextSpanX >= 0.05 && nextSpanX <= 300) {
-        view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
-        view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
-        view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
-        view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
-      }
-
-      // 平移
-      const dx = center.x - prevTouchCenter2D.x;
-      const dy = center.y - prevTouchCenter2D.y;
-      const innerW = view.width - view.pad * 2;
-      const innerH = view.height - view.pad * 2;
-      const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW;
-      const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH;
-
-      view.minX -= worldDx;
-      view.maxX -= worldDx;
-      view.minZ -= worldDz;
-      view.maxZ -= worldDz;
-
-      renderPlan();
-    }
-
-    prevTouchDist2D = dist;
-    prevTouchCenter2D = center;
-    event.preventDefault();
-    return;
-  }
-
-  updatePointer(event);
-  if (entityManager.itemGestureState) {
-    entityManager.moveItemGesture();
-    return;
-  }
-  if (roomResizeState) {
-    moveRoomResize(event);
-    return;
-  }
-  if (roofResizeState) {
-    moveRoofResize(event);
-    return;
-  }
-  if (roomDragState) {
-    moveRoomDrag(event);
-    return;
-  }
-  if (structureDragState) {
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    const nextX = world.x + structureDragState.offsetX;
-    const nextZ = world.z + structureDragState.offsetZ;
-    if (!structureDragState.historyPushed && Math.hypot(nextX - structureDragState.originalX, nextZ - structureDragState.originalZ) > 0.02) {
-      pushHistory();
-      structureDragState.historyPushed = true;
-    }
-    moveStructureTo(structureDragState.type, structureDragState.id, nextX, nextZ);
-    return;
-  }
-  if (entityManager.dragState) {
-    entityManager.handleItemDrag(event);
-  }
-  if (openingDragState) {
-    const point = svgPointFromEvent(event);
-    moveOpeningToWorld(openingDragState.openingId, svgToWorld(point.x, point.y), openingDragState);
-  }
-  if (wallDragState) {
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    const dx = world.x - wallDragState.startWorldX;
-    const dz = world.z - wallDragState.startWorldZ;
-    if (!wallDragState.historyPushed && Math.hypot(dx, dz) > 0.02) {
-      pushHistory();
-      wallDragState.historyPushed = true;
-    }
-    moveWallBy(wallDragState.wallId, dx, dz);
-  }
-  if (fenceHandleDragState) {
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    const snapped = snapWorldPoint(world);
-    if (!fenceHandleDragState.historyPushed && Math.hypot(world.x - fenceHandleDragState.startWorldX, world.z - fenceHandleDragState.startWorldZ) > 0.02) {
-      pushHistory();
-      fenceHandleDragState.historyPushed = true;
-    }
-    if (fenceHandleDragState.handle === 'from') {
-      testMap.updateFence(fenceHandleDragState.fenceId, { from: [snapped.x, snapped.z] }, false);
-    } else {
-      testMap.updateFence(fenceHandleDragState.fenceId, { to: [snapped.x, snapped.z] }, false);
-    }
-    syncFenceMovePreview(fenceHandleDragState.fenceId);
-    updateEditor();
-    renderPlan();
-  }
-  if (fenceDragState) {
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    const dx = world.x - fenceDragState.startWorldX;
-    const dz = world.z - fenceDragState.startWorldZ;
-    if (!fenceDragState.historyPushed && Math.hypot(dx, dz) > 0.02) {
-      pushHistory();
-      fenceDragState.historyPushed = true;
-    }
-    moveFenceBy(fenceDragState.fenceId, dx, dz);
-  }
-});
-
-svg.addEventListener('pointerup', (event) => {
-  viewPointers.delete(event.pointerId);
-  if (event.pointerType === 'mouse' && event.button === 1 || isPanning2D) {
-    isPanning2D = false;
-    panStart2D = null;
-    try { svg.releasePointerCapture(event.pointerId); } catch (e) {}
-  }
-  if (viewPointers.size < 2) {
-    prevTouchDist2D = 0;
-    prevTouchCenter2D = null;
-  }
-
-  forgetPointer(event);
-  if (entityManager.itemGestureState && activePointers.size < 2) entityManager.itemGestureState = null;
-  entityManager.dragState = null;
-  structureDragState = null;
-  finishRoofResize();
-  finishRoomEdit();
-  finishOpeningDrag();
-  finishWallDrag();
-  finishFenceDrag();
-});
-
-svg.addEventListener('pointercancel', (event) => {
-  viewPointers.delete(event.pointerId);
-  if (event.pointerType === 'mouse' && event.button === 1 || isPanning2D) {
-    isPanning2D = false;
-    panStart2D = null;
-    try { svg.releasePointerCapture(event.pointerId); } catch (e) {}
-  }
-  if (viewPointers.size < 2) {
-    prevTouchDist2D = 0;
-    prevTouchCenter2D = null;
-  }
-
-  forgetPointer(event);
-  if (entityManager.itemGestureState && activePointers.size < 2) entityManager.itemGestureState = null;
-  entityManager.dragState = null;
-  structureDragState = null;
-  finishRoofResize();
-  finishRoomEdit();
-  finishOpeningDrag();
-  finishWallDrag();
-  finishFenceDrag();
-});
-
-svg.addEventListener('dblclick', (event) => {
-  if (currentView !== '2d') return;
-  const target = get2DContextTargetFromElement(event.target);
-  if (!target) {
-    hasUserZoomedOrPanned = false;
-    renderPlan();
-  }
-});
-
-svg.addEventListener('click', (event) => {
-  if (mode === 'select') {
-    if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-roof-id]') || event.target.closest?.('[data-stairs-id]') || event.target.closest?.('[data-fence-id]') || event.target.closest?.('.fence-handle') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]') || event.target.closest?.('[data-roof-handle]')) return;
-  }
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  const snappedWorld = snapWorldPoint(world);
-  const snapped = [snappedWorld.x, snappedWorld.z];
-
-  if (mode === 'draw-wall') {
-    if (!drawStart) {
-      drawStart = snapped;
-    } else {
-      pushHistory();
-      testMap.addWall(drawStart, snapped);
-      drawStart = null;
-      refreshShadows();
-    }
-    renderPlan();
-  } else if (isAddRoomMode()) {
-    pushHistory();
-    const room = testMap.addRoom({ x: snapped[0], z: snapped[1], shape: roomShapeFromMode(), name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
-    refreshShadows();
-    selectRoom(room.id);
-    switchToSelectMode();
-  } else if (mode.startsWith('add-roof')) {
-    pushHistory();
-    const subtype = mode.replace('add-roof-', '') || 'gable';
-    const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped[0], snapped[1]);
-    const wallThickness = testMap.floorplan.wallThickness || 0.15;
-    const roof = testMap.addRoof({
-      x: room?.x ?? snapped[0],
-      z: room?.z ?? snapped[1],
-      width: room ? (room.width + wallThickness) : 6,
-      depth: room ? (room.depth + wallThickness) : 6,
-      subtype: subtype
-    });
-    refreshShadows();
-    selectRoof(roof.id);
-    switchToSelectMode();
-  } else if (mode.startsWith('add-stairs')) {
-    pushHistory();
-    const subtype = mode.replace('add-stairs-', '') || 'straight';
-    const stairs = testMap.addStairs({
-      x: snapped[0],
-      z: snapped[1],
-      subtype: subtype
-    });
-    refreshShadows();
-    selectStairs(stairs.id);
-    switchToSelectMode();
-  } else if (mode.startsWith('draw-fence')) {
-    if (!drawStart) {
-      drawStart = snapped;
-    } else {
-      pushHistory();
-      const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
-      const fence = testMap.addFence({
-        from: drawStart,
-        to: snapped,
-        subtype: subtype
-      });
-      drawStart = null;
-      refreshShadows();
-      selectFence(fence.id);
-      switchToSelectMode();
-    }
-    renderPlan();
-  } else {
-    clearSelection();
-  }
-});
+// SVG 事件绑定已迁移至 SvgEvents.js 中管理
 
 function findMetadataFromNode(node, key) {
   let current = node;
@@ -2717,731 +1760,16 @@ function findFenceIdFromNode(node) {
   return findMetadataFromNode(node, 'blueprintFenceId');
 }
 
+function findFenceGateIdFromNode(node) {
+  return findMetadataFromNode(node, 'blueprintFenceGateId');
+}
+
 function groundPointFromPointer() {
   const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
   return viewer3d.groundPointFromPointer(floorY);
 }
 
-function clear3DEditHandles() {
-  editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
-  active3DEditTarget = null;
-}
-
-function get3DEditTargetBounds(type, id) {
-  if (type === 'wall') {
-    const wall = testMap.getWall(id);
-    if (!wall) return null;
-    return {
-      target: wall,
-      x: (wall.from[0] + wall.to[0]) / 2,
-      z: (wall.from[1] + wall.to[1]) / 2,
-      fromX: wall.from[0],
-      fromZ: wall.from[1],
-      toX: wall.to[0],
-      toZ: wall.to[1],
-      width: 0.3,
-      depth: 0.3,
-      height: 0,
-      floorId: wall.floorId || testMap.floorplan.currentFloorId
-    };
-  }
-  if (type === 'fence') {
-    const fence = testMap.getFence(id);
-    if (!fence) return null;
-    return {
-      target: fence,
-      x: (fence.from[0] + fence.to[0]) / 2,
-      z: (fence.from[1] + fence.to[1]) / 2,
-      fromX: fence.from[0],
-      fromZ: fence.from[1],
-      toX: fence.to[0],
-      toZ: fence.to[1],
-      width: 0.15,
-      depth: 0.15,
-      height: fence.height || 1.1,
-      floorId: fence.floorId || testMap.floorplan.currentFloorId
-    };
-  }
-  const target = type === 'room' ? testMap.getRoom(id) : getStructure(type, id);
-  if (!target) return null;
-  return {
-    target,
-    x: Number(target.x || 0),
-    z: Number(target.z || 0),
-    width: Number(target.width || (type === 'stairs' ? 1.2 : 4)),
-    depth: Number(target.depth || (type === 'stairs' ? 3.2 : 4)),
-    height: type === 'stairs' && testMap.getStairsAutoHeight ? testMap.getStairsAutoHeight(target) : Number(target.height || 0),
-    floorId: target.floorId || testMap.floorplan.currentFloorId
-  };
-}
-
-function get3DEditHandleY(type, bounds) {
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(bounds.floorId) : 0;
-  if (type === 'wall') return floorY + 1.2;
-  
-  if (type === 'fence') {
-    const fenceOffset = testMap.getFenceElevationOffset ? testMap.getFenceElevationOffset(bounds.target) : 0;
-    return floorY + fenceOffset + (bounds.height || 1.1) + 0.18;
-  }
-  
-  if (type === 'roof') {
-    const floor = testMap.floorplan.floors.find(f => f.id === bounds.floorId);
-    const roofWallHeight = floor ? (floor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
-    return floorY + roofWallHeight + bounds.height + 0.18;
-  }
-  
-  if (type === 'stairs') {
-    const stairsOffset = testMap.getStairsElevationOffset ? testMap.getStairsElevationOffset(bounds.target) : 0;
-    return floorY + stairsOffset + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
-  }
-  
-  if (type === 'opening') {
-    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(bounds.target) : 0;
-    return floorY + openingOffset + 0.18;
-  }
-  
-  if (type === 'item') {
-    const item = bounds.target;
-    const roomOffset = testMap.getItemRoomElevationOffset ? testMap.getItemRoomElevationOffset(item) : 0;
-    return floorY + roomOffset + (item.elevation || 0) / INCHES_PER_UNIT + 0.18;
-  }
-  
-  return floorY + 0.18;
-}
-
-function create3DEditHandle(type, id, action, side, position, color, rotationY = 0) {
-  let handle = null;
-
-  if (action === 'move') {
-     // 1. 创建中心圆盘
-    const centerDisc = BABYLON.MeshBuilder.CreateCylinder("center_disc", {
-      height: 0.06,
-      diameter: 0.18
-    }, scene);
-    
-    const meshesToMerge = [centerDisc];
-    const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
-     // 2. 循环创建4个箭头（上下左右）
-    angles.forEach((angle, idx) => {
-       // 创建箭杆
-      const shaft = BABYLON.MeshBuilder.CreateCylinder("shaft_" + idx, {
-        height: 0.21,
-        diameter: 0.06
-      }, scene);
-      shaft.rotation.x = Math.PI / 2;
-      shaft.rotation.y = angle;
-      shaft.position.x = 0.195 * Math.sin(angle);
-      shaft.position.z = 0.195 * Math.cos(angle);
-      // 创建箭头尖
-      const tip = BABYLON.MeshBuilder.CreateCylinder("tip_" + idx, {
-        height: 0.15,
-        diameterTop: 0,
-        diameterBottom: 0.15
-      }, scene);
-      tip.rotation.x = Math.PI / 2;
-      tip.rotation.y = angle;
-      tip.position.x = 0.375 * Math.sin(angle);
-      tip.position.z = 0.375 * Math.cos(angle);
-      
-      shaft.bakeCurrentTransformIntoVertices();
-      tip.bakeCurrentTransformIntoVertices();
-      meshesToMerge.push(shaft, tip);
-    });
-    
-    handle = BABYLON.Mesh.MergeMeshes(meshesToMerge, true, true, undefined, false, true);
-  } else if (action === 'rotate') {
-    const radius = 0.24;
-    const path = [];
-    for (let i = 0; i <= 20; i++) {
-      const theta = (i / 20) * (Math.PI / 2);
-      path.push(new BABYLON.Vector3(Math.cos(theta) * radius, 0, -Math.sin(theta) * radius));
-    }
-    const arc = BABYLON.MeshBuilder.CreateTube("arc", { path, radius: 0.024, tessellation: 12 }, scene);
-    
-    const arrowHeight = 0.18;
-    const arrowDiameter = 0.14;
-    
-    const cone1 = BABYLON.MeshBuilder.CreateCylinder("cone1", {
-      height: arrowHeight,
-      diameterTop: 0,
-      diameterBottom: arrowDiameter,
-      tessellation: 16
-    }, scene);
-    cone1.position.set(radius, 0, arrowHeight / 2);
-    cone1.rotation.x = Math.PI / 2;
-    cone1.bakeCurrentTransformIntoVertices();
-    
-    const cone2 = BABYLON.MeshBuilder.CreateCylinder("cone2", {
-      height: arrowHeight,
-      diameterTop: 0,
-      diameterBottom: arrowDiameter,
-      tessellation: 16
-    }, scene);
-    cone2.position.set(-arrowHeight / 2, 0, -radius);
-    cone2.rotation.z = Math.PI / 2;
-    cone2.bakeCurrentTransformIntoVertices();
-    
-    handle = BABYLON.Mesh.MergeMeshes([arc, cone1, cone2], true, true, undefined, false, true);
-  } else {
-    const shaft = BABYLON.MeshBuilder.CreateCylinder("shaft", {
-      height: 0.42,
-      diameter: 0.075
-    }, scene);
-    shaft.rotation.x = Math.PI / 2;
-    shaft.position.z = 0.21;
-    shaft.bakeCurrentTransformIntoVertices();
-    
-    const tip = BABYLON.MeshBuilder.CreateCylinder("tip", {
-      height: 0.24,
-      diameterTop: 0,
-      diameterBottom: 0.21
-    }, scene);
-    tip.rotation.x = Math.PI / 2;
-    tip.position.z = 0.54;
-    tip.bakeCurrentTransformIntoVertices();
-    
-    handle = BABYLON.Mesh.MergeMeshes([shaft, tip], true, true, undefined, false, true);
-  }
-
-  if (!handle) return null;
-
-  handle.name = 'edit_handle_' + type + '_' + id + '_' + action + '_' + (side || 'center');
-  handle.position.set(position.x, position.y, position.z);
-  
-  if (action === 'resize' || action === 'rotate') {
-    handle.rotation.y = rotationY;
-  }
-  
-  handle.material = new BABYLON.StandardMaterial(handle.name + '_mat', scene);
-  handle.material.diffuseColor = BABYLON.Color3.FromHexString(color);
-  handle.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.35);
-  handle.material.specularColor = new BABYLON.Color3(0, 0, 0);
-  handle.material.disableDepthWrite = true;
-  handle.material.depthFunction = BABYLON.Engine.ALWAYS;
-  handle.metadata = { blueprintEditHandle: { type, id, action, side } };
-  handle.isPickable = true;
-  handle.renderingGroupId = 3;
-  handle.alwaysSelectAsActiveMesh = true;
-  handle.renderOutline = true;
-  handle.outlineWidth = 0.035;
-  handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
-  
-  editHandleNodes.push(handle);
-  return handle;
-}
-
-function refresh3DEditHandles() {
-  if (!active3DEditTarget || currentView !== '3d') return;
-  const { type, id } = active3DEditTarget;
-  const bounds = get3DEditTargetBounds(type, id);
-  editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
-  if (!bounds || isTargetLocked({ type, id })) {
-    active3DEditTarget = null;
-    return;
-  }
-  const y = get3DEditHandleY(type, bounds);
-  if (type === 'wall') {
-    const wall = bounds.target;
-    const dx = wall.to[0] - wall.from[0];
-    const dz = wall.to[1] - wall.from[1];
-    const angle = Math.atan2(dx, dz);
-    
-    create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
-    create3DEditHandle(type, id, 'resize', 'from', { x: bounds.fromX, y, z: bounds.fromZ }, '#ff9f1c', angle + Math.PI);
-    create3DEditHandle(type, id, 'resize', 'to', { x: bounds.toX, y, z: bounds.toZ }, '#ff9f1c', angle);
-    return;
-  }
-  if (type === 'fence') {
-    const fence = bounds.target;
-    const dx = fence.to[0] - fence.from[0];
-    const dz = fence.to[1] - fence.from[1];
-    const angle = Math.atan2(dx, dz);
-    
-    create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
-    create3DEditHandle(type, id, 'resize', 'from', { x: bounds.fromX, y, z: bounds.fromZ }, '#ff9f1c', angle + Math.PI);
-    create3DEditHandle(type, id, 'resize', 'to', { x: bounds.toX, y, z: bounds.toZ }, '#ff9f1c', angle);
-    return;
-  }
-
-  const halfW = bounds.width / 2;
-  const halfD = bounds.depth / 2;
-  create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
-  create3DEditHandle(type, id, 'resize', 'north', { x: bounds.x, y, z: bounds.z - halfD }, '#ff9f1c', Math.PI);
-  create3DEditHandle(type, id, 'resize', 'south', { x: bounds.x, y, z: bounds.z + halfD }, '#ff9f1c', 0);
-  create3DEditHandle(type, id, 'resize', 'east', { x: bounds.x + halfW, y, z: bounds.z }, '#ff9f1c', Math.PI / 2);
-  create3DEditHandle(type, id, 'resize', 'west', { x: bounds.x - halfW, y, z: bounds.z }, '#ff9f1c', -Math.PI / 2);
-  if (type === 'roof' || type === 'stairs') {
-    create3DEditHandle(type, id, 'rotate', 'rotation', { x: bounds.x + halfW + 0.4, y, z: bounds.z - halfD - 0.4 }, '#2ec456', 0);
-  }
-}
-
-function set3DEditTarget(type, id) {
-  active3DEditTarget = { type, id };
-  refresh3DEditHandles();
-}
-
-function same3DEditTarget(type, id) {
-  return active3DEditTarget?.type === type && active3DEditTarget?.id === id;
-}
-
-function findEditHandleFromNode(node) {
-  return findMetadataFromNode(node, 'blueprintEditHandle');
-}
-
-function pickNearest3DTarget(pointerX = scene.pointerX, pointerY = scene.pointerY) {
-  const handlePick = scene.pick(pointerX, pointerY, (mesh) => !!findEditHandleFromNode(mesh));
-  const pickedHandle = handlePick?.pickedMesh ? findEditHandleFromNode(handlePick.pickedMesh) : null;
-  if (pickedHandle) return { type: 'edit-handle', id: pickedHandle.id, handle: pickedHandle, pick: handlePick };
-
-  const pick = scene.pick(pointerX, pointerY, (mesh) => (
-    !!findOpeningIdFromNode(mesh)
-    || !!findItemIdFromNode(mesh)
-    || !!findWallIdFromNode(mesh)
-    || !!findRoomIdFromNode(mesh)
-    || !!findRoofIdFromNode(mesh)
-    || !!findStairsIdFromNode(mesh)
-    || !!findFenceIdFromNode(mesh)
-  ));
-  const mesh = pick?.pickedMesh;
-  if (!mesh) return null;
-  const openingId = findOpeningIdFromNode(mesh);
-  if (openingId) return { type: 'opening', id: openingId, pick };
-  const wallId = findWallIdFromNode(mesh);
-  if (wallId) return { type: 'wall', id: wallId, pick };
-  const itemId = findItemIdFromNode(mesh);
-  if (itemId) return { type: 'item', id: itemId, pick };
-  const roofId = findRoofIdFromNode(mesh);
-  if (roofId) return { type: 'roof', id: roofId, pick };
-  const stairsId = findStairsIdFromNode(mesh);
-  if (stairsId) return { type: 'stairs', id: stairsId, pick };
-  const fenceId = findFenceIdFromNode(mesh);
-  if (fenceId) return { type: 'fence', id: fenceId, pick };
-  const roomId = findRoomIdFromNode(mesh);
-  if (roomId) return { type: 'room', id: roomId, pick };
-  return null;
-}
-
-
-function begin3DEditHandleDrag(handle, event) {
-  if (isTargetLocked({ type: handle.type, id: handle.id })) return false;
-  const bounds = get3DEditTargetBounds(handle.type, handle.id);
-  const groundPoint = groundPointFromPointer();
-  if (!bounds || !groundPoint) return false;
-  active3DEditTarget = { type: handle.type, id: handle.id };
-  editHandleDragState = {
-    type: handle.type,
-    id: handle.id,
-    action: handle.action,
-    side: handle.side,
-    pointerId: event.pointerId,
-    original: (handle.type === 'wall' || handle.type === 'fence') ? {
-      from: [bounds.fromX, bounds.fromZ],
-      to: [bounds.toX, bounds.toZ],
-      x: bounds.x,
-      z: bounds.z
-    } : { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth },
-    offsetX: bounds.x - groundPoint.x,
-    offsetZ: bounds.z - groundPoint.z,
-    historyPushed: false
-  };
-
-  if (handle.type === 'wall' || handle.type === 'fence') {
-    const targetX = (handle.action === 'move' || handle.side === 'from') ? bounds.fromX : bounds.toX;
-    const targetZ = (handle.action === 'move' || handle.side === 'from') ? bounds.fromZ : bounds.toZ;
-    editHandleDragState.dragOffsetX = targetX - groundPoint.x;
-    editHandleDragState.dragOffsetZ = targetZ - groundPoint.z;
-  }
-
-  if (handle.action === 'rotate') {
-    const structure = getStructure(handle.type, handle.id);
-    if (structure) {
-      editHandleDragState.originalRotation = structure.rotation || 0;
-      const dx = groundPoint.x - bounds.x;
-      const dz = groundPoint.z - bounds.z;
-      editHandleDragState.startAngle = Math.atan2(dz, dx);
-    }
-  }
-
-  drag3DState = { type: 'edit-handle', pointerId: event.pointerId };
-  document.body.classList.add('is-dragging-3d');
-  canvas.setPointerCapture?.(event.pointerId);
-  camera.detachControl(canvas);
-  event.preventDefault();
-  return true;
-}
-
-function syncRoomMovePreview(roomId) {
-  const room = testMap.getRoom(roomId);
-  if (!room) return;
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(room.floorId) : 0;
-  const floor = testMap.floorNodes?.get(room.id);
-  if (floor) floor.position.set(room.x, floorY - (testMap.floorplan.floorHeight || 0.08) / 2, room.z);
-
-  const wallIds = new Set(Object.values(room.wallIds || {}));
-  wallIds.forEach((wallId) => {
-    const wall = testMap.getWall(wallId);
-    const node = testMap.wallNodes?.get(wallId);
-    if (!wall || !node) return;
-    const [x1, z1] = wall.from;
-    const [x2, z2] = wall.to;
-    node.position.set(x1, 0, z1);
-    const currentLength = Math.hypot(x2 - x1, z2 - z1);
-    const originalLength = node.metadata?.originalLength || currentLength || 1;
-    node.scaling.x = currentLength / originalLength;
-    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-  });
-
-  testMap.floorplan.openings.forEach((opening) => {
-    if (!wallIds.has(opening.wallId)) return;
-    const wall = testMap.getWall(opening.wallId);
-    const node = testMap.openingNodes?.get(opening.id);
-    if (!wall || !node) return;
-    const point = wallPointAt(wall, opening.t ?? 0.5);
-    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
-    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
-    const localY = sillHeight + height / 2;
-    const [x1, z1] = wall.from;
-    const [x2, z2] = wall.to;
-    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(opening) : 0;
-    node.position.set(point.x, floorY + localY + openingOffset, point.z);
-    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-  });
-
-  testMap.floorplan.items.forEach((item) => {
-    if (item.roomId !== room.id) return;
-    const node = testMap.itemNodes?.get(item.id);
-    const roomOffset = testMap.getItemRoomElevationOffset ? testMap.getItemRoomElevationOffset(item) : 0;
-    if (node) node.position.set(item.x, floorY + (item.elevation || 0) / INCHES_PER_UNIT + roomOffset, item.z);
-  });
-}
-
-function syncWallMovePreview(wallId) {
-  const wall = testMap.getWall(wallId);
-  const node = testMap.wallNodes?.get(wallId);
-  if (!wall || !node) return;
-  const [x1, z1] = wall.from;
-  const [x2, z2] = wall.to;
-  node.position.set(x1, 0, z1);
-  const currentLength = Math.hypot(x2 - x1, z2 - z1);
-  const originalLength = node.metadata?.originalLength || currentLength || 1;
-  node.scaling.x = currentLength / originalLength;
-  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(wall.floorId) : 0;
-  testMap.floorplan.openings.forEach((opening) => {
-    if (opening.wallId !== wallId) return;
-    const opNode = testMap.openingNodes?.get(opening.id);
-    if (!opNode) return;
-    const point = wallPointAt(wall, opening.t ?? 0.5);
-    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
-    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
-    const localY = sillHeight + height / 2;
-    const [wx1, wz1] = wall.from;
-    const [wx2, wz2] = wall.to;
-    const openingOffset = testMap.getOpeningElevationOffset ? testMap.getOpeningElevationOffset(opening) : 0;
-    opNode.position.set(point.x, floorY + localY + openingOffset, point.z);
-    opNode.rotation.y = -Math.atan2(wz2 - wz1, wx2 - wx1);
-  });
-}
-
-function syncFenceMovePreview(fenceId) {
-  const fence = testMap.getFence(fenceId);
-  const node = testMap.fenceNodes?.get(fenceId);
-  if (!fence || !node) return;
-  const [x1, z1] = fence.from;
-  const [x2, z2] = fence.to;
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(fence.floorId) : 0;
-  const fenceOffset = testMap.getFenceElevationOffset ? testMap.getFenceElevationOffset(fence) : 0;
-  node.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
-  
-  const currentLength = Math.hypot(x2 - x1, z2 - z1);
-  const originalLength = node.metadata?.originalLength || currentLength || 1;
-  node.scaling.x = currentLength / originalLength;
-  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-}
-
-function update3DEditTarget(type, id, patch, options = {}) {
-  if (type === 'wall') {
-    const rebuild = options.rebuild !== false;
-    if (rebuild) {
-      testMap.build();
-      refreshShadows();
-    } else {
-      syncWallMovePreview(id);
-    }
-  } else if (type === 'fence') {
-    const rebuild = options.rebuild !== false;
-    if (rebuild) {
-      testMap.build();
-      refreshShadows();
-    } else {
-      syncFenceMovePreview(id);
-    }
-  } else if (type === 'room') {
-    const rebuild = options.rebuild !== false;
-    const moveItems = options.moveItems !== false;
-    testMap.updateRoom(id, patch, { moveItems, rebuild });
-    if (rebuild) refreshShadows();
-    else syncRoomMovePreview(id);
-  } else {
-    const rebuild = options.rebuild !== false;
-    const updated = updateStructure(type, id, patch, rebuild);
-    if (!rebuild && updated) {
-      const node = type === 'roof' ? testMap.roofNodes?.get(id) : testMap.stairNodes?.get(id);
-      if (node) {
-        node.position.x = updated.x || 0;
-        node.position.z = updated.z || 0;
-        if (type === 'stairs') {
-          const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(updated.floorId) : 0;
-          const stairsOffset = testMap.getStairsElevationOffset ? testMap.getStairsElevationOffset(updated) : 0;
-          node.position.y = floorY + stairsOffset;
-        }
-      }
-    } else {
-      refreshShadows();
-    }
-  }
-  updateEditor();
-  refresh3DEditHandles();
-}
-
-function move3DEditHandle(groundPoint) {
-  if (!editHandleDragState) return;
-  const state = editHandleDragState;
-  const original = state.original;
-  const snapped = snapWorldPoint({ x: groundPoint.x, z: groundPoint.z });
-  let patch = null;
-  let moveItems = false;
-  let rebuild = true;
-
-  if (state.action === 'rotate') {
-    const bounds = get3DEditTargetBounds(state.type, state.id);
-    if (!bounds) return;
-    const dx = groundPoint.x - bounds.x;
-    const dz = groundPoint.z - bounds.z;
-    const currentAngle = Math.atan2(dz, dx);
-    const deltaAngle = currentAngle - state.startAngle;
-    const nextRotation = state.originalRotation + deltaAngle;
-    const degrees = (nextRotation * 180 / Math.PI + 360) % 360;
-    const normalizedDegrees = normalizeRotationDegrees(degrees);
-    const rotationRad = normalizedDegrees * Math.PI / 180;
-    
-    const node = state.type === 'roof' ? testMap.roofNodes?.get(state.id) : testMap.stairNodes?.get(state.id);
-    if (node) {
-      node.rotation.y = rotationRad;
-    }
-    
-    updateStructure(state.type, state.id, { rotation: rotationRad }, false);
-    
-    if (!state.historyPushed && Math.abs(deltaAngle) > 0.02) {
-      pushHistory();
-      state.historyPushed = true;
-    }
-    return;
-  }
-
-  if (state.type === 'wall') {
-    const wall = testMap.getWall(state.id);
-    if (!wall) return;
-    let nextFrom = [...original.from];
-    let nextTo = [...original.to];
-    
-    if (state.action === 'move') {
-      const targetFromX = groundPoint.x + state.dragOffsetX;
-      const targetFromZ = groundPoint.z + state.dragOffsetZ;
-      const snappedFrom = snapWorldPoint({ x: targetFromX, z: targetFromZ });
-      const dx = snappedFrom.x - original.from[0];
-      const dz = snappedFrom.z - original.from[1];
-      
-      if (!state.historyPushed && (Math.abs(dx) > 0.02 || Math.abs(dz) > 0.02)) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextFrom = [snappedFrom.x, snappedFrom.z];
-      nextTo = [Number((original.to[0] + dx).toFixed(3)), Number((original.to[1] + dz).toFixed(3))];
-    } else if (state.side === 'from') {
-      const targetX = groundPoint.x + state.dragOffsetX;
-      const targetZ = groundPoint.z + state.dragOffsetZ;
-      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
-      
-      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.from[0], snappedTarget.z - original.from[1]) > 0.02) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextFrom = [snappedTarget.x, snappedTarget.z];
-    } else if (state.side === 'to') {
-      const targetX = groundPoint.x + state.dragOffsetX;
-      const targetZ = groundPoint.z + state.dragOffsetZ;
-      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
-      
-      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.to[0], snappedTarget.z - original.to[1]) > 0.02) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextTo = [snappedTarget.x, snappedTarget.z];
-    }
-    
-    wall.from = [Number(nextFrom[0].toFixed(3)), Number(nextFrom[1].toFixed(3))];
-    wall.to = [Number(nextTo[0].toFixed(3)), Number(nextTo[1].toFixed(3))];
-    
-    update3DEditTarget('wall', state.id, null, { rebuild: false });
-    return;
-  }
-  if (state.type === 'fence') {
-    const fence = testMap.getFence(state.id);
-    if (!fence) return;
-    let nextFrom = [...original.from];
-    let nextTo = [...original.to];
-    
-    if (state.action === 'move') {
-      const targetFromX = groundPoint.x + state.dragOffsetX;
-      const targetFromZ = groundPoint.z + state.dragOffsetZ;
-      const snappedFrom = snapWorldPoint({ x: targetFromX, z: targetFromZ });
-      const dx = snappedFrom.x - original.from[0];
-      const dz = snappedFrom.z - original.from[1];
-      
-      if (!state.historyPushed && (Math.abs(dx) > 0.02 || Math.abs(dz) > 0.02)) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextFrom = [snappedFrom.x, snappedFrom.z];
-      nextTo = [Number((original.to[0] + dx).toFixed(3)), Number((original.to[1] + dz).toFixed(3))];
-    } else if (state.side === 'from') {
-      const targetX = groundPoint.x + state.dragOffsetX;
-      const targetZ = groundPoint.z + state.dragOffsetZ;
-      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
-      
-      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.from[0], snappedTarget.z - original.from[1]) > 0.02) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextFrom = [snappedTarget.x, snappedTarget.z];
-    } else if (state.side === 'to') {
-      const targetX = groundPoint.x + state.dragOffsetX;
-      const targetZ = groundPoint.z + state.dragOffsetZ;
-      const snappedTarget = snapWorldPoint({ x: targetX, z: targetZ });
-      
-      if (!state.historyPushed && Math.hypot(snappedTarget.x - original.to[0], snappedTarget.z - original.to[1]) > 0.02) {
-        pushHistory();
-        state.historyPushed = true;
-      }
-      
-      nextTo = [snappedTarget.x, snappedTarget.z];
-    }
-    
-    fence.from = [Number(nextFrom[0].toFixed(3)), Number(nextFrom[1].toFixed(3))];
-    fence.to = [Number(nextTo[0].toFixed(3)), Number(nextTo[1].toFixed(3))];
-    
-    update3DEditTarget('fence', state.id, null, { rebuild: false });
-    return;
-  }
-
-  if (state.action === 'move') {
-    const rawX = groundPoint.x + state.offsetX;
-    const rawZ = groundPoint.z + state.offsetZ;
-    const left = snapNumber(rawX - original.width / 2);
-    const top = snapNumber(rawZ - original.depth / 2);
-    patch = {
-      x: Number((left + original.width / 2).toFixed(3)),
-      z: Number((top + original.depth / 2).toFixed(3))
-    };
-    moveItems = true;
-    rebuild = false;
-  } else {
-    const minWidth = state.type === 'stairs' ? 0.6 : (state.type === 'room' ? 1.2 : 1);
-    const minDepth = state.type === 'stairs' ? 1.2 : (state.type === 'room' ? 1.2 : 1);
-    const left = original.x - original.width / 2;
-    const right = original.x + original.width / 2;
-    const top = original.z - original.depth / 2;
-    const bottom = original.z + original.depth / 2;
-
-    let w = original.width;
-    let d = original.depth;
-    let x = original.x;
-    let z = original.z;
-
-    if (state.side === 'west' || state.side === 'east') {
-      let rawW = original.width;
-      if (state.side === 'west') {
-        const snappedRight = snapNumber(right);
-        rawW = snappedRight - snapped.x;
-        w = snapValue(rawW);
-        if (snapEnabled && snapSize) {
-          if (w < minWidth) w = Math.ceil(minWidth / snapSize) * snapSize;
-        } else {
-          w = Math.max(minWidth, w);
-        }
-        x = snappedRight - w / 2;
-      } else {
-        const snappedLeft = snapNumber(left);
-        rawW = snapped.x - snappedLeft;
-        w = snapValue(rawW);
-        if (snapEnabled && snapSize) {
-          if (w < minWidth) w = Math.ceil(minWidth / snapSize) * snapSize;
-        } else {
-          w = Math.max(minWidth, w);
-        }
-        x = snappedLeft + w / 2;
-      }
-    }
-
-    if (state.side === 'north' || state.side === 'south') {
-      let rawD = original.depth;
-      if (state.side === 'north') {
-        const snappedBottom = snapNumber(bottom);
-        rawD = snappedBottom - snapped.z;
-        d = snapValue(rawD);
-        if (snapEnabled && snapSize) {
-          if (d < minDepth) d = Math.ceil(minDepth / snapSize) * snapSize;
-        } else {
-          d = Math.max(minDepth, d);
-        }
-        z = snappedBottom - d / 2;
-      } else {
-        const snappedTop = snapNumber(top);
-        rawD = snapped.z - snappedTop;
-        d = snapValue(rawD);
-        if (snapEnabled && snapSize) {
-          if (d < minDepth) d = Math.ceil(minDepth / snapSize) * snapSize;
-        } else {
-          d = Math.max(minDepth, d);
-        }
-        z = snappedTop + d / 2;
-      }
-    }
-
-    patch = {
-      x: snapNumber(x),
-      z: snapNumber(z),
-      width: snapNumber(w),
-      depth: snapNumber(d)
-    };
-    moveItems = false;
-    rebuild = false;
-  }
-
-  const moved = Math.hypot((patch.x ?? original.x) - original.x, (patch.z ?? original.z) - original.z);
-  const resized = Math.abs((patch.width ?? original.width) - original.width) + Math.abs((patch.depth ?? original.depth) - original.depth);
-  if (!state.historyPushed && (moved > 0.02 || resized > 0.02)) {
-    pushHistory();
-    state.historyPushed = true;
-  }
-  
-  if (state.type === 'roof' || state.type === 'stairs') {
-    const node = state.type === 'roof' ? testMap.roofNodes?.get(state.id) : testMap.stairNodes?.get(state.id);
-    if (node && original.width && original.depth && patch.width && patch.depth) {
-      node.scaling.x = patch.width / original.width;
-      node.scaling.z = patch.depth / original.depth;
-    }
-  }
-
-  update3DEditTarget(state.type, state.id, patch, { moveItems, rebuild });
-}
+// 3D 交互手柄逻辑已抽离至 Viewer3DHandles.js
 
 function begin3DDrag(pointerInfo) {
   const event = pointerInfo.event;
@@ -3456,7 +1784,7 @@ function begin3DDrag(pointerInfo) {
     return;
   }
   if (event.button === 2) {
-    if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode()) {
+    if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode() || mode.startsWith('draw-fence')) {
       drawStart = null;
       clearDrawWallPreview();
       switchToSelectMode();
@@ -3498,6 +1826,53 @@ function begin3DDrag(pointerInfo) {
   }
 
   if (isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || mode.startsWith('draw-fence')) {
+    if (mode.startsWith('draw-fence')) {
+      const target = pickNearest3DTarget();
+      if (target && target.type === 'stairs') {
+        pushHistory();
+        addRailingToStairs(target.id, mode.replace('draw-fence-', '') || 'picket_wood');
+        clear2DStairsRailingPreview();
+        clear3DStairsRailingPreview();
+        clear2DFloorEdgeRailingPreview();
+        clear3DFloorEdgeRailingPreview();
+        switchToSelectMode();
+        event.preventDefault();
+        return;
+      }
+      
+      const point = groundPointFromPointer();
+      if (point) {
+        const edges = getFreeFloorEdges();
+        let bestEdge = null;
+        let minDist = Infinity;
+        edges.forEach((edge) => {
+          const dist = pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
+          if (dist < minDist) {
+            minDist = dist;
+            bestEdge = edge;
+          }
+        });
+        
+        if (bestEdge && minDist < 0.4) {
+          pushHistory();
+          const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
+          const fence = testMap.addFence({
+            floorId: testMap.floorplan.currentFloorId,
+            from: [bestEdge.p1.x, bestEdge.p1.z],
+            to: [bestEdge.p2.x, bestEdge.p2.z],
+            subtype: subtype
+          });
+          clear2DStairsRailingPreview();
+          clear3DStairsRailingPreview();
+          clear2DFloorEdgeRailingPreview();
+          clear3DFloorEdgeRailingPreview();
+          selectFence(fence.id);
+          switchToSelectMode();
+          event.preventDefault();
+          return;
+        }
+      }
+    }
     const point = groundPointFromPointer();
     if (point) {
       const snapped = snapWorldPoint({ x: point.x, z: point.z });
@@ -3528,11 +1903,12 @@ function begin3DDrag(pointerInfo) {
           const subtype = mode.replace('add-roof-', '') || 'gable';
           const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
           const wallThickness = testMap.floorplan.wallThickness || 0.15;
+          const roofBounds = Topology.calculateAutoRoofBounds(room, { x: snapped.x, z: snapped.z }, wallThickness);
           const roof = testMap.addRoof({
-            x: room?.x ?? snapped.x,
-            z: room?.z ?? snapped.z,
-            width: room ? (room.width + wallThickness) : 6,
-            depth: room ? (room.depth + wallThickness) : 6,
+            x: roofBounds.x,
+            z: roofBounds.z,
+            width: roofBounds.width,
+            depth: roofBounds.depth,
             subtype: subtype
           });
           refreshShadows();
@@ -3549,6 +1925,50 @@ function begin3DDrag(pointerInfo) {
         }
         switchToSelectMode();
       }
+      event.preventDefault();
+      return;
+    }
+  }
+  
+  if (mode.startsWith('add-fence-gate')) {
+    const target = pickNearest3DTarget();
+    if (target && target.type === 'fence') {
+      const fence = testMap.getFence(target.id);
+      const pt = target.pick.pickedPoint;
+      if (fence && pt) {
+        pushHistory();
+        const { t } = Topology.projectPointToFence(pt, fence, false, 0);
+        const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
+        const gate = testMap.addFenceGate({
+          floorId: testMap.floorplan.currentFloorId,
+          fenceId: fence.id,
+          t: t,
+          width: 1.0,
+          subtype: subtype
+        });
+        refreshShadows();
+        selectFenceGate(gate.id);
+        switchToSelectMode();
+        event.preventDefault();
+        return;
+      }
+    }
+
+    const point = groundPointFromPointer();
+    if (point) {
+      pushHistory();
+      const snapped = snapToGridSegmentCenter({ x: point.x, z: point.z });
+      const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
+      const gate = testMap.addFenceGate({
+        floorId: testMap.floorplan.currentFloorId,
+        from: [snapped.x - 0.5, snapped.z],
+        to: [snapped.x + 0.5, snapped.z],
+        width: 1.0,
+        subtype: subtype
+      });
+      refreshShadows();
+      selectFenceGate(gate.id);
+      switchToSelectMode();
       event.preventDefault();
       return;
     }
@@ -3594,6 +2014,8 @@ function begin3DDrag(pointerInfo) {
     const opening = testMap.getOpening(target.id);
     const groundPoint = groundPointFromPointer();
     if (!opening || opening.locked || !groundPoint) return;
+    opening.isDragging = true;
+    testMap.build();
     drag3DState = {
       type: 'opening',
       openingId: target.id,
@@ -3649,6 +2071,29 @@ function begin3DDrag(pointerInfo) {
     event.preventDefault();
     return;
   }
+  if (target.type === 'fence_gate') {
+    selectFenceGate(target.id);
+    const gate = testMap.getFenceGate(target.id);
+    const groundPoint = groundPointFromPointer();
+    if (!gate || gate.locked || !groundPoint) return;
+    drag3DState = {
+      type: 'fence_gate',
+      gateId: target.id,
+      pointerId: event.pointerId,
+      originalFrom: [...gate.from],
+      originalTo: [...gate.to],
+      originalFenceId: gate.fenceId,
+      originalT: gate.t,
+      startX: groundPoint.x,
+      startZ: groundPoint.z,
+      historyPushed: false
+    };
+    document.body.classList.add('is-dragging-3d');
+    canvas.setPointerCapture?.(event.pointerId);
+    camera.detachControl(canvas);
+    event.preventDefault();
+    return;
+  }
 
   const itemId = target.id;
   selectItem(itemId);
@@ -3688,7 +2133,7 @@ function move3DDrag(pointerInfo) {
     }
     moveItemTo(drag3DState.itemId, nextX, nextZ);
   } else if (drag3DState.type === 'opening') {
-    moveOpeningToWorld(drag3DState.openingId, { x: groundPoint.x, z: groundPoint.z }, drag3DState);
+    DragHandler.moveOpeningToWorld(drag3DState.openingId, { x: groundPoint.x, z: groundPoint.z }, drag3DState);
   } else if (drag3DState.type === 'roof' || drag3DState.type === 'stairs') {
     const nextX = groundPoint.x + drag3DState.offsetX;
     const nextZ = groundPoint.z + drag3DState.offsetZ;
@@ -3697,6 +2142,8 @@ function move3DDrag(pointerInfo) {
       drag3DState.historyPushed = true;
     }
     moveStructureTo(drag3DState.type, drag3DState.structureId, nextX, nextZ, { rebuild: false, refresh: false });
+  } else if (drag3DState.type === 'fence_gate') {
+    DragHandler.moveFenceGateToWorld(drag3DState.gateId, { x: groundPoint.x, z: groundPoint.z }, drag3DState);
   }
   pointerInfo.event.preventDefault();
 }
@@ -3706,18 +2153,26 @@ function end3DDrag(event) {
   if (event?.pointerId !== undefined && drag3DState.pointerId !== event.pointerId) return;
   canvas.releasePointerCapture?.(drag3DState.pointerId);
   const openingId = drag3DState.type === 'opening' ? drag3DState.openingId : null;
+  if (openingId) {
+    const opening = testMap.getOpening(openingId);
+    if (opening) {
+      opening.isDragging = false;
+    }
+  }
+  const fenceGateId = drag3DState.type === 'fence_gate' ? drag3DState.gateId : null;
   const roofId = drag3DState.type === 'roof' ? drag3DState.structureId : null;
   const stairsId = drag3DState.type === 'stairs' ? drag3DState.structureId : null;
-  const completedEditHandle = drag3DState.type === 'edit-handle' ? editHandleDragState : null;
+  const completedEditHandle = drag3DState.type === 'edit-handle' ? getEditHandleDragState() : null;
   const editTarget = drag3DState.type === 'edit-handle' ? active3DEditTarget : null;
   drag3DState = null;
-  editHandleDragState = null;
+  setEditHandleDragState(null);
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
-  if (openingId) {
+  if (openingId || fenceGateId) {
     testMap.build();
     refreshShadows();
-    selectOpening(openingId);
+    if (openingId) selectOpening(openingId);
+    if (fenceGateId) selectFenceGate(fenceGateId);
   }
   if (roofId) selectRoof(roofId);
   if (stairsId) selectStairs(stairsId);
@@ -3795,7 +2250,68 @@ scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
-    if (mode === 'draw-wall' || mode.startsWith('draw-fence')) {
+    if (mode.startsWith('draw-fence')) {
+      const target = pickNearest3DTarget();
+      if (target && target.type === 'stairs') {
+        update3DStairsRailingPreview(target.id, mode.replace('draw-fence-', '') || 'picket_wood');
+        clear3DFloorEdgeRailingPreview();
+        // 只清空普通画墙体/栅栏指示圆柱，保留楼梯预览
+        if (drawWallPreviewCylinder) {
+          drawWallPreviewCylinder.dispose();
+          drawWallPreviewCylinder = null;
+        }
+        if (drawWallPreviewStartCylinder) {
+          drawWallPreviewStartCylinder.dispose();
+          drawWallPreviewStartCylinder = null;
+        }
+        if (drawWallPreviewWall) {
+          drawWallPreviewWall.dispose();
+          drawWallPreviewWall = null;
+        }
+      } else {
+        clear3DStairsRailingPreview();
+        const point = groundPointFromPointer();
+        if (point) {
+          const edges = getFreeFloorEdges();
+          let bestEdge = null;
+          let minDist = Infinity;
+          let bestIndex = -1;
+          edges.forEach((edge, i) => {
+            const dist = pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
+            if (dist < minDist) {
+              minDist = dist;
+              bestEdge = edge;
+              bestIndex = i;
+            }
+          });
+
+          if (bestEdge && minDist < 0.4) {
+            update3DFloorEdgeRailingPreview(bestIndex, bestEdge, mode.replace('draw-fence-', '') || 'picket_wood');
+            if (drawWallPreviewCylinder) {
+              drawWallPreviewCylinder.dispose();
+              drawWallPreviewCylinder = null;
+            }
+            if (drawWallPreviewStartCylinder) {
+              drawWallPreviewStartCylinder.dispose();
+              drawWallPreviewStartCylinder = null;
+            }
+            if (drawWallPreviewWall) {
+              drawWallPreviewWall.dispose();
+              drawWallPreviewWall = null;
+            }
+          } else {
+            clear3DFloorEdgeRailingPreview();
+            const snapped = snapWorldPoint({ x: point.x, z: point.z });
+            updateDrawWallPreview(snapped);
+          }
+        } else {
+          clear3DFloorEdgeRailingPreview();
+          clearDrawWallPreview();
+        }
+      }
+    } else if (mode === 'draw-wall') {
+      clear3DStairsRailingPreview();
+      clear3DFloorEdgeRailingPreview();
       const point = groundPointFromPointer();
       if (point) {
         const snapped = snapWorldPoint({ x: point.x, z: point.z });
@@ -3804,6 +2320,8 @@ scene.onPointerObservable.add((pointerInfo) => {
         clearDrawWallPreview();
       }
     } else {
+      clear3DStairsRailingPreview();
+      clear3DFloorEdgeRailingPreview();
       clearDrawWallPreview();
     }
     move3DDrag(pointerInfo);
@@ -3814,7 +2332,225 @@ scene.onPointerObservable.add((pointerInfo) => {
 canvas.addEventListener('pointercancel', end3DDrag);
 window.addEventListener('pointerup', end3DDrag);
 
+// ==========================================
+// 没有墙体的地板边缘自动识别与悬浮预览 (NEW)
+// ==========================================
+
+function getFreeFloorEdges() {
+  return Topology.getFreeFloorEdges(currentRooms(), currentWalls());
+}
+
+function clear2DFloorEdgeRailingPreview() {
+  if (floorEdgeRailingPreview2DGroup) {
+    floorEdgeRailingPreview2DGroup.innerHTML = '';
+    floorEdgeRailingPreview2DGroup.remove();
+    floorEdgeRailingPreview2DGroup = null;
+  }
+}
+
+function clear3DFloorEdgeRailingPreview() {
+  if (floorEdgeRailingPreview3DGroup) {
+    floorEdgeRailingPreview3DGroup.dispose(false, true);
+    floorEdgeRailingPreview3DGroup = null;
+  }
+  currentPreviewFloorEdgeIndex = null;
+}
+
+function update2DFloorEdgeRailingPreview(fromX, fromZ, toX, toZ, index) {
+  clear2DFloorEdgeRailingPreview();
+  floorEdgeRailingPreview2DGroup = createSvgElement('g', { id: 'floor-edge-railing-preview-group' });
+  
+  const a = worldToSvg(fromX, fromZ);
+  const b = worldToSvg(toX, toZ);
+  const line = createSvgElement('line', {
+    x1: a.x, y1: a.y,
+    x2: b.x, y2: b.y,
+    stroke: 'rgba(141, 110, 99, 0.65)',
+    'stroke-width': 3,
+    'stroke-dasharray': '5,5'
+  });
+  floorEdgeRailingPreview2DGroup.appendChild(line);
+  svg.appendChild(floorEdgeRailingPreview2DGroup);
+}
+
+function update3DFloorEdgeRailingPreview(edgeIndex, edge, fenceSubtype) {
+  if (currentPreviewFloorEdgeIndex === edgeIndex && floorEdgeRailingPreview3DGroup) {
+    return;
+  }
+  clear3DFloorEdgeRailingPreview();
+  currentPreviewFloorEdgeIndex = edgeIndex;
+  floorEdgeRailingPreview3DGroup = new BABYLON.TransformNode("floor_edge_railing_preview_group", scene);
+
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const p1 = edge.p1;
+  const p2 = edge.p2;
+  
+  const dx = p2.x - p1.x;
+  const dz = p2.z - p1.z;
+  const len = Math.sqrt(dx * dx + dz * dz);
+  if (len <= 0.01) return;
+
+  const angle = Math.atan2(dz, dx);
+  const fenceNode = new BABYLON.TransformNode("floor_edge_rail_preview", scene);
+  fenceNode.parent = floorEdgeRailingPreview3DGroup;
+  
+  // 设置位置在中点
+  fenceNode.position.set((p1.x + p2.x) / 2, floorY, (p1.z + p2.z) / 2);
+  fenceNode.rotation.y = -angle;
+
+  const previewMaterial = new BABYLON.StandardMaterial("floor_edge_preview_mat", scene);
+  previewMaterial.diffuseColor = BABYLON.Color3.FromHexString('#8d6e63');
+  previewMaterial.alpha = 0.55;
+  previewMaterial.backFaceCulling = false;
+
+  buildFenceGeometry(
+    testMap,
+    fenceNode,
+    {
+      id: `preview_floor_edge_fence_${edgeIndex}`,
+      subtype: fenceSubtype,
+      tilt: 0
+    },
+    previewMaterial,
+    len,
+    1.1,
+    0.1
+  );
+}
+
+// ==========================================
+// 楼梯自动扶手识别与添加 & 悬浮预览逻辑 (NEW)
+// ==========================================
+
+function clear2DStairsRailingPreview() {
+  if (stairsRailingPreview2DGroup) {
+    stairsRailingPreview2DGroup.innerHTML = '';
+    stairsRailingPreview2DGroup.remove();
+    stairsRailingPreview2DGroup = null;
+  }
+}
+
+function clear3DStairsRailingPreview() {
+  if (stairsRailingPreview3DGroup) {
+    stairsRailingPreview3DGroup.dispose(false, true);
+    stairsRailingPreview3DGroup = null;
+  }
+  currentPreviewStairsId = null;
+}
+
+function update2DStairsRailingPreview(stairs, fenceSubtype) {
+  if (!stairsRailingPreview2DGroup) {
+    stairsRailingPreview2DGroup = createSvgElement('g', { id: 'stairs-railing-preview' });
+    svg.appendChild(stairsRailingPreview2DGroup);
+  } else {
+    stairsRailingPreview2DGroup.innerHTML = '';
+  }
+
+  const segments = Topology.getStairsRailingSegments(stairs, testMap);
+
+  segments.forEach(seg => {
+    const a = worldToSvg(seg.from[0], seg.from[1]);
+    const b = worldToSvg(seg.to[0], seg.to[1]);
+    const line = createSvgElement('line', {
+      x1: a.x, y1: a.y,
+      x2: b.x, y2: b.y,
+      stroke: 'rgba(141, 110, 99, 0.65)',
+      'stroke-width': 3,
+      'stroke-dasharray': '5,5'
+    });
+    stairsRailingPreview2DGroup.appendChild(line);
+  });
+}
+
+function update3DStairsRailingPreview(stairsId, fenceSubtype) {
+  if (currentPreviewStairsId === stairsId && stairsRailingPreview3DGroup) {
+    return;
+  }
+  clear3DStairsRailingPreview();
+
+  const stairs = testMap.getStairs(stairsId);
+  if (!stairs) return;
+
+  currentPreviewStairsId = stairsId;
+  stairsRailingPreview3DGroup = new BABYLON.TransformNode("stairs_railing_preview_group", scene);
+
+  const floorId = stairs.floorId;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(floorId) : 0;
+  const stairsOffset = testMap.getStairsElevationOffset ? testMap.getStairsElevationOffset(stairs) : 0;
+
+  const railsData = Topology.getStairsRailingSegments(stairs, testMap);
+
+  const previewMaterial = new BABYLON.StandardMaterial("stairs_railing_preview_mat", scene);
+  previewMaterial.diffuseColor = BABYLON.Color3.FromHexString('#8d6e63');
+  previewMaterial.alpha = 0.55;
+  previewMaterial.backFaceCulling = false;
+
+  railsData.forEach((data, index) => {
+    const [x1, z1] = data.from;
+    const [x2, z2] = data.to;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    if (len <= 0.01) return;
+
+    const angle = Math.atan2(dz, dx);
+    const fenceNode = new BABYLON.TransformNode(`stairs_rail_preview_${index}`, scene);
+    
+    let renderLength = len;
+    if (data.tilt) {
+      renderLength = len / Math.cos(data.tilt);
+    }
+
+    const tempFence = {
+      id: `preview_temp_${index}`,
+      subtype: fenceSubtype,
+      height: 1.1,
+      thickness: 0.1
+    };
+
+    if (typeof buildFenceGeometry === 'function') {
+      buildFenceGeometry(testMap, fenceNode, tempFence, previewMaterial, renderLength, 1.1, 0.1);
+    }
+
+    const fenceOffset = stairsOffset + (data.yOffset || 0);
+    fenceNode.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
+    fenceNode.rotation.y = -angle;
+    if (data.tilt) {
+      fenceNode.rotation.z = data.tilt;
+    }
+
+    fenceNode.parent = stairsRailingPreview3DGroup;
+    fenceNode.getChildMeshes().forEach(mesh => {
+      mesh.isPickable = false;
+      mesh.material = previewMaterial;
+    });
+  });
+
+  stairsRailingPreview3DGroup.parent = testMap.root;
+}
+
+function addRailingToStairs(stairsId, fenceSubtype) {
+  const stairs = testMap.getStairs(stairsId);
+  if (!stairs) return;
+
+  const segments = Topology.getStairsRailingSegments(stairs, testMap);
+  segments.forEach(seg => {
+    testMap.addFence({
+      floorId: stairs.floorId,
+      from: seg.from,
+      to: seg.to,
+      subtype: fenceSubtype,
+      tilt: seg.tilt,
+      yOffset: seg.yOffset
+    });
+  });
+}
+
 function clearDrawWallPreview() {
+  clear2DStairsRailingPreview();
+  clear3DStairsRailingPreview();
+  clear2DFloorEdgeRailingPreview();
+  clear3DFloorEdgeRailingPreview();
   if (drawWallPreviewCylinder) {
     drawWallPreviewCylinder.dispose();
     drawWallPreviewCylinder = null;
@@ -3934,9 +2670,11 @@ function clearSelection() {
   selectedRoofId = null;
   selectedStairsId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -3950,9 +2688,11 @@ function selectRoom(roomId) {
   selectedRoofId = null;
   selectedStairsId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -3966,9 +2706,11 @@ function selectWall(wallId) {
   selectedRoofId = null;
   selectedStairsId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(wallId);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -3986,9 +2728,11 @@ function selectOpening(openingId) {
   selectedRoofId = null;
   selectedStairsId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -4002,9 +2746,11 @@ function selectRoof(roofId) {
   selectedItemId = null;
   selectedOpeningId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -4018,9 +2764,11 @@ function selectStairs(stairsId) {
   selectedItemId = null;
   selectedOpeningId = null;
   selectedFenceId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(null);
   updateEditor();
   renderPlan();
 }
@@ -4034,10 +2782,30 @@ function selectFence(fenceId) {
   selectedWallId = null;
   selectedItemId = null;
   selectedOpeningId = null;
+  selectedFenceGateId = null;
   testMap.setSelectedItem(null);
   testMap.setSelectedWall(null);
   testMap.setSelectedFence(fenceId);
+  testMap.setSelectedFenceGate(null);
   if (fenceId) set3DEditTarget('fence', fenceId);
+  updateEditor();
+  renderPlan();
+}
+
+function selectFenceGate(gateId) {
+  clear3DEditHandles();
+  selectedFenceGateId = gateId;
+  selectedFenceId = null;
+  selectedRoofId = null;
+  selectedStairsId = null;
+  selectedRoomId = null;
+  selectedWallId = null;
+  selectedItemId = null;
+  selectedOpeningId = null;
+  testMap.setSelectedItem(null);
+  testMap.setSelectedWall(null);
+  testMap.setSelectedFence(null);
+  testMap.setSelectedFenceGate(gateId);
   updateEditor();
   renderPlan();
 }
@@ -4046,326 +2814,95 @@ function currentFences() {
   return testMap.floorplan.fences || [];
 }
 
-function renderFence(fence) {
-  const a = worldToSvg(fence.from[0], fence.from[1]);
-  const b = worldToSvg(fence.to[0], fence.to[1]);
-  
-  const group = createSvgElement('g', {
-    class: `fence-group ${selectedFenceId === fence.id ? 'selected' : ''}`,
-    'data-fence-id': fence.id
-  });
-  attachContextMenuTrigger(group, () => ({ type: 'fence', id: fence.id }));
-  
-  const line = createSvgElement('line', {
-    class: `fence-line ${selectedFenceId === fence.id ? 'selected' : ''}`,
-    x1: a.x,
-    y1: a.y,
-    x2: b.x,
-    y2: b.y,
-    stroke: selectedFenceId === fence.id ? '#36c2ff' : (fence.color || '#8d6e63'),
-    'stroke-width': 6,
-    'stroke-linecap': 'round',
-    opacity: 0.8
-  });
-  
-  line.addEventListener('pointerdown', (event) => {
-    if (mode === 'select') {
-      beginFenceDrag(event, fence.id);
-    }
-  });
-  
-  line.addEventListener('click', (event) => {
-    if (mode === 'delete-wall' || mode === 'select') {
-      event.stopPropagation();
-      if (mode === 'delete-wall') {
-        pushHistory();
-        testMap.deleteFence(fence.id);
-        clearSelection();
-        refreshShadows();
-        renderPlan();
-      } else if (mode === 'select') {
-        selectFence(fence.id);
-      }
-    }
-  });
-  
-  group.appendChild(line);
-  
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  
-  if (len > 10) {
-    const ux = dx / len;
-    const uy = dy / len;
-    const nx = -uy;
-    const ny = ux;
-    
-    if (fence.subtype === 'picket_wood') {
-      const step = 15;
-      for (let d = 5; d < len - 5; d += step) {
-        const cx = a.x + ux * d;
-        const cy = a.y + uy * d;
-        group.appendChild(createSvgElement('line', {
-          x1: cx - nx * 4,
-          y1: cy - ny * 4,
-          x2: cx + nx * 4,
-          y2: cy + ny * 4,
-          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#5d4037',
-          'stroke-width': 2
-        }));
-      }
-    } else if (fence.subtype === 'iron_ornamental') {
-      const step = 20;
-      for (let d = 10; d < len - 10; d += step) {
-        const cx = a.x + ux * d;
-        const cy = a.y + uy * d;
-        group.appendChild(createSvgElement('line', {
-          x1: cx - nx * 3,
-          y1: cy - ny * 3,
-          x2: cx + nx * 3,
-          y2: cy + ny * 3,
-          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#212121',
-          'stroke-width': 1.5
-        }));
-        group.appendChild(createSvgElement('circle', {
-          cx, cy, r: 2,
-          fill: selectedFenceId === fence.id ? '#36c2ff' : '#212121'
-        }));
-      }
-    } else if (fence.subtype === 'wire_mesh') {
-      line.setAttribute('stroke-dasharray', '5,5');
-      line.setAttribute('stroke-width', 3);
-      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : '#78909c');
-    } else if (fence.subtype === 'stone_masonry') {
-      line.setAttribute('stroke-width', 8);
-      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : '#90a4ae');
-      const step = 30;
-      for (let d = step; d < len - 5; d += step) {
-        const cx = a.x + ux * d;
-        const cy = a.y + uy * d;
-        group.appendChild(createSvgElement('line', {
-          x1: cx - nx * 4,
-          y1: cy - ny * 4,
-          x2: cx + nx * 4,
-          y2: cy + ny * 4,
-          stroke: '#ffffff',
-          'stroke-width': 1.5
-        }));
-      }
-    } else if (fence.subtype === 'bamboo') {
-      const step = 20;
-      for (let d = 5; d < len - 5; d += step) {
-        const cx = a.x + ux * d;
-        const cy = a.y + uy * d;
-        group.appendChild(createSvgElement('line', {
-          x1: cx - ux * 5 - nx * 4,
-          y1: cy - uy * 5 - ny * 4,
-          x2: cx + ux * 5 + nx * 4,
-          y2: cy + uy * 5 + ny * 4,
-          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#4caf50',
-          'stroke-width': 1.5
-        }));
-        group.appendChild(createSvgElement('line', {
-          x1: cx - ux * 5 + nx * 4,
-          y1: cy - uy * 5 - ny * 4,
-          x2: cx + ux * 5 - nx * 4,
-          y2: cy + uy * 5 + ny * 4,
-          stroke: selectedFenceId === fence.id ? '#36c2ff' : '#4caf50',
-          'stroke-width': 1.5
-        }));
-      }
-    } else if (fence.subtype === 'glass_rail') {
-      line.setAttribute('stroke-width', 6);
-      line.setAttribute('stroke', selectedFenceId === fence.id ? '#36c2ff' : 'rgba(129, 212, 250, 0.6)');
-      const step = 40;
-      for (let d = 0; d <= len; d += step) {
-        const cx = a.x + ux * d;
-        const cy = a.y + uy * d;
-        group.appendChild(createSvgElement('circle', {
-          cx, cy, r: 3,
-          fill: selectedFenceId === fence.id ? '#36c2ff' : '#b0bec5'
-        }));
-      }
-      if (len % step > 10) {
-        group.appendChild(createSvgElement('circle', {
-          cx: b.x, cy: b.y, r: 3,
-          fill: selectedFenceId === fence.id ? '#36c2ff' : '#b0bec5'
-        }));
-      }
-    }
-  }
-  
-  svg.appendChild(group);
-}
-
-function renderSelectedFenceHandles(fence) {
-  if (fence.locked) return;
-  const a = worldToSvg(fence.from[0], fence.from[1]);
-  const b = worldToSvg(fence.to[0], fence.to[1]);
-  
-  const handleFrom = createSvgElement('circle', {
-    class: 'fence-handle',
-    cx: a.x,
-    cy: a.y,
-    r: 8,
-    fill: '#ff9f1c',
-    stroke: '#ffffff',
-    'stroke-width': 2,
-    cursor: 'pointer'
-  });
-  
-  const handleTo = createSvgElement('circle', {
-    class: 'fence-handle',
-    cx: b.x,
-    cy: b.y,
-    r: 8,
-    fill: '#ff9f1c',
-    stroke: '#ffffff',
-    'stroke-width': 2,
-    cursor: 'pointer'
-  });
-  
-  handleFrom.addEventListener('pointerdown', (event) => {
-    event.stopPropagation();
-    rememberPointer(event);
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    fenceHandleDragState = {
-      fenceId: fence.id,
-      handle: 'from',
-      startWorldX: world.x,
-      startWorldZ: world.z,
-      historyPushed: false
-    };
-    svg.setPointerCapture(event.pointerId);
-  });
-  
-  handleTo.addEventListener('pointerdown', (event) => {
-    event.stopPropagation();
-    rememberPointer(event);
-    const point = svgPointFromEvent(event);
-    const world = svgToWorld(point.x, point.y);
-    fenceHandleDragState = {
-      fenceId: fence.id,
-      handle: 'to',
-      startWorldX: world.x,
-      startWorldZ: world.z,
-      historyPushed: false
-    };
-    svg.setPointerCapture(event.pointerId);
-  });
-  
-  svg.appendChild(handleFrom);
-  svg.appendChild(handleTo);
+function beginFenceResize(event, fenceId, handle) {
+  DragHandler.beginFenceHandleDrag(event, fenceId, handle);
 }
 
 function beginFenceDrag(event, fenceId) {
-  if (event.button === 2) return;
-  event.stopPropagation();
-  rememberPointer(event);
-  selectFence(fenceId);
-  const fence = testMap.getFence(fenceId);
-  if (!fence || fence.locked) return;
-  const point = svgPointFromEvent(event);
-  const world = svgToWorld(point.x, point.y);
-  fenceDragState = {
-    fenceId,
-    originalFrom: [...fence.from],
-    originalTo: [...fence.to],
-    startWorldX: world.x,
-    startWorldZ: world.z,
-    historyPushed: false
-  };
-  svg.setPointerCapture(event.pointerId);
+  DragHandler.beginFenceDrag(event, fenceId);
 }
 
 function moveFenceBy(fenceId, dx, dz) {
-  const fence = testMap.getFence(fenceId);
-  if (!fence || fence.locked) return;
-  
-  let nextFromX = fenceDragState.originalFrom[0] + dx;
-  let nextFromZ = fenceDragState.originalFrom[1] + dz;
-  let nextToX = fenceDragState.originalTo[0] + dx;
-  let nextToZ = fenceDragState.originalTo[1] + dz;
-  
-  if (snapEnabled && snapSize) {
-    const origDx = fenceDragState.originalTo[0] - fenceDragState.originalFrom[0];
-    const origDz = fenceDragState.originalTo[1] - fenceDragState.originalFrom[1];
-    const snappedFrom = snapWorldPoint({ x: nextFromX, z: nextFromZ });
-    nextFromX = snappedFrom.x;
-    nextFromZ = snappedFrom.z;
-    nextToX = Number((nextFromX + origDx).toFixed(3));
-    nextToZ = Number((nextFromZ + origDz).toFixed(3));
-  } else {
-    nextFromX = Number(nextFromX.toFixed(3));
-    nextFromZ = Number(nextFromZ.toFixed(3));
-    nextToX = Number(nextToX.toFixed(3));
-    nextToZ = Number(nextToZ.toFixed(3));
-  }
-  
-  testMap.updateFence(fenceId, {
-    from: [nextFromX, nextFromZ],
-    to: [nextToX, nextToZ]
-  }, false);
-  syncFenceMovePreview(fenceId);
-  
+  DragHandler.moveFenceBy(fenceId, dx, dz);
+}
+
+function finishFenceDrag() {
+  DragHandler.finishFenceDrag();
+}
+
+function beginFenceGateDrag(event, gateId) {
+  DragHandler.beginFenceGateDrag(event, gateId);
+}
+
+function finishFenceGateDrag() {
+  DragHandler.finishFenceGateDrag();
+}
+
+function updateSelectedFenceGatePreview(patch) {
+  if (!selectedFenceGateId) return;
+  if (testMap.getFenceGate(selectedFenceGateId)?.locked && !('locked' in patch)) return;
+  testMap.updateFenceGate(selectedFenceGateId, patch, false);
+  refreshShadows();
   updateEditor();
   renderPlan();
 }
 
-function finishFenceDrag() {
-  if (!fenceDragState && !fenceHandleDragState) return;
-  const fenceId = fenceDragState ? fenceDragState.fenceId : fenceHandleDragState.fenceId;
-  fenceDragState = null;
-  fenceHandleDragState = null;
-  testMap.build();
+function updateSelectedFenceGate(patch) {
+  if (!selectedFenceGateId) return;
+  if (testMap.getFenceGate(selectedFenceGateId)?.locked && !('locked' in patch)) return;
+  pushHistory();
+  testMap.updateFenceGate(selectedFenceGateId, patch);
   refreshShadows();
-  selectFence(fenceId);
+  updateEditor();
+  renderPlan();
+}
+
+function deleteSelectedFenceGate() {
+  if (!selectedFenceGateId) return;
+  if (testMap.getFenceGate(selectedFenceGateId)?.locked) return;
+  pushHistory();
+  testMap.deleteFenceGate(selectedFenceGateId);
+  clearSelection();
+  refreshShadows();
+  renderPlan();
+}
+
+function applyMaterialToFenceGateFrame(material) {
+  if (!selectedFenceGateId || !material) return;
+  if (isTargetLocked({ type: 'fence_gate', id: selectedFenceGateId })) {
+    showToast('该物体已锁定');
+    return;
+  }
+  pushHistory();
+  const color = typeof material === 'string' ? material : (material.color || '#ffffff');
+  const matVal = typeof material === 'string' ? material : (material.url || color);
+  testMap.updateFenceGate(selectedFenceGateId, { frameMaterial: matVal });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function applyMaterialToFenceGatePanel(material) {
+  if (!selectedFenceGateId || !material) return;
+  if (isTargetLocked({ type: 'fence_gate', id: selectedFenceGateId })) {
+    showToast('该物体已锁定');
+    return;
+  }
+  pushHistory();
+  const color = typeof material === 'string' ? material : (material.color || '#ffffff');
+  const matVal = typeof material === 'string' ? material : (material.url || color);
+  testMap.updateFenceGate(selectedFenceGateId, { panelMaterial: matVal });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
 }
 
 function findNearestSeat(mannequinItem) {
-  let nearest = null;
-  let minDistance = 1.2; // 1.2 米以内判定为附近
-  
-  testMap.floorplan.items.forEach((other) => {
-    if (other.id === mannequinItem.id) return;
-    const definition = testMap.getFurnitureDefinition(other.type);
-    if (!definition || !definition.interaction) return;
-    
-    const otherScale = Number(other.scale || 1);
-    const otherSize = {
-      width: (other.width / INCHES_PER_UNIT) * otherScale,
-      depth: (other.depth / INCHES_PER_UNIT) * otherScale,
-      height: (other.height / INCHES_PER_UNIT) * otherScale
-    };
-    
-    const localPoints = definition.interaction.getInteractionPoints(otherSize);
-    localPoints.forEach((p, index) => {
-      // XZ 平面投影
-      const cos = Math.cos(other.rotation || 0);
-      const sin = Math.sin(other.rotation || 0);
-      const wx = other.x + p.x * cos + p.z * sin;
-      const wz = other.z - p.x * sin + p.z * cos;
-      const wy = (other.elevation || 0) / INCHES_PER_UNIT + p.y;
-      
-      const dx = mannequinItem.x - wx;
-      const dz = mannequinItem.z - wz;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      
-      if (dist < minDistance) {
-        minDistance = dist;
-        nearest = {
-          item: other,
-          pointIndex: index,
-          pointType: definition.interaction.type,
-          worldPos: { x: wx, y: wy, z: wz }
-        };
-      }
-    });
-  });
-  
-  return nearest;
+  return Topology.findNearestSeat(
+    mannequinItem,
+    testMap.floorplan.items,
+    (type) => testMap.getFurnitureDefinition(type)
+  );
 }
 
 
@@ -4527,6 +3064,11 @@ function updateSelectedStructure() {
   if (selected.type === 'roof') {
     patch.type = patch.subtype;
     patch.bottomHidden = document.getElementById('structure-bottom-hidden').checked;
+    patch.curve = Number(document.getElementById('structure-curve')?.value || 0);
+    const eleInput = document.getElementById('structure-elevation');
+    if (eleInput) {
+      patch.elevation = Number(eleInput.value);
+    }
   }
   if (selected.type === 'stairs') {
     patch.steps = Number(document.getElementById('structure-steps').value);
@@ -4685,6 +3227,16 @@ function updateSelectedFenceHeight() {
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
   testMap.updateFence(selectedFenceId, { height: Number(document.getElementById('fence-height').value) });
+  refreshShadows();
+  updateEditor();
+  renderPlan();
+}
+
+function updateSelectedFenceYOffset() {
+  if (!selectedFenceId) return;
+  if (testMap.getFence(selectedFenceId)?.locked) return;
+  pushHistory();
+  testMap.updateFence(selectedFenceId, { yOffset: Number(document.getElementById('fence-yoffset').value) });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -5008,7 +3560,9 @@ function applyMaterialToFence(material) {
     return;
   }
   pushHistory();
-  const color = material.color || '#8d6e63';
+  const fence = testMap.getFence(selectedFenceId);
+  const defaultColor = (fence && fence.subtype === 'concrete') ? '#f9fbff' : '#8d6e63';
+  const color = material.color || defaultColor;
   testMap.updateFence(selectedFenceId, { material: material.url || color, color: color });
   refreshShadows();
   updateEditor();
@@ -5255,313 +3809,39 @@ if (takePhotoButton) {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'F12') {
-    event.preventDefault();
-    takePhoto();
-    return;
-  }
-
-  // 输入焦点拦截器，防止打字时触发快捷键
-  const activeEl = document.activeElement;
-  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
-    return;
-  }
-
-  const key = event.key.toLowerCase();
-
-  // 1. WASD 视角移动 (3D模式下)
-  if (currentView === '3d' && ['w', 'a', 's', 'd'].includes(key)) {
-    event.preventDefault();
-    const forward = camera.target.subtract(camera.position);
-    forward.y = 0;
-    forward.normalize();
-    const right = new BABYLON.Vector3(-forward.z, 0, forward.x);
-    const speed = 0.25; // 0.25 米/次
-
-    if (key === 'w') camera.target.addInPlace(forward.scale(speed));
-    if (key === 's') camera.target.subtractInPlace(forward.scale(speed));
-    // 修正3D下左右相反的问题：A 键原本是 subtract 导致相反，现修改为 add；D 键相应改动
-    if (key === 'a') camera.target.addInPlace(right.scale(speed));
-    if (key === 'd') camera.target.subtractInPlace(right.scale(speed));
-    return;
-  }
-
-  // 1.1 WASD 视角平移 (2D模式下)
-  if (currentView === '2d' && ['w', 'a', 's', 'd'].includes(key)) {
-    event.preventDefault();
-    // 采用自适应跨度作为平移步长，使缩放比例不同时平移体验高度一致
-    const stepX = (view.maxX - view.minX) * 0.05;
-    const stepZ = (view.maxZ - view.minZ) * 0.05;
-
-    if (key === 'w') {
-      view.minZ += stepZ;
-      view.maxZ += stepZ;
-    }
-    if (key === 's') {
-      view.minZ -= stepZ;
-      view.maxZ -= stepZ;
-    }
-    if (key === 'a') {
-      view.minX -= stepX;
-      view.maxX -= stepX;
-    }
-    if (key === 'd') {
-      view.minX += stepX;
-      view.maxX += stepX;
-    }
-    hasUserZoomedOrPanned = true;
-    renderPlan();
-    return;
-  }
-
-  // 2. 选中的物品/门窗移动 (上下左右键)
-  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
-    event.preventDefault();
-    if (selectedItemId) {
-      const step = 0.1; // 0.1 米
-      let dx = 0, dz = 0;
-      if (key === 'arrowup') dz = step;
-      if (key === 'arrowdown') dz = -step;
-      if (key === 'arrowleft') dx = -step;
-      if (key === 'arrowright') dx = step;
-      entityManager.nudgeItem(selectedItemId, dx, dz);
-    } else if (selectedOpeningId && ['arrowleft', 'arrowright'].includes(key)) {
-      const opening = testMap.getOpening(selectedOpeningId);
-      const wall = opening ? testMap.getWall(opening.wallId) : null;
-      if (opening && !opening.locked && wall) {
-        const wallLength = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]) || 1;
-        const step = 0.05; // 每次左右平移 5 厘米
-        const deltaT = step / wallLength;
-        let nextT = opening.t ?? 0.5;
-        if (key === 'arrowleft') nextT -= deltaT;
-        if (key === 'arrowright') nextT += deltaT;
-        nextT = Math.max(0.01, Math.min(0.99, nextT));
-
-        pushHistory();
-        testMap.updateOpening(selectedOpeningId, { t: nextT });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    }
-    return;
-  }
-
-  // 3. 选中的物品在Z轴/高度移动 (PageUp / PageDown)
-  if (event.key === 'PageUp' || event.key === 'PageDown') {
-    event.preventDefault();
-    if (selectedItemId) {
-      const step = 2.4; // 2.4 英寸 (0.1 米)
-      const delta = event.key === 'PageUp' ? step : -step;
-      entityManager.adjustItemElevation(selectedItemId, delta);
-    } else if (selectedOpeningId) {
-      const opening = testMap.getOpening(selectedOpeningId);
-      if (opening && !opening.locked && opening.type === 'window') {
-        pushHistory();
-        const step = 0.05; // 0.05 米
-        let newSill = opening.sillHeight ?? 1.05;
-        if (event.key === 'PageUp') newSill += step;
-        if (event.key === 'PageDown') newSill = Math.max(0.1, newSill - step);
-
-        testMap.updateOpening(selectedOpeningId, { sillHeight: Number(newSill.toFixed(3)) });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    }
-    return;
-  }
-
-  // 4. 选中的物品缩放 (+ / - / =)
-  if (key === '+' || key === '=' || key === '-') {
-    event.preventDefault();
-    if (selectedItemId) {
-      const delta = (key === '+' || key === '=') ? 0.05 : -0.05;
-      entityManager.adjustItemScale(selectedItemId, delta);
-    }
-    return;
-  }
-
-  // 5. 选中的物品旋转 ([ / ])
-  if (key === '[' || key === ']') {
-    event.preventDefault();
-    if (selectedItemId) {
-      const deltaDeg = key === ']' ? 15 : -15;
-      entityManager.adjustItemRotation(selectedItemId, deltaDeg);
-    }
-    return;
-  }
-
-  // 选中元素按 Delete / Backspace 直接删除
-  if (event.key === 'Delete' || event.key === 'Backspace') {
-    if (selectedItemId) {
-      event.preventDefault();
-      entityManager.deleteItem(selectedItemId);
-      return;
-    }
-    if (selectedOpeningId) {
-      event.preventDefault();
-      if (testMap.getOpening(selectedOpeningId)?.locked) return;
-      pushHistory();
-      testMap.deleteOpening(selectedOpeningId);
-      clearSelection();
-      refreshShadows();
-      return;
-    }
-    if (selectedWallId) {
-      event.preventDefault();
-      pushHistory();
-      testMap.deleteWall(selectedWallId);
-      clearSelection();
-      refreshShadows();
-      return;
-    }
-    if (selectedRoomId) {
-      event.preventDefault();
-      if (testMap.getRoom(selectedRoomId)?.locked) return;
-      showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
-        if (confirmed) {
-          pushHistory();
-          testMap.deleteRoom(selectedRoomId);
-          clearSelection();
-          refreshShadows();
-        }
-      });
-      return;
-    }
-    if (selectedRoofId) {
-      event.preventDefault();
-      if (testMap.getRoof?.(selectedRoofId)?.locked) return;
-      pushHistory();
-      testMap.deleteRoof(selectedRoofId);
-      clearSelection();
-      refreshShadows();
-      return;
-    }
-    if (selectedStairsId) {
-      event.preventDefault();
-      if (testMap.getStairs?.(selectedStairsId)?.locked) return;
-      pushHistory();
-      testMap.deleteStairs(selectedStairsId);
-      clearSelection();
-      refreshShadows();
-      return;
-    }
-    if (selectedFenceId) {
-      event.preventDefault();
-      if (testMap.getFence(selectedFenceId)?.locked) return;
-      pushHistory();
-      testMap.deleteFence(selectedFenceId);
-      clearSelection();
-      refreshShadows();
-      return;
-    }
-  }
-
-  // Ctrl/Meta 快捷组合键
-  if (event.ctrlKey || event.metaKey) {
-    const key = event.key.toLowerCase();
-    if (key === 'z' && !event.shiftKey) {
-      event.preventDefault();
-      undo();
-      return;
-    } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
-      event.preventDefault();
-      redo();
-      return;
-    } else if (key === 's') {
-      event.preventDefault();
-      document.getElementById('btn-save-local')?.click();
-      return;
-    } else if (key === 'o') {
-      event.preventDefault();
-      document.getElementById('btn-open-local')?.click();
-      return;
-    } else if (key === 'e') {
-      event.preventDefault();
-      document.getElementById('btn-save')?.click();
-      return;
-    } else if (key === 'i') {
-      event.preventDefault();
-      document.getElementById('btn-load')?.click();
-      return;
-    } else if (key === 'n') {
-      event.preventDefault();
-      document.getElementById('btn-new')?.click();
-      return;
-    } else if (key === 'l') {
-      event.preventDefault();
-      const target = getSelectedTarget();
-      if (target) {
-        toggleTargetLock(target);
-      }
-      return;
-    } else if (key === 'c' || key === 'd') {
-      event.preventDefault();
-      const target = getSelectedTarget();
-      if (target) {
-        copyContextTarget(target);
-      }
-      return;
-    }
-  }
-
-  // 备用快捷键 Ctrl+Alt+N (应对某些浏览器无法阻止默认 Ctrl+N)
-  if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'n') {
-    event.preventDefault();
-    document.getElementById('btn-new')?.click();
-    return;
-  }
-
-  // 5.5. 选中的灯具开关灯快捷键 (L 键)
-  if (key === 'l' && selectedItemId) {
-    const item = testMap.getItem(selectedItemId);
-    const definition = item ? testMap.getFurnitureDefinition(item.type) : null;
-    if (item && (definition?.category === 'lighting' || definition?.lightSource)) {
-      event.preventDefault();
-      entityManager.toggleItemPower(selectedItemId);
-      return;
-    }
-  }
-
-  // 选中的物体旋转快捷键 (R 键)
-  if (key === 'r') {
-    const target = getSelectedTarget();
-    if (target) {
-      if (isAllowedContextTarget(target) && !isTargetLocked(target)) {
-        event.preventDefault();
-        rotateContextTarget(target);
-        return;
-      }
-    }
-  }
-
-  // 行业常用单键建筑快捷键 (Space, Escape, L, E, R, D, W)
-  let targetMode = null;
-
-  if (event.key === ' ') {
-    event.preventDefault(); // 拦截空格默认的页面向下滚动
-    targetMode = 'select';
-  } else if (event.key === 'Escape') {
-    targetMode = 'select';
-  } else {
-    const keyMap = {
-      'l': 'draw-wall',
-      'e': 'delete-wall',
-      'r': 'add-room-square',
-      'd': 'add-door-square',
-      'w': 'add-window-square',
-      'v': 'view'
-    };
-    targetMode = keyMap[key];
-  }
-
-  if (targetMode) {
-    const button = document.querySelector(`.mode[data-mode="${targetMode}"]`);
-    if (button) {
-      button.click();
-    }
-  }
+  handleHotkeys(event, {
+    currentView,
+    camera,
+    BABYLON,
+    view,
+    hasUserZoomedOrPanned,
+    setHasUserZoomedOrPanned: (val) => { hasUserZoomedOrPanned = val; },
+    renderPlan,
+    selectedItemId,
+    entityManager,
+    selectedOpeningId,
+    testMap,
+    updateEditor,
+    selectedWallId,
+    selectedRoomId,
+    showCustomConfirm,
+    clearSelection,
+    refreshShadows,
+    selectedRoofId,
+    selectedStairsId,
+    selectedFenceId,
+    takePhoto,
+    undo,
+    redo,
+    getSelectedTarget,
+    toggleTargetLock,
+    copyContextTarget,
+    rotateContextTarget,
+    isAllowedContextTarget,
+    isTargetLocked,
+    pushHistory,
+    INCHES_PER_UNIT
+  });
 });
 
 document.querySelectorAll('.tab').forEach((button) => {
@@ -5625,9 +3905,14 @@ if (floorFloatingGroup) {
 }
 
 stage.addEventListener('contextmenu', (event) => {
-  const alreadyHandled = event.defaultPrevented;
   event.preventDefault();
-  if (alreadyHandled) return;
+  if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode() || mode.startsWith('draw-fence')) {
+    drawStart = null;
+    clearDrawWallPreview();
+    switchToSelectMode();
+    event.stopPropagation();
+    return;
+  }
   const target = currentView === '2d' ? get2DContextTargetFromElement(event.target) : null;
   if (target) {
     event.stopPropagation();
@@ -5718,165 +4003,14 @@ function resetInteractionState() {
   selectedOpeningId = null;
   drawStart = null;
   entityManager.dragState = null;
-  openingDragState = null;
-  roomDragState = null;
-  roomResizeState = null;
+  DragHandler.clearAllDragStates();
   entityManager.itemGestureState = null;
   activePointers.clear();
-  viewPointers.clear();
-  isPanning2D = false;
-  panStart2D = null;
-  prevTouchDist2D = 0;
-  prevTouchCenter2D = null;
+  SvgEvents.resetSvgInteractionState();
   end3DDrag();
 }
 
-function downloadBuildingFile() {
-  const json = testMap.stringifyBuildingFile({ name: testMap.floorplan.name || 'blueprint-building' });
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = createBuildingFileName(testMap.floorplan.name || 'blueprint-building');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function downloadDXFFile() {
-  const json = testMap.exportJSON();
-  const dxfText = stringifyDXF(json);
-  const blob = new Blob([dxfText], { type: 'image/vnd.dxf' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = createDXFFileName(testMap.floorplan.name || 'blueprint-building');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function download3MFFile() {
-  const json = testMap.exportJSON();
-  const bytes = create3MFPackage(json);
-  const blob = new Blob([bytes], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = create3MFFileName(testMap.floorplan.name || 'blueprint-building');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-async function loadBuildingFile(file) {
-  if (!file) return;
-  const text = await file.text();
-  pushHistory();
-  testMap.loadBuildingFile(text);
-  syncFloorControls();
-  hasUserZoomedOrPanned = false;
-  resetInteractionState();
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-  if (currentView === '3d') {
-    requestAnimationFrame(() => {
-      engine.resize();
-      scene.render();
-    });
-  }
-}
-
-document.getElementById('btn-save').addEventListener('click', downloadBuildingFile);
-document.getElementById('btn-save-local').addEventListener('click', async () => {
-  const defaultName = store.getCurrentProjectName() || testMap.floorplan.name || '';
-  const name = await showCustomPrompt('保存到本地', '请为项目命名：', defaultName || '我的蓝图');
-  if (!name) return;
-  const ok = store.saveProject(name, {
-    materialLibrary: materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id)),
-    uiState: { currentFloorId: testMap.floorplan.currentFloorId, currentView },
-  });
-  if (ok) {
-    updateLocalProjectCount();
-  }
-  showToast(ok ? `✓ 已保存「${name}」` : '⚠ 保存失败');
-});
-document.getElementById('btn-export-dxf').addEventListener('click', downloadDXFFile);
-document.getElementById('btn-export-3mf').addEventListener('click', download3MFFile);
-
-document.getElementById('btn-load').addEventListener('click', () => {
-  buildingFileInput.value = '';
-  buildingFileInput.click();
-});
-
-document.getElementById('btn-open-local').addEventListener('click', async () => {
-  const projects = store.listProjects();
-  if (!projects.length) {
-    await showCustomAlert('暂无本地项目', '还没有保存过项目到本地，请先使用「保存到本地」。');
-    return;
-  }
-  const result = await showProjectListModal(projects);
-  if (!result) return;
-  if (result.action === 'open') {
-    const data = store.loadProject(result.name);
-    if (data && data.buildingData) {
-      pushHistory();
-      testMap.loadJSON(data.buildingData);
-      syncFloorControls();
-      hasUserZoomedOrPanned = false;
-      resetInteractionState();
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-      if (data.materialLibrary && data.materialLibrary.length) {
-        data.materialLibrary.forEach((m) => {
-          if (!materialLibrary.some((existing) => existing.id === m.id)) {
-            materialLibrary.push(m);
-          }
-        });
-      }
-      showToast(`✓ 已打开「${result.name}」`);
-    } else {
-      await showCustomAlert('打开失败', '无法读取该项目的数据。');
-    }
-  } else if (result.action === 'delete') {
-    const confirmed = await showCustomConfirm('删除项目', `确定要删除「${result.name}」吗？此操作不可撤销。`);
-    if (confirmed) {
-      store.deleteProject(result.name);
-      updateLocalProjectCount();
-      showToast(`已删除「${result.name}」`);
-    }
-  }
-});
-
-buildingFileInput.addEventListener('change', async (event) => {
-  try {
-    await loadBuildingFile(event.target.files?.[0]);
-  } catch (error) {
-    console.error(error);
-    await showCustomAlert('加载失败', '建筑文件加载失败，请确认它是 blueprint3d-babylon 建筑文件。');
-  }
-});
-
-function updateLocalProjectCount() {
-  const badge = document.getElementById('open-project-badge');
-  if (badge) {
-    const count = store.listProjects().length;
-    badge.textContent = count;
-    if (count === 0) {
-      badge.classList.add('zero');
-    } else {
-      badge.classList.remove('zero');
-    }
-  }
-}
-
-// 页面初始化时刷新一次本地项目数量
-updateLocalProjectCount();
+// 文件的导入导出与 LocalStorage 项目管理已迁移至 FileManager.js 中管理
 
 document.getElementById('btn-new').addEventListener('click', () => {
   pushHistory();
@@ -5988,465 +4122,10 @@ function initToolGroupToggles() {
 
 initToolGroupToggles();
 
-// ==========================================
-// 自定义弹窗系统 (已去除磨砂玻璃)
-// ==========================================
-
-function showCustomConfirm(title, message = '') {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'custom-modal-backdrop';
-    
-    let finalTitle = title;
-    let finalMessage = message;
-    if (!message) {
-      finalTitle = '提示';
-      finalMessage = title;
-    }
-
-    backdrop.innerHTML = `
-      <div class="custom-modal-container">
-        <div class="custom-modal-header">
-          <div class="custom-modal-icon-wrapper confirm">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <h3 class="custom-modal-title">${finalTitle}</h3>
-        </div>
-        <div class="custom-modal-body">${finalMessage}</div>
-        <div class="custom-modal-footer">
-          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">取消</button>
-          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-confirm">确认</button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(backdrop);
-    backdrop.getBoundingClientRect();
-    backdrop.classList.add('active');
-    
-    let isCleaned = false;
-    const cleanup = (value) => {
-      if (isCleaned) return;
-      isCleaned = true;
-      backdrop.classList.remove('active');
-      window.removeEventListener('keydown', handleKeyDown);
-      setTimeout(() => {
-        backdrop.remove();
-      }, 200);
-      resolve(value);
-    };
-
-    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(false));
-    backdrop.querySelector('#custom-modal-confirm').addEventListener('click', () => cleanup(true));
-    
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) {
-        cleanup(false);
-      }
-    });
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cleanup(false);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        cleanup(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-  });
-}
-
-function showCustomAlert(title, message = '') {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'custom-modal-backdrop';
-    
-    let finalTitle = title;
-    let finalMessage = message;
-    if (!message) {
-      finalTitle = '提示';
-      finalMessage = title;
-    }
-
-    backdrop.innerHTML = `
-      <div class="custom-modal-container">
-        <div class="custom-modal-header">
-          <div class="custom-modal-icon-wrapper alert">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <h3 class="custom-modal-title">${finalTitle}</h3>
-        </div>
-        <div class="custom-modal-body">${finalMessage}</div>
-        <div class="custom-modal-footer">
-          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-ok">确定</button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(backdrop);
-    backdrop.getBoundingClientRect();
-    backdrop.classList.add('active');
-    
-    let isCleaned = false;
-    const cleanup = () => {
-      if (isCleaned) return;
-      isCleaned = true;
-      backdrop.classList.remove('active');
-      window.removeEventListener('keydown', handleKeyDown);
-      setTimeout(() => {
-        backdrop.remove();
-      }, 200);
-      resolve();
-    };
-
-    backdrop.querySelector('#custom-modal-ok').addEventListener('click', cleanup);
-    
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) {
-        cleanup();
-      }
-    });
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' || e.key === 'Enter') {
-        e.preventDefault();
-        cleanup();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-  });
-}
-
-/**
- * 显示带输入框的弹窗
- * @param {string} title - 弹窗标题
- * @param {string} message - 提示消息
- * @param {string} [defaultValue=''] - 输入框默认值
- * @returns {Promise<string|null>} 用户输入的值，取消返回 null
- */
-function showCustomPrompt(title, message = '', defaultValue = '') {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'custom-modal-backdrop';
-
-    let finalTitle = title;
-    let finalMessage = message;
-    if (!message) {
-      finalTitle = '输入';
-      finalMessage = title;
-    }
-
-    backdrop.innerHTML = `
-      <div class="custom-modal-container">
-        <div class="custom-modal-header">
-          <div class="custom-modal-icon-wrapper confirm">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          </div>
-          <h3 class="custom-modal-title">${finalTitle}</h3>
-        </div>
-        <div class="custom-modal-body">
-          <p style="margin:0 0 12px 0">${finalMessage}</p>
-          <input type="text" id="custom-modal-input" class="custom-modal-input" value="${defaultValue.replace(/"/g, '&quot;')}" autocomplete="off" />
-        </div>
-        <div class="custom-modal-footer">
-          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">取消</button>
-          <button type="button" class="custom-modal-btn btn-primary" id="custom-modal-confirm">确定</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    backdrop.getBoundingClientRect();
-    backdrop.classList.add('active');
-
-    const inputEl = backdrop.querySelector('#custom-modal-input');
-    requestAnimationFrame(() => {
-      inputEl.focus();
-      inputEl.select();
-    });
-
-    let isCleaned = false;
-    const cleanup = (value) => {
-      if (isCleaned) return;
-      isCleaned = true;
-      backdrop.classList.remove('active');
-      window.removeEventListener('keydown', handleKeyDown);
-      setTimeout(() => backdrop.remove(), 200);
-      resolve(value);
-    };
-
-    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(null));
-    backdrop.querySelector('#custom-modal-confirm').addEventListener('click', () => {
-      const val = inputEl.value.trim();
-      cleanup(val || null);
-    });
-
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) cleanup(null);
-    });
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cleanup(null);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const val = inputEl.value.trim();
-        cleanup(val || null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-  });
-}
-
-/**
- * 显示本地项目列表弹窗，支持打开和删除
- * @param {{ id: string, name: string, savedAt: number }[]} projects
- * @returns {Promise<{ action: 'open'|'delete', name: string }|null>}
- */
-function showProjectListModal(projects) {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'custom-modal-backdrop';
-
-    const listHtml = projects.map((p) => {
-      const timeStr = formatTimestamp(p.savedAt);
-      return `
-        <div class="project-list-item" data-name="${p.name.replace(/"/g, '&quot;')}">
-          <div class="project-list-item-info">
-            <span class="project-list-item-name">${p.name}</span>
-            <span class="project-list-item-time">${timeStr}</span>
-          </div>
-          <div class="project-list-item-actions">
-            <button type="button" class="custom-modal-btn btn-primary btn-sm project-open-btn" title="打开">打开</button>
-            <button type="button" class="custom-modal-btn btn-danger btn-sm project-delete-btn" title="删除">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    backdrop.innerHTML = `
-      <div class="custom-modal-container" style="max-width:480px">
-        <div class="custom-modal-header">
-          <div class="custom-modal-icon-wrapper confirm">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <h3 class="custom-modal-title">打开本地项目</h3>
-        </div>
-        <div class="custom-modal-body" style="margin-bottom:16px">
-          <div class="project-list">${listHtml}</div>
-        </div>
-        <div class="custom-modal-footer">
-          <button type="button" class="custom-modal-btn btn-secondary" id="custom-modal-cancel">关闭</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(backdrop);
-    backdrop.getBoundingClientRect();
-    backdrop.classList.add('active');
-
-    let isCleaned = false;
-    const cleanup = (value) => {
-      if (isCleaned) return;
-      isCleaned = true;
-      backdrop.classList.remove('active');
-      window.removeEventListener('keydown', handleKeyDown);
-      setTimeout(() => backdrop.remove(), 200);
-      resolve(value);
-    };
-
-    // 打开按钮
-    backdrop.querySelectorAll('.project-open-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const item = e.target.closest('.project-list-item');
-        cleanup({ action: 'open', name: item.dataset.name });
-      });
-    });
-
-    // 删除按钮
-    backdrop.querySelectorAll('.project-delete-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const item = e.target.closest('.project-list-item');
-        cleanup({ action: 'delete', name: item.dataset.name });
-      });
-    });
-
-    backdrop.querySelector('#custom-modal-cancel').addEventListener('click', () => cleanup(null));
-
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) cleanup(null);
-    });
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cleanup(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-  });
-}
 
 // ==========================================
 // 自定义下拉选择器组件
 // ==========================================
-
-function createCustomDropdown(selectId) {
-  const select = document.getElementById(selectId);
-  if (!select) return null;
-
-  // 隐藏原生的 select 标签
-  select.style.display = 'none';
-
-  // 创建自定义下拉框的外层容器
-  const container = document.createElement('div');
-  container.className = 'custom-dropdown';
-  container.id = `${selectId}-custom-container`;
-  
-  // 创建触发按钮 Trigger
-  const trigger = document.createElement('div');
-  trigger.className = 'custom-dropdown-trigger';
-  
-  trigger.innerHTML = `
-    <span class="custom-dropdown-text"></span>
-    <svg class="custom-dropdown-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-  `;
-  
-  // 创建选项浮层 Menu
-  const menu = document.createElement('div');
-  menu.className = 'custom-dropdown-menu';
-  
-  container.appendChild(trigger);
-  container.appendChild(menu);
-  
-  // 插入到 DOM 中，紧随在原生 select 后面
-  select.parentNode.insertBefore(container, select.nextSibling);
-
-  // 更新触发器文本和图标
-  function updateTriggerDisplay(selectedOption) {
-    if (!selectedOption) return;
-    const iconContent = selectedOption.getAttribute('data-icon') || '';
-    trigger.querySelector('.custom-dropdown-text').innerHTML = `
-      ${iconContent ? `<svg class="custom-dropdown-trigger-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconContent}</svg>` : ''}
-      <span>${selectedOption.textContent}</span>
-    `;
-  }
-
-  // 渲染菜单选项列表
-  function syncOptions() {
-    menu.innerHTML = '';
-    const options = Array.from(select.options);
-    
-    if (options.length === 0) {
-      trigger.querySelector('.custom-dropdown-text').textContent = '无选项';
-      return;
-    }
-
-    // 选中值
-    const selectedOption = select.options[select.selectedIndex] || options[0];
-    updateTriggerDisplay(selectedOption);
-
-    options.forEach((opt) => {
-      const item = document.createElement('div');
-      item.className = 'custom-dropdown-item';
-      if (opt.value === select.value) {
-        item.classList.add('selected');
-      }
-      
-      const iconContent = opt.getAttribute('data-icon') || '';
-      item.innerHTML = `
-        ${iconContent ? `<svg class="custom-dropdown-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconContent}</svg>` : ''}
-        <span class="custom-dropdown-item-text">${opt.textContent}</span>
-      `;
-      item.dataset.value = opt.value;
-      
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
-        // 设值并触发 change 事件
-        select.value = opt.value;
-        select.dispatchEvent(new Event('change'));
-        
-        // 更新 UI
-        updateTriggerDisplay(opt);
-        Array.from(menu.children).forEach(child => child.classList.remove('selected'));
-        item.classList.add('selected');
-        
-        closeMenu();
-      });
-      
-      menu.appendChild(item);
-    });
-  }
-
-  function openMenu() {
-    container.classList.add('active');
-    document.addEventListener('click', handleOutsideClick);
-  }
-
-  function closeMenu() {
-    container.classList.remove('active');
-    document.removeEventListener('click', handleOutsideClick);
-  }
-
-  function handleOutsideClick(e) {
-    if (!container.contains(e.target)) {
-      closeMenu();
-    }
-  }
-
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (container.classList.contains('active')) {
-      closeMenu();
-    } else {
-      // 关闭页面上其他已激活的下拉框
-      document.querySelectorAll('.custom-dropdown.active').forEach(dropdown => {
-        if (dropdown !== container) {
-          dropdown.classList.remove('active');
-        }
-      });
-      openMenu();
-    }
-  });
-
-  // 1. 监听原生 select 选项的动态变化 (通过 MutationObserver 自动更新)
-  const observer = new MutationObserver(() => {
-    syncOptions();
-  });
-  observer.observe(select, { childList: true, subtree: true });
-
-  // 2. 监听原生 select 值的变更 (防范代码层面的修改，确保数据回流更新)
-  select.addEventListener('change', () => {
-    const selectedOpt = select.options[select.selectedIndex];
-    if (selectedOpt) {
-      updateTriggerDisplay(selectedOpt);
-      Array.from(menu.children).forEach(child => {
-        if (child.dataset.value === select.value) {
-          child.classList.add('selected');
-        } else {
-          child.classList.remove('selected');
-        }
-      });
-    }
-  });
-
-  // 初始化首次同步
-  syncOptions();
-
-  return {
-    destroy() {
-      observer.disconnect();
-      container.remove();
-      select.style.display = '';
-    }
-  };
-}
 
 export function getSnapEnabled() {
   return snapEnabled;
@@ -6488,13 +4167,18 @@ export {
   commitSelectedStructureRotation,
   previewSelectedStructureRotation,
   deleteSelectedStructure,
+  selectedFenceGateId,
   
   updateSelectedSize,
   updateSelectedOpening,
+  updateSelectedFenceGate,
+  updateSelectedFenceGatePreview,
+  deleteSelectedFenceGate,
   updateSelectedFenceSubtype,
   updateSelectedFenceLength,
   updateSelectedFenceHeight,
   updateSelectedFenceColor,
+  updateSelectedFenceYOffset,
   
   applyMaterialToRoomFloor,
   applyMaterialToWallFront,
@@ -6502,6 +4186,8 @@ export {
   applyMaterialToStructure,
   applyMaterialToItemComponent,
   applyMaterialToFence,
+  applyMaterialToFenceGateFrame,
+  applyMaterialToFenceGatePanel,
   
   isTargetLocked,
   showToast,

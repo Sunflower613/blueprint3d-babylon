@@ -66,13 +66,13 @@ button:disabled {
 .workspace {
   height: 100vh;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 250px;
+  grid-template-columns: 280px minmax(0, 1fr) 300px;
   overflow: hidden;
   transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .workspace:has(.left-panel.collapsed) {
-  grid-template-columns: 0px minmax(0, 1fr) 250px;
+  grid-template-columns: 0px minmax(0, 1fr) 300px;
 }
 
 .workspace:has(.right-panel.collapsed) {
@@ -474,6 +474,19 @@ button:disabled {
   display: grid;
   gap: 6px;
   margin-bottom: 10px;
+  min-width: 0;
+}
+
+.fields-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.fields-row .field {
+  flex: 1;
+  margin-bottom: 0;
   min-width: 0;
 }
 
@@ -1653,7 +1666,8 @@ select {
 .opening-tools,
 .roof-tools,
 .stairs-tools,
-.fence-tools {
+.fence-tools,
+.fence-gate-tools {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 6px !important;
@@ -1674,7 +1688,8 @@ select {
 .opening-tools .mode,
 .roof-tools .mode,
 .stairs-tools .mode,
-.fence-tools .mode {
+.fence-tools .mode,
+.fence-gate-tools .mode {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -1704,7 +1719,8 @@ select {
 .opening-tools .mode:hover,
 .roof-tools .mode:hover,
 .stairs-tools .mode:hover,
-.fence-tools .mode:hover {
+.fence-tools .mode:hover,
+.fence-gate-tools .mode:hover {
   background: rgba(42, 65, 92, 0.08) !important;
   color: #2a415c !important;
 }
@@ -1714,7 +1730,8 @@ select {
 .opening-tools .mode.active,
 .roof-tools .mode.active,
 .stairs-tools .mode.active,
-.fence-tools .mode.active {
+.fence-tools .mode.active,
+.fence-gate-tools .mode.active {
   background: #ffffff !important;
   color: #1f8fff !important;
   font-weight: 600 !important;
@@ -1744,7 +1761,8 @@ select {
 .opening-tools .mode.active .mode-shortcut,
 .roof-tools .mode.active .mode-shortcut,
 .stairs-tools .mode.active .mode-shortcut,
-.fence-tools .mode.active .mode-shortcut {
+.fence-tools .mode.active .mode-shortcut,
+.fence-gate-tools .mode.active .mode-shortcut {
   color: rgba(31, 143, 255, 0.6);
 }
 
@@ -1758,7 +1776,8 @@ select {
   .opening-tools .mode,
   .roof-tools .mode,
   .stairs-tools .mode,
-  .fence-tools .mode {
+  .fence-tools .mode,
+  .fence-gate-tools .mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;
@@ -1773,7 +1792,8 @@ select {
   .opening-tools .mode,
   .roof-tools .mode,
   .stairs-tools .mode,
-  .fence-tools .mode {
+  .fence-tools .mode,
+  .fence-gate-tools .mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;

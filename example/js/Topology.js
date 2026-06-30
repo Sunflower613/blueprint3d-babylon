@@ -171,28 +171,54 @@ export function canPlaceOnTable(item, definition) {
   if (definition.placeType === 'wall' || definition.placeType === 'ceiling') {
     return false;
   }
-  const category = definition.category;
-  if (category === 'seating' || category === 'bedroom' || category === 'kitchen-bath') {
-    if (definition.type !== 'cushion') {
-      return false;
-    }
-  }
+  
+  const type = definition.type || '';
+  const category = definition.category || '';
+  
+  // 1. 桌子、柜架大类本身不能摆放在别的桌上
   if (category === 'tables' || category === 'storage') {
     return false;
   }
-  if (category === 'lighting') {
-    if (definition.type.includes('floor')) {
-      return false;
-    }
-    if (!definition.type.includes('lamp') && !definition.type.includes('light')) {
+  
+  // 2. 椅子、坐具类（seating）除 cushion（靠枕）外通常都不能摆在桌上
+  if (category === 'seating') {
+    if (type !== 'cushion') {
       return false;
     }
   }
   
-  // 限制尺寸：底面积较小，长宽均在24英寸(60厘米)以下
+  // 3. 卧室大类过滤：大件床铺及梳妆台/吊网不能摆放，其余精细摆件（如化妆品、香水、眼影盒、文具等）允许吸附
+  if (category === 'bedroom') {
+    const isBigBedroomItem = type.includes('bed') || type.includes('crib') || type === 'mattress' || type === 'vanity' || type === 'hammock';
+    if (isBigBedroomItem) {
+      return false;
+    }
+  }
+  
+  // 4. 厨卫大类过滤：大件电器与大盆（如冰箱、马桶、浴缸、洗衣机、淋浴房等）不能摆放，其余小厨电与洗漱用品（如咖啡机、面包机、洗手液、茶杯组、水果盘等）允许吸附
+  if (category === 'kitchen-bath') {
+    const isBigKitchenBathItem = type === 'fridge' || type === 'toilet' || type === 'bathtub' || 
+                                  type === 'washing_machine' || type === 'stove' || type === 'shower_cabin' || 
+                                  type === 'dishwasher' || type === 'water_dispenser' || type === 'range_hood';
+    if (isBigKitchenBathItem) {
+      return false;
+    }
+  }
+  
+  // 5. 灯具大类过滤：落地灯不能摆放，台灯/壁灯小灯具允许吸附
+  if (category === 'lighting') {
+    if (type.includes('floor')) {
+      return false;
+    }
+    if (!type.includes('lamp') && !type.includes('light')) {
+      return false;
+    }
+  }
+  
+  // 6. 统一尺寸限制：宽度限制放宽到32英寸以容纳30英寸的满层书籍摆件，深度限制保持24英寸
   const w = item.width || definition.defaultSize.width;
   const d = item.depth || definition.defaultSize.depth;
-  if (w > 24 || d > 24) {
+  if (w > 32 || d > 24) {
     return false;
   }
   return true;
@@ -596,5 +622,294 @@ export function getStairsRailingSegments(stairs, testMap) {
   }
 
   return segments;
+}
+
+/**
+ * 寻找与目标物体在水平投影（XZ 平面）上重合或靠近的储物架（如实用书架、鞋架、展示柜、格子柜、转角架）
+ * @param {Object} item 目标物品
+ * @param {Array<Object>} items 全局物品列表
+ * @param {string} currentFloorId 当前楼层ID
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {Object|null} 靠近的储物架对象
+ */
+export function findBookshelfNearby(item, items, currentFloorId, getFurnitureDefinition) {
+  let nearestBookshelf = null;
+  let minDistance = Infinity;
+  
+  const allItems = items || [];
+  const itemFloorId = item.floorId || currentFloorId;
+  const snapMargin = 0.30; // 30 厘米吸附判定宽容度，显著降低拖拽偏差导致吸附失败的概率
+
+  const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
+
+  for (const other of allItems) {
+    if (other.id === item.id) continue;
+    if (other.floorId !== itemFloorId) continue;
+    
+    const otherDef = getFurnitureDefinition(other.type);
+    if (!otherDef || !supportedTypes.includes(otherDef.type)) continue;
+    
+    const cx = other.x;
+    const cz = other.z;
+    const angle = other.rotation || 0;
+    
+    const dx = item.x - cx;
+    const dz = item.z - cz;
+    
+    // 转换至储物架的局部坐标系
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    
+    const otherScale = other.scale || 1;
+    const otherW = other.width || otherDef.defaultSize.width;
+    const otherD = other.depth || otherDef.defaultSize.depth;
+    
+    const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
+    const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+    
+    // 如果小物体在储物架投影范围内（加上宽容裕量）
+    if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
+      const dist = Math.hypot(localX, localZ);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestBookshelf = other;
+      }
+    }
+  }
+  return nearestBookshelf;
+}
+
+/**
+ * 计算物品吸附到储物架时的世界坐标和旋转
+ * @param {Object} item 待吸附物品
+ * @param {Object} bookshelf 目标储物架
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {Object|null} 吸附后的坐标姿态 { x, z, elevation, rotation }
+ */
+export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
+  const bookshelfDef = getFurnitureDefinition(bookshelf.type);
+  if (!bookshelfDef) return null;
+  
+  const scale = bookshelf.scale || 1;
+  const bWidth = (bookshelf.width || bookshelfDef.defaultSize.width) / INCHES_PER_UNIT * scale; // 米
+  
+  // 换算为世界 y 高度（米）列表
+  const worldShelvesY = getShelfLayerHeights(bookshelf, getFurnitureDefinition);
+  if (worldShelvesY.length === 0) return null;
+  
+  // 小物体当前的世界 Y 坐标（米）
+  const itemYWorld = (item.elevation || 0) / INCHES_PER_UNIT;
+  
+  // 寻找最接近的搁板表面高度
+  let closestShelfY = worldShelvesY[0];
+  let minDiff = Infinity;
+  worldShelvesY.forEach(y => {
+    const diff = Math.abs(itemYWorld - y);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestShelfY = y;
+    }
+  });
+  
+  // 限制 X, Z 局部坐标
+  const cx = bookshelf.x;
+  const cz = bookshelf.z;
+  const angle = bookshelf.rotation || 0;
+  
+  const dx = item.x - cx;
+  const dz = item.z - cz;
+  
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
+  const localX = dx * cos - dz * sin;
+  
+  // 根据不同类型限制宽度和深度
+  let clampedLocalX = localX;
+  let clampedLocalZ = 0.0; // 默认锁定在搁板深度正中线（局部Z = 0）
+  
+  if (bookshelf.type === 'corner_shelf') {
+    const maxLocalX = bWidth / 2 - 0.02 * scale;
+    clampedLocalX = Math.max(-maxLocalX, Math.min(maxLocalX, localX));
+    clampedLocalZ = 0.0;
+  } else {
+    // 排除两边侧外框板的厚度（防止溢出），锁定在搁板中线上
+    const sideWallT = (bookshelf.type === 'shoerack' ? 0.03 : 0.04) * scale;
+    const maxLocalX = bWidth / 2 - sideWallT;
+    clampedLocalX = Math.max(-maxLocalX, Math.min(maxLocalX, localX));
+    clampedLocalZ = 0.0;
+  }
+  
+  // 变换回世界坐标
+  const cosRot = Math.cos(angle);
+  const sinRot = Math.sin(angle);
+  const worldX = cx + clampedLocalX * cosRot + clampedLocalZ * sinRot;
+  const worldZ = cz - clampedLocalX * sinRot + clampedLocalZ * cosRot;
+  const worldY = closestShelfY;
+  
+  return {
+    x: Number(worldX.toFixed(3)),
+    z: Number(worldZ.toFixed(3)),
+    elevation: Number((worldY * INCHES_PER_UNIT).toFixed(2)), // 转换为英寸，保留两位小数
+    rotation: angle
+  };
+}
+
+/**
+ * 获取储物架（书架、展示架等）上所有可放置的物理层高列表（米，已包含书架本身的 elevation）
+ * @param {Object} bookshelf 目标储物架
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {Array<number>} 层高列表
+ */
+export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
+  const bookshelfDef = getFurnitureDefinition(bookshelf.type);
+  if (!bookshelfDef) return [];
+  
+  const scale = bookshelf.scale || 1;
+  const bHeight = (bookshelf.height || bookshelfDef.defaultSize.height) / INCHES_PER_UNIT * scale; // 米
+  
+  let localShelvesY = [];
+  if (bookshelf.type === 'bookshelf') {
+    // 实用书架：底座0.06m，隔板厚度0.03m（表面在其上方0.015m），比例 0.25, 0.50, 0.75，顶面1.0
+    localShelvesY = [
+      0.06 * scale,
+      bHeight * 0.25 + 0.015 * scale,
+      bHeight * 0.50 + 0.015 * scale,
+      bHeight * 0.75 + 0.015 * scale,
+      bHeight
+    ];
+  } else if (bookshelf.type === 'shoerack') {
+    // 矮鞋架：比例 0.32, 0.72，搁板厚度0.02m（表面在其上方0.01m），顶面1.0
+    localShelvesY = [
+      0.0,
+      bHeight * 0.32 + 0.01 * scale,
+      bHeight * 0.72 + 0.01 * scale,
+      bHeight
+    ];
+  } else if (bookshelf.type === 'display_cabinet') {
+    // 玻璃展示柜：比例 0.28, 0.52, 0.76，层板厚度0.02m，顶面1.0
+    localShelvesY = [
+      0.04 * scale, // 底部外框底面高约 0.04m
+      bHeight * 0.28 + 0.01 * scale,
+      bHeight * 0.52 + 0.01 * scale,
+      bHeight * 0.76 + 0.01 * scale,
+      bHeight
+    ];
+  } else if (bookshelf.type === 'grid_cabinet') {
+    // 九宫格收纳柜：比例 0.33, 0.66，隔板厚度0.02m，顶面1.0
+    localShelvesY = [
+      0.03 * scale, // 底部外框厚度约 0.03m
+      bHeight * 0.33 + 0.01 * scale,
+      bHeight * 0.66 + 0.01 * scale,
+      bHeight
+    ];
+  } else if (bookshelf.type === 'corner_shelf') {
+    // 转角置物架：比例 0.15, 0.40, 0.65, 0.90，层板厚度0.02m
+    localShelvesY = [
+      bHeight * 0.15 + 0.01 * scale,
+      bHeight * 0.40 + 0.01 * scale,
+      bHeight * 0.65 + 0.01 * scale,
+      bHeight * 0.90 + 0.01 * scale
+    ];
+  } else {
+    // 默认 fallback
+    localShelvesY = [0, bHeight];
+  }
+  
+  const bElevationWorld = (bookshelf.elevation || 0) / INCHES_PER_UNIT; // 米
+  return localShelvesY.map(y => bElevationWorld + y);
+}
+
+/**
+ * 统计目前已摆放在指定储物柜投影范围内的物品数量
+ * @param {Object} bookshelf 目标储物架
+ * @param {Array<Object>} items 全局物品列表
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {number} 摆放物体的数量
+ */
+export function getItemsCountOnBookshelf(bookshelf, items, getFurnitureDefinition) {
+  let count = 0;
+  const allItems = items || [];
+  const bookshelfDef = getFurnitureDefinition(bookshelf.type);
+  if (!bookshelfDef) return 0;
+  
+  const cx = bookshelf.x;
+  const cz = bookshelf.z;
+  const angle = bookshelf.rotation || 0;
+  
+  const otherScale = bookshelf.scale || 1;
+  const otherW = bookshelf.width || bookshelfDef.defaultSize.width;
+  const otherD = bookshelf.depth || bookshelfDef.defaultSize.depth;
+  
+  const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
+  const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+  const snapMargin = 0.0; // 仅统计书架轮廓内部的物件，防止对隔壁贴拢的书架产生干扰
+  
+  for (const item of allItems) {
+    if (item.id === bookshelf.id) continue;
+    const itemDef = getFurnitureDefinition(item.type);
+    if (!itemDef) continue;
+    if (!canPlaceOnTable(item, itemDef)) continue;
+    
+    const dx = item.x - cx;
+    const dz = item.z - cz;
+    
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    
+    if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * 找出目前摆放在指定储物柜投影范围内的所有物品对象
+ * @param {Object} bookshelf 目标储物架
+ * @param {Array<Object>} items 全局物品列表
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {Array<Object>} 摆放物体的列表
+ */
+export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
+  const result = [];
+  const allItems = items || [];
+  const bookshelfDef = getFurnitureDefinition(bookshelf.type);
+  if (!bookshelfDef) return [];
+  
+  const cx = bookshelf.x;
+  const cz = bookshelf.z;
+  const angle = bookshelf.rotation || 0;
+  
+  const otherScale = bookshelf.scale || 1;
+  const otherW = bookshelf.width || bookshelfDef.defaultSize.width;
+  const otherD = bookshelf.depth || bookshelfDef.defaultSize.depth;
+  
+  const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
+  const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+  const snapMargin = 0.0; // 仅联动属于本柜架轮廓内部的物件，决不连带隔壁柜架上的邻近物件
+  
+  for (const item of allItems) {
+    if (item.id === bookshelf.id) continue;
+    const itemDef = getFurnitureDefinition(item.type);
+    if (!itemDef) continue;
+    if (!canPlaceOnTable(item, itemDef)) continue;
+    
+    const dx = item.x - cx;
+    const dz = item.z - cz;
+    
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    
+    if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
+      result.push(item);
+    }
+  }
+  return result;
 }
 

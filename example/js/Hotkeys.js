@@ -302,6 +302,23 @@ export function handleHotkeys(event, ctx) {
     const button = document.querySelector(`.mode[data-mode="${targetMode}"]`);
     if (button) {
       button.click();
+      return;
+    }
+  }
+
+  // 5.8. 设计工具快捷键 (I, B, G, C)
+  const designKeyMap = {
+    'i': 'picker',
+    'b': 'brush',
+    'g': 'bucket',
+    'c': 'eraser'
+  };
+
+  if (designKeyMap[key]) {
+    event.preventDefault();
+    const button = document.querySelector(`.design-mode[data-design-mode="${designKeyMap[key]}"]`);
+    if (button) {
+      button.click();
     }
   }
 }

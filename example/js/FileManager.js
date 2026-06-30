@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import {
   createBuildingFileName,
   createDXFFileName,
@@ -18,6 +19,11 @@ export function initFileManager(appContext) {
   const btnSave = document.getElementById('btn-save');
   if (btnSave) {
     btnSave.addEventListener('click', downloadBuildingFile);
+  }
+
+  const btnExportZip = document.getElementById('btn-export-zip');
+  if (btnExportZip) {
+    btnExportZip.addEventListener('click', downloadBuildingZIP);
   }
 
   const btnSaveLocal = document.getElementById('btn-save-local');
@@ -92,14 +98,27 @@ export function downloadDXFFile() {
 /**
  * 导出并下载 3MF 格式三维制造模型文件
  */
-export function download3MFFile() {
+export async function download3MFFile() {
+  const result = await ctx.show3MFExportDialog();
+  if (!result) return;
+  const { category, enableTenon } = result;
+
   const json = ctx.testMap.exportJSON();
-  const bytes = create3MFPackage(json);
+  const bytes = create3MFPackage(json, { category, enableTenon, testMap: ctx.testMap });
   const blob = new Blob([bytes], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = create3MFFileName(ctx.testMap.floorplan.name || 'blueprint-building');
+  
+  const baseName = ctx.testMap.floorplan.name || 'blueprint-building';
+  let exportName = baseName;
+  if (category === 'building') {
+    exportName = `${baseName}-building`;
+  } else if (category === 'furniture') {
+    exportName = `${baseName}-furniture`;
+  }
+  
+  link.download = create3MFFileName(exportName);
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -130,11 +149,17 @@ export async function loadBuildingFile(file) {
 }
 
 async function onFileInputChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
   try {
-    await loadBuildingFile(event.target.files?.[0]);
+    if (file.name.endsWith('.zip')) {
+      await loadBuildingZIP(file);
+    } else {
+      await loadBuildingFile(file);
+    }
   } catch (error) {
     console.error(error);
-    await ctx.showCustomAlert('加载失败', '建筑文件加载失败，请确认它是 blueprint3d-babylon 建筑文件。');
+    await ctx.showCustomAlert('加载失败', '加载失败，请确认它是有效的 blueprint3d-babylon 文件或 ZIP 归档包。');
   }
 }
 
@@ -147,7 +172,16 @@ export async function saveToLocalStorage() {
   if (!name) return;
 
   const ok = ctx.store.saveProject(name, {
-    materialLibrary: ctx.getMaterialLibrary().filter((m) => !ctx.DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id)),
+    materialLibrary: ctx.getMaterialLibrary()
+      .filter((m) => !ctx.DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))
+      .map((m) => {
+        if (m.id && String(m.id).startsWith('custom_')) {
+          const copy = { ...m };
+          delete copy.src;
+          return copy;
+        }
+        return m;
+      }),
     uiState: { currentFloorId: ctx.testMap.floorplan.currentFloorId, currentView: ctx.currentView },
   });
   if (ok) {
@@ -171,6 +205,24 @@ export async function openLocalStorageList() {
     const data = ctx.store.loadProject(result.name);
     if (data && data.buildingData) {
       ctx.pushHistory();
+      
+      // 还原自定义材质的 src
+      const restoreFloorplanMaterials = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (obj.id && String(obj.id).startsWith('custom_') && (!obj.src || obj.src.startsWith('materials/'))) {
+          const storedStr = localStorage.getItem('custom_material_sources');
+          const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+          const base64 = sourcesMap[obj.id];
+          if (base64) obj.src = base64;
+        }
+        for (const key of Object.keys(obj)) {
+          if (obj[key] && typeof obj[key] === 'object') {
+            restoreFloorplanMaterials(obj[key]);
+          }
+        }
+      };
+      restoreFloorplanMaterials(data.buildingData);
+
       ctx.testMap.loadJSON(data.buildingData);
       ctx.syncFloorControls();
       ctx.setHasUserZoomedOrPanned(false);
@@ -180,7 +232,12 @@ export async function openLocalStorageList() {
       ctx.renderPlan();
       if (data.materialLibrary && data.materialLibrary.length) {
         const materialLibrary = ctx.getMaterialLibrary();
+        const storedStr = localStorage.getItem('custom_material_sources');
+        const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
         data.materialLibrary.forEach((m) => {
+          if (m.id && String(m.id).startsWith('custom_')) {
+            m.src = sourcesMap[m.id] || m.src;
+          }
           if (!materialLibrary.some((existing) => existing.id === m.id)) {
             materialLibrary.push(m);
           }
@@ -213,5 +270,321 @@ export function updateLocalProjectCount() {
     } else {
       badge.classList.remove('zero');
     }
+  }
+}
+
+/**
+ * 递归寻找并提取自定义材质描述符
+ */
+function processCustomMaterials(obj, onMaterialFound) {
+  if (!obj || typeof obj !== 'object') return;
+
+  // 如果含有 ID 且为自定义材质 ID 形式
+  if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('custom_')) {
+    // 从本地集中存储取回 Base64 并临时塞回以做进一步处理
+    const storedStr = localStorage.getItem('custom_material_sources');
+    const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+    const base64 = sourcesMap[obj.id];
+    if (base64) {
+      obj.src = base64;
+      onMaterialFound(obj);
+    }
+  }
+
+  // 递归处理子属性
+  for (const key of Object.keys(obj)) {
+    if (obj[key] && typeof obj[key] === 'object') {
+      processCustomMaterials(obj[key], onMaterialFound);
+    }
+  }
+}
+
+/**
+ * 将 Base64 Data URL 转换为 Uint8Array
+ */
+function dataURLtoUint8Array(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return { data: u8arr, mime };
+}
+
+/**
+ * 根据 MIME 类型获取文件后缀名
+ */
+function mimeToExt(mime) {
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+  if (mime.includes('webp')) return 'webp';
+  if (mime.includes('gif')) return 'gif';
+  return 'png';
+}
+
+/**
+ * ArrayBuffer 转为 Base64 字符串（防溢出安全版）
+ */
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * 导出并下载 ZIP 压缩存档，包含场景JSON、自定义材质图片及自定义家具JS文件
+ */
+export async function downloadBuildingZIP() {
+  try {
+    ctx.showToast('正在准备导出 ZIP 压缩包...');
+    const zip = new JSZip();
+
+    // 1. 获取主建筑数据结构
+    const buildingFileObj = ctx.testMap.exportBuildingFile({ name: ctx.testMap.floorplan.name || 'blueprint-building' });
+    
+    const usedCustomMaterials = [];
+    const zipMaterialsFolder = zip.folder('materials');
+
+    // 2. 提取场景中用到的自定义材质并替换 src 为相对路径
+    processCustomMaterials(buildingFileObj.floorplan, (matDesc) => {
+      try {
+        const { data, mime } = dataURLtoUint8Array(matDesc.src);
+        const ext = mimeToExt(mime);
+        const fileName = `${matDesc.id}.${ext}`;
+        
+        if (!usedCustomMaterials.some(m => m.id === matDesc.id)) {
+          zipMaterialsFolder.file(fileName, data);
+          
+          const matCopy = { ...matDesc };
+          matCopy.src = `materials/${fileName}`;
+          usedCustomMaterials.push(matCopy);
+        }
+        
+        matDesc.src = `materials/${fileName}`;
+      } catch (err) {
+        console.error('Failed to extract custom material:', matDesc, err);
+      }
+    });
+
+    // 保存材质库元数据到 materials.json
+    if (usedCustomMaterials.length > 0) {
+      zip.file('materials.json', JSON.stringify(usedCustomMaterials, null, 2));
+    }
+
+    // 3. 提取场景中用到的自定义家具并收集其源代码
+    const usedCustomFurnitureTypes = new Set();
+    if (buildingFileObj.floorplan.items && Array.isArray(buildingFileObj.floorplan.items)) {
+      const furnitureDefinitions = ctx.getFurnitureDefinitions();
+      for (const item of buildingFileObj.floorplan.items) {
+        const type = item.type;
+        if (type && furnitureDefinitions[type]) {
+          const def = furnitureDefinitions[type];
+          if (def.category === 'custom') {
+            usedCustomFurnitureTypes.add(type);
+          }
+        }
+      }
+    }
+
+    if (usedCustomFurnitureTypes.size > 0) {
+      const zipFurnitureFolder = zip.folder('furniture');
+      const customFurnitureSourcesStr = localStorage.getItem('custom_furniture_sources');
+      const sourcesMap = customFurnitureSourcesStr ? JSON.parse(customFurnitureSourcesStr) : {};
+      
+      for (const type of usedCustomFurnitureTypes) {
+        const source = sourcesMap[type];
+        if (source) {
+          zipFurnitureFolder.file(`${type}.js`, source);
+        } else {
+          console.warn(`Custom furniture source code not found for type: ${type}`);
+        }
+      }
+    }
+
+    // 4. 将主场景数据写入 b3dbuilding.json
+    const safeName = String(ctx.testMap.floorplan.name || 'blueprint-building')
+      .trim()
+      .replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'blueprint-building';
+    
+    zip.file(`${safeName}.b3dbuilding.json`, JSON.stringify(buildingFileObj, null, 2));
+
+    // 5. 生成并启动浏览器下载
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${safeName}-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    
+    ctx.showToast('✓ ZIP 导出成功');
+  } catch (error) {
+    console.error('Failed to export ZIP:', error);
+    ctx.showCustomAlert('导出失败', '导出 ZIP 压缩包时发生错误：' + (error.message || error));
+  }
+}
+
+/**
+ * 导入并解压 ZIP 压缩包，加载材质与家具，然后恢复渲染场景
+ */
+export async function loadBuildingZIP(file) {
+  if (!file) return;
+  
+  ctx.showToast('正在读取 ZIP 文件...');
+  
+  try {
+    const zip = await JSZip.loadAsync(file);
+    
+    // 1. 寻找根目录下的 *.b3dbuilding.json 场景文件
+    let mainJsonFile = null;
+    let mainJsonFileName = '';
+    zip.forEach((relativePath, fileEntry) => {
+      if (relativePath.endsWith('.b3dbuilding.json') && !relativePath.includes('/')) {
+        mainJsonFile = fileEntry;
+        mainJsonFileName = relativePath;
+      }
+    });
+    
+    if (!mainJsonFile) {
+      throw new Error('未在 ZIP 压缩包根目录下找到 *.b3dbuilding.json 主场景文件。');
+    }
+    
+    const mainJsonText = await mainJsonFile.async('text');
+    const buildingFileObj = JSON.parse(mainJsonText);
+    
+    // 2. 解压并注册自定义家具
+    const furnitureFiles = [];
+    zip.forEach((relativePath, fileEntry) => {
+      if (relativePath.startsWith('furniture/') && relativePath.endsWith('.js')) {
+        const type = relativePath.replace('furniture/', '').replace('.js', '');
+        furnitureFiles.push({ type, entry: fileEntry });
+      }
+    });
+    
+    if (furnitureFiles.length > 0) {
+      ctx.showToast(`发现 ${furnitureFiles.length} 个自定义家具，正在加载...`);
+      for (const fFile of furnitureFiles) {
+        try {
+          const source = await fFile.entry.async('text');
+          await ctx.registerCustomFurniture(source);
+          ctx.saveCustomFurnitureToLocalStorage(fFile.type, source);
+        } catch (err) {
+          console.error(`Failed to register custom furniture from ZIP: ${fFile.type}`, err);
+        }
+      }
+      ctx.renderFurnitureGrid();
+    }
+    
+    // 3. 解压并读取自定义材质
+    let materialsMeta = [];
+    const materialsMetaFile = zip.file('materials.json');
+    if (materialsMetaFile) {
+      const metaText = await materialsMetaFile.async('text');
+      materialsMeta = JSON.parse(metaText);
+    }
+    
+    const pathToBase64Map = {};
+    const materialsFiles = [];
+    zip.forEach((relativePath, fileEntry) => {
+      if (relativePath.startsWith('materials/') && !relativePath.endsWith('.json')) {
+        materialsFiles.push({ path: relativePath, entry: fileEntry });
+      }
+    });
+    
+    if (materialsFiles.length > 0) {
+      ctx.showToast(`发现 ${materialsFiles.length} 个自定义材质，正在加载...`);
+      for (const mFile of materialsFiles) {
+        try {
+          const buffer = await mFile.entry.async('arraybuffer');
+          const ext = mFile.path.split('.').pop().toLowerCase();
+          const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+          
+          const base64Src = `data:${mime};base64,${arrayBufferToBase64(buffer)}`;
+          pathToBase64Map[mFile.path] = base64Src;
+          
+          const meta = materialsMeta.find(m => m.src === mFile.path);
+          if (meta) {
+            const descriptor = {
+              ...meta,
+              src: base64Src
+            };
+            
+            const materialLibrary = ctx.materialLibrary;
+            if (!materialLibrary.some(existing => existing.id === descriptor.id)) {
+              materialLibrary.unshift(descriptor);
+            }
+            
+            // 同步写入本地持久化集中存储
+            try {
+              const storedStr = localStorage.getItem('custom_material_sources');
+              const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+              sourcesMap[descriptor.id] = base64Src;
+              localStorage.setItem('custom_material_sources', JSON.stringify(sourcesMap));
+            } catch (err) {
+              console.error('Failed to sync custom material from ZIP to localStorage:', err);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to load custom material from ZIP: ${mFile.path}`, err);
+        }
+      }
+      ctx.renderMaterialLibrary();
+    }
+    
+    // 4. 递归恢复场景 JSON 数据中的材质 src 为 Base64 URL 形式
+    function restoreCustomMaterials(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      
+      if (obj.src && typeof obj.src === 'string' && obj.src.startsWith('materials/')) {
+        const base64Src = pathToBase64Map[obj.src];
+        if (base64Src) {
+          obj.src = base64Src;
+        } else {
+          console.warn(`Base64 data not found for: ${obj.src}`);
+        }
+      }
+      
+      for (const key of Object.keys(obj)) {
+        if (obj[key] && typeof obj[key] === 'object') {
+          restoreCustomMaterials(obj[key]);
+        }
+      }
+    }
+    
+    restoreCustomMaterials(buildingFileObj.floorplan);
+    
+    // 5. 导入场景数据并触发重绘
+    const restoredJSONString = JSON.stringify(buildingFileObj, null, 2);
+    ctx.pushHistory();
+    ctx.testMap.loadBuildingFile(restoredJSONString);
+    
+    ctx.syncFloorControls();
+    ctx.setHasUserZoomedOrPanned(false);
+    ctx.resetInteractionState();
+    ctx.refreshShadows();
+    ctx.updateEditor();
+    ctx.renderPlan();
+    
+    if (ctx.currentView === '3d') {
+      requestAnimationFrame(() => {
+        ctx.engine.resize();
+        ctx.scene.render();
+      });
+    }
+    
+    ctx.showToast(`✓ 成功导入 ZIP 存档并恢复「${buildingFileObj.name || '未命名'}」`);
+  } catch (error) {
+    console.error('Failed to import ZIP:', error);
+    ctx.showCustomAlert('加载失败', 'ZIP 文件解压或解析失败，请确认它是有效的 blueprint3d-babylon 场景归档包：' + (error.message || error));
   }
 }

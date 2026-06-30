@@ -6,7 +6,7 @@ export const ROOM_SHAPES = Object.freeze([
   { id: 'diamond', label: '四角', defaultWidth: 4, defaultDepth: 4 },
   { id: 'sector', label: '扇形', defaultWidth: 5, defaultDepth: 5 },
   { id: 'semicircle', label: '半圆', defaultWidth: 5, defaultDepth: 3 },
-  { id: 'right-triangle', label: '直角三角形', defaultWidth: 5, defaultDepth: 4 }
+  { id: 'right-triangle', label: '三角形', defaultWidth: 5, defaultDepth: 4 }
 ]);
 
 const SHAPE_IDS = new Set(ROOM_SHAPES.map((shape) => shape.id));

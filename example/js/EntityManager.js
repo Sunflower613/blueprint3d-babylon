@@ -1,4 +1,5 @@
 import { pointInRoom } from '../../src/rooms/index.js';
+import { getItemsOnBookshelf } from './Topology.js';
 
 const INCHES_PER_UNIT = 39.37;
 
@@ -181,9 +182,11 @@ export class EntityManager {
    * @param {number} x - 目标世界坐标 X
    * @param {number} z - 目标世界坐标 Z
    */
-  moveItemTo(itemId, x, z) {
+  moveItemTo(itemId, x, z, isFinished = false) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
+
+    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
 
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
     let finalX = x;
@@ -375,11 +378,28 @@ export class EntityManager {
       item.x = snapped.x;
       item.z = snapped.z;
       if (this.opts.canPlaceOnTable(item, definition)) {
-        const tableBelow = this.opts.findTableBelow(item);
-        if (tableBelow) {
-          const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-          item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+        if (isFinished) {
+          // 移动完毕：触发搁板/桌面磁吸定位
+          const bookshelfBelow = this.opts.findBookshelfNearby ? this.opts.findBookshelfNearby(item) : null;
+          if (bookshelfBelow) {
+            const snappedState = this.opts.snapToBookshelf ? this.opts.snapToBookshelf(item, bookshelfBelow) : null;
+            if (snappedState) {
+              item.x = snappedState.x;
+              item.z = snappedState.z;
+              item.elevation = snappedState.elevation;
+              item.rotation = snappedState.rotation;
+            }
+          } else {
+            const tableBelow = this.opts.findTableBelow(item);
+            if (tableBelow) {
+              const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
+              item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+            } else {
+              item.elevation = 0;
+            }
+          }
         } else {
+          // 移动过程中：为了丝滑无抖动，不触发任何吸附，高程置为 0（贴着地表滑动）
           item.elevation = 0;
         }
       }
@@ -408,6 +428,7 @@ export class EntityManager {
       node.position.set(item.x, floorY + (item.elevation || 0) / INCHES_PER_UNIT + roomOffset, item.z);
       node.rotation.y = item.rotation || 0;
     }
+    this.updateChildrenOnBookshelf(item, beforeState);
     this.opts.renderPlan();
   }
 
@@ -672,6 +693,9 @@ export class EntityManager {
   updateItemSize(itemId, widthInches, depthInches, heightInches, elevationInches) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
+
+    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+
     this.opts.pushHistory();
 
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
@@ -692,6 +716,9 @@ export class EntityManager {
       height: heightInches,
       elevation: elevation
     });
+
+    this.updateChildrenOnBookshelf(item, beforeState);
+
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -703,8 +730,14 @@ export class EntityManager {
   updateItemRotation(itemId, degrees) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
+
+    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+
     this.opts.pushHistory();
     this.opts.testMap.rotateItem(itemId, degrees * Math.PI / 180);
+
+    this.updateChildrenOnBookshelf(item, beforeState);
+
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -780,8 +813,14 @@ export class EntityManager {
   nudgeItem(itemId, dx, dz) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
+
+    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+
     this.opts.pushHistory();
     this.opts.testMap.updateItem(itemId, { x: item.x + dx, z: item.z + dz });
+
+    this.updateChildrenOnBookshelf(item, beforeState);
+
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -795,9 +834,15 @@ export class EntityManager {
   adjustItemElevation(itemId, deltaInches) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
+
+    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+
     this.opts.pushHistory();
     const newElev = Math.max(0, (item.elevation || 0) + deltaInches);
     this.opts.testMap.updateItem(itemId, { elevation: newElev });
+
+    this.updateChildrenOnBookshelf(item, beforeState);
+
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -835,6 +880,76 @@ export class EntityManager {
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
+  }
+
+  /**
+   * 当柜架类家具发生位移、高度或旋转变化时，联动更新当前在其上方的所有小摆件的姿态
+   * @param {Object} bookshelf - 目标书架家具对象
+   * @param {Object} beforeState - 移动前书架的状态 { x, z, rotation, elevation }
+   */
+  updateChildrenOnBookshelf(bookshelf, beforeState) {
+    const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
+    const definition = this.opts.testMap.getFurnitureDefinition(bookshelf.type);
+    if (!definition || !supportedTypes.includes(definition.type)) return;
+    
+    const dx = bookshelf.x - beforeState.x;
+    const dz = bookshelf.z - beforeState.z;
+    const dr = (bookshelf.rotation || 0) - (beforeState.rotation || 0);
+    const de = (bookshelf.elevation || 0) - (beforeState.elevation || 0);
+    if (Math.abs(dx) < 0.0001 && Math.abs(dz) < 0.0001 && Math.abs(dr) < 0.0001 && Math.abs(de) < 0.0001) return;
+    
+    // 找出在移动前放置在该书架上的所有物品
+    const itemsOnShelf = getItemsOnBookshelf(
+      beforeState, 
+      this.opts.testMap.floorplan.items, 
+      (type) => this.opts.testMap.getFurnitureDefinition(type)
+    );
+    
+    for (const childItem of itemsOnShelf) {
+      // 1. 计算小摆件相对于柜子旧状态的局部坐标 (lx, lz)
+      const cx = beforeState.x;
+      const cz = beforeState.z;
+      const oRot = beforeState.rotation || 0;
+      
+      const cdx = childItem.x - cx;
+      const cdz = childItem.z - cz;
+      
+      const cos = Math.cos(-oRot);
+      const sin = Math.sin(-oRot);
+      const lx = cdx * cos - cdz * sin;
+      const lz = cdx * sin + cdz * cos;
+      
+      // 2. 根据柜子的新状态 (bookshelf.x, bookshelf.z, bookshelf.rotation) 计算小摆件的世界新坐标
+      const nx = bookshelf.x;
+      const nz = bookshelf.z;
+      const nRot = bookshelf.rotation || 0;
+      
+      const cosRot = Math.cos(nRot);
+      const sinRot = Math.sin(nRot);
+      const newWx = nx + lx * cosRot + lz * sinRot;
+      const newWz = nz - lx * sinRot + lz * cosRot;
+      
+      // 3. 计算新旋转和新高程
+      const newRot = (childItem.rotation || 0) + dr;
+      const newElevation = (childItem.elevation || 0) + de;
+      
+      // 4. 更新小摆件在数据库里的值
+      this.opts.testMap.updateItem(childItem.id, {
+        x: Number(newWx.toFixed(3)),
+        z: Number(newWz.toFixed(3)),
+        rotation: newRot,
+        elevation: newElevation
+      });
+      
+      // 5. 同步更新小摆件的 3D mesh 节点
+      const node = this.opts.testMap.itemNodes?.get(childItem.id);
+      if (node) {
+        const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(childItem.floorId) : 0;
+        const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset(childItem) : 0;
+        node.position.set(newWx, floorY + newElevation / INCHES_PER_UNIT + roomOffset, newWz);
+        node.rotation.y = newRot;
+      }
+    }
   }
 
   /**

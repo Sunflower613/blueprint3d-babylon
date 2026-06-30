@@ -337,12 +337,13 @@
                         <span>导出 JSON</span>
                         <span class="shortcut">Ctrl+E</span>
                       </button>
+                      <button id="btn-export-zip" type="button">导出 ZIP（含资源）</button>
                       <button id="btn-export-dxf" type="button">导出 CAD（DXF）</button>
                       <button id="btn-export-3mf" type="button">导出 3MF</button>
                     </div>
                   </div>
                   <button id="btn-load" type="button">
-                    <span>导入 JSON</span>
+                    <span>导入</span>
                     <span class="shortcut">Ctrl+I</span>
                   </button>
                 </div>
@@ -374,7 +375,7 @@
                 <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
               </button>
               <button id="btn-view-toggle" class="primary" type="button" aria-pressed="false">3D</button>
-              <input id="building-file-input" type="file" accept=".json,.b3dbuilding,.b3dbuilding.json,application/json" hidden />
+              <input id="building-file-input" type="file" accept=".json,.b3dbuilding,.b3dbuilding.json,application/json,.zip" hidden />
             </div>
           </div>
 
@@ -565,6 +566,7 @@
               <label class="field">
                 <span>离地高度 (m)</span>
                 <input id="item-elevation" type="number" min="0" step="0.01" />
+                <input id="item-elevation-range" type="range" min="0" max="3" step="0.01" />
               </label>
               <label class="field">
                 <span>旋转（度）</span>
@@ -754,6 +756,7 @@
         </aside>
       </main>
     </div>
-    <script type="module" src="./app.js"></script>
+    <!-- Keep main.js as the entry: loading app.js directly duplicates it through EditorUi's circular import under Vite HMR. -->
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

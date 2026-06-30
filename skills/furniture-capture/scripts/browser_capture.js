@@ -29,7 +29,7 @@
   const savedCam = JSON.parse(savedCamStr);
   sessionStorage.removeItem('temp_capture_camera'); // 用完即删
 
-  const { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, editHandleNodes, entityManager } = await import('./app.js');
+  const { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, editHandleNodes, entityManager, BABYLON } = await import('./app.js');
 
   console.log("已恢复用户最新调好的视角，开始重新高清晰微距截图（含 150ms 延迟防白屏）...");
 
@@ -63,27 +63,40 @@
   camera.lowerRadiusLimit = 0.01;
   camera.minZ = 0.005; 
 
-  // 4. 清空场景
-  const emptyScene = {
-    floors: {
-      default: {
-        walls: [],
-        rooms: [],
-        items: [],
-        openings: [],
-        roofs: [],
-        stairs: [],
-        fences: []
+  // 4. 通过备份数据结构动态清空实体来构建完全兼容的空场景
+  const emptyScene = JSON.parse(JSON.stringify(backupData));
+  if (emptyScene.floors) {
+    const clearFloor = (floor) => {
+      floor.walls = [];
+      floor.rooms = [];
+      floor.items = [];
+      floor.openings = [];
+      floor.roofs = [];
+      floor.stairs = [];
+      floor.fences = [];
+    };
+    if (Array.isArray(emptyScene.floors)) {
+      emptyScene.floors.forEach(clearFloor);
+    } else {
+      for (const floorId in emptyScene.floors) {
+        clearFloor(emptyScene.floors[floorId]);
       }
-    },
-    currentFloorId: "default"
-  };
+    }
+  }
 
   // 5. 遍历并拍照
   for (const def of FURNITURE_LIST) {
     console.log(`正在截图: ${def.name} (${def.type})`);
     
     testMap.loadJSON(emptyScene);
+    
+    // 自动检测是否被切回了 2D 视图，如果是在 2D 状态，则点击切回 3D 并等待稳定
+    const stage = document.getElementById('stage');
+    const viewToggleBtn = document.getElementById('btn-view-toggle');
+    if (stage && stage.dataset.view !== '3d' && viewToggleBtn) {
+      viewToggleBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 300)); // 等待 3D 引擎与 UI 切换就绪
+    }
     
     // 直接使用 testMap.addItem，避开 entityManager 的 selectItem 高亮选中机制（防蓝色描边）
     const item = testMap.addItem({
@@ -106,7 +119,10 @@
     const max = bounds.max;
     const size = max.subtract(min);
     const center = min.add(max).scale(0.5);
-    const maxDim = Math.max(size.x, size.y, size.z);
+    let maxDim = Math.max(size.x, size.y, size.z);
+    if (isNaN(maxDim) || maxDim <= 0) {
+      maxDim = 0.1; // 安全尺寸防护，避免极小家具或异常计算导致 NaN 崩溃
+    }
 
     // 对准中心并依据尺寸缩近焦距，同时保持用户调整好的 alpha/beta 偏角
     camera.target = center;

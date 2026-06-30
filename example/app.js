@@ -1,7 +1,10 @@
 import './styles.css';
+import furnitureUploadExampleSource from './downloads/custom-furniture-example.js?raw';
+import furnitureUploadSkillSource from '../skills/furniture-upload/SKILL.md?raw';
 import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
+import { boxComponent, cylinderComponent, sphereComponent } from '../src/furniture/_helpers.js';
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners } from './js/EditorUi.js';
-import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal } from './js/Dialogs.js';
+import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
 import { handleHotkeys } from './js/Hotkeys.js';
 import { Store, showToast, formatTimestamp } from './js/Store.js';
@@ -12,6 +15,7 @@ import * as DragHandler from './js/DragHandler.js';
 import * as SvgEvents from './js/SvgEvents.js';
 import * as FileManager from './js/FileManager.js';
 import { iconSvg } from './js/Icons.js';
+import { TARGET_TYPES } from './js/types.js';
 import {
   initRender2D,
   renderPlan,
@@ -47,6 +51,7 @@ const furnitureImages = import.meta.glob('../src/furniture/image/*.png', { eager
 import {
   Blueprint3DTestMap,
   BLUEPRINT3D_TEST_FLOORPLAN,
+  FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
   FURNITURE_CATEGORIES,
   MATERIAL_CATEGORIES,
@@ -81,6 +86,16 @@ function isAddOpeningMode(value = mode) {
   return !!getOpeningModeInfo(value);
 }
 
+function handleModeChange(newMode) {
+  if (newMode === 'delete-wall') {
+    document.body.classList.add('mode-delete-wall');
+    showToast('删墙模式');
+  } else {
+    document.body.classList.remove('mode-delete-wall');
+  }
+  refresh3DGrid();
+}
+
 function switchToSelectMode() {
   clear2DStairsRailingPreview();
   clear3DStairsRailingPreview();
@@ -91,7 +106,101 @@ function switchToSelectMode() {
     mode = 'select';
     drawStart = null;
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate.dataset.mode === 'select'));
+    handleModeChange(mode);
     renderPlan();
+  }
+}
+
+function setDesignMode(newMode, fromDblClick = false) {
+  if (newMode !== 'brush') {
+    designModeBrushLocked = false;
+    pickerCopiedItemType = null;
+    pickerCopiedItemMaterials = null;
+    pickerCopiedItemColors = null;
+  } else if (fromDblClick) {
+    designModeBrushLocked = true;
+  }
+
+  designMode = newMode;
+
+  // 更新 UI 按钮激活状态
+  document.querySelectorAll('.design-tools .design-mode').forEach((button) => {
+    const btnMode = button.dataset.designMode;
+    const isActive = btnMode === designMode;
+    button.classList.toggle('active', isActive);
+    
+    if (btnMode === 'brush') {
+      button.classList.toggle('locked', designModeBrushLocked);
+      const shortcutText = button.querySelector('.mode-shortcut');
+      if (shortcutText) {
+        if (designModeBrushLocked) {
+          shortcutText.textContent = 'B · 已锁定';
+        } else if (isActive) {
+          shortcutText.textContent = 'B · 双击锁定';
+        } else {
+          shortcutText.textContent = 'B';
+        }
+      }
+    }
+  });
+
+  // 移除所有的 design-mode-* body classes
+  document.body.classList.remove(
+    'design-mode-select',
+    'design-mode-picker',
+    'design-mode-brush',
+    'design-mode-brush-locked',
+    'design-mode-bucket',
+    'design-mode-eraser'
+  );
+
+  // 添加对应的 body class
+  if (designMode === 'select') {
+    document.body.classList.add('design-mode-select');
+  } else if (designMode === 'picker') {
+    document.body.classList.add('design-mode-picker');
+  } else if (designMode === 'brush') {
+    if (designModeBrushLocked) {
+      document.body.classList.add('design-mode-brush-locked');
+    } else {
+      document.body.classList.add('design-mode-brush');
+    }
+  } else if (designMode === 'bucket') {
+    document.body.classList.add('design-mode-bucket');
+  } else if (designMode === 'eraser') {
+    document.body.classList.add('design-mode-eraser');
+  }
+
+  // 动态更新设计模式指针颜色为当前材质颜色
+  updateDesignCursor();
+}
+
+function updateDesignCursor() {
+  if (!['picker', 'brush', 'bucket'].includes(designMode)) {
+    document.body.style.cursor = '';
+    return;
+  }
+
+  let color = '#2a415c'; // 默认取色器颜色
+  if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
+    color = activeMaterialDescriptor.color;
+  }
+
+  // 转换 HEX 颜色值以保证 SVG 在 CSS URL 中能够被正确解析（例如将 # 转换为 %23）
+  const strokeColor = color.startsWith('#') ? '%23' + color.slice(1) : color;
+
+  if (designMode === 'picker') {
+    // 2px 描边滴管，热点 2 29
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 22 1-1h3l9-9'/%3E%3Cpath d='M3 21v-3l9-9'/%3E%3Cpath d='m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.4-3.4'/%3E%3Cpath d='M9 12 7 6l3-3 6 6'/%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 2 29, auto`, 'important');
+  } else if (designMode === 'brush') {
+    // 2px 描边材质刷，热点 4 28
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21v-4a4 4 0 1 1 4 4h-4'/%3E%3Cpath d='M21 3a16 16 0 0 0 -12.8 10.2'/%3E%3Cpath d='M21 3a16 16 0 0 1 -10.2 12.8'/%3E%3Cpath d='M10.5 13.5l-4 4'/%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 4 28, auto`, 'important');
+  } else if (designMode === 'bucket') {
+    // 2px 描边油漆桶，热点 5 26
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='${strokeColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='m5 16l1.465 1.638a2 2 0 1 1-3.015.099zm8.737-6.263c2.299-2.3 3.23-5.095 2.081-6.245s-3.945-.217-6.244 2.082s-3.231 5.095-2.082 6.244s3.946.218 6.245-2.081'/%3E%3Cpath d='M7.492 11.818c.362.362.768.676 1.208.934l6.895 4.047c1.078.557 2.255-.075 3.692-1.512s2.07-2.614 1.512-3.692q-.557-1.077-4.047-6.895a6 6 0 0 0-.934-1.208'/%3E%3C/g%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 5 26, auto`, 'important');
   }
 }
 
@@ -121,16 +230,95 @@ let longPressState = null;
 let snapEnabled = true;
 // show3DGrid / grid3DNodes 已移至 viewer3d 实例
 let active3DEditTarget = null;
-function getActive3DEditTarget() { return active3DEditTarget; }
-function setActive3DEditTarget(val) { active3DEditTarget = val; }
 let snapSize = 1;
 let activeMaterialDescriptor = null;
+let designMode = 'select'; // 'select' | 'picker' | 'brush' | 'bucket' | 'eraser'
+let designModeBrushLocked = false;
+let pickerCopiedItemType = null;
+let pickerCopiedItemMaterials = null;
+let pickerCopiedItemColors = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
 const activePointers = new Map();
 let hasUserZoomedOrPanned = false;
 let roomCounter = 1;
 // 撤销/重做栈已迁移到 Store.js 管理
 let floorPanelCollapsed = false;
+
+let selectedTarget = { type: null, id: null };
+
+/** @type {AppState} */
+const appState = {
+  get selectedTarget() { return selectedTarget; },
+  set selectedTarget(val) { selectedTarget = val; },
+  get mode() { return mode; },
+  set mode(val) { mode = val; },
+  get currentView() { return currentView; },
+  set currentView(val) { currentView = val; },
+  get selectedRoomId() { return selectedRoomId; },
+  set selectedRoomId(val) { selectedRoomId = val; },
+  get selectedWallId() { return selectedWallId; },
+  set selectedWallId(val) { selectedWallId = val; },
+  get selectedItemId() { return selectedItemId; },
+  set selectedItemId(val) { selectedItemId = val; },
+  get selectedOpeningId() { return selectedOpeningId; },
+  set selectedOpeningId(val) { selectedOpeningId = val; },
+  get selectedRoofId() { return selectedRoofId; },
+  set selectedRoofId(val) { selectedRoofId = val; },
+  get selectedStairsId() { return selectedStairsId; },
+  set selectedStairsId(val) { selectedStairsId = val; },
+  get selectedFenceId() { return selectedFenceId; },
+  set selectedFenceId(val) { selectedFenceId = val; },
+  get selectedFenceGateId() { return selectedFenceGateId; },
+  set selectedFenceGateId(val) { selectedFenceGateId = val; },
+  get drawStart() { return drawStart; },
+  set drawStart(val) { drawStart = val; },
+  get drag3DState() { return drag3DState; },
+  set drag3DState(val) { drag3DState = val; },
+  get drawWallPreviewCylinder() { return drawWallPreviewCylinder; },
+  set drawWallPreviewCylinder(val) { drawWallPreviewCylinder = val; },
+  get drawWallPreviewStartCylinder() { return drawWallPreviewStartCylinder; },
+  set drawWallPreviewStartCylinder(val) { drawWallPreviewStartCylinder = val; },
+  get drawWallPreviewWall() { return drawWallPreviewWall; },
+  set drawWallPreviewWall(val) { drawWallPreviewWall = val; },
+  get roofResizeState() { return roofResizeState; },
+  set roofResizeState(val) { roofResizeState = val; },
+  get stairsRailingPreview2DGroup() { return stairsRailingPreview2DGroup; },
+  set stairsRailingPreview2DGroup(val) { stairsRailingPreview2DGroup = val; },
+  get stairsRailingPreview3DGroup() { return stairsRailingPreview3DGroup; },
+  set stairsRailingPreview3DGroup(val) { stairsRailingPreview3DGroup = val; },
+  get currentPreviewStairsId() { return currentPreviewStairsId; },
+  set currentPreviewStairsId(val) { currentPreviewStairsId = val; },
+  get floorEdgeRailingPreview2DGroup() { return floorEdgeRailingPreview2DGroup; },
+  set floorEdgeRailingPreview2DGroup(val) { floorEdgeRailingPreview2DGroup = val; },
+  get floorEdgeRailingPreview3DGroup() { return floorEdgeRailingPreview3DGroup; },
+  set floorEdgeRailingPreview3DGroup(val) { floorEdgeRailingPreview3DGroup = val; },
+  get currentPreviewFloorEdgeIndex() { return currentPreviewFloorEdgeIndex; },
+  set currentPreviewFloorEdgeIndex(val) { currentPreviewFloorEdgeIndex = val; },
+  get contextMenuElement() { return contextMenuElement; },
+  set contextMenuElement(val) { contextMenuElement = val; },
+  get longPressState() { return longPressState; },
+  set longPressState(val) { longPressState = val; },
+  get snapEnabled() { return snapEnabled; },
+  set snapEnabled(val) { snapEnabled = val; },
+  get active3DEditTarget() { return active3DEditTarget; },
+  set active3DEditTarget(val) { active3DEditTarget = val; },
+  get snapSize() { return snapSize; },
+  set snapSize(val) { snapSize = val; },
+  get activeMaterialDescriptor() { return activeMaterialDescriptor; },
+  set activeMaterialDescriptor(val) { activeMaterialDescriptor = val; },
+  get materialLibrary() { return materialLibrary; },
+  set materialLibrary(val) { materialLibrary = val; },
+  get hasUserZoomedOrPanned() { return hasUserZoomedOrPanned; },
+  set hasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
+  get roomCounter() { return roomCounter; },
+  set roomCounter(val) { roomCounter = val; },
+  get floorPanelCollapsed() { return floorPanelCollapsed; },
+  set floorPanelCollapsed(val) { floorPanelCollapsed = val; },
+  get designMode() { return designMode; },
+  set designMode(val) { designMode = val; },
+  executeDesignTool: (target) => executeDesignTool(target),
+  setDesignMode: (newMode, fromDblClick = false) => setDesignMode(newMode, fromDblClick),
+};
 
 const stage = document.getElementById('stage');
 const viewToggleButton = document.getElementById('btn-view-toggle');
@@ -155,8 +343,8 @@ scene.onBeforeRenderObservable.add(() => {
   handles.forEach((node) => {
     if (node && !node.isDisposed()) {
       const distance = BABYLON.Vector3.Distance(cameraPosition, node.position);
-      // 距离乘以常数因子，并且设置最小值防止极端情况穿模，默认绝对大小为 1
-      const factor = Math.max(0.1, distance * 0.08);
+      // 增大把手的缩放因子（由 0.08 提高到 0.13，最小限制由 0.1 提高到 0.16），使把手更加醒目和易于选中
+      const factor = Math.max(0.16, distance * 0.13);
       node.scaling.set(factor, factor, factor);
     }
   });
@@ -201,18 +389,36 @@ let entityManager = new EntityManager({
   pointerAngle: (a, b) => pointerAngle(a, b),
   canPlaceOnTable: (item, def) => canPlaceOnTable(item, def),
   findTableBelow: (item) => findTableBelow(item),
-  findNearestSeat: (item) => findNearestSeat(item)
+  findNearestSeat: (item) => findNearestSeat(item),
+  findBookshelfNearby: (item) => findBookshelfNearby(item),
+  snapToBookshelf: (item, bookshelf) => snapToBookshelf(item, bookshelf)
 });
 
-DragHandler.initDragHandler({
+const pushHistory = () => store.pushHistory();
+const undo = () => store.undo();
+const redo = () => store.redo();
+
+Object.assign(appState, {
   testMap,
+  viewer3d,
+  entityManager,
+  engine,
+  scene,
+  shadowGenerator,
+  camera,
   svg,
-  get mode() { return mode; },
+  canvas,
+  view,
+  SVG_NS,
+  INCHES_PER_UNIT,
+  activePointers,
+
   svgPointFromEvent,
   svgToWorld,
   snapRoomPosition,
   snapWorldPoint,
   snapNumber,
+  updateViewBounds,
   pushHistory,
   syncRoomMovePreview,
   refreshShadows,
@@ -227,73 +433,24 @@ DragHandler.initDragHandler({
   selectFence,
   selectFenceGate,
   getStructure,
+  updateStructure,
   moveStructureTo,
-  get snapEnabled() { return snapEnabled; },
-  get snapSize() { return snapSize; },
   rememberPointer,
   syncWallMovePreview,
   syncFenceMovePreview,
   snapToGridSegmentCenter,
-  getWallProjectionT
-});
-
-SvgEvents.initSvgEvents({
-  svg,
-  view,
-  get currentView() { return currentView; },
-  get mode() { return mode; },
-  get snapEnabled() { return snapEnabled; },
-  get snapSize() { return snapSize; },
-  get activePointers() { return activePointers; },
-  testMap,
-  entityManager,
-  svgToWorld,
-  svgPointFromEvent,
-  snapWorldPoint,
-  snapNumber,
-  renderPlan,
-  get2DContextTargetFromElement,
-  clear2DStairsRailingPreview,
-  clear2DFloorEdgeRailingPreview,
-  update2DStairsRailingPreview,
-  update2DFloorEdgeRailingPreview,
+  getWallProjectionT,
   forgetPointer,
   updatePointer,
   finishRoofResize,
-  selectRoom,
-  selectRoof,
-  selectStairs,
-  selectFence,
-  selectFenceGate,
   switchToSelectMode,
-  pushHistory,
-  refreshShadows,
-  clearSelection,
   isAddRoomMode,
   roomShapeFromMode,
   addRailingToStairs,
   clear3DStairsRailingPreview,
   clear3DFloorEdgeRailingPreview,
-  rememberPointer,
   moveRoofResize,
-  getRoofResizeState() { return roofResizeState; },
-  setRoofResizeState(val) { roofResizeState = val; },
-  getDrawStart() { return drawStart; },
-  setDrawStart(val) { drawStart = val; },
-  getRoomCounter() { return roomCounter; },
-  incrementRoomCounter() { roomCounter++; },
-  getHasUserZoomedOrPanned() { return hasUserZoomedOrPanned; },
-  setHasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
-  pointInRoom
-});
-
-
-
-initRender2D({
-  svg,
-  get snapEnabled() { return snapEnabled; },
-  get snapSize() { return snapSize; },
-  view,
+  pointInRoom,
   currentRooms,
   referenceFloorWalls,
   currentWalls,
@@ -303,75 +460,14 @@ initRender2D({
   currentFences,
   currentItems,
   getFreeFloorEdges,
-  get drawStart() { return drawStart; },
-  get selectedRoomId() { return selectedRoomId; },
-  get selectedWallId() { return selectedWallId; },
-  get selectedItemId() { return selectedItemId; },
-  get selectedOpeningId() { return selectedOpeningId; },
-  get selectedRoofId() { return selectedRoofId; },
-  get selectedStairsId() { return selectedStairsId; },
-  get selectedFenceId() { return selectedFenceId; },
-  get selectedFenceGateId() { return selectedFenceGateId; },
-  testMap,
-  entityManager,
-  get mode() { return mode; },
-  get currentView() { return currentView; },
-  SVG_NS,
-  INCHES_PER_UNIT,
-  updateViewBounds,
-  attachContextMenuTrigger,
-  selectRoom,
-  selectWall,
-  selectOpening,
-  selectRoof,
-  selectStairs,
-  selectFence,
-  selectFenceGate,
-  beginRoomResize,
-  beginRoomDrag,
-  beginWallDrag,
-  beginOpeningDrag,
-  beginStructureDrag,
-  beginFenceDrag,
-  beginFenceGateDrag,
-  beginFenceResize,
   isAddOpeningMode,
   getOpeningModeInfo,
-  pushHistory,
-  clearSelection,
-  refreshShadows,
-  switchToSelectMode,
   showCustomConfirm,
-  Topology
-});
-
-initViewer3DHandles({
-  get selectedItemId() { return selectedItemId; },
-  get selectedWallId() { return selectedWallId; },
-  get selectedFenceId() { return selectedFenceId; },
-  get selectedRoofId() { return selectedRoofId; },
-  get selectedStairsId() { return selectedStairsId; },
-  get selectedFenceGateId() { return selectedFenceGateId; },
-  testMap,
-  entityManager,
-  viewer3d,
-  canvas,
-  get currentView() { return currentView; },
-  pushHistory,
-  refreshShadows,
-  updateEditor,
-  renderPlan,
-  get snapEnabled() { return snapEnabled; },
-  get snapSize() { return snapSize; },
-  snapNumber,
+  show3MFExportDialog,
+  Topology,
   snapValue,
-  snapWorldPoint,
   findMetadataFromNode,
-  getActive3DEditTarget() { return active3DEditTarget; },
-  setActive3DEditTarget(val) { active3DEditTarget = val; },
   isTargetLocked,
-  INCHES_PER_UNIT,
-  wallPointAt,
   findOpeningIdFromNode,
   findItemIdFromNode,
   findWallIdFromNode,
@@ -381,15 +477,105 @@ initViewer3DHandles({
   findFenceIdFromNode,
   findFenceGateIdFromNode,
   groundPointFromPointer,
-  setDrag3DState(state) { drag3DState = state; }
+  getMaterialLibrary: () => materialLibrary,
+  DEFAULT_MATERIAL_PACKS,
+  syncFloorControls,
+  resetInteractionState,
+  showCustomPrompt,
+  showCustomAlert,
+  showProjectListModal,
+  showToast,
+  registerCustomFurniture,
+  saveCustomFurnitureToLocalStorage,
+  renderFurnitureGrid,
+  renderMaterialLibrary,
+  getFurnitureDefinitions: () => FURNITURE_DEFINITIONS,
+  
+  // 拖拽相关方法直接挂载
+  beginRoomResize: DragHandler.beginRoomResize,
+  beginRoomDrag: DragHandler.beginRoomDrag,
+  beginWallDrag: DragHandler.beginWallDrag,
+  beginOpeningDrag: DragHandler.beginOpeningDrag,
+  beginStructureDrag: DragHandler.beginStructureDrag,
+  beginFenceDrag: DragHandler.beginFenceDrag,
+  beginFenceGateDrag: DragHandler.beginFenceGateDrag,
+  beginFenceResize: DragHandler.beginFenceHandleDrag,
+  moveRoomDrag: DragHandler.moveRoomDrag,
+  moveRoomResize: DragHandler.moveRoomResize,
+  finishRoomEdit: DragHandler.finishRoomEdit,
+  finishOpeningDrag: DragHandler.finishOpeningDrag,
+  finishWallDrag: DragHandler.finishWallDrag,
+  moveWallBy: DragHandler.moveWallBy,
+  moveFenceBy: DragHandler.moveFenceBy,
+  finishFenceDrag: DragHandler.finishFenceDrag,
+  finishFenceGateDrag: DragHandler.finishFenceGateDrag,
+  
+  // Topology 代理方法
+  canPlaceOnTable: Topology.canPlaceOnTable,
+  findTableBelow: (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  findNearestSeat: (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type)),
+  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  snapToBookshelf: (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type)),
+
+  // 手柄特定存取器
+  getActive3DEditTarget: () => active3DEditTarget,
+  setActive3DEditTarget: (val) => { active3DEditTarget = val; },
+  setDrag3DState: (val) => { drag3DState = val; },
+  wallPointAt,
+  snapWorldPoint,
+  snapNumber,
+  isTargetLocked,
+
+  // 历史与操作管理
+  undo,
+  redo,
+  setHasUserZoomedOrPanned: (val) => { hasUserZoomedOrPanned = val; },
+
+  // 画图状态与计数
+  getDrawStart: () => drawStart,
+  setDrawStart: (val) => { drawStart = val; },
+  getRoofResizeState: () => roofResizeState,
+  setRoofResizeState: (val) => { roofResizeState = val; },
+  getRoomCounter: () => roomCounter,
+  incrementRoomCounter: () => { roomCounter += 1; return roomCounter; },
+
+  // 上下文菜单与选择管理
+  attachContextMenuTrigger,
+  getSelectedTarget,
+  isAllowedContextTarget,
+  toggleTargetLock,
+  copyContextTarget,
+  rotateContextTarget,
+  takePhoto,
+
+  // 栏杆相关
+  clear2DFloorEdgeRailingPreview,
+  update2DFloorEdgeRailingPreview,
+  clear2DStairsRailingPreview,
+  update2DStairsRailingPreview,
+
+  // 辅助
+  beginRoofResize,
+  get2DContextTargetFromElement,
+  BABYLON
 });
+
+DragHandler.initDragHandler(appState);
+SvgEvents.initSvgEvents(appState);
+initRender2D(appState);
+initViewer3DHandles(appState);
 
 // ==========================================
 // 初始化数据中心 Store
 // ==========================================
 const store = new Store({
-  getSnapshot: () => testMap.exportJSON(),
+  getSnapshot: () => {
+    const data = testMap.exportJSON();
+    cleanFloorplanMaterials(data);
+    return data;
+  },
   applySnapshot: (data) => {
+    restoreFloorplanMaterials(data);
     testMap.loadJSON(data);
     syncFloorControls();
     selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
@@ -407,6 +593,8 @@ const store = new Store({
   },
 });
 
+appState.store = store;
+
 // 监听历史栈变化，同步撤销/重做按钮状态
 store.on('historyChanged', updateHistoryButtons);
 
@@ -422,34 +610,14 @@ store.on('saveError', () => {
 
 // 启动 10 分钟自动保存
 store.startAutoSave(() => ({
-  materialLibrary: materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id)),
+  materialLibrary: cleanMaterialLibraryForStorage(materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))),
   uiState: {
     currentFloorId: testMap.floorplan.currentFloorId,
     currentView,
   },
 }));
 
-FileManager.initFileManager({
-  testMap,
-  store,
-  getMaterialLibrary() { return materialLibrary; },
-  DEFAULT_MATERIAL_PACKS,
-  get currentView() { return currentView; },
-  engine,
-  scene,
-  pushHistory,
-  syncFloorControls,
-  setHasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
-  resetInteractionState,
-  refreshShadows,
-  updateEditor,
-  renderPlan,
-  showCustomPrompt,
-  showCustomAlert,
-  showCustomConfirm,
-  showProjectListModal,
-  showToast
-});
+FileManager.initFileManager(appState);
 
 ensureBuildingToolControls();
 ensure3DGridControls();
@@ -476,6 +644,7 @@ if (snapToggleBtn) {
   if (store.hasLocalSave()) {
     const saved = store.loadFromLocal();
     if (saved.buildingData) {
+      restoreFloorplanMaterials(saved.buildingData); // 还原场景快照中的自定义材质 src
       testMap.loadJSON(saved.buildingData);
       syncFloorControls();
       hasUserZoomedOrPanned = false;
@@ -485,7 +654,12 @@ if (snapToggleBtn) {
       showToast('已自动恢复本地数据');
     }
     if (saved.materialLibrary && saved.materialLibrary.length) {
+      const storedStr = localStorage.getItem('custom_material_sources');
+      const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
       saved.materialLibrary.forEach((m) => {
+        if (m.id && String(m.id).startsWith('custom_')) {
+          m.src = sourcesMap[m.id] || m.src; // 从本地集中存储拼回大文件 Base64
+        }
         if (!materialLibrary.some((existing) => existing.id === m.id)) {
           materialLibrary.push(m);
         }
@@ -497,30 +671,15 @@ if (snapToggleBtn) {
 viewer3d.startRenderLoop();
 
 // ==========================================
-// 历史管理代理函数（委托给 Store）
+// 历史管理代理与基础3D代理函数
 // ==========================================
-
-function pushHistory() {
-  store.pushHistory();
-}
-
-function undo() {
-  store.undo();
-}
-
-function redo() {
-  store.redo();
-}
 
 function updateHistoryButtons() {
   undoButton.disabled = !store.canUndo;
   redoButton.disabled = !store.canRedo;
 }
 
-// getMeshFloorId 已移至 Viewer3D，此处保留代理函数供局部引用
-function getMeshFloorId(mesh) {
-  return viewer3d.getMeshFloorId(mesh);
-}
+function getMeshFloorId(mesh) { return viewer3d.getMeshFloorId(mesh); }
 
 function refreshShadows() {
   viewer3d.refreshShadowCasters(
@@ -530,13 +689,8 @@ function refreshShadows() {
   refresh3DGrid();
 }
 
-function resetCamera() {
-  viewer3d.resetCamera();
-}
-
-function clear3DGrid() {
-  viewer3d.clear3DGrid();
-}
+function resetCamera() { return viewer3d.resetCamera(); }
+function clear3DGrid() { return viewer3d.clear3DGrid(); }
 
 function refresh3DGrid() {
   viewer3d.refresh3DGrid({
@@ -551,7 +705,8 @@ function refresh3DGrid() {
     currentFloorId: testMap.floorplan.currentFloorId,
     floorElevation: testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0,
     inchesToWorld,
-    hasTestMap: !!testMap
+    hasTestMap: !!testMap,
+    isDeleteWallMode: mode === 'delete-wall'
   });
 }
 
@@ -611,6 +766,7 @@ function resetCurrentMaterial() {
 
 function setView(nextView) {
   currentView = nextView;
+  document.body.classList.remove('cursor-hover-erasable');
   stage.dataset.view = nextView;
   viewToggleButton.textContent = nextView === '2d' ? '3D' : '2D';
   viewToggleButton.setAttribute('aria-pressed', String(nextView === '3d'));
@@ -725,8 +881,8 @@ function showIconMenu(clientX, clientY, actions) {
   if (!menu.children.length) return;
   document.body.appendChild(menu);
   const rect = menu.getBoundingClientRect();
-  const x = Math.min(window.innerWidth - rect.width - 8, Math.max(8, clientX));
-  const y = Math.min(window.innerHeight - rect.height - 8, Math.max(8, clientY));
+  const x = Math.min(window.innerWidth - rect.width - 8, Math.max(8, clientX - rect.width / 2));
+  const y = Math.min(window.innerHeight - rect.height - 8, Math.max(8, clientY - rect.height - 15));
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
   contextMenuElement = menu;
@@ -737,11 +893,24 @@ function cancelLongPress() {
   longPressState = null;
 }
 
+function handlePointerCancel(event) {
+  if (event && event.pointerType === 'touch') {
+    return;
+  }
+  cancelLongPress();
+}
+
 function attachContextMenuTrigger(element, getTarget, showMenu = showObjectContextMenu) {
   element.addEventListener('contextmenu', (event) => {
     if (mode === 'view') {
       event.preventDefault();
       event.stopPropagation();
+      return;
+    }
+    if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode() || mode.startsWith('draw-fence')) {
+      event.preventDefault();
+      event.stopPropagation();
+      switchToSelectMode();
       return;
     }
     const target = getTarget(event);
@@ -760,40 +929,34 @@ function attachContextMenuTrigger(element, getTarget, showMenu = showObjectConte
     cancelLongPress();
     longPressState = {
       pointerId: event.pointerId,
+      pointerType: event.pointerType,
       startX,
       startY,
       timer: window.setTimeout(() => {
         longPressState = null;
         showMenu(target, startX, startY);
-      }, 560)
+      }, 500)
     };
   });
 }
 
 function getSelectedTarget() {
-  if (selectedItemId) return { type: 'item', id: selectedItemId };
-  if (selectedOpeningId) return { type: 'opening', id: selectedOpeningId };
-  if (selectedRoofId) return { type: 'roof', id: selectedRoofId };
-  if (selectedStairsId) return { type: 'stairs', id: selectedStairsId };
-  if (selectedRoomId) return { type: 'room', id: selectedRoomId };
-  if (selectedFenceId) return { type: 'fence', id: selectedFenceId };
-  if (selectedFenceGateId) return { type: 'fence_gate', id: selectedFenceGateId };
-  return null;
+  return selectedTarget.id ? selectedTarget : null;
 }
 
 function isAllowedContextTarget(target) {
-  return ['item', 'opening', 'roof', 'stairs', 'room', 'fence', 'fence_gate'].includes(target?.type);
+  return Object.values(TARGET_TYPES).filter(t => t !== TARGET_TYPES.WALL).includes(target?.type);
 }
 
 function getContextTargetObject(target) {
   if (!target) return null;
-  if (target.type === 'item') return testMap.getItem(target.id);
-  if (target.type === 'opening') return testMap.getOpening(target.id);
-  if (target.type === 'roof') return testMap.getRoof?.(target.id);
-  if (target.type === 'stairs') return testMap.getStairs?.(target.id);
-  if (target.type === 'room') return testMap.getRoom(target.id);
-  if (target.type === 'fence') return testMap.getFence?.(target.id);
-  if (target.type === 'fence_gate') return testMap.getFenceGate?.(target.id);
+  if (target.type === TARGET_TYPES.ITEM) return testMap.getItem(target.id);
+  if (target.type === TARGET_TYPES.OPENING) return testMap.getOpening(target.id);
+  if (target.type === TARGET_TYPES.ROOF) return testMap.getRoof?.(target.id);
+  if (target.type === TARGET_TYPES.STAIRS) return testMap.getStairs?.(target.id);
+  if (target.type === TARGET_TYPES.ROOM) return testMap.getRoom(target.id);
+  if (target.type === TARGET_TYPES.FENCE) return testMap.getFence?.(target.id);
+  if (target.type === TARGET_TYPES.FENCE_GATE) return testMap.getFenceGate?.(target.id);
   return null;
 }
 
@@ -804,37 +967,37 @@ function isTargetLocked(target) {
 function setContextTargetLocked(target, locked) {
   if (!isAllowedContextTarget(target)) return;
   const value = !!locked;
-  if (target.type === 'item') {
+  if (target.type === TARGET_TYPES.ITEM) {
     const item = testMap.getItem(target.id);
     if (!item) return;
     item.locked = value;
     const node = testMap.itemNodes.get(item.id);
     if (node) node.metadata = { ...(node.metadata || {}), locked: value };
-  } else if (target.type === 'opening') {
+  } else if (target.type === TARGET_TYPES.OPENING) {
     testMap.updateOpening(target.id, { locked: value });
-  } else if (target.type === 'roof') {
+  } else if (target.type === TARGET_TYPES.ROOF) {
     testMap.updateRoof?.(target.id, { locked: value });
-  } else if (target.type === 'stairs') {
+  } else if (target.type === TARGET_TYPES.STAIRS) {
     testMap.updateStairs?.(target.id, { locked: value });
-  } else if (target.type === 'room') {
+  } else if (target.type === TARGET_TYPES.ROOM) {
     testMap.updateRoom(target.id, { locked: value });
-  } else if (target.type === 'fence') {
+  } else if (target.type === TARGET_TYPES.FENCE) {
     testMap.updateFence?.(target.id, { locked: value });
-  } else if (target.type === 'fence_gate') {
+  } else if (target.type === TARGET_TYPES.FENCE_GATE) {
     testMap.updateFenceGate?.(target.id, { locked: value });
   }
 }
 
 function getTargetFloorId(target) {
   if (!target) return null;
-  if (target.type === 'room') return testMap.getRoom(target.id)?.floorId || 'floor_1';
-  if (target.type === 'wall') return testMap.getWall(target.id)?.floorId || 'floor_1';
-  if (target.type === 'opening') return testMap.getOpening(target.id)?.floorId || testMap.getWall(testMap.getOpening(target.id)?.wallId)?.floorId || 'floor_1';
-  if (target.type === 'item') return testMap.getItem(target.id)?.floorId || 'floor_1';
-  if (target.type === 'roof') return testMap.getRoof?.(target.id)?.floorId || 'floor_1';
-  if (target.type === 'stairs') return testMap.getStairs?.(target.id)?.floorId || 'floor_1';
-  if (target.type === 'fence') return testMap.getFence?.(target.id)?.floorId || 'floor_1';
-  if (target.type === 'fence_gate') return testMap.getFenceGate?.(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.ROOM) return testMap.getRoom(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.WALL) return testMap.getWall(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.OPENING) return testMap.getOpening(target.id)?.floorId || testMap.getWall(testMap.getOpening(target.id)?.wallId)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.ITEM) return testMap.getItem(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.ROOF) return testMap.getRoof?.(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.STAIRS) return testMap.getStairs?.(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.FENCE) return testMap.getFence?.(target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.FENCE_GATE) return testMap.getFenceGate?.(target.id)?.floorId || 'floor_1';
   return testMap.floorplan.currentFloorId;
 }
 
@@ -843,6 +1006,8 @@ function isTargetOnCurrentFloor(target) {
 }
 
 function get2DContextTargetFromElement(element) {
+  const wall = element.closest?.('[data-wall-id]');
+  if (wall?.dataset.wallId) return { type: 'wall', id: wall.dataset.wallId };
   const item = element.closest?.('[data-item-id]');
   if (item?.dataset.itemId) return { type: 'item', id: item.dataset.itemId };
   const opening = element.closest?.('[data-opening-id]');
@@ -881,10 +1046,115 @@ function isLightingTarget(target) {
   return !!(def && (def.category === 'lighting' || def.lightSource));
 }
 
+function pickColorFromContextMenu(target) {
+  if (!target) return;
+  
+  // 重置之前的全量家具拷贝缓存
+  pickerCopiedItemType = null;
+  pickerCopiedItemMaterials = null;
+  pickerCopiedItemColors = null;
+
+  let pickedMaterial = null;
+  let pickedColor = null;
+
+  if (target.type === 'room') {
+    const room = testMap.getRoom(target.id);
+    if (room) {
+      pickedMaterial = room.material;
+      pickedColor = room.color;
+    }
+  } else if (target.type === 'wall') {
+    const wall = testMap.getWall(target.id);
+    if (wall) {
+      pickedMaterial = wall.materialFront || wall.materialBack || wall.material;
+      pickedColor = wall.colorFront || wall.colorBack || wall.color;
+    }
+  } else if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (item) {
+      // 暂存该家具的全部材质和颜色！用于对同类家具的全量材质复制
+      pickerCopiedItemType = item.type;
+      pickerCopiedItemMaterials = JSON.parse(JSON.stringify(item.materials || {}));
+      pickerCopiedItemColors = JSON.parse(JSON.stringify(item.colors || {}));
+      
+      const matKeys = Object.keys(item.materials || {});
+      if (matKeys.length > 0) {
+        pickedMaterial = item.materials[matKeys[0]];
+      } else {
+        const colKeys = Object.keys(item.colors || {});
+        if (colKeys.length > 0) {
+          pickedColor = item.colors[colKeys[0]];
+        }
+      }
+    }
+  } else if (target.type === 'fence') {
+    const fence = testMap.getFence(target.id);
+    if (fence) {
+      pickedMaterial = fence.material;
+      pickedColor = fence.color;
+    }
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (gate) {
+      pickedMaterial = gate.material;
+      pickedColor = gate.color;
+    }
+  } else if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    if (opening) {
+      pickedMaterial = opening.material;
+      pickedColor = opening.color;
+    }
+  } else if (target.type === 'roof') {
+    const roof = testMap.getRoof(target.id);
+    if (roof) {
+      pickedMaterial = roof.material;
+      pickedColor = roof.color;
+    }
+  } else if (target.type === 'stairs') {
+    const stairs = testMap.getStairs(target.id);
+    if (stairs) {
+      pickedMaterial = stairs.material;
+      pickedColor = stairs.color;
+    }
+  }
+
+  // 统一设置当前活动材质
+  if (pickedMaterial || pickedColor || pickerCopiedItemMaterials) {
+    if (pickedMaterial || pickedColor) {
+      let descriptor = pickedMaterial || pickedColor;
+      if (typeof descriptor === 'string') {
+        const found = materialLibrary.find(m => m.color === descriptor);
+        if (found) {
+          activeMaterialDescriptor = found;
+        } else {
+          activeMaterialDescriptor = {
+            id: 'paint-' + descriptor.replace('#', ''),
+            name: `吸取颜色 (${descriptor})`,
+            category: 'paint',
+            kind: 'paint',
+            color: descriptor
+          };
+        }
+      } else {
+        activeMaterialDescriptor = descriptor;
+      }
+      renderMaterialLibrary();
+      updateEditor();
+    }
+    showToast('已复制材质，直接进入涂刷模式');
+    
+    // 进入一次涂刷模式 (锁定为 false)
+    setDesignMode('brush', false);
+  } else {
+    showToast('该物体没有可用的材质');
+  }
+}
+
 function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedContextTarget(target)) return;
-  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate'].includes(target.type);
-  const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate'].includes(target.type);
+  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
+  const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
   const isLocked = isTargetLocked(target);
@@ -918,6 +1188,7 @@ function showObjectContextMenu(target, clientX, clientY) {
   
   showIconMenu(clientX, clientY, [
     { icon: 'copy', title: '复制', onClick: () => copyContextTarget(target) },
+    { icon: 'pipette', title: '取色', onClick: () => pickColorFromContextMenu(target) },
     isRotatable && {
       icon: 'rotate',
       title: '旋转',
@@ -1062,6 +1333,23 @@ function rotateContextTarget(target) {
     if (selectedFenceGateId === target.id) {
       updateEditor();
     }
+  } else if (target.type === 'fence') {
+    const fence = testMap.getFence(target.id);
+    if (!fence) return;
+    const cx = (fence.from[0] + fence.to[0]) / 2;
+    const cz = (fence.from[1] + fence.to[1]) / 2;
+    const dx = fence.to[0] - fence.from[0];
+    const dz = fence.to[1] - fence.from[1];
+    // 顺时针旋转 90 度：(x, z) -> (-z, x)
+    const nextFrom = [cx + dz / 2, cz - dx / 2];
+    const nextTo = [cx - dz / 2, cz + dx / 2];
+    testMap.updateFence(target.id, {
+      from: nextFrom,
+      to: nextTo
+    });
+    if (selectedFenceId === target.id) {
+      updateEditor();
+    }
   }
   refreshShadows();
   renderPlan();
@@ -1121,6 +1409,14 @@ function mirrorContextTarget(target) {
     const stairs = testMap.getStairs?.(target.id);
     if (stairs) {
       testMap.updateStairs?.(target.id, { mirrored: !stairs.mirrored });
+    }
+  } else if (target.type === 'fence') {
+    const fence = testMap.getFence(target.id);
+    if (fence) {
+      testMap.updateFence(target.id, {
+        from: [...fence.to],
+        to: [...fence.from]
+      });
     }
   }
   refreshShadows();
@@ -1312,12 +1608,7 @@ async function renameCurrentFloor(floorId) {
 
 function cancelObjectInteractions() {
   entityManager.dragState = null;
-  openingDragState = null;
-  wallDragState = null;
-  roomDragState = null;
-  roomResizeState = null;
-  structureDragState = null;
-  roofResizeState = null;
+  DragHandler.clearAllDragStates();
   setEditHandleDragState(null);
   drag3DState = null;
   document.body.classList.remove('is-dragging-3d');
@@ -1502,9 +1793,7 @@ function updateStructure(type, id, patch, rebuild = true) {
   return null;
 }
 
-function beginStructureDrag(event, type, id) {
-  DragHandler.beginStructureDrag(event, type, id);
-}
+
 
 function moveStructureTo(type, id, x, z, options = {}) {
   const structure = getStructure(type, id);
@@ -1569,25 +1858,7 @@ function renderPlanItem(item) {
   svg.appendChild(group);
 }
 
-function beginRoomDrag(event, roomId) {
-  DragHandler.beginRoomDrag(event, roomId);
-}
 
-function beginRoomResize(event, roomId, side) {
-  DragHandler.beginRoomResize(event, roomId, side);
-}
-
-function moveRoomDrag(event) {
-  DragHandler.moveRoomDrag(event);
-}
-
-function moveRoomResize(event) {
-  DragHandler.moveRoomResize(event);
-}
-
-function finishRoomEdit() {
-  DragHandler.finishRoomEdit();
-}
 
 function beginRoofResize(event, roofId, side) {
   if (event.button === 2) return;
@@ -1597,10 +1868,27 @@ function beginRoofResize(event, roofId, side) {
   selectRoof(roofId);
   const roof = testMap.getRoof?.(roofId);
   if (!roof || roof.locked) return;
+  const original = { x: roof.x || 0, z: roof.z || 0, width: roof.width || 6, depth: roof.depth || 6 };
+  const left = original.x - original.width / 2;
+  const right = original.x + original.width / 2;
+  const top = original.z - original.depth / 2;
+  const bottom = original.z + original.depth / 2;
+  const point = svgPointFromEvent(event);
+  const world = svgToWorld(point.x, point.y);
+
+  let offsetX = 0;
+  let offsetZ = 0;
+  if (side === 'west') offsetX = left - world.x;
+  if (side === 'east') offsetX = right - world.x;
+  if (side === 'north') offsetZ = bottom - world.z;
+  if (side === 'south') offsetZ = top - world.z;
+
   roofResizeState = {
     roofId,
     side,
-    original: { x: roof.x || 0, z: roof.z || 0, width: roof.width || 6, depth: roof.depth || 6 },
+    original,
+    offsetX,
+    offsetZ,
     historyPushed: false
   };
   svg.setPointerCapture(event.pointerId);
@@ -1611,27 +1899,42 @@ function moveRoofResize(event) {
   const roof = testMap.getRoof?.(roofResizeState.roofId);
   if (!roof || roof.locked) return;
   const point = svgPointFromEvent(event);
-  const world = snapWorldPoint(svgToWorld(point.x, point.y));
+  const world = svgToWorld(point.x, point.y);
   const original = roofResizeState.original;
   const left = original.x - original.width / 2;
   const right = original.x + original.width / 2;
   const top = original.z - original.depth / 2;
   const bottom = original.z + original.depth / 2;
-  let nextLeft = left;
-  let nextRight = right;
-  let nextTop = top;
-  let nextBottom = bottom;
+  const side = roofResizeState.side;
 
-  if (roofResizeState.side === 'west') nextLeft = Math.min(world.x, right - 1);
-  if (roofResizeState.side === 'east') nextRight = Math.max(world.x, left + 1);
-  if (roofResizeState.side === 'north') nextTop = Math.min(world.z, bottom - 1);
-  if (roofResizeState.side === 'south') nextBottom = Math.max(world.z, top + 1);
+  let nextWidth = original.width;
+  let nextDepth = original.depth;
+  let nextX = original.x;
+  let nextZ = original.z;
+
+  if (side === 'west') {
+    const nextLeft = Math.min(snapNumber(world.x + roofResizeState.offsetX), right - 1);
+    nextWidth = snapNumber(right - nextLeft);
+    nextX = Number((right - nextWidth / 2).toFixed(3));
+  } else if (side === 'east') {
+    const nextRight = Math.max(snapNumber(world.x + roofResizeState.offsetX), left + 1);
+    nextWidth = snapNumber(nextRight - left);
+    nextX = Number((left + nextWidth / 2).toFixed(3));
+  } else if (side === 'north') {
+    const nextBottom = Math.max(snapNumber(world.z + roofResizeState.offsetZ), top + 1);
+    nextDepth = snapNumber(nextBottom - top);
+    nextZ = Number((top + nextDepth / 2).toFixed(3));
+  } else if (side === 'south') {
+    const nextTop = Math.min(snapNumber(world.z + roofResizeState.offsetZ), bottom - 1);
+    nextDepth = snapNumber(bottom - nextTop);
+    nextZ = Number((bottom - nextDepth / 2).toFixed(3));
+  }
 
   const patch = {
-    x: snapNumber((nextLeft + nextRight) / 2),
-    z: snapNumber((nextTop + nextBottom) / 2),
-    width: snapNumber(nextRight - nextLeft),
-    depth: snapNumber(nextBottom - nextTop)
+    x: nextX,
+    z: nextZ,
+    width: nextWidth,
+    depth: nextDepth
   };
   if (!roofResizeState.historyPushed && (Math.abs(patch.width - original.width) > 0.02 || Math.abs(patch.depth - original.depth) > 0.02)) {
     pushHistory();
@@ -1675,42 +1978,13 @@ function pointerAngle(a, b) {
   return Math.atan2(b.y - a.y, b.x - a.x);
 }
 
-function beginOpeningDrag(event, openingId) {
-  DragHandler.beginOpeningDrag(event, openingId);
-}
-
-function finishOpeningDrag() {
-  DragHandler.finishOpeningDrag();
-}
-
-function canPlaceOnTable(item, definition) {
-  return Topology.canPlaceOnTable(item, definition);
-}
-
-function findTableBelow(item) {
-  return Topology.findTableBelow(
-    item,
-    testMap.floorplan.items,
-    testMap.floorplan.currentFloorId,
-    (type) => testMap.getFurnitureDefinition(type)
-  );
-}
-
-function moveItemTo(itemId, x, z) {
-  entityManager.moveItemTo(itemId, x, z);
-}
-
-function beginWallDrag(event, wallId) {
-  DragHandler.beginWallDrag(event, wallId);
-}
-
-function finishWallDrag() {
-  DragHandler.finishWallDrag();
-}
-
-function moveWallBy(wallId, dx, dz) {
-  DragHandler.moveWallBy(wallId, dx, dz);
-}
+const canPlaceOnTable = Topology.canPlaceOnTable;
+const findTableBelow = (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
+const findBookshelfNearby = (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
+const snapToBookshelf = (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type));
+const getShelfLayerHeights = (bookshelf) => Topology.getShelfLayerHeights(bookshelf, (type) => testMap.getFurnitureDefinition(type));
+const getItemsCountOnBookshelf = (bookshelf, items) => Topology.getItemsCountOnBookshelf(bookshelf, items, (type) => testMap.getFurnitureDefinition(type));
+const moveItemTo = (itemId, x, z) => entityManager.moveItemTo(itemId, x, z);
 // SVG 事件绑定已迁移至 SvgEvents.js 中管理
 
 function findMetadataFromNode(node, key) {
@@ -1769,10 +2043,556 @@ function groundPointFromPointer() {
   return viewer3d.groundPointFromPointer(floorY);
 }
 
-// 3D 交互手柄逻辑已抽离至 Viewer3DHandles.js
+function findWallSideFromNode(node) {
+  let current = node;
+  while (current) {
+    if (current.metadata?.side) return current.metadata.side;
+    current = current.parent;
+  }
+  return null;
+}
+
+function get2DWallSideFromPoint(wall, point) {
+  if (!wall || !point) return null;
+  const [x1, z1] = wall.from;
+  const [x2, z2] = wall.to;
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+  const length = Math.sqrt(dx * dx + dz * dz);
+  if (length < 0.01) return null;
+
+  const ux = dx / length;
+  const uz = dz / length;
+  const nx = -uz;
+  const nz = ux;
+
+  const px = point.x !== undefined ? point.x : point[0];
+  const pz = point.z !== undefined ? point.z : point[1];
+
+  const mx = (x1 + x2) / 2;
+  const mz = (z1 + z2) / 2;
+
+  const vx = px - mx;
+  const vz = pz - mz;
+
+  const dot = vx * nx + vz * nz;
+  return dot >= 0 ? 'front' : 'back';
+}
+
+function executeDesignTool(target) {
+  if (!activeMaterialDescriptor && (designMode === 'brush' || designMode === 'bucket')) {
+    showToast('请先在材质库中选择一个材质');
+    return;
+  }
+
+  // 1. 吸色器 (picker)
+  if (designMode === 'picker') {
+    let pickedMaterial = null;
+    let pickedColor = null;
+
+    if (target.type === 'room') {
+      const room = testMap.getRoom(target.id);
+      if (room) {
+        pickedMaterial = room.material;
+        pickedColor = room.color;
+      }
+    } else if (target.type === 'wall') {
+      const wall = testMap.getWall(target.id);
+      if (wall) {
+        const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+        if (side === 'front') {
+          pickedMaterial = wall.materialFront || wall.material;
+          pickedColor = wall.colorFront || wall.color;
+        } else if (side === 'back') {
+          pickedMaterial = wall.materialBack || wall.material;
+          pickedColor = wall.colorBack || wall.color;
+        } else {
+          pickedMaterial = wall.material;
+          pickedColor = wall.color;
+        }
+      }
+    } else if (target.type === 'item') {
+      const item = testMap.getItem(target.id);
+      if (item) {
+        // 暂存该家具的全部材质和颜色！用于对同类家具的全量材质复制
+        pickerCopiedItemType = item.type;
+        pickerCopiedItemMaterials = JSON.parse(JSON.stringify(item.materials || {}));
+        pickerCopiedItemColors = JSON.parse(JSON.stringify(item.colors || {}));
+
+        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
+        if (!componentId) {
+          const definition = testMap.getFurnitureDefinition?.(item.type);
+          componentId = definition?.components?.[0]?.id;
+        }
+        if (componentId) {
+          pickedMaterial = item.materials?.[componentId];
+          pickedColor = item.colors?.[componentId];
+          if (!pickedMaterial && !pickedColor) {
+            const definition = testMap.getFurnitureDefinition?.(item.type);
+            const component = definition?.components?.find(c => c.id === componentId);
+            pickedColor = component?.defaultColor || '#ffffff';
+          }
+        } else {
+          // 多材质的话就吸取第一个材质
+          if (item.materials && Object.keys(item.materials).length > 0) {
+            pickedMaterial = Object.values(item.materials)[0];
+          } else if (item.colors && Object.keys(item.colors).length > 0) {
+            pickedColor = Object.values(item.colors)[0];
+          }
+        }
+      }
+    } else if (target.type === 'fence') {
+      const fence = testMap.getFence(target.id);
+      if (fence) {
+        pickedMaterial = fence.material;
+        pickedColor = fence.color;
+      }
+    } else if (target.type === 'fence_gate') {
+      const gate = testMap.getFenceGate(target.id);
+      if (gate) {
+        pickedMaterial = gate.material;
+        pickedColor = gate.color;
+      }
+    } else if (target.type === 'opening') {
+      const opening = testMap.getOpening(target.id);
+      if (opening) {
+        pickedMaterial = opening.material;
+        pickedColor = opening.color;
+      }
+    } else if (target.type === 'roof') {
+      const roof = testMap.getRoof(target.id);
+      if (roof) {
+        pickedMaterial = roof.material;
+        pickedColor = roof.color;
+      }
+    } else if (target.type === 'stairs') {
+      const stairs = testMap.getStairs(target.id);
+      if (stairs) {
+        pickedMaterial = stairs.material;
+        pickedColor = stairs.color;
+      }
+    }
+
+    if (pickedMaterial || pickedColor) {
+      let descriptor = pickedMaterial || pickedColor;
+      if (typeof descriptor === 'string') {
+        const found = materialLibrary.find(m => m.color === descriptor);
+        if (found) {
+          activeMaterialDescriptor = found;
+        } else {
+          activeMaterialDescriptor = {
+            id: 'paint-' + descriptor.replace('#', ''),
+            name: `吸取颜色 (${descriptor})`,
+            category: 'paint',
+            kind: 'paint',
+            color: descriptor
+          };
+        }
+      } else {
+        activeMaterialDescriptor = descriptor;
+      }
+      showToast(`已吸取材质: ${activeMaterialDescriptor.name || '自定义材质'}`);
+      renderMaterialLibrary();
+      updateEditor();
+      setDesignMode('brush', false);
+    } else {
+      showToast('未找到该物体的材质');
+      setDesignMode('select');
+    }
+  }
+
+  // 2. 材质刷 (brush)
+  else if (designMode === 'brush') {
+    if (target.type === 'item' && pickerCopiedItemType && testMap.getItem(target.id)?.type === pickerCopiedItemType) {
+      if (isTargetLocked({ type: 'item', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      const targetItem = testMap.getItem(target.id);
+      targetItem.materials = JSON.parse(JSON.stringify(pickerCopiedItemMaterials || {}));
+      targetItem.colors = JSON.parse(JSON.stringify(pickerCopiedItemColors || {}));
+      testMap.updateItem(target.id, { materials: targetItem.materials, colors: targetItem.colors });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else {
+      if (target.type === 'room') {
+        if (isTargetLocked({ type: 'room', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        testMap.setRoomFloorMaterial(target.id, activeMaterialDescriptor);
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'wall') {
+        const wall = testMap.getWall(target.id);
+        if (wall && wall.locked) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+        const color = activeMaterialDescriptor.color || '#f9fbff';
+        if (side === 'front') {
+          testMap.updateWall(target.id, { materialFront: activeMaterialDescriptor, colorFront: color });
+        } else if (side === 'back') {
+          testMap.updateWall(target.id, { materialBack: activeMaterialDescriptor, colorBack: color });
+        } else {
+          testMap.updateWall(target.id, { material: activeMaterialDescriptor, color });
+        }
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'item') {
+        if (isTargetLocked({ type: 'item', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        const item = testMap.getItem(target.id);
+        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
+        if (!componentId && item) {
+          const definition = testMap.getFurnitureDefinition?.(item.type);
+          componentId = definition?.components?.[0]?.id;
+        }
+        if (componentId) {
+          pushHistory();
+          const oldId = selectedItemId;
+          selectedItemId = target.id;
+          applyMaterialToItemComponent(componentId, activeMaterialDescriptor);
+          selectedItemId = oldId;
+        } else {
+          showToast('无法确定点击的家具组件');
+        }
+      } else if (target.type === 'fence') {
+        if (isTargetLocked({ type: 'fence', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const fence = testMap.getFence(target.id);
+        const defaultColor = (fence && fence.subtype === 'concrete') ? '#f9fbff' : '#8d6e63';
+        const color = activeMaterialDescriptor.color || defaultColor;
+        testMap.updateFence(target.id, { material: activeMaterialDescriptor, color: color });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'fence_gate') {
+        if (isTargetLocked({ type: 'fence_gate', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const color = activeMaterialDescriptor.color || '#8d6e63';
+        testMap.updateFenceGate(target.id, { material: activeMaterialDescriptor, color: color });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'opening') {
+        if (isTargetLocked({ type: 'opening', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const color = activeMaterialDescriptor.color || '#ffffff';
+        testMap.updateOpening(target.id, { material: activeMaterialDescriptor, color: color });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'roof') {
+        if (isTargetLocked({ type: 'roof', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const color = activeMaterialDescriptor.color || '#5d4037';
+        testMap.updateRoof(target.id, { material: activeMaterialDescriptor, color: color });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      } else if (target.type === 'stairs') {
+        if (isTargetLocked({ type: 'stairs', id: target.id })) {
+          showToast('该物体已锁定');
+          return;
+        }
+        pushHistory();
+        const color = activeMaterialDescriptor.color || '#d7ccc8';
+        testMap.updateStairs(target.id, { material: activeMaterialDescriptor, color: color });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    }
+
+    // 重置右键取色的暂存状态
+    pickerCopiedItemType = null;
+    pickerCopiedItemMaterials = null;
+    pickerCopiedItemColors = null;
+
+    if (!designModeBrushLocked) {
+      setDesignMode('select');
+    }
+  }
+
+  // 3. 油漆桶 (bucket)
+  else if (designMode === 'bucket') {
+    if (target.type === 'room') {
+      if (isTargetLocked({ type: 'room', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.setRoomFloorMaterial(target.id, activeMaterialDescriptor);
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'wall') {
+      const wall = testMap.getWall(target.id);
+      if (!wall) return;
+      const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+      if (!side) return;
+
+      const [x1, z1] = wall.from;
+      const [x2, z2] = wall.to;
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const length = Math.sqrt(dx * dx + dz * dz);
+      if (length < 0.01) return;
+
+      const ux = dx / length;
+      const uz = dz / length;
+      const nx = -uz;
+      const nz = ux;
+
+      const offsetMultiplier = side === 'front' ? 0.15 : -0.15;
+      const checkX = (x1 + x2) / 2 + offsetMultiplier * nx;
+      const checkZ = (z1 + z2) / 2 + offsetMultiplier * nz;
+
+      const room = testMap.getRoomAt(checkX, checkZ);
+      if (!room) {
+        showToast('油漆桶无法在室外墙面应用，请点击室内墙面');
+        return;
+      }
+
+      pushHistory();
+      const roomWallIds = Object.values(room.wallIds || {});
+      roomWallIds.forEach(wallId => {
+        const w = testMap.getWall(wallId);
+        if (!w || w.locked) return;
+
+        const [wx1, wz1] = w.from;
+        const [wx2, wz2] = w.to;
+        const wdx = wx2 - wx1;
+        const wdz = wz2 - wz1;
+        const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
+        if (wlen < 0.01) return;
+
+        const wux = wdx / wlen;
+        const wuz = wdz / wlen;
+        const wnx = -wuz;
+        const wnz = wux;
+
+        const fX = (wx1 + wx2) / 2 + 0.1 * wnx;
+        const fZ = (wz1 + wz2) / 2 + 0.1 * wnz;
+        const bX = (wx1 + wx2) / 2 - 0.1 * wnx;
+        const bZ = (wz1 + wz2) / 2 - 0.1 * wnz;
+
+        const roomF = testMap.getRoomAt(fX, fZ);
+        const roomB = testMap.getRoomAt(bX, bZ);
+
+        const color = activeMaterialDescriptor.color || '#f9fbff';
+        if (roomF && roomF.id === room.id) {
+          testMap.updateWall(w.id, { materialFront: activeMaterialDescriptor, colorFront: color });
+        } else if (roomB && roomB.id === room.id) {
+          testMap.updateWall(w.id, { materialBack: activeMaterialDescriptor, colorBack: color });
+        } else {
+          testMap.updateWall(w.id, { material: activeMaterialDescriptor, color });
+        }
+      });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'item') {
+      const item = testMap.getItem(target.id);
+      if (item) {
+        pushHistory();
+        if (testMap.refreshItemRoomLinks) {
+          testMap.refreshItemRoomLinks();
+        }
+        const updatedItem = testMap.getItem(target.id);
+        const items = currentItems();
+        items.forEach(it => {
+          if (it.type === updatedItem.type && it.roomId === updatedItem.roomId && !isTargetLocked({ type: 'item', id: it.id })) {
+            it.materials = JSON.parse(JSON.stringify(updatedItem.materials || {}));
+            it.colors = JSON.parse(JSON.stringify(updatedItem.colors || {}));
+            testMap.updateItem(it.id, { materials: it.materials, colors: it.colors });
+          }
+        });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    } else if (target.type === 'fence') {
+      const fence = testMap.getFence(target.id);
+      if (fence) {
+        pushHistory();
+        const fences = testMap.floorplan.fences || [];
+        fences.forEach(f => {
+          if (f.floorId === fence.floorId && f.subtype === fence.subtype && !isTargetLocked({ type: 'fence', id: f.id })) {
+            testMap.updateFence(f.id, { material: fence.material, color: fence.color });
+          }
+        });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    } else if (target.type === 'fence_gate') {
+      const gate = testMap.getFenceGate(target.id);
+      if (gate) {
+        pushHistory();
+        const gates = testMap.floorplan.fenceGates || [];
+        gates.forEach(g => {
+          if (g.floorId === gate.floorId && g.subtype === gate.subtype && !isTargetLocked({ type: 'fence_gate', id: g.id })) {
+            testMap.updateFenceGate(g.id, {
+              frameMaterial: gate.frameMaterial,
+              panelMaterial: gate.panelMaterial,
+              color: gate.color
+            });
+          }
+        });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    }
+    setDesignMode('select');
+  }
+
+  // 4. 清除器 (eraser)
+  else if (designMode === 'eraser') {
+    if (target.type === 'room') {
+      if (isTargetLocked({ type: 'room', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      const defaultFloorMaterial = DEFAULT_MATERIAL_PACKS.find(p => p.id === 'wood-light-fine');
+      testMap.setRoomFloorMaterial(target.id, defaultFloorMaterial);
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'wall') {
+      const wall = testMap.getWall(target.id);
+      if (wall && wall.locked) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+      if (side === 'front') {
+        testMap.updateWall(target.id, { materialFront: null, colorFront: null });
+      } else if (side === 'back') {
+        testMap.updateWall(target.id, { materialBack: null, colorBack: null });
+      } else {
+        testMap.updateWall(target.id, { material: '#f9fbff', color: '#f9fbff', materialFront: null, colorFront: null, materialBack: null, colorBack: null });
+      }
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'item') {
+      if (isTargetLocked({ type: 'item', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      const item = testMap.getItem(target.id);
+      let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
+      if (!componentId && item) {
+        const definition = testMap.getFurnitureDefinition?.(item.type);
+        componentId = definition?.components?.[0]?.id;
+      }
+      if (componentId && item) {
+        pushHistory();
+        if (item.materials?.[componentId]) {
+          delete item.materials[componentId];
+        }
+        if (item.colors?.[componentId]) {
+          delete item.colors[componentId];
+        }
+        testMap.updateItem(target.id, { materials: item.materials, colors: item.colors });
+        refreshShadows();
+        updateEditor();
+        renderPlan();
+      }
+    } else if (target.type === 'fence') {
+      if (isTargetLocked({ type: 'fence', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.updateFence(target.id, { material: '#8d6e63', color: '#8d6e63' });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'fence_gate') {
+      if (isTargetLocked({ type: 'fence_gate', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.updateFenceGate(target.id, { material: '#8d6e63', color: '#8d6e63' });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'opening') {
+      if (isTargetLocked({ type: 'opening', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.resetOpeningMaterial(target.id);
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'roof') {
+      if (isTargetLocked({ type: 'roof', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.updateRoof(target.id, { material: null, color: null });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    } else if (target.type === 'stairs') {
+      if (isTargetLocked({ type: 'stairs', id: target.id })) {
+        showToast('该物体已锁定');
+        return;
+      }
+      pushHistory();
+      testMap.updateStairs(target.id, { material: null, color: null });
+      refreshShadows();
+      updateEditor();
+      renderPlan();
+    }
+
+    setDesignMode('select');
+  }
+}
 
 function begin3DDrag(pointerInfo) {
   const event = pointerInfo.event;
+  if (currentView === '3d' && designMode !== 'select') {
+    if (event.button === 0 || event.pointerType === 'touch') {
+      const target = pickNearest3DTarget();
+      if (target) {
+        executeDesignTool(target);
+        event.preventDefault();
+        return;
+      }
+    }
+  }
   if (mode === 'view') {
     // 查看模式下不进行任何3D物体的选中或拖拽
     if (event.button === 0) {
@@ -1796,13 +2616,29 @@ function begin3DDrag(pointerInfo) {
 
   if (mode === 'delete-wall') {
     const target = pickNearest3DTarget();
-    if (target && target.type === 'wall' && isTargetOnCurrentFloor(target)) {
-      pushHistory();
-      testMap.deleteWall(target.id);
-      clearSelection();
-      refreshShadows();
-      event.preventDefault();
-      return;
+    if (target && isTargetOnCurrentFloor(target)) {
+      if (target.type === 'wall') {
+        pushHistory();
+        testMap.deleteWall(target.id);
+        clearSelection();
+        refreshShadows();
+        event.preventDefault();
+        return;
+      } else if (target.type === 'fence') {
+        pushHistory();
+        testMap.deleteFence(target.id);
+        clearSelection();
+        refreshShadows();
+        event.preventDefault();
+        return;
+      } else if (target.type === 'fence_gate') {
+        pushHistory();
+        testMap.deleteFenceGate(target.id);
+        clearSelection();
+        refreshShadows();
+        event.preventDefault();
+        return;
+      }
     }
   }
 
@@ -1846,7 +2682,7 @@ function begin3DDrag(pointerInfo) {
         let bestEdge = null;
         let minDist = Infinity;
         edges.forEach((edge) => {
-          const dist = pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
+          const dist = Topology.pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
           if (dist < minDist) {
             minDist = dist;
             bestEdge = edge;
@@ -2014,8 +2850,7 @@ function begin3DDrag(pointerInfo) {
     const opening = testMap.getOpening(target.id);
     const groundPoint = groundPointFromPointer();
     if (!opening || opening.locked || !groundPoint) return;
-    opening.isDragging = true;
-    testMap.build();
+    testMap.beginOpeningDragPreview(target.id);
     drag3DState = {
       type: 'opening',
       openingId: target.id,
@@ -2088,6 +2923,7 @@ function begin3DDrag(pointerInfo) {
       startZ: groundPoint.z,
       historyPushed: false
     };
+    testMap.beginFenceGateDragPreview(target.id);
     document.body.classList.add('is-dragging-3d');
     canvas.setPointerCapture?.(event.pointerId);
     camera.detachControl(canvas);
@@ -2153,12 +2989,6 @@ function end3DDrag(event) {
   if (event?.pointerId !== undefined && drag3DState.pointerId !== event.pointerId) return;
   canvas.releasePointerCapture?.(drag3DState.pointerId);
   const openingId = drag3DState.type === 'opening' ? drag3DState.openingId : null;
-  if (openingId) {
-    const opening = testMap.getOpening(openingId);
-    if (opening) {
-      opening.isDragging = false;
-    }
-  }
   const fenceGateId = drag3DState.type === 'fence_gate' ? drag3DState.gateId : null;
   const roofId = drag3DState.type === 'roof' ? drag3DState.structureId : null;
   const stairsId = drag3DState.type === 'stairs' ? drag3DState.structureId : null;
@@ -2168,11 +2998,17 @@ function end3DDrag(event) {
   setEditHandleDragState(null);
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
-  if (openingId || fenceGateId) {
-    testMap.build();
-    refreshShadows();
-    if (openingId) selectOpening(openingId);
-    if (fenceGateId) selectFenceGate(fenceGateId);
+  if (openingId) {
+    testMap.finishOpeningDragPreview(openingId).then(() => {
+      refreshShadows();
+      selectOpening(openingId);
+    });
+  }
+  if (fenceGateId) {
+    testMap.finishFenceGateDragPreview(fenceGateId).then(() => {
+      refreshShadows();
+      selectFenceGate(fenceGateId);
+    });
   }
   if (roofId) selectRoof(roofId);
   if (stairsId) selectStairs(stairsId);
@@ -2212,6 +3048,11 @@ canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     return;
   }
+  if (mode === 'draw-wall' || mode === 'delete-wall' || isAddRoomMode() || mode.startsWith('add-roof') || mode.startsWith('add-stairs') || isAddOpeningMode() || mode.startsWith('draw-fence')) {
+    event.preventDefault();
+    switchToSelectMode();
+    return;
+  }
   const target = get3DContextTarget(event);
   if (!target) return;
   event.preventDefault();
@@ -2229,27 +3070,36 @@ canvas.addEventListener('pointerdown', (event) => {
   cancelLongPress();
   longPressState = {
     pointerId: event.pointerId,
+    pointerType: event.pointerType,
     startX,
     startY,
     timer: window.setTimeout(() => {
       longPressState = null;
       cancelObjectInteractions();
       showObjectContextMenu(target, startX, startY);
-    }, 620)
+    }, 500)
   };
 });
 
 canvas.addEventListener('pointermove', (event) => {
   if (!longPressState || longPressState.pointerId !== event.pointerId) return;
-  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > 8) cancelLongPress();
+  const tolerance = (event.pointerType === 'touch' || longPressState.pointerType === 'touch') ? 20 : 8;
+  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > tolerance) {
+    cancelLongPress();
+  }
 });
 
 canvas.addEventListener('pointerup', cancelLongPress);
-canvas.addEventListener('pointercancel', cancelLongPress);
+canvas.addEventListener('pointercancel', handlePointerCancel);
 scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
+    if (mode === 'delete-wall') {
+      const target = pickNearest3DTarget();
+      const hoverErasable = target && isTargetOnCurrentFloor(target) && (target.type === 'wall' || target.type === 'fence' || target.type === 'fence_gate');
+      document.body.classList.toggle('cursor-hover-erasable', !!hoverErasable);
+    }
     if (mode.startsWith('draw-fence')) {
       const target = pickNearest3DTarget();
       if (target && target.type === 'stairs') {
@@ -2277,7 +3127,7 @@ scene.onPointerObservable.add((pointerInfo) => {
           let minDist = Infinity;
           let bestIndex = -1;
           edges.forEach((edge, i) => {
-            const dist = pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
+            const dist = Topology.pointToSegmentDistance({ x: point.x, z: point.z }, [edge.p1.x, edge.p1.z], [edge.p2.x, edge.p2.z]);
             if (dist < minDist) {
               minDist = dist;
               bestEdge = edge;
@@ -2659,184 +3509,57 @@ function updateDrawWallPreview(snappedPoint) {
   }
 }
 
+function selectTarget(type, id) {
+  clear3DEditHandles();
+  if (type === TARGET_TYPES.ITEM) {
+    entityManager.selectedItemId = id;
+  } else {
+    entityManager.selectedItemId = null;
+  }
+
+  selectedTarget = id ? { type, id } : { type: null, id: null };
+
+  // 同步更新兼容老逻辑的 let 变量（以便 ES 模块导出继续有效）
+  selectedRoomId = type === TARGET_TYPES.ROOM ? id : null;
+  selectedWallId = type === TARGET_TYPES.WALL ? id : null;
+  selectedItemId = type === TARGET_TYPES.ITEM ? id : null;
+  selectedOpeningId = type === TARGET_TYPES.OPENING ? id : null;
+  selectedRoofId = type === TARGET_TYPES.ROOF ? id : null;
+  selectedStairsId = type === TARGET_TYPES.STAIRS ? id : null;
+  selectedFenceId = type === TARGET_TYPES.FENCE ? id : null;
+  selectedFenceGateId = type === TARGET_TYPES.FENCE_GATE ? id : null;
+
+  testMap.setSelectedItem(type === TARGET_TYPES.ITEM ? id : null);
+  testMap.setSelectedWall(type === TARGET_TYPES.WALL ? id : null);
+  testMap.setSelectedFence(type === TARGET_TYPES.FENCE ? id : null);
+  testMap.setSelectedFenceGate(type === TARGET_TYPES.FENCE_GATE ? id : null);
+
+  if (type === TARGET_TYPES.FENCE && id) {
+    set3DEditTarget('fence', id);
+  }
+
+  updateEditor();
+  renderPlan();
+}
+
 function clearSelection() {
-  clear3DEditHandles();
   clearDrawWallPreview();
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  entityManager.selectedItemId = null;
-  selectedOpeningId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
+  selectTarget(null, null);
 }
-
-function selectRoom(roomId) {
-  clear3DEditHandles();
-  selectedRoomId = roomId;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
-}
-
-function selectWall(wallId) {
-  clear3DEditHandles();
-  selectedWallId = wallId;
-  selectedRoomId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(wallId);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
-}
-
-function selectItem(itemId) {
-  entityManager.selectItem(itemId);
-}
-
-function selectOpening(openingId) {
-  clear3DEditHandles();
-  selectedOpeningId = openingId;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
-}
-
-function selectRoof(roofId) {
-  clear3DEditHandles();
-  selectedRoofId = roofId;
-  selectedStairsId = null;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
-}
-
-function selectStairs(stairsId) {
-  clear3DEditHandles();
-  selectedStairsId = stairsId;
-  selectedRoofId = null;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  selectedFenceId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(null);
-  updateEditor();
-  renderPlan();
-}
-
-function selectFence(fenceId) {
-  clear3DEditHandles();
-  selectedFenceId = fenceId;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  selectedFenceGateId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(fenceId);
-  testMap.setSelectedFenceGate(null);
-  if (fenceId) set3DEditTarget('fence', fenceId);
-  updateEditor();
-  renderPlan();
-}
-
-function selectFenceGate(gateId) {
-  clear3DEditHandles();
-  selectedFenceGateId = gateId;
-  selectedFenceId = null;
-  selectedRoofId = null;
-  selectedStairsId = null;
-  selectedRoomId = null;
-  selectedWallId = null;
-  selectedItemId = null;
-  selectedOpeningId = null;
-  testMap.setSelectedItem(null);
-  testMap.setSelectedWall(null);
-  testMap.setSelectedFence(null);
-  testMap.setSelectedFenceGate(gateId);
-  updateEditor();
-  renderPlan();
-}
+function selectRoom(id) { return selectTarget(TARGET_TYPES.ROOM, id); }
+function selectWall(id) { return selectTarget(TARGET_TYPES.WALL, id); }
+function selectItem(id) { return selectTarget(TARGET_TYPES.ITEM, id); }
+function selectOpening(id) { return selectTarget(TARGET_TYPES.OPENING, id); }
+function selectRoof(id) { return selectTarget(TARGET_TYPES.ROOF, id); }
+function selectStairs(id) { return selectTarget(TARGET_TYPES.STAIRS, id); }
+function selectFence(id) { return selectTarget(TARGET_TYPES.FENCE, id); }
+function selectFenceGate(id) { return selectTarget(TARGET_TYPES.FENCE_GATE, id); }
 
 function currentFences() {
   return testMap.floorplan.fences || [];
 }
 
-function beginFenceResize(event, fenceId, handle) {
-  DragHandler.beginFenceHandleDrag(event, fenceId, handle);
-}
 
-function beginFenceDrag(event, fenceId) {
-  DragHandler.beginFenceDrag(event, fenceId);
-}
-
-function moveFenceBy(fenceId, dx, dz) {
-  DragHandler.moveFenceBy(fenceId, dx, dz);
-}
-
-function finishFenceDrag() {
-  DragHandler.finishFenceDrag();
-}
-
-function beginFenceGateDrag(event, gateId) {
-  DragHandler.beginFenceGateDrag(event, gateId);
-}
-
-function finishFenceGateDrag() {
-  DragHandler.finishFenceGateDrag();
-}
 
 function updateSelectedFenceGatePreview(patch) {
   if (!selectedFenceGateId) return;
@@ -2875,7 +3598,7 @@ function applyMaterialToFenceGateFrame(material) {
   }
   pushHistory();
   const color = typeof material === 'string' ? material : (material.color || '#ffffff');
-  const matVal = typeof material === 'string' ? material : (material.url || color);
+  const matVal = typeof material === 'string' ? material : (material.url || material.src || color);
   testMap.updateFenceGate(selectedFenceGateId, { frameMaterial: matVal });
   refreshShadows();
   updateEditor();
@@ -2890,20 +3613,14 @@ function applyMaterialToFenceGatePanel(material) {
   }
   pushHistory();
   const color = typeof material === 'string' ? material : (material.color || '#ffffff');
-  const matVal = typeof material === 'string' ? material : (material.url || color);
+  const matVal = typeof material === 'string' ? material : (material.url || material.src || color);
   testMap.updateFenceGate(selectedFenceGateId, { panelMaterial: matVal });
   refreshShadows();
   updateEditor();
   renderPlan();
 }
 
-function findNearestSeat(mannequinItem) {
-  return Topology.findNearestSeat(
-    mannequinItem,
-    testMap.floorplan.items,
-    (type) => testMap.getFurnitureDefinition(type)
-  );
-}
+const findNearestSeat = (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type));
 
 
 
@@ -3339,6 +4056,7 @@ function initMaterialControls() {
 }
 
 function renderMaterialLibrary() {
+  updateDesignCursor();
   const category = materialCategorySelect.value;
   const materials = materialLibrary.filter((material) => material.category === category);
   materialLibraryPanel.innerHTML = '';
@@ -3455,6 +4173,81 @@ function renderMaterialLibrary() {
     grid.appendChild(button);
   });
   materialLibraryPanel.appendChild(grid);
+
+  // 当选中了自定义材质时，在列表下方渲染编辑与删除面板
+  const isCustomMaterial = activeMaterialDescriptor && activeMaterialDescriptor.id && String(activeMaterialDescriptor.id).startsWith('custom_');
+  if (isCustomMaterial && category === 'custom') {
+    // 1. 材质名称输入框 (复用全局 label.field 样式)
+    const fieldLabel = document.createElement('label');
+    fieldLabel.className = 'field';
+    fieldLabel.style.marginTop = '12px';
+
+    const span = document.createElement('span');
+    span.textContent = '材质名称';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = activeMaterialDescriptor.name || '';
+
+    const handleSaveName = () => {
+      const newName = input.value.trim();
+      if (!newName) return;
+      
+      // 更新当前选中的材质名
+      activeMaterialDescriptor.name = newName;
+      
+      // 更新库中对应项的 name
+      const foundInLib = materialLibrary.find(m => m.id === activeMaterialDescriptor.id);
+      if (foundInLib) {
+        foundInLib.name = newName;
+      }
+      
+      pushHistory();
+      renderMaterialLibrary();
+      updateEditor();
+    };
+
+    // 监听失焦
+    input.addEventListener('change', handleSaveName);
+    
+    // 监听回车键
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur(); // 触发 blur，继而触发 change 事件
+      }
+    });
+
+    fieldLabel.appendChild(span);
+    fieldLabel.appendChild(input);
+
+    // 2. 删除按钮 (复用全局 button.danger 样式)
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger';
+    deleteBtn.textContent = '删除材质';
+    deleteBtn.style.width = '100%';
+    deleteBtn.addEventListener('click', async () => {
+      const confirmDelete = await showCustomConfirm('删除材质', `确定要删除自定义材质「${activeMaterialDescriptor.name}」吗？`);
+      if (confirmDelete) {
+        // 从 localStorage 移除
+        removeCustomMaterialFromLocalStorage(activeMaterialDescriptor.id);
+        // 从 materialLibrary 移除
+        materialLibrary = materialLibrary.filter(m => m.id !== activeMaterialDescriptor.id);
+        
+        // 查找自定义分类下的其它材质
+        const remainingCustom = materialLibrary.filter(m => m.category === 'custom');
+        activeMaterialDescriptor = remainingCustom[0] || null;
+        
+        pushHistory();
+        renderMaterialLibrary();
+        updateEditor();
+      }
+    });
+
+    materialLibraryPanel.appendChild(fieldLabel);
+    materialLibraryPanel.appendChild(deleteBtn);
+  }
 }
 
 function applyMaterialToRoomFloor(material) {
@@ -3563,7 +4356,7 @@ function applyMaterialToFence(material) {
   const fence = testMap.getFence(selectedFenceId);
   const defaultColor = (fence && fence.subtype === 'concrete') ? '#f9fbff' : '#8d6e63';
   const color = material.color || defaultColor;
-  testMap.updateFence(selectedFenceId, { material: material.url || color, color: color });
+  testMap.updateFence(selectedFenceId, { material: material.url || material.src || color, color: color });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3578,8 +4371,207 @@ function readFileAsDataURL(file) {
   });
 }
 
+function downloadTextFile(content, fileName, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function showFurnitureUploadHelp() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'custom-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="custom-modal-container furniture-upload-modal" role="dialog" aria-modal="true" aria-labelledby="furniture-upload-modal-title">
+      <div class="custom-modal-header">
+        <h3 id="furniture-upload-modal-title" class="custom-modal-title">\u5982\u4f55\u4e0a\u4f20\u5bb6\u5177</h3>
+      </div>
+      <div class="custom-modal-body furniture-upload-modal-body">
+        <p>\u4e0a\u4f20\u81ea\u5b9a\u4e49 <code>.js</code> \u6216 <code>.mjs</code> \u4ee3\u7801\u6587\u4ef6\uff0c\u5373\u53ef\u5c06\u5bb6\u5177\u6dfb\u52a0\u81f3\u81ea\u5b9a\u4e49\u5217\u8868\u4e2d\u3002</p>
+        <p class="furniture-upload-tip">\u63d0\u793a\uff1a\u811a\u672c\u5c06\u5728\u672c\u5730\u6267\u884c\uff0c\u8bf7\u786e\u4fdd\u4ee3\u7801\u6765\u6e90\u5b89\u5168\u53ef\u9760\u3002</p>
+        <div class="furniture-upload-links">
+          <button id="btn-download-furniture-example" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>\u4e0b\u8f7d\u5bb6\u5177\u6a21\u677f
+          </button>
+          <button id="btn-download-furniture-skill" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>\u4e0b\u8f7d AI \u63d0\u793a\u8bcd
+          </button>
+        </div>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-close-furniture-upload-help" type="button" class="custom-modal-btn btn-primary">\u77e5\u9053\u4e86</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  backdrop.getBoundingClientRect();
+  backdrop.classList.add('active');
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    backdrop.classList.remove('active');
+    window.removeEventListener('keydown', handleKeyDown);
+    setTimeout(() => backdrop.remove(), 200);
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cleanup();
+    }
+  };
+
+  backdrop.querySelector('#btn-download-furniture-example').addEventListener('click', () => {
+    downloadTextFile(furnitureUploadExampleSource, 'custom-furniture-example.js', 'text/javascript;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-download-furniture-skill').addEventListener('click', () => {
+    downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-close-furniture-upload-help').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) cleanup();
+  });
+  window.addEventListener('keydown', handleKeyDown);
+}
+
+function validateUploadedFurniture(definition) {
+  if (!definition || typeof definition !== 'object') return 'The factory did not return a furniture definition object.';
+  if (!/^[a-z][a-z0-9_]*$/.test(definition.type || '')) return 'type must start with a lowercase letter and contain only lowercase letters, digits, and underscores.';
+  if (!definition.name || typeof definition.name !== 'string') return 'A valid furniture name is required.';
+  if (definition.thumbnail !== undefined && typeof definition.thumbnail !== 'string') {
+    return 'thumbnail must be a string path or Base64 Data URL.';
+  }
+  if (!definition.defaultSize || ['width', 'depth', 'height'].some((key) => !Number.isFinite(Number(definition.defaultSize[key])) || Number(definition.defaultSize[key]) <= 0)) {
+    return 'defaultSize.width, depth, and height must all be numbers greater than zero.';
+  }
+  if (!Array.isArray(definition.components) || definition.components.length === 0) return 'components must contain at least one editable component.';
+  const componentIds = new Set();
+  for (const component of definition.components) {
+    if (!component?.id || typeof component.id !== 'string') return 'Every component must have a valid id.';
+    if (componentIds.has(component.id)) return `Duplicate component id: ${component.id}`;
+    componentIds.add(component.id);
+  }
+  if (typeof definition.build !== 'function') return 'A build function is required.';
+  const existing = FURNITURE_DEFINITIONS[definition.type];
+  if (existing && existing.category !== 'custom') {
+    return `Furniture type "${definition.type}" already exists. Choose another type.`;
+  }
+  return '';
+}
+
+async function registerCustomFurniture(source) {
+  const moduleUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+  try {
+    const uploadedModule = await import(/* @vite-ignore */ moduleUrl);
+    if (typeof uploadedModule.default !== 'function') {
+      throw new Error('The file must default-export a createFurniture factory function.');
+    }
+    const definition = await uploadedModule.default({
+      boxComponent,
+      cylinderComponent,
+      sphereComponent,
+      BABYLON
+    });
+    const validationError = validateUploadedFurniture(definition);
+    if (validationError) throw new Error(validationError);
+
+    definition.category = 'custom';
+    definition.defaultSize = {
+      width: Number(definition.defaultSize.width),
+      depth: Number(definition.defaultSize.depth),
+      height: Number(definition.defaultSize.height)
+    };
+    FURNITURE_DEFINITIONS[definition.type] = definition;
+    
+    const existingIndex = FURNITURE_LIST.findIndex((f) => f.type === definition.type);
+    if (existingIndex >= 0) {
+      FURNITURE_LIST[existingIndex] = definition;
+    } else {
+      FURNITURE_LIST.push(definition);
+    }
+    return definition;
+  } finally {
+    URL.revokeObjectURL(moduleUrl);
+  }
+}
+
+function saveCustomFurnitureToLocalStorage(type, source) {
+  try {
+    const storedStr = localStorage.getItem('custom_furniture_sources');
+    const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+    sourcesMap[type] = source;
+    localStorage.setItem('custom_furniture_sources', JSON.stringify(sourcesMap));
+  } catch (e) {
+    console.error('Failed to save custom furniture source to localStorage:', e);
+  }
+}
+
+async function restoreCustomFurnitureFromLocalStorage() {
+  try {
+    const storedStr = localStorage.getItem('custom_furniture_sources');
+    if (!storedStr) return;
+    const sourcesMap = JSON.parse(storedStr);
+    let restoredCount = 0;
+    for (const type of Object.keys(sourcesMap)) {
+      try {
+        const source = sourcesMap[type];
+        await registerCustomFurniture(source);
+        restoredCount++;
+      } catch (err) {
+        console.error(`Failed to restore custom furniture "${type}":`, err);
+      }
+    }
+    if (restoredCount > 0) {
+      renderFurnitureGrid();
+    }
+  } catch (e) {
+    console.error('Failed to parse stored custom furniture sources:', e);
+  }
+}
+
+async function loadUploadedFurniture(file) {
+  const source = await file.text();
+  const definition = await registerCustomFurniture(source);
+  renderFurnitureGrid();
+  showToast(`\u2713 \u5df2\u4e0a\u4f20\u5bb6\u5177\u201c${definition.name}\u201d`);
+  saveCustomFurnitureToLocalStorage(definition.type, source);
+}
+
+function initFurnitureUpload() {
+  const uploadButton = document.getElementById('btn-upload-furniture');
+  const helpButton = document.getElementById('btn-furniture-upload-help');
+  const input = document.getElementById('furniture-upload-input');
+  if (!uploadButton || !helpButton || !input) return;
+
+  uploadButton.addEventListener('click', () => {
+    input.value = '';
+    input.click();
+  });
+  helpButton.addEventListener('click', showFurnitureUploadHelp);
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      await loadUploadedFurniture(file);
+    } catch (error) {
+      console.error('Furniture upload failed:', error);
+      await showCustomAlert('\u4e0a\u4f20\u5bb6\u5177\u5931\u8d25', error?.message || '\u65e0\u6cd5\u8bfb\u53d6\u6b64\u5bb6\u5177\u6587\u4ef6\u3002');
+    } finally {
+      input.value = '';
+    }
+  });
+}
+
 function initFurnitureButtons() {
   const categorySelect = document.getElementById('furniture-category-select');
+  const searchInput = document.getElementById('furniture-search-input');
+  const clearSearchBtn = document.getElementById('btn-clear-furniture-search');
   
   if (categorySelect && categorySelect.children.length === 0) {
     FURNITURE_CATEGORIES.forEach((cat) => {
@@ -3595,6 +4587,28 @@ function initFurnitureButtons() {
     });
   }
 
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      if (clearSearchBtn) {
+        clearSearchBtn.classList.toggle('hidden', !searchInput.value);
+      }
+      renderFurnitureGrid();
+    });
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+      }
+      clearSearchBtn.classList.add('hidden');
+      renderFurnitureGrid();
+    });
+  }
+
+  initFurnitureUpload();
+  restoreCustomFurnitureFromLocalStorage();
   renderFurnitureGrid();
 }
 
@@ -3606,9 +4620,16 @@ function renderFurnitureGrid() {
   const categorySelect = document.getElementById('furniture-category-select');
   const selectedCat = categorySelect ? categorySelect.value : 'all';
 
+  const searchInput = document.getElementById('furniture-search-input');
+  const searchQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  const uploadActions = document.getElementById('furniture-upload-actions');
+  if (uploadActions) uploadActions.classList.toggle('hidden', selectedCat !== 'custom');
+
   const filtered = FURNITURE_LIST.filter((definition) => {
-    if (selectedCat === 'all') return true;
-    return definition.category === selectedCat;
+    if (selectedCat !== 'all' && definition.category !== selectedCat) return false;
+    if (searchQuery && !definition.name.toLowerCase().includes(searchQuery)) return false;
+    return true;
   });
 
   filtered.forEach((definition) => {
@@ -3619,12 +4640,20 @@ function renderFurnitureGrid() {
 
     const img = document.createElement('img');
     const imgPath = `../src/furniture/image/${definition.type}.png`;
-    const resolvedUrl = furnitureImages[imgPath]?.default || furnitureImages['../src/furniture/image/placeholder.png']?.default || '';
+    const resolvedUrl = definition.thumbnail || furnitureImages[imgPath]?.default || furnitureImages['../src/furniture/image/custom_cube.png']?.default || '';
     img.src = resolvedUrl;
     img.alt = definition.name;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.fetchPriority = 'low';
 
     img.onerror = () => {
-      img.style.display = 'none';
+      const cubeFallback = furnitureImages['../src/furniture/image/custom_cube.png']?.default || '';
+      if (cubeFallback && img.src !== cubeFallback) {
+        img.src = cubeFallback;
+      } else {
+        img.style.display = 'none';
+      }
     };
 
     const span = document.createElement('span');
@@ -3633,6 +4662,79 @@ function renderFurnitureGrid() {
     button.append(img, span);
     itemGrid.appendChild(button);
   });
+}
+
+function saveCustomMaterialToLocalStorage(id, src) {
+  try {
+    const storedStr = localStorage.getItem('custom_material_sources');
+    const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+    sourcesMap[id] = src;
+    localStorage.setItem('custom_material_sources', JSON.stringify(sourcesMap));
+  } catch (e) {
+    console.error('Failed to save custom material source to localStorage:', e);
+  }
+}
+
+function removeCustomMaterialFromLocalStorage(id) {
+  try {
+    const storedStr = localStorage.getItem('custom_material_sources');
+    if (!storedStr) return;
+    const sourcesMap = JSON.parse(storedStr);
+    delete sourcesMap[id];
+    localStorage.setItem('custom_material_sources', JSON.stringify(sourcesMap));
+  } catch (e) {
+    console.error('Failed to remove custom material source from localStorage:', e);
+  }
+}
+
+function cleanFloorplanMaterials(obj) {
+  if (!obj || typeof obj !== 'object') return;
+  
+  if (obj.src && typeof obj.src === 'string' && obj.src.startsWith('data:image/')) {
+    delete obj.src; // 剥离大体积 Base64
+  }
+  
+  for (const key of Object.keys(obj)) {
+    if (obj[key] && typeof obj[key] === 'object') {
+      cleanFloorplanMaterials(obj[key]);
+    }
+  }
+}
+
+function cleanMaterialLibraryForStorage(lib) {
+  if (!lib || !Array.isArray(lib)) return [];
+  return lib.map(m => {
+    if (m.id && String(m.id).startsWith('custom_')) {
+      const copy = { ...m };
+      delete copy.src; // 抹除 inline base64
+      return copy;
+    }
+    return m;
+  });
+}
+
+function restoreFloorplanMaterials(obj) {
+  if (!obj || typeof obj !== 'object') return;
+  
+  if (obj.id && String(obj.id).startsWith('custom_') && (!obj.src || obj.src.startsWith('materials/'))) {
+    const storedStr = localStorage.getItem('custom_material_sources');
+    const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
+    const base64 = sourcesMap[obj.id];
+    if (base64) {
+      obj.src = base64;
+    } else {
+      const foundInLib = materialLibrary.find(m => m.id === obj.id);
+      if (foundInLib && foundInLib.src) {
+        obj.src = foundInLib.src;
+      }
+    }
+  }
+  
+  for (const key of Object.keys(obj)) {
+    if (obj[key] && typeof obj[key] === 'object') {
+      restoreFloorplanMaterials(obj[key]);
+    }
+  }
 }
 
 materialCategorySelect.addEventListener('change', renderMaterialLibrary);
@@ -3651,6 +4753,7 @@ materialUploadInput.addEventListener('change', async (event) => {
   });
   descriptor.id = `custom_${Date.now()}`;
   materialLibrary.unshift(descriptor);
+  saveCustomMaterialToLocalStorage(descriptor.id, src); // 同步存入本地集中存储
   activeMaterialDescriptor = descriptor;
   materialUploadInput.value = '';
   renderMaterialLibrary();
@@ -3848,6 +4951,28 @@ document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab === button));
     document.querySelectorAll('[data-panel]').forEach((panel) => panel.classList.toggle('hidden', panel.dataset.panel !== button.dataset.tab));
+    
+    // 切出设计面板时自动恢复到 select 模式
+    if (button.dataset.tab !== 'design') {
+      setDesignMode('select');
+    }
+  });
+});
+
+// 初始化设计工具切换事件
+document.querySelectorAll('.design-mode').forEach((button) => {
+  button.addEventListener('click', () => {
+    const nextMode = button.dataset.designMode;
+    setDesignMode(nextMode, false);
+  });
+
+  button.addEventListener('dblclick', (e) => {
+    const nextMode = button.dataset.designMode;
+    if (nextMode === 'brush') {
+      e.preventDefault();
+      e.stopPropagation();
+      setDesignMode('brush', true);
+    }
   });
 });
 
@@ -3857,6 +4982,7 @@ document.querySelectorAll('.mode').forEach((button) => {
     drawStart = null;
     clearDrawWallPreview();
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
+    handleModeChange(mode);
     renderPlan();
   });
 });
@@ -3929,26 +5055,30 @@ stage.addEventListener('pointerdown', (event) => {
   cancelLongPress();
   longPressState = {
     pointerId: event.pointerId,
+    pointerType: event.pointerType,
     startX,
     startY,
     timer: window.setTimeout(() => {
       longPressState = null;
       cancelObjectInteractions();
       showObjectContextMenu(target, startX, startY);
-    }, 620)
+    }, 500)
   };
-});
+}, true); // 捕获阶段，防止子元素 stopPropagation 阻断
 
 ['copy', 'cut', 'paste', 'selectstart', 'dragstart'].forEach((eventName) => {
   stage.addEventListener(eventName, (event) => event.preventDefault());
 });
 document.addEventListener('pointermove', (event) => {
   if (!longPressState || longPressState.pointerId !== event.pointerId) return;
-  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > 8) cancelLongPress();
+  const tolerance = (event.pointerType === 'touch' || longPressState.pointerType === 'touch') ? 20 : 8;
+  if (Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY) > tolerance) {
+    cancelLongPress();
+  }
 });
 
 document.addEventListener('pointerup', cancelLongPress);
-document.addEventListener('pointercancel', cancelLongPress);
+document.addEventListener('pointercancel', handlePointerCancel);
 document.addEventListener('pointerdown', (event) => {
   if (!contextMenuElement || contextMenuElement.contains(event.target)) return;
   hideContextMenu();
@@ -4141,8 +5271,16 @@ export function setSnapSize(val) {
 }
 
 export {
+  selectedTarget,
+  selectTarget,
+  TARGET_TYPES,
   testMap,
   viewer3d,
+  scene,
+  camera,
+  engine,
+  FURNITURE_LIST,
+  BABYLON,
   entityManager,
   activeMaterialDescriptor,
   selectedRoomId,
@@ -4203,8 +5341,13 @@ export {
   revealRightPanelIfNeeded,
   
   showCustomConfirm,
+  show3MFExportDialog,
   currentRooms,
   canPlaceOnTable,
   findTableBelow,
+  findBookshelfNearby,
+  snapToBookshelf,
+  getShelfLayerHeights,
+  getItemsCountOnBookshelf,
   getSelectedStructure
 };

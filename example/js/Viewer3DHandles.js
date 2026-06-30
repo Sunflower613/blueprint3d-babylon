@@ -253,7 +253,7 @@ export function create3DEditHandle(type, id, action, side, position, color, rota
   handle.renderingGroupId = 3;
   handle.alwaysSelectAsActiveMesh = true;
   handle.renderOutline = true;
-  handle.outlineWidth = 0.035;
+  handle.outlineWidth = 0.05; // 轮廓线也相应加粗
   handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
   
   editHandleNodes.push(handle);
@@ -407,6 +407,19 @@ export function begin3DEditHandleDrag(handle, event) {
     editHandleDragState.originalCurve = structure ? (structure.curve || 0) : 0;
   }
 
+  if (handle.action === 'resize') {
+    let dragOffset = 0;
+    const left = bounds.x - bounds.width / 2;
+    const right = bounds.x + bounds.width / 2;
+    const top = bounds.z - bounds.depth / 2;
+    const bottom = bounds.z + bounds.depth / 2;
+    if (handle.side === 'west') dragOffset = left - groundPoint.x;
+    if (handle.side === 'east') dragOffset = right - groundPoint.x;
+    if (handle.side === 'north') dragOffset = top - groundPoint.z;
+    if (handle.side === 'south') dragOffset = bottom - groundPoint.z;
+    editHandleDragState.dragOffset = dragOffset;
+  }
+
   ctx.setDrag3DState({ type: 'edit-handle', pointerId: event.pointerId });
   document.body.classList.add('is-dragging-3d');
   ctx.canvas.setPointerCapture?.(event.pointerId);
@@ -420,7 +433,13 @@ export function syncRoomMovePreview(roomId) {
   if (!room) return;
   const floorY = ctx.testMap.getFloorElevation ? ctx.testMap.getFloorElevation(room.floorId) : 0;
   const floor = ctx.testMap.floorNodes?.get(room.id);
-  if (floor) floor.position.set(room.x, floorY - (ctx.testMap.floorplan.floorHeight || 0.08) / 2, room.z);
+  if (floor) {
+    floor.position.set(room.x, floorY - (ctx.testMap.floorplan.floorHeight || 0.08) / 2, room.z);
+    const origW = floor.metadata?.originalWidth || room.width || 1;
+    const origD = floor.metadata?.originalDepth || room.depth || 1;
+    floor.scaling.x = room.width / origW;
+    floor.scaling.z = room.depth / origD;
+  }
 
   const wallIds = new Set(Object.values(room.wallIds || {}));
   wallIds.forEach((wallId) => {
@@ -725,58 +744,36 @@ export function move3DEditHandle(groundPoint) {
     let z = original.z;
 
     if (state.side === 'west' || state.side === 'east') {
-      let rawW = original.width;
       if (state.side === 'west') {
         const snappedRight = ctx.snapNumber(right);
-        rawW = snappedRight - snapped.x;
-        w = ctx.snapValue(rawW);
-        if (ctx.snapEnabled && ctx.snapSize) {
-          if (w < minWidth) w = Math.ceil(minWidth / ctx.snapSize) * ctx.snapSize;
-        } else {
-          w = Math.max(minWidth, w);
-        }
+        const nextLeft = Math.min(ctx.snapNumber(groundPoint.x + state.dragOffset), snappedRight - minWidth);
+        w = snappedRight - nextLeft;
         x = snappedRight - w / 2;
       } else {
         const snappedLeft = ctx.snapNumber(left);
-        rawW = snapped.x - snappedLeft;
-        w = ctx.snapValue(rawW);
-        if (ctx.snapEnabled && ctx.snapSize) {
-          if (w < minWidth) w = Math.ceil(minWidth / ctx.snapSize) * ctx.snapSize;
-        } else {
-          w = Math.max(minWidth, w);
-        }
+        const nextRight = Math.max(ctx.snapNumber(groundPoint.x + state.dragOffset), snappedLeft + minWidth);
+        w = nextRight - snappedLeft;
         x = snappedLeft + w / 2;
       }
     }
 
     if (state.side === 'north' || state.side === 'south') {
-      let rawD = original.depth;
       if (state.side === 'north') {
         const snappedBottom = ctx.snapNumber(bottom);
-        rawD = snappedBottom - snapped.z;
-        d = ctx.snapValue(rawD);
-        if (ctx.snapEnabled && ctx.snapSize) {
-          if (d < minDepth) d = Math.ceil(minDepth / ctx.snapSize) * ctx.snapSize;
-        } else {
-          d = Math.max(minDepth, d);
-        }
+        const nextTop = Math.min(ctx.snapNumber(groundPoint.z + state.dragOffset), snappedBottom - minDepth);
+        d = snappedBottom - nextTop;
         z = snappedBottom - d / 2;
       } else {
         const snappedTop = ctx.snapNumber(top);
-        rawD = snapped.z - snappedTop;
-        d = ctx.snapValue(rawD);
-        if (ctx.snapEnabled && ctx.snapSize) {
-          if (d < minDepth) d = Math.ceil(minDepth / ctx.snapSize) * ctx.snapSize;
-        } else {
-          d = Math.max(minDepth, d);
-        }
+        const nextBottom = Math.max(ctx.snapNumber(groundPoint.z + state.dragOffset), snappedTop + minDepth);
+        d = nextBottom - snappedTop;
         z = snappedTop + d / 2;
       }
     }
 
     patch = {
-      x: ctx.snapNumber(x),
-      z: ctx.snapNumber(z),
+      x: Number(x.toFixed(3)),
+      z: Number(z.toFixed(3)),
       width: ctx.snapNumber(w),
       depth: ctx.snapNumber(d)
     };

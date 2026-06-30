@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@babylonjs/core": "^7.11.0",
+    "jszip": "^3.10.1",
     "vite": "^5.0.0"
   },
   "keywords": [

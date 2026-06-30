@@ -7,6 +7,7 @@ import { stringifyDXF, create3MFPackage } from '../core/exporters.js';
 import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition } from '../furniture/index.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
 import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } from '../openings/index.js';
+import { createOpeningProfileMesh } from '../openings/geometry.js';
 import { getRoofGeometryData } from '../geometry/roofGeometry.js';
 import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
@@ -99,7 +100,7 @@ export const BLUEPRINT3D_TEST_FLOORPLAN = {
 
 const INCHES_PER_UNIT = 39.37;
 const DEFAULT_WALL_COLOR = '#f9fbff';
-const DEFAULT_FLOOR_COLOR = '#f4efe6';
+const DEFAULT_FLOOR_COLOR = '#d2b48c';
 const DEFAULT_FLOOR_ID = 'floor_1';
 
 function cloneFloorplan(floorplan) {
@@ -339,6 +340,170 @@ function normalizeWallSegmentMesh(mesh) {
   return mesh;
 }
 
+const OPENING_PREVIEW_SHAPE_INDEX = Object.freeze({
+  square: 0,
+  diamond: 1,
+  circle: 2,
+  semicircle: 3,
+  'round-arch': 4,
+  'pointed-arch': 5,
+  'quarter-sector': 6,
+  'right-triangle': 7
+});
+
+class OpeningHolePreviewPlugin extends BABYLON.MaterialPluginBase {
+  constructor(material, map, openingId) {
+    super(material, `OpeningHolePreview_${openingId}`, 210, {}, true, true);
+    this.map = map;
+    this.openingId = openingId;
+  }
+
+  isCompatible(shaderLanguage) {
+    return shaderLanguage === BABYLON.ShaderLanguage.GLSL;
+  }
+
+  getUniforms() {
+    return {
+      ubo: [
+        { name: 'openingPreviewTransform', size: 4, type: 'vec4' },
+        { name: 'openingPreviewMetrics', size: 4, type: 'vec4' }
+      ],
+      fragment: `
+        uniform vec4 openingPreviewTransform;
+        uniform vec4 openingPreviewMetrics;
+      `
+    };
+  }
+
+  bindForSubMesh(uniformBuffer) {
+    const opening = this.map.getOpening(this.openingId);
+    const wall = opening ? this.map.getWall(opening.wallId) : null;
+    if (!opening || !wall) {
+      uniformBuffer.updateFloat4('openingPreviewMetrics', -100000, 1, 1, 0);
+      return;
+    }
+
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const length = Math.hypot(dx, dz) || 1;
+    const t = opening.t ?? 0.5;
+    const centerX = x1 + dx * t;
+    const centerZ = z1 + dz * t;
+    const width = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
+    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const bottomY = this.map.getFloorElevation(opening.floorId || wall.floorId)
+      + this.map.getOpeningElevationOffset(opening)
+      + sillHeight;
+    const shapeIndex = OPENING_PREVIEW_SHAPE_INDEX[normalizeOpeningShape(opening.shape)] ?? 0;
+
+    uniformBuffer.updateFloat4('openingPreviewTransform', centerX, centerZ, dx / length, dz / length);
+    uniformBuffer.updateFloat4('openingPreviewMetrics', bottomY, width, height, shapeIndex);
+  }
+
+  getCustomCode(shaderType) {
+    if (shaderType !== 'fragment') return null;
+    return {
+      CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
+        vec2 openingPreviewDelta = vPositionW.xz - openingPreviewTransform.xy;
+        float openingPreviewX = dot(openingPreviewDelta, openingPreviewTransform.zw) / openingPreviewMetrics.y;
+        float openingPreviewY = (vPositionW.y - openingPreviewMetrics.x) / openingPreviewMetrics.z;
+        float openingPreviewShape = openingPreviewMetrics.w;
+        bool openingPreviewInside = false;
+        if (openingPreviewY >= 0.0 && openingPreviewY <= 1.0) {
+          if (openingPreviewShape < 0.5) {
+            openingPreviewInside = abs(openingPreviewX) <= 0.5;
+          } else if (openingPreviewShape < 1.5) {
+            openingPreviewInside = abs(openingPreviewX) + abs(openingPreviewY - 0.5) <= 0.5;
+          } else if (openingPreviewShape < 2.5) {
+            vec2 circlePoint = vec2(openingPreviewX, openingPreviewY - 0.5);
+            openingPreviewInside = dot(circlePoint, circlePoint) <= 0.25;
+          } else if (openingPreviewShape < 3.5) {
+            openingPreviewInside = 4.0 * openingPreviewX * openingPreviewX + openingPreviewY * openingPreviewY <= 1.0;
+          } else if (openingPreviewShape < 4.5) {
+            openingPreviewInside = abs(openingPreviewX) <= 0.5 && (
+              openingPreviewY <= 0.68 ||
+              4.0 * openingPreviewX * openingPreviewX +
+                pow((openingPreviewY - 0.68) / 0.32, 2.0) <= 1.0
+            );
+          } else if (openingPreviewShape < 5.5) {
+            float pointedHalfWidth = openingPreviewY <= 0.7
+              ? 0.5
+              : (1.0 - openingPreviewY) * (0.5 / 0.3);
+            openingPreviewInside = abs(openingPreviewX) <= pointedHalfWidth;
+          } else if (openingPreviewShape < 6.5) {
+            vec2 sectorPoint = vec2(openingPreviewX + 0.5, openingPreviewY);
+            openingPreviewInside = sectorPoint.x >= 0.0 && dot(sectorPoint, sectorPoint) <= 1.0;
+          } else {
+            openingPreviewInside = openingPreviewX >= -0.5 && openingPreviewX <= 0.5 - openingPreviewY;
+          }
+        }
+        if (openingPreviewInside) discard;
+      `
+    };
+  }
+}
+
+class FenceGateGapPreviewPlugin extends BABYLON.MaterialPluginBase {
+  constructor(material, map, gateId, fenceId) {
+    super(material, `FenceGateGapPreview_${gateId}_${fenceId}`, 211, {}, true, true);
+    this.map = map;
+    this.gateId = gateId;
+    this.fenceId = fenceId;
+  }
+
+  isCompatible(shaderLanguage) {
+    return shaderLanguage === BABYLON.ShaderLanguage.GLSL;
+  }
+
+  getUniforms() {
+    return {
+      ubo: [
+        { name: 'fenceGatePreviewTransform', size: 4, type: 'vec4' },
+        { name: 'fenceGatePreviewMetrics', size: 2, type: 'vec2' }
+      ],
+      fragment: `
+        uniform vec4 fenceGatePreviewTransform;
+        uniform vec2 fenceGatePreviewMetrics;
+      `
+    };
+  }
+
+  bindForSubMesh(uniformBuffer) {
+    const gate = this.map.getFenceGate(this.gateId);
+    const fence = this.map.getFence(this.fenceId);
+    if (!gate || !fence || gate.fenceId !== fence.id) {
+      uniformBuffer.updateFloat2('fenceGatePreviewMetrics', -1, 0);
+      return;
+    }
+
+    const [x1, z1] = fence.from;
+    const [x2, z2] = fence.to;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const length = Math.hypot(dx, dz) || 1;
+    const centerX = (gate.from[0] + gate.to[0]) / 2;
+    const centerZ = (gate.from[1] + gate.to[1]) / 2;
+    uniformBuffer.updateFloat4('fenceGatePreviewTransform', centerX, centerZ, dx / length, dz / length);
+    uniformBuffer.updateFloat2('fenceGatePreviewMetrics', (gate.width || 1) / 2, 1);
+  }
+
+  getCustomCode(shaderType) {
+    if (shaderType !== 'fragment') return null;
+    return {
+      CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
+        if (fenceGatePreviewMetrics.y > 0.5) {
+          vec2 fenceGatePreviewDelta = vPositionW.xz - fenceGatePreviewTransform.xy;
+          float fenceGatePreviewX = dot(fenceGatePreviewDelta, fenceGatePreviewTransform.zw);
+          if (abs(fenceGatePreviewX) <= fenceGatePreviewMetrics.x) discard;
+        }
+      `
+    };
+  }
+}
+
 export class Blueprint3DTestMap extends BlueprintRegistry {
   constructor(scene, options = {}) {
     super(scene, { name: options.name || 'blueprint3dTestMap' });
@@ -348,10 +513,12 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.wallNodes = new Map();
     this.floorNodes = new Map();
     this.openingNodes = new Map();
+    this.openingDragPreviews = new Map();
     this.roofNodes = new Map();
     this.stairNodes = new Map();
     this.fenceNodes = new Map();
     this.fenceGateNodes = new Map();
+    this.fenceGateDragPreviews = new Map();
     this.selectedItemId = null;
     this.selectedWallId = null;
     this.selectedFenceId = null;
@@ -581,7 +748,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   getFenceElevationOffset(fence) {
-    if (!fence.from || !fence.to) return 0;
+    if (!fence || !fence.from || !fence.to) return 0;
     const cx = (fence.from[0] + fence.to[0]) / 2;
     const cz = (fence.from[1] + fence.to[1]) / 2;
     const room = this.floorplan.floor.rooms.find(r => r.floorId === fence.floorId && pointInRoom(r, cx, cz));
@@ -824,6 +991,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
 
   clearBuiltMeshes() {
+    this.openingDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
+    this.fenceGateDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.itemNodes.forEach((node) => node.dispose(false, true));
     this.wallNodes.forEach((node) => node.dispose(false, true));
     this.floorNodes.forEach((node) => node.dispose(false, true));
@@ -836,10 +1005,12 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.wallNodes.clear();
     this.floorNodes.clear();
     this.openingNodes.clear();
+    this.openingDragPreviews.clear();
     this.roofNodes.clear();
     this.stairNodes.clear();
     this.fenceNodes.clear();
     this.fenceGateNodes.clear();
+    this.fenceGateDragPreviews.clear();
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
     this.root.getChildren().forEach((child) => child.dispose(false, true));
@@ -1055,7 +1226,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.floorplan.floor.rooms.filter((room) => this.isFloorVisible(room.floorId)).forEach((room) => {
       const floorY = this.getFloorElevation(room.floorId);
       const floorMaterial = createBlueprintMaterial(this.scene, `floor_${room.id}`, room.material || this.floorplan.floor.material || room.color || this.floorplan.floor.color, {
-        fallbackColor: room.color || this.floorplan.floor.color || DEFAULT_FLOOR_COLOR
+        fallbackColor: room.color || this.floorplan.floor.color || DEFAULT_FLOOR_COLOR,
+        isFloor: true
       });
       const ceilingMaterial = createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
         fallbackColor: '#ffffff'
@@ -1065,7 +1237,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
       const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
       group.position.set(room.x, floorY - currentFloorHeight / 2, room.z);
-      group.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
+      group.metadata = { blueprintRoomId: room.id, locked: !!room.locked, originalWidth: room.width, originalDepth: room.depth };
       this.add(group, { shadowCaster: false });
 
       if (normalizeRoomShape(room.shape) === 'square') {
@@ -1108,24 +1280,33 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     });
   }
 
-  buildWalls() {
+  buildWalls(wallIds = null) {
     const visibleWalls = this.floorplan.walls.filter((wall) => this.isFloorVisible(wall.floorId));
-    // 1. 构建拓扑节点映射，以便识别墙角关系
-    const vertexMap = new Map();
-    visibleWalls.forEach((w) => {
-      const [wx1, wz1] = w.from;
-      const [wx2, wz2] = w.to;
-      const p1 = `${wx1.toFixed(3)},${wz1.toFixed(3)}`;
-      const p2 = `${wx2.toFixed(3)},${wz2.toFixed(3)}`;
-      
-      if (!vertexMap.has(p1)) vertexMap.set(p1, []);
-      if (!vertexMap.has(p2)) vertexMap.set(p2, []);
-      
-      vertexMap.get(p1).push({ wall: w, isFrom: true });
-      vertexMap.get(p2).push({ wall: w, isFrom: false });
-    });
+    // 1. 定义带容差的邻接墙查询辅助函数
+    const getAdjacentWalls = (P, currentWallId) => {
+      const threshold = 0.05; // 5厘米容差
+      const adjs = [];
+      visibleWalls.forEach((w) => {
+        if (w.id === currentWallId) return;
+        const [ax1, az1] = w.from;
+        const [ax2, az2] = w.to;
+        
+        const dist1 = Math.sqrt((ax1 - P.x) * (ax1 - P.x) + (az1 - P.z) * (az1 - P.z));
+        if (dist1 < threshold) {
+          adjs.push({ wall: w, isFrom: true });
+          return;
+        }
+        
+        const dist2 = Math.sqrt((ax2 - P.x) * (ax2 - P.x) + (az2 - P.z) * (az2 - P.z));
+        if (dist2 < threshold) {
+          adjs.push({ wall: w, isFrom: false });
+        }
+      });
+      return adjs;
+    };
 
-    visibleWalls.forEach((wall) => {
+    const wallsToBuild = wallIds ? visibleWalls.filter((wall) => wallIds.has(wall.id)) : visibleWalls;
+    wallsToBuild.forEach((wall) => {
       const [x1, z1] = wall.from;
       const [x2, z2] = wall.to;
       const dx = x2 - x1;
@@ -1140,11 +1321,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const matBack = createBlueprintMaterial(this.scene, `wall_${wall.id}_back`, descBack, wallMaterialOptions);
 
       // 2. 墙角 L 形拓扑判定与延伸长度计算
-      const p1Key = `${x1.toFixed(3)},${z1.toFixed(3)}`;
-      const p2Key = `${x2.toFixed(3)},${z2.toFixed(3)}`;
-      
-      const adj1 = (vertexMap.get(p1Key) || []).filter(adj => adj.wall.id !== wall.id);
-      const adj2 = (vertexMap.get(p2Key) || []).filter(adj => adj.wall.id !== wall.id);
+      const adj1 = getAdjacentWalls({ x: x1, z: z1 }, wall.id);
+      const adj2 = getAdjacentWalls({ x: x2, z: z2 }, wall.id);
       
       const hasMiter1 = adj1.length === 1;
       const hasMiter2 = adj2.length === 1;
@@ -1169,7 +1347,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         const [ax2, az2] = adjWall.to;
         const ap1 = { x: ax1, z: az1 };
         const ap2 = { x: ax2, z: az2 };
-        const AP_other = (Math.abs(ap1.x - P.x) < 0.01 && Math.abs(ap1.z - P.z) < 0.01) ? ap2 : ap1;
+        const dist1 = (ap1.x - P.x) * (ap1.x - P.x) + (ap1.z - P.z) * (ap1.z - P.z);
+        const dist2 = (ap2.x - P.x) * (ap2.x - P.x) + (ap2.z - P.z) * (ap2.z - P.z);
+        const AP_other = dist1 < dist2 ? ap2 : ap1;
         
         const dxA = otherP.x - P.x;
         const dzA = otherP.z - P.z;
@@ -1196,7 +1376,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const X_max = length + extLen_end;
 
       // 3. 收集并排序门窗区间
-      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.isFloorVisible(op.floorId) && !op.isDragging);
+      const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.isFloorVisible(op.floorId));
       const hasProfiledOpenings = wallOpenings.some((opening) => normalizeOpeningShape(opening.shape) !== 'square');
       const intervals = [];
       wallOpenings.forEach((opening) => {
@@ -1290,7 +1470,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         const [ax2, az2] = adjWall.to;
         const ap1 = { x: ax1, z: az1 };
         const ap2 = { x: ax2, z: az2 };
-        const AP_other = (Math.abs(ap1.x - P.x) < 0.01 && Math.abs(ap1.z - P.z) < 0.01) ? ap2 : ap1;
+        const dist1 = (ap1.x - P.x) * (ap1.x - P.x) + (ap1.z - P.z) * (ap1.z - P.z);
+        const dist2 = (ap2.x - P.x) * (ap2.x - P.x) + (ap2.z - P.z) * (ap2.z - P.z);
+        const AP_other = dist1 < dist2 ? ap2 : ap1;
         
         const dxA = otherP.x - P.x;
         const dzA = otherP.z - P.z;
@@ -1330,6 +1512,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         
         cutter.position.set(cutterPos.x, wallBaseY + H / 2, cutterPos.z);
         cutter.rotation.y = -Math.atan2(w.z, w.x);
+        cutter.computeWorldMatrix(true);
         
         let cutterCSG = BABYLON.CSG.FromMesh(cutter);
         let newCSG = currentCSG.subtract(cutterCSG);
@@ -1418,6 +1601,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
         let finalSubMeshFront = subMeshFront;
         if ((isFirst && hasMiter1) || (isLast && hasMiter2)) {
+          subMeshFront.computeWorldMatrix(true);
           let subCSG = BABYLON.CSG.FromMesh(subMeshFront);
           if (isFirst && hasMiter1) {
             subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
@@ -1445,6 +1629,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
         let finalSubMeshBack = subMeshBack;
         if ((isFirst && hasMiter1) || (isLast && hasMiter2)) {
+          subMeshBack.computeWorldMatrix(true);
           let subCSG = BABYLON.CSG.FromMesh(subMeshBack);
           if (isFirst && hasMiter1) {
             subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
@@ -1473,8 +1658,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     });
   }
 
-  buildOpenings() {
-    this.floorplan.openings.filter((opening) => this.isFloorVisible(opening.floorId)).forEach((opening) => {
+  buildOpenings(openingIds = null) {
+    this.floorplan.openings
+      .filter((opening) => this.isFloorVisible(opening.floorId) && (!openingIds || openingIds.has(opening.id)))
+      .forEach((opening) => {
       const wall = this.getWall(opening.wallId);
       if (!wall) return;
       const [x1, z1] = wall.from;
@@ -1499,26 +1686,6 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const frameT = wallT + 0.02;
       const frameW = 0.04;
       buildOpeningGeometry(this, opening, openingGroup, { width, height, frameT, frameW });
-
-      if (opening.isDragging) {
-        const dragPreviewBox = BABYLON.MeshBuilder.CreateBox(`opening_drag_preview_${opening.id}`, {
-          width: width,
-          height: height,
-          depth: wallT * 1.05
-        }, this.scene);
-        dragPreviewBox.parent = openingGroup;
-        dragPreviewBox.position.set(0, 0, 0);
-
-        const dragPreviewMat = new BABYLON.StandardMaterial(`opening_drag_preview_mat_${opening.id}`, this.scene);
-        dragPreviewMat.diffuseColor = BABYLON.Color3.FromHexString('#555555');
-        dragPreviewMat.alpha = 0;
-        dragPreviewMat.backFaceCulling = false;
-        dragPreviewBox.material = dragPreviewMat;
-
-        dragPreviewBox.enableEdgesRendering();
-        dragPreviewBox.edgesWidth = 3.0;
-        dragPreviewBox.edgesColor = new BABYLON.Color4(0.3, 0.6, 0.9, 1);
-      }
 
       this.openingNodes.set(opening.id, openingGroup);
     });
@@ -1645,8 +1812,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     });
   }
 
-  buildFences() {
-    this.floorplan.fences.filter((fence) => this.isFloorVisible(fence.floorId)).forEach((fence) => {
+  buildFences(fenceIds = null) {
+    this.floorplan.fences
+      .filter((fence) => this.isFloorVisible(fence.floorId) && (!fenceIds || fenceIds.has(fence.id)))
+      .forEach((fence) => {
       const floorY = this.getFloorElevation(fence.floorId);
       const group = new BABYLON.TransformNode(`fence_${fence.id}`, this.scene);
       
@@ -1748,9 +1917,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     });
   }
 
-  buildFenceGates() {
+  buildFenceGates(gateIds = null) {
     this.floorplan.fenceGates ||= [];
-    this.floorplan.fenceGates.filter((gate) => this.isFloorVisible(gate.floorId)).forEach((gate) => {
+    this.floorplan.fenceGates
+      .filter((gate) => this.isFloorVisible(gate.floorId) && (!gateIds || gateIds.has(gate.id)))
+      .forEach((gate) => {
       const floorY = this.getFloorElevation(gate.floorId);
       const group = new BABYLON.TransformNode(`gate_${gate.id}`, this.scene);
 
@@ -1923,7 +2094,24 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       this.scene.executeWhenReady(() => {
         const mirrorMesh = node.getChildMeshes().find((m) => m.metadata?.blueprintFurnitureComponentId === 'mirror');
         if (mirrorMesh) {
-          const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${item.id}`, 512, this.scene, true);
+          // Keep mirrors cheap while idle. During camera movement they refresh at
+          // most 10 times/second instead of rendering the full scene every frame.
+          const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${item.id}`, 256, this.scene, false);
+          mirrorTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+
+          const camera = this.scene.activeCamera;
+          let lastRefreshTime = 0;
+          const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
+            const now = Date.now();
+            if (now - lastRefreshTime < 100) return;
+            lastRefreshTime = now;
+            mirrorTexture.resetRefreshCounter();
+          });
+          mirrorTexture.onDisposeObservable.add(() => {
+            if (camera && cameraObserver) {
+              camera.onViewMatrixChangedObservable.remove(cameraObserver);
+            }
+          });
           // 在 3D 卫浴镜或全身大立镜中，镜面通常稍微直立或后仰
           // 局部法线方向是 Z 轴正向 (0, 0, 1)
           // 考虑家具旋转角 item.rotation，世界法线为：
@@ -2003,9 +2191,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   refreshItemRoomLinks() {
     this.floorplan.items.forEach((item) => {
       const room = this.floorplan.floor.rooms.find((candidate) => candidate.floorId === item.floorId && pointInRoom(candidate, item.x, item.z));
-      if (room) {
-        item.roomId = room.id;
-      }
+      item.roomId = room ? room.id : null;
     });
   }
 
@@ -2463,7 +2649,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const fence = this.getFence(fenceId);
     if (!fence || fence.locked) return false;
     const before = this.floorplan.fences.length;
-    this.floorplan.fences = this.floorplan.fences.filter((fence) => fence.id !== fenceId);
+    this.floorplan.fences = this.floorplan.fences.filter((f) => f.id !== fenceId);
+    this.floorplan.fenceGates = (this.floorplan.fenceGates || []).filter((gate) => gate.fenceId !== fenceId);
     if (before !== this.floorplan.fences.length) this.build();
     return before !== this.floorplan.fences.length;
   }
@@ -2582,6 +2769,123 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return gate;
   }
 
+  beginFenceGateDragPreview(gateId) {
+    if (this.fenceGateDragPreviews.has(gateId)) return true;
+    const gate = this.getFenceGate(gateId);
+    const gateNode = this.fenceGateNodes.get(gateId);
+    if (!gate || !gateNode) return false;
+
+    const root = new BABYLON.TransformNode(`fence_gate_drag_fill_${gate.id}`, this.scene);
+    root.parent = this.root;
+    const preview = {
+      root,
+      gateNode,
+      sourceFenceId: gate.fenceId,
+      fenceNodes: new Map(),
+      affectedFenceIds: new Set(),
+      plugins: [],
+      pluginMaterials: new Set(),
+      previewMeshes: new Set()
+    };
+    this.fenceGateDragPreviews.set(gateId, preview);
+
+    const sourceFence = gate.fenceId ? this.getFence(gate.fenceId) : null;
+    const sourceFenceNode = sourceFence ? this.fenceNodes.get(sourceFence.id) : null;
+    if (sourceFence && sourceFenceNode) {
+      const sourceMaterials = [...new Set(sourceFenceNode.getChildMeshes().map((mesh) => mesh.material).filter(Boolean))];
+      const baseMaterial = sourceMaterials.find((material) => material.name === `fence_${sourceFence.id}_mat`)
+        || sourceMaterials[0];
+      const [x1, z1] = gate.from;
+      const [x2, z2] = gate.to;
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const sourceLength = Math.max(0.02, Math.hypot(dx, dz) || gate.width || 1);
+      const floorY = this.getFloorElevation(sourceFence.floorId);
+      const fenceOffset = this.getFenceElevationOffset(sourceFence) + (sourceFence.yOffset || 0);
+      root.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
+      root.rotation.y = -Math.atan2(sourceFence.to[1] - sourceFence.from[1], sourceFence.to[0] - sourceFence.from[0]);
+      root.rotation.z = sourceFence.tilt || 0;
+
+      let renderLength = sourceLength;
+      if (sourceFence.tilt) renderLength /= Math.cos(sourceFence.tilt);
+      buildFenceGeometry(
+        this,
+        root,
+        sourceFence,
+        baseMaterial,
+        renderLength,
+        sourceFence.height || 1.1,
+        sourceFence.thickness || 0.1
+      );
+      root.getChildMeshes().forEach((mesh) => {
+        mesh.isPickable = false;
+        mesh.metadata = { ...(mesh.metadata || {}), fenceGateDragFill: true, blueprintFenceGateId: gate.id };
+        preview.previewMeshes.add(mesh);
+      });
+      const activeShadowCasters = this.shadowCasters.filter((mesh) => !preview.previewMeshes.has(mesh));
+      this.shadowCasters.length = 0;
+      this.shadowCasters.push(...activeShadowCasters);
+    }
+
+    this.syncFenceGateDragPreview(gateId);
+    return true;
+  }
+
+  syncFenceGateDragPreview(gateId) {
+    const preview = this.fenceGateDragPreviews.get(gateId);
+    const gate = this.getFenceGate(gateId);
+    if (!preview || !gate || !gate.fenceId || preview.affectedFenceIds.has(gate.fenceId)) return;
+    const fenceNode = this.fenceNodes.get(gate.fenceId);
+    if (!fenceNode) return;
+
+    preview.affectedFenceIds.add(gate.fenceId);
+    preview.fenceNodes.set(gate.fenceId, fenceNode);
+    const materials = [
+      ...fenceNode.getChildMeshes().map((mesh) => mesh.material),
+      ...(gate.fenceId === preview.sourceFenceId ? preview.root.getChildMeshes().map((mesh) => mesh.material) : [])
+    ].filter(Boolean);
+    [...new Set(materials)].forEach((material) => {
+      if (preview.pluginMaterials.has(material)) return;
+      preview.pluginMaterials.add(material);
+      preview.plugins.push(new FenceGateGapPreviewPlugin(material, this, gateId, gate.fenceId));
+    });
+  }
+
+  finishFenceGateDragPreview(gateId) {
+    const preview = this.fenceGateDragPreviews.get(gateId);
+    const gate = this.getFenceGate(gateId);
+    if (!preview || !gate) return Promise.resolve(false);
+
+    this.fenceGateDragPreviews.delete(gateId);
+    const oldFenceNodes = [...preview.fenceNodes.values()];
+    const oldGateNode = preview.gateNode;
+    const oldMeshes = new Set([
+      ...preview.root.getChildMeshes(),
+      ...oldFenceNodes.flatMap((node) => node.getChildMeshes()),
+      ...oldGateNode.getChildMeshes()
+    ]);
+    const sharedMaterials = new Set(Object.values(this.materials));
+    const oldMaterials = [...new Set([...oldMeshes].map((mesh) => mesh.material).filter(Boolean))]
+      .filter((material) => !sharedMaterials.has(material));
+
+    if (preview.affectedFenceIds.size > 0) this.buildFences(preview.affectedFenceIds);
+    this.buildFenceGates(new Set([gateId]));
+
+    return new Promise((resolve) => {
+      this.scene.executeWhenReady(() => {
+        preview.root.dispose(false, false);
+        oldFenceNodes.forEach((node) => node.dispose(false, false));
+        oldGateNode.dispose(false, false);
+        oldMaterials.forEach((material) => material.dispose(false, true));
+
+        const activeShadowCasters = this.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
+        this.shadowCasters.length = 0;
+        this.shadowCasters.push(...activeShadowCasters);
+        resolve(true);
+      });
+    });
+  }
+
   updateFenceGateNodeTransform(gateId) {
     const gate = this.getFenceGate(gateId);
     if (!gate) return;
@@ -2684,6 +2988,101 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       this.updateOpeningNodePose(openingId);
     }
     return opening;
+  }
+
+  beginOpeningDragPreview(openingId) {
+    if (this.openingDragPreviews.has(openingId)) return true;
+    const opening = this.getOpening(openingId);
+    const wall = opening ? this.getWall(opening.wallId) : null;
+    const wallNode = wall ? this.wallNodes.get(wall.id) : null;
+    const openingNode = this.openingNodes.get(openingId);
+    if (!opening || !wall || !wallNode || !openingNode) return false;
+
+    const wallMeshes = wallNode.getChildMeshes();
+    const frontMaterial = wallMeshes.find((mesh) => mesh.metadata?.side === 'front')?.material
+      || wallMeshes[0]?.material;
+    const backMaterial = wallMeshes.find((mesh) => mesh.metadata?.side === 'back')?.material
+      || frontMaterial;
+    const wallMaterials = [...new Set(wallMeshes.map((mesh) => mesh.material).filter(Boolean))];
+    if (!frontMaterial || wallMaterials.length === 0) return false;
+
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const t = opening.t ?? 0.5;
+    const width = opening.width || (opening.type === 'door' ? 0.9 : 1.25);
+    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const floorY = this.getFloorElevation(opening.floorId || wall.floorId);
+    const centerY = floorY + this.getOpeningElevationOffset(opening) + sillHeight + height / 2;
+    const root = new BABYLON.TransformNode(`opening_drag_fill_${opening.id}`, this.scene);
+    root.parent = this.root;
+    root.position.set(x1 + dx * t, centerY, z1 + dz * t);
+    root.rotation.y = -Math.atan2(dz, dx);
+
+    const wallT = this.floorplan.wallThickness;
+    const createFillFace = (side, material, z) => {
+      if (!material) return;
+      const mesh = createOpeningProfileMesh(this, `opening_drag_fill_${opening.id}_${side}`, opening, root, {
+        width,
+        height,
+        depth: 0.004,
+        material,
+        shadowCaster: false
+      });
+      mesh.position.z = z;
+      mesh.isPickable = false;
+      mesh.metadata = { openingDragFill: true, blueprintOpeningId: opening.id, side };
+    };
+    createFillFace('front', frontMaterial, wallT / 2 + 0.002);
+    createFillFace('back', backMaterial, -wallT / 2 - 0.002);
+
+    const plugins = wallMaterials.map((material) => new OpeningHolePreviewPlugin(material, this, openingId));
+    this.openingDragPreviews.set(openingId, {
+      root,
+      plugins,
+      wallId: wall.id,
+      wallNode,
+      openingNode,
+      wallMaterials
+    });
+    return true;
+  }
+
+  finishOpeningDragPreview(openingId) {
+    const preview = this.openingDragPreviews.get(openingId);
+    const opening = this.getOpening(openingId);
+    if (!preview || !opening) return Promise.resolve(false);
+
+    this.openingDragPreviews.delete(openingId);
+    const oldWallNode = preview.wallNode;
+    const oldOpeningNode = preview.openingNode;
+    const oldMeshes = new Set([
+      ...oldWallNode.getChildMeshes(),
+      ...oldOpeningNode.getChildMeshes()
+    ]);
+    const sharedMaterials = new Set(Object.values(this.materials));
+    const oldOpeningMaterials = [...new Set(oldOpeningNode.getChildMeshes().map((mesh) => mesh.material).filter(Boolean))]
+      .filter((material) => !sharedMaterials.has(material) && !preview.wallMaterials.includes(material));
+
+    this.buildWalls(new Set([preview.wallId]));
+    this.buildOpenings(new Set([openingId]));
+
+    return new Promise((resolve) => {
+      this.scene.executeWhenReady(() => {
+        preview.root.dispose(false, false);
+        oldWallNode.dispose(false, false);
+        oldOpeningNode.dispose(false, false);
+        preview.wallMaterials.forEach((material) => material.dispose(false, true));
+        oldOpeningMaterials.forEach((material) => material.dispose(false, true));
+
+        const activeShadowCasters = this.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
+        this.shadowCasters.length = 0;
+        this.shadowCasters.push(...activeShadowCasters);
+        resolve(true);
+      });
+    });
   }
 
   /**
@@ -2793,8 +3192,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return stringifyDXF(this.floorplan);
   }
 
-  create3MFPackage() {
-    return create3MFPackage(this.floorplan);
+  create3MFPackage(options = {}) {
+    return create3MFPackage(this.floorplan, options);
   }
 
   loadBuildingFile(fileData) {

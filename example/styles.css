@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: light;
   font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
   background: #edf2f7;
@@ -36,7 +36,7 @@ button {
 
 button.active,
 button:hover {
-  background: #1f8fff;
+  background-color: #1f8fff;
   border-color: #1f8fff;
   color: #ffffff;
 }
@@ -1283,6 +1283,9 @@ select {
 }
 
 .custom-modal-container {
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #ffffff;
   border: 1px solid rgba(42, 65, 92, 0.16);
   border-radius: 12px;
@@ -1304,7 +1307,6 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
 }
 
 .custom-modal-icon-wrapper {
@@ -1343,7 +1345,7 @@ select {
   font-size: 14px;
   color: #475467;
   line-height: 1.5;
-  margin: 0 0 24px 0;
+  margin: 12px 0 12px 0;
   padding-left: 2px;
 }
 
@@ -1354,6 +1356,10 @@ select {
 }
 
 .custom-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -1364,6 +1370,10 @@ select {
   transition: all 0.15s ease;
   border: 1px solid transparent;
   box-shadow: 0 1px 2px rgba(31, 45, 61, 0.05);
+}
+
+.custom-modal-btn svg {
+  flex-shrink: 0;
 }
 
 .custom-modal-btn.btn-secondary {
@@ -1401,6 +1411,31 @@ select {
   padding: 0 10px;
   font-size: 12px;
   border-radius: 6px;
+}
+
+/* 右上角关闭按钮样式 */
+.custom-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none !important;
+  background: transparent !important;
+  padding: 6px !important;
+  cursor: pointer;
+  color: var(--text-muted, #999) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: auto !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.custom-modal-close:hover {
+  background: rgba(42, 65, 92, 0.08) !important;
+  color: #172033 !important;
 }
 
 /* 弹窗输入框 */
@@ -1497,7 +1532,7 @@ select {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 38px;
+  height: 36px;
   border: 1px solid rgba(42, 65, 92, 0.2);
   border-radius: 7px;
   background: #ffffff;
@@ -1660,14 +1695,15 @@ select {
   display: none !important;
 }
 
-/* 建筑工具网格排布 (4列网格卡片化) */
+/* 建筑工具与设计工具网格排布 (4列网格卡片化) */
 .floor-tools,
 .room-tools,
 .opening-tools,
 .roof-tools,
 .stairs-tools,
 .fence-tools,
-.fence-gate-tools {
+.fence-gate-tools,
+.design-tools {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 6px !important;
@@ -1689,7 +1725,8 @@ select {
 .roof-tools .mode,
 .stairs-tools .mode,
 .fence-tools .mode,
-.fence-gate-tools .mode {
+.fence-gate-tools .mode,
+.design-tools .design-mode {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -1720,7 +1757,8 @@ select {
 .roof-tools .mode:hover,
 .stairs-tools .mode:hover,
 .fence-tools .mode:hover,
-.fence-gate-tools .mode:hover {
+.fence-gate-tools .mode:hover,
+.design-tools .design-mode:hover {
   background: rgba(42, 65, 92, 0.08) !important;
   color: #2a415c !important;
 }
@@ -1731,7 +1769,8 @@ select {
 .roof-tools .mode.active,
 .stairs-tools .mode.active,
 .fence-tools .mode.active,
-.fence-gate-tools .mode.active {
+.fence-gate-tools .mode.active,
+.design-tools .design-mode.active {
   background: #ffffff !important;
   color: #1f8fff !important;
   font-weight: 600 !important;
@@ -1762,7 +1801,8 @@ select {
 .roof-tools .mode.active .mode-shortcut,
 .stairs-tools .mode.active .mode-shortcut,
 .fence-tools .mode.active .mode-shortcut,
-.fence-gate-tools .mode.active .mode-shortcut {
+.fence-gate-tools .mode.active .mode-shortcut,
+.design-tools .design-mode.active .mode-shortcut {
   color: rgba(31, 143, 255, 0.6);
 }
 
@@ -1777,7 +1817,8 @@ select {
   .roof-tools .mode,
   .stairs-tools .mode,
   .fence-tools .mode,
-  .fence-gate-tools .mode {
+  .fence-gate-tools .mode,
+  .design-tools .design-mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;
@@ -1793,7 +1834,8 @@ select {
   .roof-tools .mode,
   .stairs-tools .mode,
   .fence-tools .mode,
-  .fence-gate-tools .mode {
+  .fence-gate-tools .mode,
+  .design-tools .design-mode {
     height: 48px !important;
     min-height: 48px !important;
     gap: 2px !important;
@@ -1917,6 +1959,169 @@ input:checked + .slider .lock-icon {
   color: #172033;
 }
 
+/* 家具过滤面板包装器及内部排列 */
+.furniture-filter-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* 搜索前缀图标 */
+.search-icon-prefix {
+  position: absolute;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: #94a3b8;
+}
+
+/* 搜索输入框 */
+#furniture-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 30px 0 30px; /* 留出左右图标的空间 */
+  border: 1px solid rgba(42, 65, 92, 0.12);
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  background-color: #fff;
+  transition: all 0.2s ease-in-out;
+  box-sizing: border-box;
+}
+
+#furniture-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 清空搜索图标按钮 */
+.clear-search-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.clear-search-btn.hidden {
+  display: none !important;
+}
+
+.furniture-upload-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.furniture-upload-button,
+.furniture-upload-help {
+  height: 38px;
+  border: 1px solid rgba(42, 65, 92, 0.16);
+  background: #ffffff;
+  color: #172033;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.furniture-upload-button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.furniture-upload-help {
+  width: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.furniture-upload-button:hover,
+.furniture-upload-help:hover {
+  background: #1f8fff;
+  border-color: #1f8fff;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(31, 143, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.furniture-upload-button:focus-visible,
+.furniture-upload-help:focus-visible {
+  outline: 2px solid #1f8fff;
+  outline-offset: 2px;
+}
+
+.furniture-upload-modal {
+  max-width: 380px;
+}
+
+.furniture-upload-modal-body {
+  padding-left: 0;
+}
+
+.furniture-upload-modal-body p {
+  margin: 0 0 10px;
+}
+
+.furniture-upload-modal-body code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f2f4f7;
+  color: #344054;
+  font-size: 12px;
+}
+
+.furniture-upload-tip {
+  margin: 0 0 16px !important;
+  font-size: 12px;
+  color: #66758f;
+  line-height: 1.5;
+}
+
+.furniture-upload-links {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.furniture-upload-links button {
+  flex: 1;
+}
+
+
+
 /* 家具网格面板升级为精美图片卡片 */
 .item-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -1931,7 +2136,6 @@ input:checked + .slider .lock-icon {
   background: #ffffff !important;
   border: 1px solid rgba(42, 65, 92, 0.12) !important;
   border-radius: 8px !important;
-  padding: 4px 2px !important;
   cursor: pointer !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   min-height: 82px !important;
@@ -1967,5 +2171,84 @@ input:checked + .slider .lock-icon {
   line-height: 1.2 !important;
   font-weight: 500 !important;
 }
+
+/* 删墙模式全局半透明橡皮擦指针 */
+.mode-delete-wall,
+.mode-delete-wall * {
+  cursor: url("data:image/svg+xml;utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%23ff4d4f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.38'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21Z' fill='%23ffccc7'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 4 28, auto !important;
+}
+
+/* 悬停在 2D 可删除元素（墙、门窗、栅栏、或 3D 中通过 cursor-hover-erasable 触发）上时，光标完全不透明 */
+.mode-delete-wall .wall-line:hover,
+.mode-delete-wall .opening-line:hover,
+.mode-delete-wall .fence-line:hover,
+.mode-delete-wall .fence-gate-line:hover,
+.mode-delete-wall.cursor-hover-erasable,
+.mode-delete-wall.cursor-hover-erasable * {
+  cursor: url("data:image/svg+xml;utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%23ff4d4f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21Z' fill='%23ffccc7'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 4 28, auto !important;
+}
+
+
+/* 2D 辅助网格线颜色改为淡红色 */
+.mode-delete-wall .grid-layer line {
+  stroke: #ffd4d4 !important;
+}
+.mode-delete-wall .grid-layer .axis-line {
+  stroke: #ff9e9e !important;
+}
+
+/* 设计面板的工具栏特定样式 */
+/* 材质刷双击锁定的高亮样式 */
+.design-tools .design-mode[data-design-mode="brush"].locked {
+  background: #f0fdf4 !important;
+  color: #16a34a !important;
+  border: 1px solid rgba(22, 163, 74, 0.25) !important;
+}
+
+.design-tools .design-mode[data-design-mode="brush"].locked .mode-shortcut {
+  color: rgba(22, 163, 74, 0.6);
+}
+
+/* 设计模式全局指针样式 */
+.design-mode-picker,
+.design-mode-picker * {
+  cursor: inherit !important;
+}
+
+.design-mode-brush,
+.design-mode-brush * {
+  cursor: inherit !important;
+}
+
+.design-mode-brush-locked,
+.design-mode-brush-locked * {
+  cursor: inherit !important;
+}
+
+.design-mode-bucket,
+.design-mode-bucket * {
+  cursor: inherit !important;
+}
+
+.design-mode-eraser,
+.design-mode-eraser * {
+  cursor: url("data:image/svg+xml;utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21Z'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 7 21, auto !important;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 4px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 10px;
+  color: #64748b;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
 
 

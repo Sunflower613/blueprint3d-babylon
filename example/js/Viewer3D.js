@@ -18,7 +18,7 @@ export class Viewer3D {
 
     // ========== 引擎与场景 ==========
     /** @type {BABYLON.Engine} BabylonJS 渲染引擎 */
-    this.engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+    this.engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
     /** @type {BABYLON.Scene} BabylonJS 场景 */
     this.scene = new BABYLON.Scene(this.engine);
     this.scene.clearColor = BABYLON.Color4.FromHexString(clearColor);
@@ -294,7 +294,8 @@ export class Viewer3D {
     this.clear3DGrid();
     const {
       currentView, snapEnabled, snapSize, walls, rooms, roofs, stairs, items,
-      currentFloorId, floorElevation, inchesToWorld, hasTestMap = true
+      currentFloorId, floorElevation, inchesToWorld, hasTestMap = true,
+      isDeleteWallMode = false
     } = options;
 
     if (!this.show3DGrid || currentView !== '3d' || !this.scene || !hasTestMap) return;
@@ -361,18 +362,19 @@ export class Viewer3D {
       }
     });
 
+    const isDeleteWall = !!isDeleteWallMode;
     if (lines.length) {
       const grid = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d', { lines }, this.scene);
-      grid.color = BABYLON.Color3.FromHexString('#c2cbd6');
-      grid.alpha = 0.08;
+      grid.color = isDeleteWall ? BABYLON.Color3.FromHexString('#ff9999') : BABYLON.Color3.FromHexString('#c2cbd6');
+      grid.alpha = isDeleteWall ? 0.12 : 0.08;
       grid.isPickable = false;
       grid.renderingGroupId = 0;
       this.grid3DNodes.push(grid);
     }
     if (axisLines.length) {
       const axes = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d_axes', { lines: axisLines }, this.scene);
-      axes.color = BABYLON.Color3.FromHexString('#8fb8e8');
-      axes.alpha = 0.28;
+      axes.color = isDeleteWall ? BABYLON.Color3.FromHexString('#ff4d4f') : BABYLON.Color3.FromHexString('#8fb8e8');
+      axes.alpha = isDeleteWall ? 0.38 : 0.28;
       axes.isPickable = false;
       axes.renderingGroupId = 0;
       this.grid3DNodes.push(axes);

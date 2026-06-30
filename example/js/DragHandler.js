@@ -77,10 +77,27 @@ export function beginRoomResize(event, roomId, side) {
   ctx.selectRoom(roomId);
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
+  const original = { x: room.x, z: room.z, width: room.width, depth: room.depth };
+  const left = original.x - original.width / 2;
+  const right = original.x + original.width / 2;
+  const top = original.z - original.depth / 2;
+  const bottom = original.z + original.depth / 2;
+  const point = ctx.svgPointFromEvent(event);
+  const world = ctx.svgToWorld(point.x, point.y);
+
+  let offsetX = 0;
+  let offsetZ = 0;
+  if (side === 'west') offsetX = left - world.x;
+  if (side === 'east') offsetX = right - world.x;
+  if (side === 'north') offsetZ = bottom - world.z;
+  if (side === 'south') offsetZ = top - world.z;
+
   states.roomResize = {
     roomId,
     side,
-    original: { x: room.x, z: room.z, width: room.width, depth: room.depth },
+    original,
+    offsetX,
+    offsetZ,
     historyPushed: false
   };
   ctx.svg.setPointerCapture(event.pointerId);
@@ -111,27 +128,42 @@ export function moveRoomResize(event) {
   const room = ctx.testMap.getRoom(states.roomResize.roomId);
   if (!room || room.locked) return;
   const point = ctx.svgPointFromEvent(event);
-  const world = ctx.snapWorldPoint(ctx.svgToWorld(point.x, point.y));
+  const world = ctx.svgToWorld(point.x, point.y);
   const original = states.roomResize.original;
   const left = original.x - original.width / 2;
   const right = original.x + original.width / 2;
   const top = original.z - original.depth / 2;
   const bottom = original.z + original.depth / 2;
-  let nextLeft = left;
-  let nextRight = right;
-  let nextTop = top;
-  let nextBottom = bottom;
+  const side = states.roomResize.side;
 
-  if (states.roomResize.side === 'west') nextLeft = Math.min(world.x, right - 1.2);
-  if (states.roomResize.side === 'east') nextRight = Math.max(world.x, left + 1.2);
-  if (states.roomResize.side === 'north') nextTop = Math.min(world.z, bottom - 1.2);
-  if (states.roomResize.side === 'south') nextBottom = Math.max(world.z, top + 1.2);
+  let nextWidth = original.width;
+  let nextDepth = original.depth;
+  let nextX = original.x;
+  let nextZ = original.z;
+
+  if (side === 'west') {
+    const nextLeft = Math.min(ctx.snapNumber(world.x + states.roomResize.offsetX), right - 1.2);
+    nextWidth = ctx.snapNumber(right - nextLeft);
+    nextX = Number((right - nextWidth / 2).toFixed(3));
+  } else if (side === 'east') {
+    const nextRight = Math.max(ctx.snapNumber(world.x + states.roomResize.offsetX), left + 1.2);
+    nextWidth = ctx.snapNumber(nextRight - left);
+    nextX = Number((left + nextWidth / 2).toFixed(3));
+  } else if (side === 'north') {
+    const nextBottom = Math.max(ctx.snapNumber(world.z + states.roomResize.offsetZ), top + 1.2);
+    nextDepth = ctx.snapNumber(nextBottom - top);
+    nextZ = Number((top + nextDepth / 2).toFixed(3));
+  } else if (side === 'south') {
+    const nextTop = Math.min(ctx.snapNumber(world.z + states.roomResize.offsetZ), bottom - 1.2);
+    nextDepth = ctx.snapNumber(bottom - nextTop);
+    nextZ = Number((bottom - nextDepth / 2).toFixed(3));
+  }
 
   const patch = {
-    x: ctx.snapNumber((nextLeft + nextRight) / 2),
-    z: ctx.snapNumber((nextTop + nextBottom) / 2),
-    width: ctx.snapNumber(nextRight - nextLeft),
-    depth: ctx.snapNumber(nextBottom - nextTop)
+    x: nextX,
+    z: nextZ,
+    width: nextWidth,
+    depth: nextDepth
   };
   if (!states.roomResize.historyPushed && (Math.abs(patch.width - original.width) > 0.02 || Math.abs(patch.depth - original.depth) > 0.02)) {
     ctx.pushHistory();
@@ -259,8 +291,7 @@ export function beginOpeningDrag(event, openingId) {
     originalT: opening.t ?? 0.5,
     historyPushed: false
   };
-  opening.isDragging = true;
-  ctx.testMap.build();
+  ctx.testMap.beginOpeningDragPreview(openingId);
   ctx.svg.setPointerCapture(event.pointerId);
 }
 
@@ -298,7 +329,7 @@ export function moveOpeningToWorld(openingId, world, dragMeta) {
     dragMeta.historyPushed = true;
   }
   
-  ctx.testMap.updateOpening(openingId, { t: nextT }, { rebuild: false });
+  ctx.testMap.updateOpening(openingId, { t: nextT }, false);
   ctx.updateEditor();
   ctx.renderPlan();
 }
@@ -306,14 +337,11 @@ export function moveOpeningToWorld(openingId, world, dragMeta) {
 export function finishOpeningDrag() {
   if (!states.openingDrag) return;
   const openingId = states.openingDrag.openingId;
-  const opening = ctx.testMap.getOpening(openingId);
-  if (opening) {
-    opening.isDragging = false;
-  }
   states.openingDrag = null;
-  ctx.testMap.build();
-  ctx.refreshShadows();
-  ctx.selectOpening(openingId);
+  ctx.testMap.finishOpeningDragPreview(openingId).then(() => {
+    ctx.refreshShadows();
+    ctx.selectOpening(openingId);
+  });
 }
 
 // --- 围栏与围栏大门拖拽 ---
@@ -419,6 +447,7 @@ export function beginFenceGateDrag(event, gateId) {
     historyPushed: false
   };
 
+  ctx.testMap.beginFenceGateDragPreview(gateId);
   ctx.svg.setPointerCapture(event.pointerId);
 }
 
@@ -502,6 +531,7 @@ export function moveFenceGateToWorld(gateId, world, dragMeta) {
   }
 
   ctx.testMap.updateFenceGateNodeTransform(gateId);
+  ctx.testMap.syncFenceGateDragPreview(gateId);
   ctx.updateEditor();
   ctx.renderPlan();
 }
@@ -510,9 +540,10 @@ export function finishFenceGateDrag() {
   if (!states.fenceGateDrag) return;
   const gateId = states.fenceGateDrag.gateId;
   states.fenceGateDrag = null;
-  ctx.testMap.build();
-  ctx.refreshShadows();
-  ctx.selectFenceGate(gateId);
+  ctx.testMap.finishFenceGateDragPreview(gateId).then(() => {
+    ctx.refreshShadows();
+    ctx.selectFenceGate(gateId);
+  });
 }
 
 export function beginFenceHandleDrag(event, fenceId, handle) {

@@ -3,10 +3,10 @@ export const OPENING_SHAPES = Object.freeze([
   { id: 'diamond', label: '四角' },
   { id: 'circle', label: '圆形' },
   { id: 'semicircle', label: '半圆形' },
-  { id: 'round-arch', label: '半圆顶方形' },
+  { id: 'round-arch', label: '圆顶方形' },
   { id: 'pointed-arch', label: '尖顶方形' },
-  { id: 'quarter-sector', label: '1/4扇形' },
-  { id: 'right-triangle', label: '直角三角形' }
+  { id: 'quarter-sector', label: '扇形' },
+  { id: 'right-triangle', label: '三角形' }
 ]);
 
 const SHAPE_IDS = new Set(OPENING_SHAPES.map((shape) => shape.id));

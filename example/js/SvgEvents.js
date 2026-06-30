@@ -21,7 +21,7 @@ export function initSvgEvents(appContext) {
 
   svg.addEventListener('mousedown', onMousedown);
   svg.addEventListener('wheel', onWheel, { passive: false });
-  svg.addEventListener('pointerdown', onPointerdown);
+  svg.addEventListener('pointerdown', onPointerdown, true);
   svg.addEventListener('pointermove', onPointermove);
   svg.addEventListener('pointerup', onPointerup);
   svg.addEventListener('pointercancel', onPointercancel);
@@ -87,6 +87,14 @@ function onWheel(event) {
 
 function onPointerdown(event) {
   if (ctx.currentView !== '2d') return;
+
+  if (ctx.designMode && ctx.designMode !== 'select') {
+    const target = ctx.get2DContextTargetFromElement(event.target);
+    if (target && (event.button === 0 || event.pointerType === 'touch')) {
+      event.stopPropagation();
+    }
+  }
+
   viewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
   const isViewModePan = ctx.mode === 'view' && (
@@ -271,6 +279,13 @@ function onPointerup(event) {
 
   ctx.forgetPointer(event);
   if (ctx.entityManager.itemGestureState && ctx.activePointers.size < 2) ctx.entityManager.itemGestureState = null;
+  if (ctx.entityManager.dragState) {
+    const ds = ctx.entityManager.dragState;
+    const item = ctx.testMap.getItem(ds.itemId);
+    if (item) {
+      ctx.entityManager.moveItemTo(ds.itemId, item.x, item.z, true);
+    }
+  }
   ctx.entityManager.dragState = null;
   ctx.finishRoofResize();
   DragHandler.finishDrag();
@@ -290,6 +305,13 @@ function onPointercancel(event) {
 
   ctx.forgetPointer(event);
   if (ctx.entityManager.itemGestureState && ctx.activePointers.size < 2) ctx.entityManager.itemGestureState = null;
+  if (ctx.entityManager.dragState) {
+    const ds = ctx.entityManager.dragState;
+    const item = ctx.testMap.getItem(ds.itemId);
+    if (item) {
+      ctx.entityManager.moveItemTo(ds.itemId, item.x, item.z, true);
+    }
+  }
   ctx.entityManager.dragState = null;
   ctx.finishRoofResize();
   DragHandler.finishDrag();
@@ -306,6 +328,16 @@ function onDblclick(event) {
 }
 
 function onClick(event) {
+  if (ctx.currentView === '2d' && ctx.designMode && ctx.designMode !== 'select') {
+    const target = ctx.get2DContextTargetFromElement(event.target);
+    if (target) {
+      ctx.executeDesignTool(target);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+  }
+
   if (ctx.mode === 'select') {
     if (event.target.closest?.('.wall-line') || event.target.closest?.('[data-item-id]') || event.target.closest?.('[data-opening-id]') || event.target.closest?.('[data-roof-id]') || event.target.closest?.('[data-stairs-id]') || event.target.closest?.('[data-fence-id]') || event.target.closest?.('.fence-handle') || event.target.closest?.('[data-room-id]') || event.target.closest?.('[data-room-hit-id]') || event.target.closest?.('[data-room-handle]') || event.target.closest?.('[data-roof-handle]')) return;
   }

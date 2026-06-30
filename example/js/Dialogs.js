@@ -303,3 +303,80 @@ export function showProjectListModal(projects) {
     window.addEventListener('keydown', handleKeyDown);
   });
 }
+
+export function show3MFExportDialog() {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'custom-modal-backdrop';
+    
+    backdrop.innerHTML = `
+      <div class="custom-modal-container" style="max-width: 420px; position: relative; max-height: 90vh; overflow-y: auto;">
+        <button type="button" class="custom-modal-close" id="export-close-btn" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="custom-modal-header">
+          <div class="custom-modal-icon-wrapper confirm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          </div>
+          <h3 class="custom-modal-title">导出 3MF 三维模型</h3>
+        </div>
+        <div class="custom-modal-body" style="text-align: center; font-size: 14px; color: var(--text-secondary, #666); line-height: 1.5;">
+
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <input type="checkbox" id="enable-tenon-joint" checked style="cursor: pointer; width: 15px; height: 15px; margin: 0;">
+            <label for="enable-tenon-joint" style="cursor: pointer; font-size: 13px; color: var(--text-primary, #333); user-select: none;">添加榫卯连接结构 (方便分层拆卸打印)</label>
+          </div>
+        </div>
+        <div class="custom-modal-footer" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+          <button type="button" class="custom-modal-btn btn-primary" id="export-building-only" style="width: 100%; margin: 0; padding: 12px 16px;">仅导出建筑 (仅墙面、地板、楼梯、围栏)</button>
+          <button type="button" class="custom-modal-btn btn-primary" id="export-furniture-only" style="width: 100%; margin: 0; padding: 12px 16px;">仅导出家具 (高精度造型与真实配色)</button>
+          <button type="button" class="custom-modal-btn btn-secondary" id="export-all" style="width: 100%; margin: 0; padding: 12px 16px; border: 1px solid var(--border-color, #ddd);">导出全部 (合并在同一个 3MF 包中)</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(backdrop);
+    backdrop.getBoundingClientRect();
+    backdrop.classList.add('active');
+    
+    let isCleaned = false;
+    const cleanup = (choice) => {
+      if (isCleaned) return;
+      isCleaned = true;
+      backdrop.classList.remove('active');
+      window.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => {
+        backdrop.remove();
+      }, 200);
+      
+      if (choice) {
+        resolve({
+          category: choice,
+          enableTenon: backdrop.querySelector('#enable-tenon-joint').checked
+        });
+      } else {
+        resolve(null);
+      }
+    };
+
+    backdrop.querySelector('#export-building-only').addEventListener('click', () => cleanup('building'));
+    backdrop.querySelector('#export-furniture-only').addEventListener('click', () => cleanup('furniture'));
+    backdrop.querySelector('#export-all').addEventListener('click', () => cleanup('all'));
+    backdrop.querySelector('#export-close-btn').addEventListener('click', () => cleanup(null));
+    
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        cleanup(null);
+      }
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+  });
+}
+

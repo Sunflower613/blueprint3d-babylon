@@ -132,6 +132,17 @@ import {
   flowerRoseFurniture,
   snakePlantFurniture,
   booksStackFurniture,
+  booksFullRowFurniture,
+  miniCactusFurniture,
+  photoFrameFurniture,
+  hourglassFurniture,
+  storageBasketFurniture,
+  scentedCandleFurniture,
+  crystalBallFurniture,
+  goldTrophyFurniture,
+  globeFurniture,
+  gypsumBustFurniture,
+  piggyBankFurniture,
   sculptureFurniture,
   ovalRugFurniture,
   roundedRugFurniture,
@@ -180,6 +191,13 @@ import {
   globePendantLight,
   lavaLampLight
 } from './lighting.js';
+
+import {
+  customCubeFurniture,
+  customCylinderFurniture,
+  customSphereFurniture
+} from './custom.js';
+
 
 // 1. 将家具划归各大分类
 const seating = [sofaFurniture, chairFurniture, armchairFurniture, stoolFurniture, barstoolFurniture, benchFurniture, loveseatFurniture, officechairFurniture, beanbagFurniture, deckchairFurniture];
@@ -236,6 +254,17 @@ const decor = [
   wallClockFurniture,
   mannequinFurniture,
   booksStackFurniture,
+  booksFullRowFurniture,
+  miniCactusFurniture,
+  photoFrameFurniture,
+  hourglassFurniture,
+  storageBasketFurniture,
+  scentedCandleFurniture,
+  crystalBallFurniture,
+  goldTrophyFurniture,
+  globeFurniture,
+  gypsumBustFurniture,
+  piggyBankFurniture,
   sculptureFurniture
 ];
 decor.forEach(f => f.category = 'decor');
@@ -280,6 +309,10 @@ const lighting = [
 ];
 lighting.forEach(f => f.category = 'lighting');
 
+const custom = [customCubeFurniture, customCylinderFurniture, customSphereFurniture];
+custom.forEach(f => f.category = 'custom');
+
+
 // 2. 导出分类列表映射字典
 export const FURNITURE_CATEGORIES = [
   { id: 'all', label: '全部', icon: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>' },
@@ -293,12 +326,13 @@ export const FURNITURE_CATEGORIES = [
   { id: 'textiles', label: '布艺', icon: '<path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="m16 8-8 8M12 6v12M6 12h12"/>' },
   { id: 'decor', label: '装饰', icon: '<path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4Z"/><path d="M12 10H8a4 4 0 0 0-4 4 4 4 0 0 0 4 4h4Z"/><path d="M12 10h4a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-4Z"/><path d="M12 10v4a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-4Z"/><path d="M12 10V6a4 4 0 0 0-4-4 4 4 0 0 0-4 6v4Z"/><path d="M12 10v12"/>' },
   { id: 'plants', label: '绿植', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
-  { id: 'lighting', label: '灯具', icon: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22h8"/><path d="m16 18-2.25-2.25"/>' }
+  { id: 'lighting', label: '灯具', icon: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22h8"/><path d="m16 18-2.25-2.25"/>' },
+  { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' }
 ];
 
 // 3. 构建大家具映射字典与列表
 export const FURNITURE_DEFINITIONS = {};
-const allFurniture = [...seating, ...tables, ...storage, ...bedroom, ...appliances, ...kitchen, ...bathroom, ...textiles, ...decor, ...plants, ...lighting];
+const allFurniture = [...seating, ...tables, ...storage, ...bedroom, ...appliances, ...kitchen, ...bathroom, ...textiles, ...decor, ...plants, ...lighting, ...custom];
 allFurniture.forEach(f => {
   FURNITURE_DEFINITIONS[f.type] = f;
 });
@@ -429,6 +463,17 @@ export {
   flowerRoseFurniture,
   snakePlantFurniture,
   booksStackFurniture,
+  booksFullRowFurniture,
+  miniCactusFurniture,
+  photoFrameFurniture,
+  hourglassFurniture,
+  storageBasketFurniture,
+  scentedCandleFurniture,
+  crystalBallFurniture,
+  goldTrophyFurniture,
+  globeFurniture,
+  gypsumBustFurniture,
+  piggyBankFurniture,
   sculptureFurniture,
   ovalRugFurniture,
   roundedRugFurniture,
@@ -472,5 +517,8 @@ export {
   trackLight,
   neonSignLight,
   globePendantLight,
-  lavaLampLight
+  lavaLampLight,
+  customCubeFurniture,
+  customCylinderFurniture,
+  customSphereFurniture
 };

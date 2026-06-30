@@ -68,10 +68,14 @@ import {
   currentRooms,
   canPlaceOnTable,
   findTableBelow,
+  findBookshelfNearby,
+  snapToBookshelf,
+  getShelfLayerHeights,
+  getItemsCountOnBookshelf,
   getSelectedStructure
 } from '../app.js';
 
-const designSelectionPanel = document.getElementById('design-selection-panel');
+
 
 export function ensure3DGridControls() {
   if (document.getElementById('show-3d-grid')) return;
@@ -330,7 +334,7 @@ export function updateEditor() {
     document.getElementById('btn-delete-room').disabled = !!room.locked;
   }
   if (wall) {
-    document.getElementById('selected-wall-name').textContent = wall.id;
+    document.getElementById('selected-wall-name').textContent = '墙';
     document.getElementById('wall-length').value = Number(testMap.getWallLength(wall.id).toFixed(2));
     const dx = wall.to[0] - wall.from[0];
     const dz = wall.to[1] - wall.from[1];
@@ -340,7 +344,7 @@ export function updateEditor() {
     document.getElementById('wall-rotation-range').value = angleDeg;
   }
   if (fence) {
-    document.getElementById('selected-fence-name').textContent = fence.id;
+    document.getElementById('selected-fence-name').textContent = '栅栏';
     document.getElementById('fence-subtype').value = fence.subtype || 'picket_wood';
     const dx = fence.to[0] - fence.from[0];
     const dz = fence.to[1] - fence.from[1];
@@ -365,7 +369,15 @@ export function updateEditor() {
     document.getElementById('item-width').value = Number((item.width / INCHES_PER_UNIT).toFixed(2));
     document.getElementById('item-depth').value = Number((item.depth / INCHES_PER_UNIT).toFixed(2));
     document.getElementById('item-height').value = Number((item.height / INCHES_PER_UNIT).toFixed(2));
-    document.getElementById('item-elevation').value = Number(((item.elevation || 0) / INCHES_PER_UNIT).toFixed(2));
+    const elevationVal = Number(((item.elevation || 0) / INCHES_PER_UNIT).toFixed(2));
+    document.getElementById('item-elevation').value = elevationVal;
+    const itemFloor = testMap.floorplan.floors.find((f) => f.id === item.floorId);
+    const floorWallHeight = itemFloor ? (itemFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+    const elevationRange = document.getElementById('item-elevation-range');
+    if (elevationRange) {
+      elevationRange.max = floorWallHeight;
+      elevationRange.value = elevationVal;
+    }
     const rotationDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
     document.getElementById('item-rotation').value = rotationDegrees;
     document.getElementById('item-rotation-range').value = rotationDegrees;
@@ -518,8 +530,8 @@ export function updateEditor() {
       } else {
         const options = [
           { value: 'straight', label: '直跑楼梯' },
-          { value: 'lshape', label: 'L形折返楼梯' },
-          { value: 'ushape', label: 'U形折返楼梯' },
+          { value: 'lshape', label: 'L形楼梯' },
+          { value: 'ushape', label: 'U形楼梯' },
           { value: 'spiral', label: '旋转楼梯' },
           { value: 'curved', label: '弧形楼梯' },
           { value: 'floating', label: '悬浮楼梯' }
@@ -605,6 +617,8 @@ export function updateEditor() {
 }
 
 export function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null, opening = null, fenceGate = null) {
+  const designSelectionPanel = document.getElementById('design-selection-panel');
+  if (!designSelectionPanel) return;
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
@@ -795,7 +809,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
         return;
       }
       pushHistory();
-      testMap.updateOpening(opening.id, { frameMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.color });
+      testMap.updateOpening(opening.id, { frameMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color });
       refreshShadows();
       updateEditor();
       renderPlan();
@@ -822,8 +836,8 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       }
       pushHistory();
       testMap.updateOpening(opening.id, isDoor
-        ? { panelMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.color }
-        : { glassMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.color }
+        ? { panelMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color }
+        : { glassMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color }
       );
       refreshShadows();
       updateEditor();
@@ -957,22 +971,56 @@ export function initUiEventListeners() {
     const type = button.dataset.addItem;
     const definition = testMap.getFurnitureDefinition(type);
     const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : currentRooms()[0];
-    const x = room ? room.x : 0;
-    const z = room ? room.z : 0;
+    let x = room ? room.x : 0;
+    let z = room ? room.z : 0;
     let elevation = undefined;
+    let rotation = undefined;
     if (definition.placeType === 'ceiling') {
       elevation = (testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - (definition.defaultSize.height || 0);
     } else if (canPlaceOnTable({ x, z, floorId: testMap.floorplan.currentFloorId, width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
-      const tableBelow = findTableBelow({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
-      if (tableBelow) {
-        const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
-        elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+      // 检查当前选中的物品是否是多层架子柜
+      const selectedItem = selectedItemId ? testMap.getItem(selectedItemId) : null;
+      const selectedDef = selectedItem ? testMap.getFurnitureDefinition(selectedItem.type) : null;
+      const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
+      
+      const isShelfSelected = selectedItem && selectedDef && supportedTypes.includes(selectedDef.type);
+      
+      if (isShelfSelected) {
+        x = selectedItem.x;
+        z = selectedItem.z;
+        rotation = selectedItem.rotation || 0;
+        
+        // 统计当前架子上的小摆件数量，以此轮流计算生成在第几个层板上
+        const count = getItemsCountOnBookshelf(selectedItem, testMap.floorplan.items);
+        const worldShelvesY = getShelfLayerHeights(selectedItem);
+        if (worldShelvesY && worldShelvesY.length > 0) {
+          const layerIndex = count % worldShelvesY.length;
+          const worldY = worldShelvesY[layerIndex];
+          elevation = Number((worldY * INCHES_PER_UNIT).toFixed(2));
+        } else {
+          elevation = selectedItem.elevation || 0;
+        }
       } else {
-        elevation = 0;
+        const bookshelfBelow = findBookshelfNearby({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
+        if (bookshelfBelow) {
+          const snappedState = snapToBookshelf({ x, z, elevation: 0, floorId: testMap.floorplan.currentFloorId, id: null }, bookshelfBelow);
+          if (snappedState) {
+            elevation = snappedState.elevation;
+          }
+        } else {
+          const tableBelow = findTableBelow({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
+          if (tableBelow) {
+            const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
+            elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+          } else {
+            elevation = 0;
+          }
+        }
       }
     }
     const item = entityManager.addItem(type, x, z, {
       elevation,
+      rotation,
       roomId: room?.id,
       floorId: testMap.floorplan.currentFloorId
     });
@@ -1031,6 +1079,16 @@ export function initUiEventListeners() {
 
   ['item-width', 'item-depth', 'item-height', 'item-elevation'].forEach((id) => {
     document.getElementById(id).addEventListener('change', updateSelectedSize);
+  });
+  document.getElementById('item-elevation').addEventListener('change', (event) => {
+    const rangeEl = document.getElementById('item-elevation-range');
+    if (rangeEl) {
+      rangeEl.value = event.target.value;
+    }
+  });
+  document.getElementById('item-elevation-range').addEventListener('input', (event) => {
+    document.getElementById('item-elevation').value = Number(event.target.value).toFixed(2);
+    updateSelectedSize();
   });
 
   document.getElementById('item-rotation').addEventListener('change', updateSelectedRotation);

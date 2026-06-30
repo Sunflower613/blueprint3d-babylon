@@ -2140,6 +2140,314 @@ export const japaneseNorenCurtainFurniture = {
   }
 };
 
+// 26. 满层书籍摆件 (Books Full Row)
+export const booksFullRowFurniture = {
+  type: 'books_full_row',
+  name: '满层书籍摆件',
+  category: 'decor',
+  defaultSize: { width: 30, depth: 10, height: 10 },
+  components: [
+    { id: 'book-straight-1', label: '红色经典', defaultColor: '#b71c1c' },
+    { id: 'book-straight-2', label: '蓝色文献', defaultColor: '#0d47a1' },
+    { id: 'book-straight-3', label: '绿色卷轴', defaultColor: '#1b5e20' },
+    { id: 'book-straight-4', label: '黄色刊物', defaultColor: '#f57f17' },
+    { id: 'book-lean-1', label: '斜靠读物A', defaultColor: '#4a148c' },
+    { id: 'book-lean-2', label: '斜靠读物B', defaultColor: '#e65100' }
+  ],
+  build(registry, item, node, size) {
+    const bookW = size.width / 8;
+    const bookD = size.depth * 0.9;
+    const bookH = size.height * 0.95;
+    
+    // 5 本直立的书
+    for (let i = 0; i < 5; i++) {
+      boxComponent(registry, item, booksFullRowFurniture, `book-straight-${(i % 4) + 1}`, {
+        width: bookW * 0.9, height: bookH, depth: bookD
+      }, { position: { x: -size.width / 2 + bookW * (i + 0.5), y: bookH / 2, z: 0 } }, { parent: node });
+    }
+    
+    // 2 本斜靠着的书
+    const startX = -size.width / 2 + bookW * 5.2;
+    const b1 = boxComponent(registry, item, booksFullRowFurniture, 'book-lean-1', {
+      width: bookW * 0.9, height: bookH, depth: bookD
+    }, { position: { x: startX, y: bookH / 2 - 0.01, z: 0 } }, { parent: node });
+    b1.rotation.z = -Math.PI * 0.12;
+    
+    const b2 = boxComponent(registry, item, booksFullRowFurniture, 'book-lean-2', {
+      width: bookW * 0.9, height: bookH, depth: bookD
+    }, { position: { x: startX + bookW * 0.8, y: bookH / 2 - 0.03, z: 0 } }, { parent: node });
+    b2.rotation.z = -Math.PI * 0.18;
+  }
+};
+
+// 27. 迷你仙人球盆栽 (Mini Cactus)
+export const miniCactusFurniture = {
+  type: 'mini_cactus',
+  name: '迷你仙人球盆栽',
+  category: 'decor',
+  defaultSize: { width: 6, depth: 6, height: 8 },
+  components: [
+    { id: 'pot', label: '磨砂陶瓷盆', defaultColor: '#e0e0e0' },
+    { id: 'cactus', label: '仙人球肉质', defaultColor: '#2e7d32' },
+    { id: 'flower', label: '顶部红色花', defaultColor: '#ff4081' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.4;
+    const potD = size.width * 0.9;
+    cylinderComponent(registry, item, miniCactusFurniture, 'pot', {
+      diameterTop: potD, diameterBottom: potD * 0.7, height: potH
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+    
+    const cacD = size.width * 0.8;
+    sphereComponent(registry, item, miniCactusFurniture, 'cactus', {
+      diameterX: cacD, diameterY: cacD * 1.1, diameterZ: cacD
+    }, { position: { x: 0, y: potH + cacD / 2 - 0.01, z: 0 } }, { parent: node });
+    
+    sphereComponent(registry, item, miniCactusFurniture, 'flower', {
+      diameter: size.width * 0.25
+    }, { position: { x: 0, y: potH + cacD * 1.05, z: 0 } }, { parent: node });
+  }
+};
+
+// 28. 木质艺术相框 (Photo Frame)
+export const photoFrameFurniture = {
+  type: 'photo_frame',
+  name: '木质艺术相框',
+  category: 'decor',
+  defaultSize: { width: 8, depth: 3, height: 10 },
+  components: [
+    { id: 'frame', label: '胡桃木框体', defaultColor: '#8d6e63' },
+    { id: 'photo', label: '框内相纸', defaultColor: '#eceff1' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, photoFrameFurniture, 'frame', {
+      width: size.width, height: size.height, depth: 0.02
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    
+    boxComponent(registry, item, photoFrameFurniture, 'photo', {
+      width: size.width * 0.8, height: size.height * 0.8, depth: 0.005
+    }, { position: { x: 0, y: size.height / 2, z: 0.01 } }, { parent: node });
+    
+    node.rotation.x = -Math.PI * 0.08;
+  }
+};
+
+// 29. 复古沙漏摆件 (Hourglass)
+export const hourglassFurniture = {
+  type: 'hourglass',
+  name: '复古沙漏摆件',
+  category: 'decor',
+  defaultSize: { width: 6, depth: 6, height: 10 },
+  components: [
+    { id: 'frame', label: '黄铜支架', defaultColor: '#b5a642' },
+    { id: 'glass', label: '双锥型玻璃腔', defaultColor: '#d4efff' },
+    { id: 'sand', label: '神秘细沙', defaultColor: '#ab47bc' }
+  ],
+  build(registry, item, node, size) {
+    const topH = 0.015;
+    const mainH = size.height - topH * 2;
+    const width = size.width;
+    
+    boxComponent(registry, item, hourglassFurniture, 'frame', {
+      width: width, height: topH, depth: width
+    }, { position: { x: 0, y: topH / 2, z: 0 } }, { parent: node });
+    
+    boxComponent(registry, item, hourglassFurniture, 'frame', {
+      width: width, height: topH, depth: width
+    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+    
+    for (let i = 0; i < 3; i++) {
+      const angle = (i * Math.PI * 2) / 3;
+      const r = width * 0.4;
+      cylinderComponent(registry, item, hourglassFurniture, 'frame', {
+        diameterTop: 0.01, diameterBottom: 0.01, height: mainH
+      }, { position: { x: Math.cos(angle) * r, y: size.height / 2, z: Math.sin(angle) * r } }, { parent: node });
+    }
+    
+    cylinderComponent(registry, item, hourglassFurniture, 'glass', {
+      diameterTop: width * 0.7, diameterBottom: 0.01, height: mainH * 0.48
+    }, { position: { x: 0, y: topH + mainH * 0.76, z: 0 } }, { parent: node });
+    
+    cylinderComponent(registry, item, hourglassFurniture, 'glass', {
+      diameterTop: 0.01, diameterBottom: width * 0.7, height: mainH * 0.48
+    }, { position: { x: 0, y: topH + mainH * 0.24, z: 0 } }, { parent: node });
+  }
+};
+
+// 30. 藤编收纳筐 (Storage Basket)
+export const storageBasketFurniture = {
+  type: 'storage_basket',
+  name: '藤编收纳筐',
+  category: 'decor',
+  defaultSize: { width: 12, depth: 10, height: 8 },
+  components: [
+    { id: 'basket', label: '密织竹藤', defaultColor: '#c7a75c' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, storageBasketFurniture, 'basket', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+  }
+};
+
+// 31. 香薰蜡烛摆件 (Scented Candle)
+export const scentedCandleFurniture = {
+  type: 'scented_candle',
+  name: '香薰蜡烛摆件',
+  category: 'decor',
+  defaultSize: { width: 5, depth: 5, height: 6 },
+  components: [
+    { id: 'jar', label: '亚光玻璃罐', defaultColor: '#cfd8dc' },
+    { id: 'wax', label: '天然大豆蜡', defaultColor: '#fff9c4' },
+    { id: 'wick', label: '纯棉线烛芯', defaultColor: '#3e2723' }
+  ],
+  build(registry, item, node, size) {
+    const jarH = size.height * 0.85;
+    cylinderComponent(registry, item, scentedCandleFurniture, 'jar', {
+      diameterTop: size.width, diameterBottom: size.width, height: jarH
+    }, { position: { x: 0, y: jarH / 2, z: 0 } }, { parent: node });
+    
+    cylinderComponent(registry, item, scentedCandleFurniture, 'wax', {
+      diameterTop: size.width * 0.9, diameterBottom: size.width * 0.9, height: jarH * 0.85
+    }, { position: { x: 0, y: jarH * 0.85 / 2, z: 0 } }, { parent: node });
+    
+    cylinderComponent(registry, item, scentedCandleFurniture, 'wick', {
+      diameterTop: 0.005, diameterBottom: 0.005, height: size.height * 0.25
+    }, { position: { x: 0, y: jarH * 0.85 + size.height * 0.125, z: 0 } }, { parent: node });
+  }
+};
+
+// 32. 水晶球音乐盒 (Crystal Ball)
+export const crystalBallFurniture = {
+  type: 'crystal_ball',
+  name: '水晶球音乐盒',
+  category: 'decor',
+  defaultSize: { width: 6, depth: 6, height: 8 },
+  components: [
+    { id: 'base', label: '桃花芯木底座', defaultColor: '#4e342e' },
+    { id: 'sphere', label: '无铅水晶球', defaultColor: '#e0f7fa' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.3;
+    cylinderComponent(registry, item, crystalBallFurniture, 'base', {
+      diameterTop: size.width * 0.9, diameterBottom: size.width, height: baseH
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    
+    const sphereR = size.width * 0.8;
+    sphereComponent(registry, item, crystalBallFurniture, 'sphere', {
+      diameter: sphereR
+    }, { position: { x: 0, y: baseH + sphereR / 2 - 0.01, z: 0 } }, { parent: node });
+  }
+};
+
+// 33. 金色奖杯摆件 (Gold Trophy)
+export const goldTrophyFurniture = {
+  type: 'gold_trophy',
+  name: '金色奖杯摆件',
+  category: 'decor',
+  defaultSize: { width: 8, depth: 6, height: 12 },
+  components: [
+    { id: 'base', label: '黑大理石底座', defaultColor: '#212121' },
+    { id: 'gold', label: '镀金奖杯', defaultColor: '#ffd700' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.25;
+    boxComponent(registry, item, goldTrophyFurniture, 'base', {
+      width: size.width * 0.7, height: baseH, depth: size.depth * 0.7
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    
+    const stemH = size.height * 0.3;
+    cylinderComponent(registry, item, goldTrophyFurniture, 'gold', {
+      diameterTop: size.width * 0.15, diameterBottom: size.width * 0.3, height: stemH
+    }, { position: { x: 0, y: baseH + stemH / 2, z: 0 } }, { parent: node });
+    
+    const cupH = size.height * 0.45;
+    cylinderComponent(registry, item, goldTrophyFurniture, 'gold', {
+      diameterTop: size.width * 0.8, diameterBottom: size.width * 0.2, height: cupH
+    }, { position: { x: 0, y: baseH + stemH + cupH / 2, z: 0 } }, { parent: node });
+  }
+};
+
+// 34. 复古地球仪摆件 (Globe)
+export const globeFurniture = {
+  type: 'globe',
+  name: '复古地球仪摆件',
+  category: 'decor',
+  defaultSize: { width: 10, depth: 10, height: 14 },
+  components: [
+    { id: 'base', label: '实木雕花支架', defaultColor: '#5d4037' },
+    { id: 'ring', label: '抛光刻度半环', defaultColor: '#b5a642' },
+    { id: 'sphere', label: '航海羊皮纸球体', defaultColor: '#cfd8dc' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.12;
+    cylinderComponent(registry, item, globeFurniture, 'base', {
+      diameterTop: size.width * 0.6, diameterBottom: size.width * 0.7, height: baseH
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    
+    const stemH = size.height * 0.2;
+    cylinderComponent(registry, item, globeFurniture, 'ring', {
+      diameterTop: 0.015, diameterBottom: 0.015, height: stemH
+    }, { position: { x: 0, y: baseH + stemH / 2, z: 0 } }, { parent: node });
+    
+    const sphereD = size.width * 0.75;
+    sphereComponent(registry, item, globeFurniture, 'sphere', {
+      diameter: sphereD
+    }, { position: { x: 0, y: baseH + stemH + sphereD / 2, z: 0 } }, { parent: node });
+    
+    cylinderComponent(registry, item, globeFurniture, 'ring', {
+      diameterTop: sphereD * 1.15, diameterBottom: sphereD * 1.15, height: 0.012
+    }, { position: { x: 0, y: baseH + stemH + sphereD / 2, z: 0 } }, { parent: node });
+  }
+};
+
+// 35. 艺术石膏人像 (Gypsum Bust)
+export const gypsumBustFurniture = {
+  type: 'gypsum_bust',
+  name: '艺术石膏人像',
+  category: 'decor',
+  defaultSize: { width: 8, depth: 8, height: 12 },
+  components: [
+    { id: 'bust', label: '亚白磨砂石膏', defaultColor: '#f5f5f5' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.2;
+    cylinderComponent(registry, item, gypsumBustFurniture, 'bust', {
+      diameterTop: size.width * 0.6, diameterBottom: size.width * 0.7, height: baseH
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    
+    const headH = size.height * 0.8;
+    cylinderComponent(registry, item, gypsumBustFurniture, 'bust', {
+      diameterTop: size.width * 0.5, diameterBottom: size.width * 0.7, height: headH
+    }, { position: { x: 0, y: baseH + headH / 2, z: 0 } }, { parent: node });
+  }
+};
+
+// 36. 卡通小猪存钱罐 (Piggy Bank)
+export const piggyBankFurniture = {
+  type: 'piggy_bank',
+  name: '卡通小猪存钱罐',
+  category: 'decor',
+  defaultSize: { width: 8, depth: 8, height: 8 },
+  components: [
+    { id: 'body', label: '樱花粉陶瓷', defaultColor: '#ff80ab' },
+    { id: 'ears', label: '玫瑰红耳饰', defaultColor: '#ff4081' }
+  ],
+  build(registry, item, node, size) {
+    sphereComponent(registry, item, piggyBankFurniture, 'body', {
+      diameterX: size.width, diameterY: size.height * 0.9, diameterZ: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    
+    sphereComponent(registry, item, piggyBankFurniture, 'ears', {
+      diameter: size.width * 0.25
+    }, { position: { x: -size.width * 0.3, y: size.height * 0.85, z: size.depth * 0.15 } }, { parent: node });
+    
+    sphereComponent(registry, item, piggyBankFurniture, 'ears', {
+      diameter: size.width * 0.25
+    }, { position: { x: size.width * 0.3, y: size.height * 0.85, z: size.depth * 0.15 } }, { parent: node });
+  }
+};
+
 
 
 

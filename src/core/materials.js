@@ -27,12 +27,13 @@ export function createFlatMaterial(scene, name, colorHex, options = {}) {
 }
 
 export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
-  if (!value) return { kind: 'color', color: fallbackColor };
-  if (typeof value === 'string') return { kind: 'color', color: value };
+  if (!value) return { id: undefined, kind: 'color', color: fallbackColor };
+  if (typeof value === 'string') return { id: undefined, kind: 'color', color: value };
 
   // 镜面材质
   if (value.kind === 'mirror') {
     return {
+      id: value.id,
       kind: 'mirror',
       category: value.category || 'mirror',
       name: value.name || '镜面',
@@ -43,6 +44,7 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   // 金属材质
   if (value.kind === 'metal') {
     return {
+      id: value.id,
       kind: 'metal',
       category: value.category || 'metal',
       name: value.name || '金属',
@@ -54,6 +56,7 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   // 玻璃材质
   if (value.kind === 'glass') {
     return {
+      id: value.id,
       kind: 'glass',
       category: value.category || 'glass',
       name: value.name || '玻璃',
@@ -65,6 +68,7 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   // 发光材质
   if (value.kind === 'emissive') {
     return {
+      id: value.id,
       kind: 'emissive',
       category: value.category || 'emissive',
       name: value.name || '发光',
@@ -75,6 +79,7 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   // 纹理材质
   if (value.kind === 'texture' || value.src) {
     return {
+      id: value.id,
       kind: 'texture',
       category: value.category || 'custom',
       name: value.name || value.fileName || '自定义材质',
@@ -87,6 +92,7 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
 
   // 默认：颜色材质
   return {
+    id: value.id,
     kind: 'color',
     category: value.category || 'paint',
     name: value.name || '颜色',
@@ -96,6 +102,19 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
 
 export function materialPreviewColor(value, fallbackColor = '#ffffff') {
   return normalizeMaterialDescriptor(value, fallbackColor).color || fallbackColor;
+}
+
+function createEnvironmentReflectionTexture(scene, name, level) {
+  const source = scene.environmentTexture;
+  if (!source || typeof source.clone !== 'function') return null;
+
+  // Clones share the environment texture's GPU data while keeping per-material
+  // intensity independent. This avoids allocating a 512px, six-face render
+  // target (and six scene renders) for every reflective component.
+  const reflection = source.clone();
+  reflection.name = `${name}_environment_reflection`;
+  reflection.level = level;
+  return reflection;
 }
 
 export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
@@ -115,15 +134,15 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     material.flatShading = false;
     material.maxSimultaneousLights = 16;
 
-    // 升级为区域反射探针 (Reflection Probe)
-    const probe = new BABYLON.ReflectionProbe("probe_mirror_" + name, 512, scene, true);
-    probe.cubeTexture.level = 0.8; // 稍微降低探针反射等级，防止过曝
-    material.reflectionTexture = probe.cubeTexture;
-    material.customReflectionProbe = probe;
+    // Use the shared, prefiltered environment map. A per-material ReflectionProbe
+    // is prohibitively expensive and leaks easily when editor items are rebuilt.
+    material.reflectionTexture = createEnvironmentReflectionTexture(scene, name, 0.8);
 
     // 缩放反射采样的图案，使其在视觉上变小
-    material.reflectionTexture.uScale = 4.0;
-    material.reflectionTexture.vScale = 4.0;
+    if (material.reflectionTexture) {
+      material.reflectionTexture.uScale = 4.0;
+      material.reflectionTexture.vScale = 4.0;
+    }
 
     // 降低 emissive 补偿，防止强光下过亮
     material.emissiveColor = color.scale(0.08);
@@ -143,14 +162,14 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     material.flatShading = false;
     material.maxSimultaneousLights = 16;
 
-    // 升级为区域反射探针 (Reflection Probe)
-    const probe = new BABYLON.ReflectionProbe("probe_metal_" + name, 512, scene, true);
-    material.reflectionTexture = probe.cubeTexture;
-    material.customReflectionProbe = probe;
+    const reflectionLevel = isMatte ? 0.15 : 0.55;
+    material.reflectionTexture = createEnvironmentReflectionTexture(scene, name, reflectionLevel);
 
     // 缩放反射采样的图案，使其在视觉上变小
-    material.reflectionTexture.uScale = 2.0;
-    material.reflectionTexture.vScale = 2.0;
+    if (material.reflectionTexture) {
+      material.reflectionTexture.uScale = 2.0;
+      material.reflectionTexture.vScale = 2.0;
+    }
 
     if (isMatte) {
       // 磨砂金属：漫反射多，高光散且暗，环境反射微弱
@@ -158,14 +177,12 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
       material.specularColor = color.scale(0.4);
       material.specularPower = 12; // 低 specularPower 使高光发散
       material.emissiveColor = color.scale(0.1);
-      probe.cubeTexture.level = 0.15; // 磨砂表面反射强度变弱
     } else {
       // 亮面金属：漫反射少，高光亮且硬，环境反射明显
       material.diffuseColor = color.scale(0.3);
       material.specularColor = color.scale(0.7);
       material.specularPower = 64; // 高 specularPower 使高光尖锐
       material.emissiveColor = color.scale(0.15);
-      probe.cubeTexture.level = 0.55; // 亮面反射强度较高
     }
 
     material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
@@ -203,17 +220,54 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   }
 
   // --- 颜色/纹理材质（原有逻辑） ---
-  const material = createFlatMaterial(scene, name, baseColor, options);
+  let finalBaseColor = baseColor;
+  if (options.isFloor && normalized.kind === 'texture') {
+    // 地板材质在图片加载出来之前，底色强制使用淡棕色
+    finalBaseColor = '#d2b48c';
+  }
+
+  const material = createFlatMaterial(scene, name, finalBaseColor, options);
   material.metadata = {
     ...(material.metadata || {}),
     blueprintMaterial: normalized
   };
 
   if (normalized.kind === 'texture' && normalized.src) {
-    const texture = new BABYLON.Texture(normalized.src, scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    const texture = new BABYLON.Texture(
+      normalized.src,
+      scene,
+      false,
+      true,
+      BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+      () => {
+        if (material.isDisposed) {
+          texture.dispose();
+          return;
+        }
+        material.diffuseTexture = texture;
+      },
+      (message, exception) => {
+        console.warn(`Failed to load texture for ${name}: ${normalized.src}`, message, exception);
+        if (material.isDisposed) {
+          texture.dispose();
+          return;
+        }
+        material.diffuseTexture = null;
+        if (options.isFloor) {
+          material.diffuseColor = BABYLON.Color3.FromHexString('#d2b48c');
+        }
+      }
+    );
     texture.uScale = normalized.scale || 1;
     texture.vScale = normalized.scale || 1;
-    material.diffuseTexture = texture;
+
+    if (options.isFloor) {
+      // 地板材质在开始加载时，先不赋给 diffuseTexture，避免加载完成前的白色或红色格子闪烁，直接渲染底色淡棕色
+      // 等 onLoad 触发成功后再赋值
+    } else {
+      material.diffuseTexture = texture;
+    }
+
     material.specularColor = options.specularColor || new BABYLON.Color3(0.08, 0.08, 0.08);
   }
 

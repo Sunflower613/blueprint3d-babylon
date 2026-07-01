@@ -103,6 +103,49 @@ const DEFAULT_WALL_COLOR = '#f9fbff';
 const DEFAULT_FLOOR_COLOR = '#d2b48c';
 const DEFAULT_FLOOR_ID = 'floor_1';
 
+export const FENCE_SUBTYPE_DEFAULTS = {
+  picket_wood: {
+    color: '#8d6e63',
+    frameColor: '#8d6e63',
+    panelColor: '#8d6e63'
+  },
+  iron_ornamental: {
+    color: '#212121',
+    frameColor: '#212121',
+    panelColor: '#212121'
+  },
+  wire_mesh: {
+    color: '#b0bec5',
+    frameColor: '#b0bec5',
+    panelColor: '#b0bec5'
+  },
+  stone_masonry: {
+    color: '#cfd8dc',
+    frameColor: '#cfd8dc',
+    panelColor: '#212121'
+  },
+  bamboo: {
+    color: '#558b2f',
+    frameColor: '#558b2f',
+    panelColor: '#558b2f'
+  },
+  glass_rail: {
+    color: '#b0bec5',
+    frameColor: '#b0bec5',
+    panelColor: '#80deea'
+  },
+  concrete: {
+    color: '#f9fbff',
+    frameColor: '#f9fbff',
+    panelColor: '#f9fbff'
+  },
+  rope: {
+    color: '#8d6e63',
+    frameColor: '#8d6e63',
+    panelColor: '#3e2723'
+  }
+};
+
 function cloneFloorplan(floorplan) {
   return JSON.parse(JSON.stringify(floorplan));
 }
@@ -254,9 +297,20 @@ function normalizeFloorplan(floorplan) {
     fence.subtype ||= 'picket_wood';
     fence.height = Math.max(0.2, Number(fence.height || 1.1));
     fence.thickness = Math.max(0.04, Number(fence.thickness || 0.1));
-    fence.color ||= '#8d6e63';
+
+    const defaults = FENCE_SUBTYPE_DEFAULTS[fence.subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+    fence.color ||= defaults.color;
     fence.material ||= fence.color;
-    fence.color = materialPreviewColor(fence.material, fence.color || '#8d6e63');
+    fence.color = materialPreviewColor(fence.material, fence.color || defaults.color);
+    
+    fence.frameColor ||= defaults.frameColor;
+    fence.frameMaterial ||= fence.frameColor;
+    fence.frameColor = materialPreviewColor(fence.frameMaterial, fence.frameColor || defaults.frameColor);
+
+    fence.panelColor ||= defaults.panelColor;
+    fence.panelMaterial ||= fence.panelColor;
+    fence.panelColor = materialPreviewColor(fence.panelMaterial, fence.panelColor || defaults.panelColor);
+
     fence.locked = !!fence.locked;
     fence.tilt = Number(fence.tilt || 0);
     fence.yOffset = Number(fence.yOffset || 0);
@@ -2593,7 +2647,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
   addFence(partialFence = {}) {
     const subtype = partialFence.subtype || 'picket_wood';
-    const defaultColor = subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+    const defaults = FENCE_SUBTYPE_DEFAULTS[subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+    const defaultColor = defaults.color;
     const fence = {
       id: partialFence.id || `fence_${Date.now()}`,
       floorId: partialFence.floorId || this.floorplan.currentFloorId,
@@ -2604,6 +2659,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       thickness: Math.max(0.04, Number(partialFence.thickness || 0.1)),
       color: partialFence.color || defaultColor,
       material: partialFence.material || partialFence.color || defaultColor,
+      frameColor: partialFence.frameColor || partialFence.color || defaults.frameColor,
+      frameMaterial: partialFence.frameMaterial || partialFence.material || partialFence.color || defaults.frameColor,
+      panelColor: partialFence.panelColor || partialFence.color || defaults.panelColor,
+      panelMaterial: partialFence.panelMaterial || partialFence.material || partialFence.color || defaults.panelColor,
       locked: !!partialFence.locked,
       tilt: Number(partialFence.tilt || 0),
       yOffset: Number(partialFence.yOffset || 0)
@@ -2622,12 +2681,23 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (!fence) return null;
     if (fence.locked && !('locked' in patch)) return fence;
 
-    if (patch.subtype === 'concrete' && (fence.color === '#8d6e63' || !fence.color || fence.color === '')) {
-      patch.color = DEFAULT_WALL_COLOR;
-      patch.material = DEFAULT_WALL_COLOR;
-    } else if (patch.subtype && patch.subtype !== 'concrete' && fence.color === DEFAULT_WALL_COLOR) {
-      patch.color = '#8d6e63';
-      patch.material = '#8d6e63';
+    // 智能转换：若类型发生变更，将旧类型的默认材质切到新类型的默认材质
+    if (patch.subtype && patch.subtype !== fence.subtype) {
+      const oldDefaults = FENCE_SUBTYPE_DEFAULTS[fence.subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+      const newDefaults = FENCE_SUBTYPE_DEFAULTS[patch.subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+
+      if (fence.color === oldDefaults.color || fence.material === oldDefaults.color) {
+        fence.color = newDefaults.color;
+        fence.material = newDefaults.color;
+      }
+      if (fence.frameColor === oldDefaults.frameColor || fence.frameMaterial === oldDefaults.frameColor) {
+        fence.frameColor = newDefaults.frameColor;
+        fence.frameMaterial = newDefaults.frameColor;
+      }
+      if (fence.panelColor === oldDefaults.panelColor || fence.panelMaterial === oldDefaults.panelColor) {
+        fence.panelColor = newDefaults.panelColor;
+        fence.panelMaterial = newDefaults.panelColor;
+      }
     }
 
     Object.assign(fence, patch);
@@ -2636,11 +2706,23 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     fence.height = Math.max(0.2, Number(fence.height || 0.2));
     fence.thickness = Math.max(0.04, Number(fence.thickness || 0.04));
     if (patch.color && !patch.material) fence.material = patch.color;
+    if (patch.frameColor && !patch.frameMaterial) fence.frameMaterial = patch.frameColor;
+    if (patch.panelColor && !patch.panelMaterial) fence.panelMaterial = patch.panelColor;
     
-    const defaultColor = fence.subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
+    const defaults = FENCE_SUBTYPE_DEFAULTS[fence.subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+    const defaultColor = defaults.color;
     fence.color ||= defaultColor;
     fence.material ||= fence.color;
     fence.color = materialPreviewColor(fence.material, fence.color || defaultColor);
+
+    fence.frameColor ||= defaults.frameColor;
+    fence.frameMaterial ||= fence.frameColor;
+    fence.frameColor = materialPreviewColor(fence.frameMaterial, fence.frameColor || defaults.frameColor);
+
+    fence.panelColor ||= defaults.panelColor;
+    fence.panelMaterial ||= fence.panelColor;
+    fence.panelColor = materialPreviewColor(fence.panelMaterial, fence.panelColor || defaults.panelColor);
+
     if (rebuild) this.build();
     return fence;
   }

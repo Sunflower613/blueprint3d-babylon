@@ -74,7 +74,7 @@ export function buildOpeningFrame(registry, opening, parent, options = {}) {
     const dy = next.y - point.y;
     const length = Math.hypot(dx, dy);
     if (length < 0.005) return;
-    createBox(registry, `opening_frame_${opening.id}_${index}`, {
+    const box = createBox(registry, `opening_frame_${opening.id}_${index}`, {
       width: length,
       height: frameW,
       depth: frameT
@@ -86,6 +86,7 @@ export function buildOpeningFrame(registry, opening, parent, options = {}) {
       parent,
       shadowCaster: false
     });
+    box.metadata = { ...box.metadata, blueprintOpeningComponentId: 'frame' };
   });
 }
 

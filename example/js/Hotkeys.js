@@ -242,7 +242,7 @@ export function handleHotkeys(event, ctx) {
       event.preventDefault();
       const target = ctx.getSelectedTarget();
       if (target) {
-        ctx.copyContextTarget(target);
+        ctx.copyTarget(target);
       }
       return;
     }
@@ -270,9 +270,9 @@ export function handleHotkeys(event, ctx) {
   if (key === 'r') {
     const target = ctx.getSelectedTarget();
     if (target) {
-      if (ctx.isAllowedContextTarget(target) && !ctx.isTargetLocked(target)) {
+      if (ctx.isAllowedTarget(target) && !ctx.isTargetLocked(target)) {
         event.preventDefault();
-        ctx.rotateContextTarget(target);
+        ctx.rotateTarget(target);
         return;
       }
     }

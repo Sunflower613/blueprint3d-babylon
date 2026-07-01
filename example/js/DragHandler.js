@@ -1,6 +1,8 @@
 import * as Topology from './Topology.js';
+import { createStoreProxy } from '../store/proxyHelper.js';
 
-let ctx = null;
+let rawCtx = null;
+const ctx = createStoreProxy(() => rawCtx);
 
 export const states = {
   roomDrag: null,
@@ -18,7 +20,7 @@ export const states = {
  * @param {Object} appContext 包含全局实例和工具函数的上下文对象
  */
 export function initDragHandler(appContext) {
-  ctx = appContext;
+  rawCtx = appContext;
 }
 
 /**

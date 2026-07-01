@@ -1,5 +1,6 @@
 import * as BABYLON from '@babylonjs/core';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
+import { createBlueprintMaterial } from '../core/materials.js';
 
 /**
  * 根据栅栏 subtype 及其参数，调用 primitives 构建栅栏的 3D 实体组件
@@ -30,28 +31,39 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
   proxy.isPickable = true;
 
   // 1. 创建几种辅助材质，使不同风格的栅栏拥有更高级的视觉效果 (WOW)
-  const ironMaterial = new BABYLON.StandardMaterial(`fence_iron_mat_${fence.id}`, scene);
-  ironMaterial.diffuseColor = BABYLON.Color3.FromHexString('#212121');
-  ironMaterial.specularColor = BABYLON.Color3.FromHexString('#333333');
+  const defaults = {
+    picket_wood: { color: '#8d6e63', frame: '#8d6e63', panel: '#8d6e63' },
+    iron_ornamental: { color: '#212121', frame: '#212121', panel: '#212121' },
+    wire_mesh: { color: '#b0bec5', frame: '#b0bec5', panel: '#b0bec5' },
+    stone_masonry: { color: '#cfd8dc', frame: '#cfd8dc', panel: '#212121' },
+    bamboo: { color: '#558b2f', frame: '#558b2f', panel: '#558b2f' },
+    glass_rail: { color: '#b0bec5', frame: '#b0bec5', panel: '#80deea' },
+    concrete: { color: '#f9fbff', frame: '#f9fbff', panel: '#f9fbff' },
+    rope: { color: '#8d6e63', frame: '#8d6e63', panel: '#3e2723' }
+  };
+  const subtypeDefaults = defaults[subtype] || defaults.picket_wood;
+
+  const frameMatDesc = fence.frameMaterial || fence.frameColor || material || fence.color || subtypeDefaults.frame;
+  const frameMaterial = createBlueprintMaterial(scene, `fence_${fence.id}_frame_mat`, frameMatDesc, {
+    fallbackColor: fence.frameColor || fence.color || subtypeDefaults.frame,
+    flatShading: false
+  });
+
+  const panelMatDesc = fence.panelMaterial || fence.panelColor || material || fence.color || subtypeDefaults.panel;
+  const panelMaterial = createBlueprintMaterial(scene, `fence_${fence.id}_panel_mat`, panelMatDesc, {
+    fallbackColor: fence.panelColor || fence.color || subtypeDefaults.panel,
+    flatShading: false
+  });
+
+  if (subtype === 'glass_rail') {
+    panelMaterial.alpha = 0.4;
+    panelMaterial.backFaceCulling = false;
+  }
 
   const goldMaterial = new BABYLON.StandardMaterial(`fence_gold_mat_${fence.id}`, scene);
   goldMaterial.diffuseColor = BABYLON.Color3.FromHexString('#ffd700');
   goldMaterial.specularColor = BABYLON.Color3.FromHexString('#ffffff');
   goldMaterial.roughness = 0.2;
-
-  const glassMaterial = new BABYLON.StandardMaterial(`fence_glass_mat_${fence.id}`, scene);
-  glassMaterial.diffuseColor = BABYLON.Color3.FromHexString('#80deea');
-  glassMaterial.specularColor = BABYLON.Color3.FromHexString('#ffffff');
-  glassMaterial.alpha = 0.4;
-  glassMaterial.backFaceCulling = false;
-
-  const steelMaterial = new BABYLON.StandardMaterial(`fence_steel_mat_${fence.id}`, scene);
-  steelMaterial.diffuseColor = BABYLON.Color3.FromHexString('#b0bec5');
-  steelMaterial.specularColor = BABYLON.Color3.FromHexString('#ffffff');
-
-  const stoneMaterial = new BABYLON.StandardMaterial(`fence_stone_mat_${fence.id}`, scene);
-  stoneMaterial.diffuseColor = BABYLON.Color3.FromHexString('#cfd8dc');
-  stoneMaterial.specularColor = BABYLON.Color3.FromHexString('#111111');
 
   const ropeMaterial = new BABYLON.StandardMaterial(`fence_rope_mat_${fence.id}`, scene);
   ropeMaterial.diffuseColor = BABYLON.Color3.FromHexString('#3e2723');
@@ -64,60 +76,64 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postHeight = height * 1.05;
     
     // 两端粗木立柱
-    createBox(registry, `post_start_${fence.id}`, {
+    const postStart = createBox(registry, `post_start_${fence.id}`, {
       width: postWidth,
       height: postHeight,
       depth: postWidth
     }, {
       position: { x: -length / 2, y: postHeight / 2, z: 0 }
     }, {
-      material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createBox(registry, `post_end_${fence.id}`, {
+    const postEnd = createBox(registry, `post_end_${fence.id}`, {
       width: postWidth,
       height: postHeight,
       depth: postWidth
     }, {
       position: { x: length / 2, y: postHeight / 2, z: 0 }
     }, {
-      material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 两根横向拉梁 (高 0.25 * height 和 0.75 * height)
     const railHeight = 0.05;
     const railThickness = thickness * 0.4;
-    createBox(registry, `rail_bottom_${fence.id}`, {
+    const railBottom = createBox(registry, `rail_bottom_${fence.id}`, {
       width: length - postWidth,
       height: railHeight,
       depth: railThickness
     }, {
       position: { x: 0, y: height * 0.25, z: 0 }
     }, {
-      material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railBottom.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createBox(registry, `rail_top_${fence.id}`, {
+    const railTop = createBox(registry, `rail_top_${fence.id}`, {
       width: length - postWidth,
       height: railHeight,
       depth: railThickness
     }, {
       position: { x: 0, y: height * 0.75, z: 0 }
     }, {
-      material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railTop.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 垂直尖顶木板，每隔 0.25 米排一块
     const picketSpacing = 0.22;
@@ -127,20 +143,22 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     for (let i = 0; i < count; i++) {
       const curX = startX + i * picketSpacing;
       // 木板主身
-      createBox(registry, `picket_${fence.id}_${i}`, {
+      const picket = createBox(registry, `picket_${fence.id}_${i}`, {
         width: 0.08,
         height: height * 0.9,
         depth: 0.02
       }, {
         position: { x: curX, y: (height * 0.9) / 2, z: railThickness / 2 + 0.01 }
       }, {
-        material,
+        material: panelMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      picket.metadata = { blueprintFenceComponentId: 'panel' };
+
       // 尖顶部分 (旋转 45 度的正方体拼接)
-      createBox(registry, `picket_top_${fence.id}_${i}`, {
+      const picketTop = createBox(registry, `picket_top_${fence.id}_${i}`, {
         width: 0.057,
         height: 0.057,
         depth: 0.02
@@ -148,11 +166,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         position: { x: curX, y: height * 0.9 + 0.02, z: railThickness / 2 + 0.01 },
         rotation: { z: Math.PI / 4 }
       }, {
-        material,
+        material: panelMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      picketTop.metadata = { blueprintFenceComponentId: 'panel' };
     }
 
   } else if (subtype === 'iron_ornamental') {
@@ -163,58 +182,62 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postHeight = height * 1.1;
     
     // 黑色两端金属立柱
-    createBox(registry, `post_start_${fence.id}`, {
+    const postStart = createBox(registry, `post_start_${fence.id}`, {
       width: postWidth,
       height: postHeight,
       depth: postWidth
     }, {
       position: { x: -length / 2, y: postHeight / 2, z: 0 }
     }, {
-      material: ironMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createBox(registry, `post_end_${fence.id}`, {
+    const postEnd = createBox(registry, `post_end_${fence.id}`, {
       width: postWidth,
       height: postHeight,
       depth: postWidth
     }, {
       position: { x: length / 2, y: postHeight / 2, z: 0 }
     }, {
-      material: ironMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 两根横向拉铁条
-    createBox(registry, `rail_bottom_${fence.id}`, {
+    const railBottom = createBox(registry, `rail_bottom_${fence.id}`, {
       width: length - postWidth,
       height: 0.02,
       depth: 0.02
     }, {
       position: { x: 0, y: height * 0.15, z: 0 }
     }, {
-      material: ironMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railBottom.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createBox(registry, `rail_top_${fence.id}`, {
+    const railTop = createBox(registry, `rail_top_${fence.id}`, {
       width: length - postWidth,
       height: 0.02,
       depth: 0.02
     }, {
       position: { x: 0, y: height * 0.85, z: 0 }
     }, {
-      material: ironMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railTop.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 细竖杆与金色枪尖，每隔 0.15 米排一根
     const spacing = 0.15;
@@ -224,21 +247,22 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     for (let i = 0; i < count; i++) {
       const curX = startX + i * spacing;
       // 竖细圆柱
-      createCylinder(registry, `bar_${fence.id}_${i}`, {
+      const bar = createCylinder(registry, `bar_${fence.id}_${i}`, {
         diameterTop: 0.016,
         diameterBottom: 0.016,
         height: height * 0.95
       }, {
         position: { x: curX, y: (height * 0.95) / 2, z: 0 }
       }, {
-        material: ironMaterial,
+        material: panelMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      bar.metadata = { blueprintFenceComponentId: 'panel' };
 
       // 金色枪尖球
-      createSphere(registry, `spear_ball_${fence.id}_${i}`, {
+      const spearBall = createSphere(registry, `spear_ball_${fence.id}_${i}`, {
         diameter: 0.03,
         segments: 8
       }, {
@@ -249,9 +273,10 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         receiveShadows: true,
         shadowCaster: true
       });
+      spearBall.metadata = { blueprintFenceComponentId: 'panel' };
 
       // 金色尖锥
-      createCylinder(registry, `spear_point_${fence.id}_${i}`, {
+      const spearPoint = createCylinder(registry, `spear_point_${fence.id}_${i}`, {
         diameterTop: 0.001,
         diameterBottom: 0.016,
         height: 0.06,
@@ -264,6 +289,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         receiveShadows: true,
         shadowCaster: true
       });
+      spearPoint.metadata = { blueprintFenceComponentId: 'panel' };
     }
 
   } else if (subtype === 'wire_mesh') {
@@ -273,34 +299,36 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postRadius = 0.03;
     
     // 两端不锈钢立柱
-    createCylinder(registry, `post_start_${fence.id}`, {
+    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
       diameterTop: postRadius * 2,
       diameterBottom: postRadius * 2,
       height: height
     }, {
       position: { x: -length / 2, y: height / 2, z: 0 }
     }, {
-      material: steelMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `post_end_${fence.id}`, {
+    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
       diameterTop: postRadius * 2,
       diameterBottom: postRadius * 2,
       height: height
     }, {
       position: { x: length / 2, y: height / 2, z: 0 }
     }, {
-      material: steelMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 顶底两根钢管拉梁
-    createCylinder(registry, `rail_bottom_${fence.id}`, {
+    const railBottom = createCylinder(registry, `rail_bottom_${fence.id}`, {
       diameterTop: 0.02,
       diameterBottom: 0.02,
       height: length - postRadius * 2
@@ -308,13 +336,14 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height * 0.08, z: 0 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: steelMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railBottom.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `rail_top_${fence.id}`, {
+    const railTop = createCylinder(registry, `rail_top_${fence.id}`, {
       diameterTop: 0.02,
       diameterBottom: 0.02,
       height: length - postRadius * 2
@@ -322,11 +351,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height * 0.92, z: 0 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: steelMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railTop.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 细网格斜拉线 (每隔 0.1414 米放置正反两条交叉斜圆柱，边长10cm的正方形网格，水平间距 = 0.1 * sqrt(2) = 0.1414)
     const gridSpacing = 0.141421356;
@@ -350,7 +380,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         const p1y = xStartPos - curX + gridCenterY;
         const p2y = xEndPos - curX + gridCenterY;
         const segLen = (xEndPos - xStartPos) * 1.41421356;
-        createCylinder(registry, `rod_pos_${fence.id}_${i}`, {
+        const rodPos = createCylinder(registry, `rod_pos_${fence.id}_${i}`, {
           diameterTop: 0.006,
           diameterBottom: 0.006,
           height: segLen
@@ -358,11 +388,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
           position: { x: (xStartPos + xEndPos) / 2, y: (p1y + p2y) / 2, z: 0.005 },
           rotation: { z: -Math.PI / 4 }
         }, {
-          material: steelMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: false,
           shadowCaster: false
         });
+        rodPos.metadata = { blueprintFenceComponentId: 'panel' };
       }
 
       // 2. 反斜线裁切 (斜率 -1, 旋转角 +45度)
@@ -372,7 +403,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         const p1y = -xStartNeg + curX + gridCenterY;
         const p2y = -xEndNeg + curX + gridCenterY;
         const segLen = (xEndNeg - xStartNeg) * 1.41421356;
-        createCylinder(registry, `rod_neg_${fence.id}_${i}`, {
+        const rodNeg = createCylinder(registry, `rod_neg_${fence.id}_${i}`, {
           diameterTop: 0.006,
           diameterBottom: 0.006,
           height: segLen
@@ -380,11 +411,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
           position: { x: (xStartNeg + xEndNeg) / 2, y: (p1y + p2y) / 2, z: -0.005 },
           rotation: { z: Math.PI / 4 }
         }, {
-          material: steelMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: false,
           shadowCaster: false
         });
+        rodNeg.metadata = { blueprintFenceComponentId: 'panel' };
       }
     }
 
@@ -396,18 +428,19 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const wallW = thickness * 1.5;
 
     // 石砌矮基座
-    createBox(registry, `base_wall_${fence.id}`, {
+    const baseWall = createBox(registry, `base_wall_${fence.id}`, {
       width: length,
       height: wallH,
       depth: wallW
     }, {
       position: { x: 0, y: wallH / 2, z: 0 }
     }, {
-      material: stoneMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    baseWall.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 石头方柱与铁拉梁，每隔 0.8 米排一根石柱
     const pillarSpacing = 0.8;
@@ -419,30 +452,32 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     for (let i = 0; i < count; i++) {
       const curX = -length / 2 + i * stepX;
       // 方石柱
-      createBox(registry, `pillar_${fence.id}_${i}`, {
+      const pillar = createBox(registry, `pillar_${fence.id}_${i}`, {
         width: pWidth,
         height: pHeight + 0.04,
         depth: pWidth
       }, {
         position: { x: curX, y: wallH + pHeight / 2, z: 0 }
       }, {
-        material: stoneMaterial,
+        material: frameMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      pillar.metadata = { blueprintFenceComponentId: 'frame' };
 
       // 柱顶石球
-      createSphere(registry, `pillar_ball_${fence.id}_${i}`, {
+      const pillarBall = createSphere(registry, `pillar_ball_${fence.id}_${i}`, {
         diameter: pWidth * 0.72
       }, {
         position: { x: curX, y: wallH + pHeight + 0.04 + (pWidth * 0.36), z: 0 }
       }, {
-        material: stoneMaterial,
+        material: frameMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      pillarBall.metadata = { blueprintFenceComponentId: 'frame' };
     }
 
     // 在石柱中间拉黑铁梁
@@ -451,49 +486,53 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       const spanW = stepX - pWidth;
       if (spanW > 0.05) {
         // 下拉条
-        createBox(registry, `iron_rail_b_${fence.id}_${i}`, {
+        const ironRailB = createBox(registry, `iron_rail_b_${fence.id}_${i}`, {
           width: spanW,
           height: 0.02,
           depth: 0.02
         }, {
           position: { x: curX, y: wallH + pHeight * 0.25, z: 0 }
         }, {
-          material: ironMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: true,
           shadowCaster: true
         });
+        ironRailB.metadata = { blueprintFenceComponentId: 'panel' };
+
         // 上拉条
-        createBox(registry, `iron_rail_t_${fence.id}_${i}`, {
+        const ironRailT = createBox(registry, `iron_rail_t_${fence.id}_${i}`, {
           width: spanW,
           height: 0.02,
           depth: 0.02
         }, {
           position: { x: curX, y: wallH + pHeight * 0.75, z: 0 }
         }, {
-          material: ironMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: true,
           shadowCaster: true
         });
+        ironRailT.metadata = { blueprintFenceComponentId: 'panel' };
         
         // 中间画一些简单的细金属线条装饰
         const innerCount = Math.max(1, Math.floor(spanW / 0.15));
         const innerStep = spanW / (innerCount + 1);
         for (let j = 1; j <= innerCount; j++) {
           const innerX = -length / 2 + i * stepX + pWidth / 2 + j * innerStep;
-          createBox(registry, `iron_picket_${fence.id}_${i}_${j}`, {
+          const ironPicket = createBox(registry, `iron_picket_${fence.id}_${i}_${j}`, {
             width: 0.015,
             height: pHeight * 0.6,
             depth: 0.015
           }, {
             position: { x: innerX, y: wallH + pHeight * 0.5, z: 0 }
           }, {
-            material: ironMaterial,
+            material: panelMaterial,
             parent: group,
             receiveShadows: true,
             shadowCaster: true
           });
+          ironPicket.metadata = { blueprintFenceComponentId: 'panel' };
         }
       }
     }
@@ -502,43 +541,40 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     // ==========================================
     // 5. 竹制篱笆 (bamboo)
     // ==========================================
-    // 定义天然竹子绿色材质
-    const bambooMaterial = new BABYLON.StandardMaterial(`fence_bamboo_mat_${fence.id}`, scene);
-    bambooMaterial.diffuseColor = BABYLON.Color3.FromHexString('#558b2f');
-    bambooMaterial.specularColor = BABYLON.Color3.FromHexString('#255d00');
-
     const mainBambooRad = 0.016;
 
     // 两端较粗的支撑立竹
-    createCylinder(registry, `post_start_${fence.id}`, {
+    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
       diameterTop: mainBambooRad * 2.2,
       diameterBottom: mainBambooRad * 2.2,
       height: height * 1.05
     }, {
       position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
     }, {
-      material: bambooMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `post_end_${fence.id}`, {
+    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
       diameterTop: mainBambooRad * 2.2,
       diameterBottom: mainBambooRad * 2.2,
       height: height * 1.05
     }, {
       position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
     }, {
-      material: bambooMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 3根横向主干竹子
     const activeLen = length - mainBambooRad * 4;
-    createCylinder(registry, `rail_b_${fence.id}`, {
+    const railB = createCylinder(registry, `rail_b_${fence.id}`, {
       diameterTop: mainBambooRad * 1.8,
       diameterBottom: mainBambooRad * 1.8,
       height: activeLen
@@ -546,13 +582,14 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height * 0.2, z: 0.01 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: bambooMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railB.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `rail_m_${fence.id}`, {
+    const railM = createCylinder(registry, `rail_m_${fence.id}`, {
       diameterTop: mainBambooRad * 1.8,
       diameterBottom: mainBambooRad * 1.8,
       height: activeLen
@@ -560,13 +597,14 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height * 0.5, z: -0.01 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: bambooMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railM.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `rail_t_${fence.id}`, {
+    const railT = createCylinder(registry, `rail_t_${fence.id}`, {
       diameterTop: mainBambooRad * 1.8,
       diameterBottom: mainBambooRad * 1.8,
       height: activeLen
@@ -574,11 +612,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height * 0.8, z: 0.01 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: bambooMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    railT.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 高密细竹竿 (间隔 0.07 米，高度微倾斜以实现手工艺感)
     const spacing = 0.075;
@@ -592,7 +631,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       // 高度微调
       const randH = height * (0.94 + Math.abs((i % 7) - 3) * 0.02);
 
-      createCylinder(registry, `bamboo_vertical_${fence.id}_${i}`, {
+      const bambooVertical = createCylinder(registry, `bamboo_vertical_${fence.id}_${i}`, {
         diameterTop: 0.012,
         diameterBottom: 0.012,
         height: randH
@@ -600,15 +639,16 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         position: { x: curX, y: randH / 2, z: 0 },
         rotation: { z: angle }
       }, {
-        material: bambooMaterial,
+        material: panelMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      bambooVertical.metadata = { blueprintFenceComponentId: 'panel' };
 
       // 交叉点绳子缠绕：在中部横梁交接处放置一个扁圆盘模拟绳缚
       if (i % 2 === 0) {
-        createCylinder(registry, `rope_knot_${fence.id}_${i}`, {
+        const ropeKnot = createCylinder(registry, `rope_knot_${fence.id}_${i}`, {
           diameterTop: 0.022,
           diameterBottom: 0.022,
           height: 0.015
@@ -619,6 +659,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
           material: ropeMaterial,
           parent: group
         });
+        ropeKnot.metadata = { blueprintFenceComponentId: 'panel' };
       }
     }
 
@@ -634,22 +675,23 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     // 1. 放置精致的不锈钢立柱
     for (let i = 0; i < count; i++) {
       const curX = -length / 2 + i * stepX;
-      createCylinder(registry, `steel_post_${fence.id}_${i}`, {
+      const steelPost = createCylinder(registry, `steel_post_${fence.id}_${i}`, {
         diameterTop: postRad * 2,
         diameterBottom: postRad * 2,
         height: height
       }, {
         position: { x: curX, y: height / 2, z: 0 }
       }, {
-        material: steelMaterial,
+        material: frameMaterial,
         parent: group,
         receiveShadows: true,
         shadowCaster: true
       });
+      steelPost.metadata = { blueprintFenceComponentId: 'frame' };
     }
 
     // 2. 放置顶部的握持钢管扶手
-    createCylinder(registry, `steel_handrail_${fence.id}`, {
+    const steelHandrail = createCylinder(registry, `steel_handrail_${fence.id}`, {
       diameterTop: 0.036,
       diameterBottom: 0.036,
       height: length
@@ -657,11 +699,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       position: { x: 0, y: height + 0.018, z: 0 },
       rotation: { z: Math.PI / 2 }
     }, {
-      material: steelMaterial,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    steelHandrail.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 3. 放置夹持半透明蓝色钢化玻璃板和金属配件
     for (let i = 0; i < count - 1; i++) {
@@ -671,18 +714,19 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       
       if (glassW > 0.1) {
         // 半透明玻璃板
-        createBox(registry, `glass_panel_${fence.id}_${i}`, {
+        const glassPanel = createBox(registry, `glass_panel_${fence.id}_${i}`, {
           width: glassW,
           height: glassH,
           depth: 0.012
         }, {
           position: { x: curX, y: height * 0.46, z: 0 }
         }, {
-          material: glassMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: false,
           shadowCaster: false
         });
+        glassPanel.metadata = { blueprintFenceComponentId: 'panel' };
 
         // 左右两端的夹扣 (小 box)
         const leftClipX = -length / 2 + i * stepX + postRad + 0.02;
@@ -694,16 +738,17 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         // 夹子 Box 定义
         [clipY1, clipY2].forEach((clipY, idx) => {
           [leftClipX, rightClipX].forEach((clipX, sideIdx) => {
-            createBox(registry, `glass_clip_${fence.id}_${i}_${idx}_${sideIdx}`, {
+            const glassClip = createBox(registry, `glass_clip_${fence.id}_${i}_${idx}_${sideIdx}`, {
               width: 0.035,
               height: 0.035,
               depth: 0.028
             }, {
               position: { x: clipX, y: clipY, z: 0 }
             }, {
-              material: steelMaterial,
+              material: frameMaterial,
               parent: group
             });
+            glassClip.metadata = { blueprintFenceComponentId: 'frame' };
           });
         });
       }
@@ -712,18 +757,19 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     // ==========================================
     // 7. 混凝土矮墙 (concrete)
     // ==========================================
-    createBox(registry, `concrete_body_${fence.id}`, {
+    const concreteBody = createBox(registry, `concrete_body_${fence.id}`, {
       width: length,
       height: height,
       depth: thickness
     }, {
       position: { x: 0, y: height / 2, z: 0 }
     }, {
-      material,
+      material: panelMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    concreteBody.metadata = { blueprintFenceComponentId: 'panel' };
   } else if (subtype === 'rope') {
     // ==========================================
     // 8. 绳索栅栏 (rope)
@@ -731,50 +777,54 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postRad = 0.04;
     
     // 1. 左右两个木立柱
-    createCylinder(registry, `post_start_${fence.id}`, {
+    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
       diameterTop: postRad * 2,
       diameterBottom: postRad * 2,
       height: height * 1.05
     }, {
       position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
     }, {
-      material: material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createCylinder(registry, `post_end_${fence.id}`, {
+    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
       diameterTop: postRad * 2,
       diameterBottom: postRad * 2,
       height: height * 1.05
     }, {
       position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
     }, {
-      material: material,
+      material: frameMaterial,
       parent: group,
       receiveShadows: true,
       shadowCaster: true
     });
+    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 柱子顶端圆形木帽
-    createSphere(registry, `post_start_cap_${fence.id}`, {
+    const postStartCap = createSphere(registry, `post_start_cap_${fence.id}`, {
       diameter: postRad * 2.2
     }, {
       position: { x: -length / 2, y: height * 1.05, z: 0 }
     }, {
-      material: material,
+      material: frameMaterial,
       parent: group
     });
+    postStartCap.metadata = { blueprintFenceComponentId: 'frame' };
 
-    createSphere(registry, `post_end_cap_${fence.id}`, {
+    const postEndCap = createSphere(registry, `post_end_cap_${fence.id}`, {
       diameter: postRad * 2.2
     }, {
       position: { x: length / 2, y: height * 1.05, z: 0 }
     }, {
-      material: material,
+      material: frameMaterial,
       parent: group
     });
+    postEndCap.metadata = { blueprintFenceComponentId: 'frame' };
 
     // 2. 三根下垂绳索
     const ropeHeights = [height * 0.25, height * 0.55, height * 0.85];
@@ -798,7 +848,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         const segLen = Math.sqrt(dx_seg * dx_seg + dy_seg * dy_seg);
         const segAngle = Math.atan2(dy_seg, dx_seg);
         
-        createCylinder(registry, `rope_seg_${fence.id}_${hIdx}_${j}`, {
+        const ropeSeg = createCylinder(registry, `rope_seg_${fence.id}_${hIdx}_${j}`, {
           diameterTop: 0.016,
           diameterBottom: 0.016,
           height: segLen
@@ -806,11 +856,12 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
           position: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, z: 0 },
           rotation: { z: segAngle - Math.PI / 2 }
         }, {
-          material: ropeMaterial,
+          material: panelMaterial,
           parent: group,
           receiveShadows: true,
           shadowCaster: true
         });
+        ropeSeg.metadata = { blueprintFenceComponentId: 'panel' };
       }
     });
   }
@@ -833,10 +884,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     });
   }
 
-  // 限制点击只能点中长方体碰撞箱，防止射线穿透板间缝隙
+  // 保证所有构件都是可点击的（供 3D 粉刷精确点中）
   group.getChildMeshes().forEach(mesh => {
-    if (mesh !== proxy) {
-      mesh.isPickable = false;
-    }
+    mesh.isPickable = true;
   });
 }

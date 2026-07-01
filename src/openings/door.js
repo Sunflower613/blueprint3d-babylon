@@ -92,6 +92,9 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
     registry.add(leftPanelMesh, { parent: leftHinge, shadowCaster: true });
     registry.add(rightPanelMesh, { parent: rightHinge, shadowCaster: true });
 
+    leftPanelMesh.metadata = { ...leftPanelMesh.metadata, blueprintOpeningComponentId: 'panel' };
+    rightPanelMesh.metadata = { ...rightPanelMesh.metadata, blueprintOpeningComponentId: 'panel' };
+
     leftPanelMesh.position.set(-leftHingeX, 0, 0);
     rightPanelMesh.position.set(-rightHingeX, 0, 0);
 
@@ -152,7 +155,7 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
     const panelD = 0.04;
     const scaleX = Math.max(0.1, (width - frameW * 2) / width);
     const scaleY = Math.max(0.1, (height - frameW * 2) / height);
-    createOpeningProfileMesh(registry, `door_panel_${opening.id}`, opening, hinge, {
+    const panelMesh = createOpeningProfileMesh(registry, `door_panel_${opening.id}`, opening, hinge, {
       width,
       height,
       depth: panelD,
@@ -162,6 +165,7 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
       material: panelMat,
       shadowCaster: true
     });
+    panelMesh.metadata = { ...panelMesh.metadata, blueprintOpeningComponentId: 'panel' };
 
     const handleD = 0.02;
     const handleH = 0.12;

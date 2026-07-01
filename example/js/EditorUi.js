@@ -1,16 +1,8 @@
+import { ui, selection, editor } from '../store/index.js';
 import {
   testMap,
   viewer3d,
   entityManager,
-  activeMaterialDescriptor,
-  selectedRoomId,
-  selectedWallId,
-  selectedFenceId,
-  selectedItemId,
-  selectedOpeningId,
-  selectedRoofId,
-  selectedStairsId,
-  selectedFenceGateId,
   
   INCHES_PER_UNIT,
   
@@ -37,14 +29,8 @@ import {
   updateSelectedFenceColor,
   updateSelectedFenceYOffset,
   
-  applyMaterialToRoomFloor,
-  applyMaterialToWallFront,
-  applyMaterialToWallBack,
-  applyMaterialToStructure,
   applyMaterialToItemComponent,
-  applyMaterialToFence,
-  applyMaterialToFenceGateFrame,
-  applyMaterialToFenceGatePanel,
+  updateComponentMaterial,
   
   isTargetLocked,
   showToast,
@@ -55,7 +41,7 @@ import {
   findNearestSeat,
   isSymmetricShape,
   syncRotationInputs,
-  setContextTargetLocked,
+  setTargetLocked,
   clearSelection,
   revealRightPanelIfNeeded,
   
@@ -278,14 +264,14 @@ export function updateEditor() {
   const openingEditor = document.getElementById('opening-editor');
   const structureEditor = document.getElementById('structure-editor');
   const emptyState = document.getElementById('empty-state');
-  const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : null;
-  const wall = selectedWallId ? testMap.getWall(selectedWallId) : null;
-  const fence = selectedFenceId ? testMap.getFence(selectedFenceId) : null;
-  const fenceGate = selectedFenceGateId ? testMap.getFenceGate(selectedFenceGateId) : null;
-  const item = selectedItemId ? testMap.getItem(selectedItemId) : null;
-  const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
-  const roof = selectedRoofId ? testMap.getRoof?.(selectedRoofId) : null;
-  const stairs = selectedStairsId ? testMap.getStairs?.(selectedStairsId) : null;
+  const room = selection.selectedRoomId ? testMap.getRoom(selection.selectedRoomId) : null;
+  const wall = selection.selectedWallId ? testMap.getWall(selection.selectedWallId) : null;
+  const fence = selection.selectedFenceId ? testMap.getFence(selection.selectedFenceId) : null;
+  const fenceGate = selection.selectedFenceGateId ? testMap.getFenceGate(selection.selectedFenceGateId) : null;
+  const item = selection.selectedItemId ? testMap.getItem(selection.selectedItemId) : null;
+  const opening = selection.selectedOpeningId ? testMap.getOpening(selection.selectedOpeningId) : null;
+  const roof = selection.selectedRoofId ? testMap.getRoof?.(selection.selectedRoofId) : null;
+  const stairs = selection.selectedStairsId ? testMap.getStairs?.(selection.selectedStairsId) : null;
   const structure = roof || stairs;
   const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
@@ -614,22 +600,33 @@ export function updateEditor() {
 
   renderDesignPanel(room, wall, item, structure, structureType, fence, opening, fenceGate);
   revealRightPanelIfNeeded(room || wall || item || opening || structure || fence || fenceGate);
+  renderCurrentMaterial();
 }
 
 export function renderDesignPanel(room, wall, item, structure = null, structureType = null, fence = null, opening = null, fenceGate = null) {
   const designSelectionPanel = document.getElementById('design-selection-panel');
   if (!designSelectionPanel) return;
+  const activeMaterialDescriptor = editor.activeMaterialDescriptor;
+
+  // 将地板颜色输入框归位到隐藏的临时容器，防止被 innerHTML = '' 清空
+  const floorColorField = document.getElementById('floor-color-field');
+  const hiddenContainer = document.getElementById('hidden-floor-color-container');
+  if (floorColorField && hiddenContainer) {
+    hiddenContainer.appendChild(floorColorField);
+  }
+
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
     btnResetMaterial.disabled = !(room || wall || item || structure || fence || opening || fenceGate);
   }
-  const floorColorField = document.getElementById('floor-color-field');
-  if (floorColorField) floorColorField.classList.toggle('hidden', !room);
   if (room) {
     const group = document.createElement('div');
     group.className = 'component-material-row';
-    group.appendChild(createApplyMaterialButton('应用当前材质到房间地板', () => applyMaterialToRoomFloor(activeMaterialDescriptor)));
+    if (floorColorField) {
+      group.appendChild(floorColorField);
+    }
+    group.appendChild(createApplyMaterialButton('应用当前材质到房间地板', () => updateComponentMaterial('room', room.id, 'floor', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(group);
     return;
   }
@@ -638,35 +635,17 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const groupFront = document.createElement('div');
     groupFront.className = 'component-material-row';
     groupFront.appendChild(createColorField('墙正面材质', wall.colorFront || wall.color || '#f9fbff', (color) => {
-      const wallObj = testMap.getWall(wall.id);
-      if (wallObj && wallObj.locked) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateWall(wall.id, { colorFront: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('wall', wall.id, 'front', color);
     }, getMaterialFriendlyName(wall.materialFront)));
-    groupFront.appendChild(createApplyMaterialButton('应用当前材质到墙的正面', () => applyMaterialToWallFront(activeMaterialDescriptor)));
+    groupFront.appendChild(createApplyMaterialButton('应用当前材质到墙的正面', () => updateComponentMaterial('wall', wall.id, 'front', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupFront);
 
     const groupBack = document.createElement('div');
     groupBack.className = 'component-material-row';
     groupBack.appendChild(createColorField('墙背面材质', wall.colorBack || wall.color || '#f9fbff', (color) => {
-      const wallObj = testMap.getWall(wall.id);
-      if (wallObj && wallObj.locked) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateWall(wall.id, { colorBack: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('wall', wall.id, 'back', color);
     }, getMaterialFriendlyName(wall.materialBack)));
-    groupBack.appendChild(createApplyMaterialButton('应用当前材质到墙的背面', () => applyMaterialToWallBack(activeMaterialDescriptor)));
+    groupBack.appendChild(createApplyMaterialButton('应用当前材质到墙的背面', () => updateComponentMaterial('wall', wall.id, 'back', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupBack);
     return;
   }
@@ -683,17 +662,9 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const labelTop = structureType === 'roof' ? '瓦片' : '踏步材质';
     const btnTextTop = structureType === 'roof' ? '应用瓦片材质' : '应用顶部材质';
     groupTop.appendChild(createColorField(labelTop, structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0'), (color) => {
-      if (structure.locked) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      updateStructure(structureType, structure.id, { color, material: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial(structureType, structure.id, 'top', color);
     }, getMaterialFriendlyName(structure.material)));
-    groupTop.appendChild(createApplyMaterialButton(btnTextTop, () => applyMaterialToStructure(activeMaterialDescriptor, 'top')));
+    groupTop.appendChild(createApplyMaterialButton(btnTextTop, () => updateComponentMaterial(structureType, structure.id, 'top', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupTop);
 
     // 2. 墙面 (屋顶) / 侧面材质 (楼梯)
@@ -702,17 +673,9 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const labelSide = structureType === 'roof' ? '墙面' : '侧面材质';
     const btnTextSide = structureType === 'roof' ? '应用墙面材质' : '应用侧面材质';
     groupSide.appendChild(createColorField(labelSide, structure.sideColor || (structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0')), (color) => {
-      if (structure.locked) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      updateStructure(structureType, structure.id, { sideColor: color, sideMaterial: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial(structureType, structure.id, 'side', color);
     }, getMaterialFriendlyName(structure.sideMaterial || structure.material)));
-    groupSide.appendChild(createApplyMaterialButton(btnTextSide, () => applyMaterialToStructure(activeMaterialDescriptor, 'side')));
+    groupSide.appendChild(createApplyMaterialButton(btnTextSide, () => updateComponentMaterial(structureType, structure.id, 'side', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupSide);
 
     // 3. 天花板 (仅当是屋顶时)
@@ -720,17 +683,9 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       const groupBottom = document.createElement('div');
       groupBottom.className = 'component-material-row';
       groupBottom.appendChild(createColorField('天花板', structure.bottomColor || '#ffffff', (color) => {
-        if (structure.locked) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        updateStructure(structureType, structure.id, { bottomColor: color, bottomMaterial: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
+        updateComponentMaterial(structureType, structure.id, 'bottom', color);
       }, getMaterialFriendlyName(structure.bottomMaterial || structure.bottomColor || '#ffffff')));
-      groupBottom.appendChild(createApplyMaterialButton('应用天花板材质', () => applyMaterialToStructure(activeMaterialDescriptor, 'bottom')));
+      groupBottom.appendChild(createApplyMaterialButton('应用天花板材质', () => updateComponentMaterial(structureType, structure.id, 'bottom', activeMaterialDescriptor)));
       designSelectionPanel.appendChild(groupBottom);
     }
     return;
@@ -761,24 +716,56 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
   if (fence) {
     const title = document.createElement('p');
     title.className = 'selection-title';
-    title.textContent = '栅栏材质';
+    title.textContent = '栅栏材质细分';
     designSelectionPanel.appendChild(title);
 
-    const group = document.createElement('div');
-    group.className = 'component-material-row';
-    group.appendChild(createColorField('材质', fence.color || '#8d6e63', (color) => {
-      if (isTargetLocked({ type: 'fence', id: fence.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateFence(fence.id, { color: color, material: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    }, getMaterialFriendlyName(fence.sideMaterial || fence.material)));
-    group.appendChild(createApplyMaterialButton('应用当前材质', () => applyMaterialToFence(activeMaterialDescriptor)));
-    designSelectionPanel.appendChild(group);
+    // 默认展示标签
+    let frameLabel = '框架材质';
+    let panelLabel = '面板材质';
+
+    if (fence.subtype === 'glass_rail') {
+      frameLabel = '钢管材质';
+      panelLabel = '玻璃材质';
+    } else if (fence.subtype === 'picket_wood') {
+      frameLabel = '立柱材质';
+      panelLabel = '竖板材质';
+    } else if (fence.subtype === 'iron_ornamental') {
+      frameLabel = '铁框材质';
+      panelLabel = '铁条材质';
+    } else if (fence.subtype === 'wire_mesh') {
+      frameLabel = '立柱材质';
+      panelLabel = '铁丝网材质';
+    } else if (fence.subtype === 'stone_masonry') {
+      frameLabel = '石柱材质';
+      panelLabel = '铁梁材质';
+    } else if (fence.subtype === 'bamboo') {
+      frameLabel = '粗竹子材质';
+      panelLabel = '细竹竿材质';
+    } else if (fence.subtype === 'rope') {
+      frameLabel = '立柱材质';
+      panelLabel = '绳索材质';
+    } else if (fence.subtype === 'concrete') {
+      frameLabel = '混凝土框架';
+      panelLabel = '混凝土主体';
+    }
+
+    // 1. 框架/立柱材质行
+    const groupFrame = document.createElement('div');
+    groupFrame.className = 'component-material-row';
+    groupFrame.appendChild(createColorField(frameLabel, fence.frameColor || fence.color || '#8d6e63', (color) => {
+      updateComponentMaterial('fence', fence.id, 'frame', color);
+    }, getMaterialFriendlyName(fence.frameMaterial)));
+    groupFrame.appendChild(createApplyMaterialButton(`应用当前材质`, () => updateComponentMaterial('fence', fence.id, 'frame', activeMaterialDescriptor)));
+    designSelectionPanel.appendChild(groupFrame);
+
+    // 2. 面板/玻璃材质行
+    const groupPanel = document.createElement('div');
+    groupPanel.className = 'component-material-row';
+    groupPanel.appendChild(createColorField(panelLabel, fence.panelColor || fence.color || '#8d6e63', (color) => {
+      updateComponentMaterial('fence', fence.id, 'panel', color);
+    }, getMaterialFriendlyName(fence.panelMaterial)));
+    groupPanel.appendChild(createApplyMaterialButton(`应用当前材质`, () => updateComponentMaterial('fence', fence.id, 'panel', activeMaterialDescriptor)));
+    designSelectionPanel.appendChild(groupPanel);
     return;
   }
 
@@ -793,55 +780,20 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const groupFrame = document.createElement('div');
     groupFrame.className = 'component-material-row';
     groupFrame.appendChild(createColorField(isDoor ? '门框材质' : '窗框材质', opening.frameMaterial || '#ffffff', (color) => {
-      if (isTargetLocked({ type: 'opening', id: opening.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateOpening(opening.id, { frameMaterial: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('opening', opening.id, 'frame', color);
     }, getMaterialFriendlyName(opening.frameMaterial)));
     groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => {
-      if (isTargetLocked({ type: 'opening', id: opening.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateOpening(opening.id, { frameMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('opening', opening.id, 'frame', activeMaterialDescriptor);
     }));
     designSelectionPanel.appendChild(groupFrame);
 
     const groupContent = document.createElement('div');
     groupContent.className = 'component-material-row';
     groupContent.appendChild(createColorField(isDoor ? '门板材质' : '玻璃材质', isDoor ? (opening.panelMaterial || '#ffffff') : (opening.glassMaterial || '#e0f7fa'), (color) => {
-      if (isTargetLocked({ type: 'opening', id: opening.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateOpening(opening.id, isDoor ? { panelMaterial: color } : { glassMaterial: color });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('opening', opening.id, isDoor ? 'panel' : 'glass', color);
     }, getMaterialFriendlyName(isDoor ? opening.panelMaterial : opening.glassMaterial)));
     groupContent.appendChild(createApplyMaterialButton('应用当前材质', () => {
-      if (isTargetLocked({ type: 'opening', id: opening.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.updateOpening(opening.id, isDoor
-        ? { panelMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color }
-        : { glassMaterial: activeMaterialDescriptor.url || activeMaterialDescriptor.src || activeMaterialDescriptor.color }
-      );
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      updateComponentMaterial('opening', opening.id, isDoor ? 'panel' : 'glass', activeMaterialDescriptor);
     }));
     designSelectionPanel.appendChild(groupContent);
   }
@@ -855,36 +807,20 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const groupFrame = document.createElement('div');
     groupFrame.className = 'component-material-row';
     groupFrame.appendChild(createColorField('门框材质', fenceGate.frameMaterial || '#ffffff', (color) => {
-      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      applyMaterialToFenceGateFrame(color);
+      updateComponentMaterial('fence_gate', fenceGate.id, 'frame', color);
     }, getMaterialFriendlyName(fenceGate.frameMaterial)));
     groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => {
-      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      applyMaterialToFenceGateFrame(activeMaterialDescriptor);
+      updateComponentMaterial('fence_gate', fenceGate.id, 'frame', activeMaterialDescriptor);
     }));
     designSelectionPanel.appendChild(groupFrame);
 
     const groupContent = document.createElement('div');
     groupContent.className = 'component-material-row';
     groupContent.appendChild(createColorField('门板材质', fenceGate.panelMaterial || '#ffffff', (color) => {
-      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      applyMaterialToFenceGatePanel(color);
+      updateComponentMaterial('fence_gate', fenceGate.id, 'panel', color);
     }, getMaterialFriendlyName(fenceGate.panelMaterial)));
     groupContent.appendChild(createApplyMaterialButton('应用当前材质', () => {
-      if (isTargetLocked({ type: 'fence_gate', id: fenceGate.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      applyMaterialToFenceGatePanel(activeMaterialDescriptor);
+      updateComponentMaterial('fence_gate', fenceGate.id, 'panel', activeMaterialDescriptor);
     }));
     designSelectionPanel.appendChild(groupContent);
   }
@@ -979,7 +915,7 @@ export function initUiEventListeners() {
       elevation = (testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - (definition.defaultSize.height || 0);
     } else if (canPlaceOnTable({ x, z, floorId: testMap.floorplan.currentFloorId, width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
       // 检查当前选中的物品是否是多层架子柜
-      const selectedItem = selectedItemId ? testMap.getItem(selectedItemId) : null;
+      const selectedItem = selection.selectedItemId ? testMap.getItem(selection.selectedItemId) : null;
       const selectedDef = selectedItem ? testMap.getFurnitureDefinition(selectedItem.type) : null;
       const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
       
@@ -1070,7 +1006,7 @@ export function initUiEventListeners() {
     const selected = getSelectedStructure();
     if (!selected?.value) return;
     pushHistory();
-    setContextTargetLocked({ type: selected.type, id: selected.id }, event.target.checked);
+    setTargetLocked({ type: selected.type, id: selected.id }, event.target.checked);
     refreshShadows();
     updateEditor();
     renderPlan();
@@ -1102,13 +1038,13 @@ export function initUiEventListeners() {
     updateSelectedScale(event.target.value);
   });
   document.getElementById('item-pose').addEventListener('change', (event) => {
-    if (selectedItemId) entityManager.updateItemPose(selectedItemId, event.target.value);
+    if (selection.selectedItemId) entityManager.updateItemPose(selection.selectedItemId, event.target.value);
   });
 
   document.getElementById('wall-length').addEventListener('change', (event) => {
-    if (selectedWallId) {
+    if (selection.selectedWallId) {
       pushHistory();
-      testMap.setWallLength(selectedWallId, Number(event.target.value));
+      testMap.setWallLength(selection.selectedWallId, Number(event.target.value));
       refreshShadows();
       updateEditor();
       renderPlan();
@@ -1128,30 +1064,30 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('btn-delete-wall').addEventListener('click', () => {
-    if (!selectedWallId) return;
+    if (!selection.selectedWallId) return;
     pushHistory();
-    testMap.deleteWall(selectedWallId);
+    testMap.deleteWall(selection.selectedWallId);
     clearSelection();
     refreshShadows();
   });
 
   document.getElementById('item-locked').addEventListener('change', (event) => {
-    if (!selectedItemId) return;
-    entityManager.setItemLocked(selectedItemId, event.target.checked);
+    if (!selection.selectedItemId) return;
+    entityManager.setItemLocked(selection.selectedItemId, event.target.checked);
   });
 
   document.getElementById('room-locked').addEventListener('change', (event) => {
-    if (!selectedRoomId) return;
+    if (!selection.selectedRoomId) return;
     pushHistory();
-    setContextTargetLocked({ type: 'room', id: selectedRoomId }, event.target.checked);
+    setTargetLocked({ type: 'room', id: selection.selectedRoomId }, event.target.checked);
     refreshShadows();
     updateEditor();
     renderPlan();
   });
 
   document.getElementById('item-light-on').addEventListener('change', (event) => {
-    if (!selectedItemId) return;
-    entityManager.updateItemLight(selectedItemId, event.target.checked);
+    if (!selection.selectedItemId) return;
+    entityManager.updateItemLight(selection.selectedItemId, event.target.checked);
   });
 
   document.getElementById('opening-position').addEventListener('change', (event) => {
@@ -1191,7 +1127,7 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('opening-content-hidden').addEventListener('change', (event) => {
-    const opening = selectedOpeningId ? testMap.getOpening(selectedOpeningId) : null;
+    const opening = selection.selectedOpeningId ? testMap.getOpening(selection.selectedOpeningId) : null;
     if (!opening) return;
     updateSelectedOpening(opening.type === 'door'
       ? { panelHidden: event.target.checked }
@@ -1199,18 +1135,18 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('opening-locked').addEventListener('change', (event) => {
-    if (!selectedOpeningId) return;
+    if (!selection.selectedOpeningId) return;
     pushHistory();
-    setContextTargetLocked({ type: 'opening', id: selectedOpeningId }, event.target.checked);
+    setTargetLocked({ type: 'opening', id: selection.selectedOpeningId }, event.target.checked);
     refreshShadows();
     updateEditor();
     renderPlan();
   });
 
   document.getElementById('fence-gate-locked').addEventListener('change', (event) => {
-    if (!selectedFenceGateId) return;
+    if (!selection.selectedFenceGateId) return;
     pushHistory();
-    setContextTargetLocked({ type: 'fence_gate', id: selectedFenceGateId }, event.target.checked);
+    setTargetLocked({ type: 'fence_gate', id: selection.selectedFenceGateId }, event.target.checked);
     refreshShadows();
     updateEditor();
     renderPlan();
@@ -1307,12 +1243,12 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('fence-rotation-range').addEventListener('input', (event) => {
-    if (selectedFenceId) {
-      const fence = testMap.getFence(selectedFenceId);
+    if (selection.selectedFenceId) {
+      const fence = testMap.getFence(selection.selectedFenceId);
       if (fence && !fence.locked) {
         const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', event.target.value);
         const preview = getRotatedWallEndpoints(fence, normalized);
-        const node = testMap.fenceNodes?.get(selectedFenceId);
+        const node = testMap.fenceNodes?.get(selection.selectedFenceId);
         if (node) {
           node.position.set((preview.from[0] + preview.to[0]) / 2, node.position.y, (preview.from[1] + preview.to[1]) / 2);
           node.rotation.y = -preview.angleRad;
@@ -1332,9 +1268,9 @@ export function initUiEventListeners() {
     fenceColorEl.addEventListener('change', updateSelectedFenceColor);
   }
   document.getElementById('fence-locked').addEventListener('change', (event) => {
-    if (!selectedFenceId) return;
+    if (!selection.selectedFenceId) return;
     pushHistory();
-    setContextTargetLocked({ type: 'fence', id: selectedFenceId }, event.target.checked);
+    setTargetLocked({ type: 'fence', id: selection.selectedFenceId }, event.target.checked);
     refreshShadows();
     updateEditor();
     renderPlan();
@@ -1342,26 +1278,26 @@ export function initUiEventListeners() {
   document.getElementById('btn-delete-fence').addEventListener('click', deleteSelectedFence);
 
   document.getElementById('btn-delete-item').addEventListener('click', () => {
-    if (!selectedItemId) return;
-    entityManager.deleteItem(selectedItemId);
+    if (!selection.selectedItemId) return;
+    entityManager.deleteItem(selection.selectedItemId);
   });
 
   document.getElementById('btn-delete-opening').addEventListener('click', () => {
-    if (!selectedOpeningId) return;
-    if (testMap.getOpening(selectedOpeningId)?.locked) return;
+    if (!selection.selectedOpeningId) return;
+    if (testMap.getOpening(selection.selectedOpeningId)?.locked) return;
     pushHistory();
-    testMap.deleteOpening(selectedOpeningId);
+    testMap.deleteOpening(selection.selectedOpeningId);
     clearSelection();
     refreshShadows();
   });
 
   document.getElementById('btn-delete-room').addEventListener('click', () => {
-    if (!selectedRoomId) return;
-    if (testMap.getRoom(selectedRoomId)?.locked) return;
+    if (!selection.selectedRoomId) return;
+    if (testMap.getRoom(selection.selectedRoomId)?.locked) return;
     showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
       if (confirmed) {
         pushHistory();
-        testMap.deleteRoom(selectedRoomId);
+        testMap.deleteRoom(selection.selectedRoomId);
         clearSelection();
         refreshShadows();
       }
@@ -1370,8 +1306,8 @@ export function initUiEventListeners() {
 
   document.getElementById('floor-color').addEventListener('change', (event) => {
     pushHistory();
-    if (selectedRoomId) {
-      testMap.setRoomFloorMaterial(selectedRoomId, event.target.value);
+    if (selection.selectedRoomId) {
+      testMap.setRoomFloorMaterial(selection.selectedRoomId, event.target.value);
     } else {
       testMap.setFloorColor(event.target.value);
     }
@@ -1381,22 +1317,22 @@ export function initUiEventListeners() {
 }
 
 function updateSelectedFenceRotation(degrees) {
-  if (!selectedFenceId) return;
-  const fence = testMap.getFence(selectedFenceId);
+  if (!selection.selectedFenceId) return;
+  const fence = testMap.getFence(selection.selectedFenceId);
   if (!fence || fence.locked) return;
   pushHistory();
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', degrees);
   const preview = getRotatedWallEndpoints(fence, normalized);
-  testMap.updateFence(selectedFenceId, { from: preview.from, to: preview.to });
+  testMap.updateFence(selection.selectedFenceId, { from: preview.from, to: preview.to });
   refreshShadows();
   updateEditor();
   renderPlan();
 }
 
 function deleteSelectedFence() {
-  if (!selectedFenceId) return;
+  if (!selection.selectedFenceId) return;
   pushHistory();
-  testMap.deleteFence(selectedFenceId);
+  testMap.deleteFence(selection.selectedFenceId);
   clearSelection();
   refreshShadows();
 }
@@ -1415,5 +1351,171 @@ function getRotatedWallEndpoints(wall, angleDeg) {
     to: [cx + newDx / 2, cz + newDz / 2],
     angleRad
   };
+}
+
+export function updateDesignCursor(customColor) {
+  const designMode = ui.designMode;
+  const activeMaterialDescriptor = editor.activeMaterialDescriptor;
+  if (!['picker', 'brush', 'bucket', 'eraser'].includes(designMode)) {
+    document.body.style.cursor = '';
+    return;
+  }
+
+  const formatSvgColor = (col) => (col.startsWith('#') ? '%23' + col.slice(1) : col);
+
+  let color = '#2a415c'; // 默认取色器颜色
+  if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
+    color = activeMaterialDescriptor.color;
+  }
+
+  // 转换 HEX 颜色值以保证 SVG 在 CSS URL 中能够被正确解析（例如将 # 转换为 %23）
+  const strokeColor = formatSvgColor(color);
+
+  if (designMode === 'picker') {
+    // 2px 描边滴管，热点 2 29
+    // 如果有传入 customColor，使用传入颜色（实色）；如果没有，优先使用当前选中材质的颜色（实色）；如果都没有，使用半透明灰色。
+    let pickerStrokeColor = '%2364748b'; // 默认 Slate 灰色
+    let pickerOpacity = '0.5'; // 默认半透明
+    if (customColor) {
+      pickerStrokeColor = formatSvgColor(customColor);
+      pickerOpacity = '1.0';
+    } else if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
+      pickerStrokeColor = formatSvgColor(activeMaterialDescriptor.color);
+      pickerOpacity = '1.0';
+    }
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${pickerStrokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='${pickerOpacity}'%3E%3Cpath d='m12 9-8.414 8.414A2 2 0 0 0 3 18.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 3.828 21h1.344a2 2 0 0 0 1.414-.586L15 12'/%3E%3Cpath d='m18 9 .4.4a1 1 0 1 1-3 3l-3.8-3.8a1 1 0 1 1 3-3l.4.4 3.4-3.4a1 1 0 1 1 3 3z'/%3E%3Cpath d='m2 22 .414-.414'/%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 2 29, auto`, 'important');
+  } else if (designMode === 'brush') {
+    // 2px 描边材质刷，热点 4 28
+    // 动态判断取色暂存状态的颜色列表
+    let colorsList = [];
+    if (editor.activeMaterialArray && editor.activeMaterialArray.length > 0) {
+      colorsList = editor.activeMaterialArray
+        .map(entry => entry.color)
+        .filter(c => typeof c === 'string' && c.trim() !== '');
+    } else if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
+      colorsList = [activeMaterialDescriptor.color];
+    }
+    const uniqueColors = Array.from(new Set(colorsList.map(c => c.trim().toLowerCase())));
+
+    let cursorSvg;
+    if (uniqueColors.length > 1) {
+      // 渐变彩色描边
+      let gradientStops = '';
+      uniqueColors.forEach((col, index) => {
+        const offset = Math.round((index / (uniqueColors.length - 1)) * 100);
+        gradientStops += `%3Cstop offset='${offset}%25' stop-color='${formatSvgColor(col)}'/%3E`;
+      });
+      const gradientDef = `%3Cdefs%3E%3ClinearGradient id='gradient' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E${gradientStops}%3C/linearGradient%3E%3C/defs%3E`;
+      cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='url(%23gradient)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E${gradientDef}%3Cpath d='m14.622 17.897-10.68-2.913'/%3E%3Cpath d='M18.376 2.622a1 1 0 1 1 3.002 3.002L17.36 9.643a.5.5 0 0 0 0 .707l.944.944a2.41 2.41 0 0 1 0 3.408l-.944.944a.5.5 0 0 1-.707 0L8.354 7.348a.5.5 0 0 1 0-.707l.944-.944a2.41 2.41 0 0 1 3.408 0l.944.944a.5.5 0 0 0 .707 0z'/%3E%3Cpath d='M9 8c-1.804 2.71-3.97 3.46-6.583 3.948a.507.507 0 0 0-.302.819l7.32 8.883a1 1 0 0 0 1.185.204C12.735 20.405 16 16.792 16 15'/%3E%3C/svg%3E`;
+    } else {
+      // 单色描边
+      let singleColor = color;
+      if (uniqueColors.length === 1) {
+        singleColor = uniqueColors[0];
+      }
+      const brushStrokeColor = formatSvgColor(singleColor);
+      cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${brushStrokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m14.622 17.897-10.68-2.913'/%3E%3Cpath d='M18.376 2.622a1 1 0 1 1 3.002 3.002L17.36 9.643a.5.5 0 0 0 0 .707l.944.944a2.41 2.41 0 0 1 0 3.408l-.944.944a.5.5 0 0 1-.707 0L8.354 7.348a.5.5 0 0 1 0-.707l.944-.944a2.41 2.41 0 0 1 3.408 0l.944.944a.5.5 0 0 0 .707 0z'/%3E%3Cpath d='M9 8c-1.804 2.71-3.97 3.46-6.583 3.948a.507.507 0 0 0-.302.819l7.32 8.883a1 1 0 0 0 1.185.204C12.735 20.405 16 16.792 16 15'/%3E%3C/svg%3E`;
+    }
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 4 28, auto`, 'important');
+  } else if (designMode === 'bucket') {
+    // 2px 描边油漆桶，热点 5 26，包裹 transform 镜像翻转以和 HTML 图标保持一致
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='translate(24, 0) scale(-1, 1)'%3E%3Cpath d='M11 7 6 2'/%3E%3Cpath d='M18.992 12H2.041'/%3E%3Cpath d='M21.145 18.38A3.34 3.34 0 0 1 20 16.5a3.3 3.3 0 0 1-1.145 1.88c-.575.46-.855 1.02-.855 1.595A2 2 0 0 0 20 22a2 2 0 0 0 2-2.025c0-.58-.285-1.13-.855-1.595'/%3E%3Cpath d='m8.5 4.5 2.148-2.148a1.205 1.205 0 0 1 1.704 0l7.296 7.296a1.205 1.205 0 0 1 0 1.704l-7.592 7.592a3.615 3.615 0 0 1-5.112 0l-3.888-3.888a3.615 3.615 0 0 1 0-5.112L5.67 7.33'/%3E%3C/g%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 5 26, auto`, 'important');
+  } else if (designMode === 'eraser') {
+    // 2px 描边橡皮擦，热点 4 28，颜色为灰色 %2364748b
+    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21'/%3E%3Cpath d='m5.082 11.09 8.828 8.828'/%3E%3C/svg%3E`;
+    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 4 28, auto`, 'important');
+  }
+}
+
+// 渲染当前材质的小方格样式
+function applyStyleToSwatch(button, mat) {
+  if (!mat) {
+    button.style.backgroundColor = '#ffffff';
+    return;
+  }
+  let material = mat;
+  if (mat && mat.material !== undefined) {
+    material = mat.material;
+  }
+  if (typeof material === 'string') {
+    button.style.backgroundColor = material;
+    return;
+  }
+  if (!material) {
+    button.style.backgroundColor = mat.color || '#ffffff';
+    return;
+  }
+
+  const kind = material.kind;
+  const src = material.src || material.url;
+  const color = material.color || mat.color || '#ffffff';
+
+  if (kind === 'texture' && src) {
+    button.style.backgroundImage = `url(${src})`;
+  } else if (kind === 'mirror') {
+    const c = color || '#e8eef4';
+    button.style.background = `linear-gradient(135deg, ${c} 0%, #ffffff 45%, ${c} 55%, #ffffff 100%)`;
+  } else if (kind === 'glass') {
+    const c = color || '#e8f4ff';
+    button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
+  } else if (kind === 'emissive') {
+    const c = color || '#ffffff';
+    button.style.backgroundColor = c;
+    button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
+    button.style.border = '1px solid rgba(255,255,255,0.4)';
+  } else {
+    button.style.backgroundColor = color || '#ffffff';
+  }
+}
+
+// 渲染“当前材质”网格
+export function renderCurrentMaterial() {
+  const currentGrid = document.getElementById('current-material-grid');
+  if (!currentGrid) return;
+  currentGrid.innerHTML = '';
+
+  const activeMaterialDescriptor = editor.activeMaterialDescriptor;
+  const activeMaterialArray = editor.activeMaterialArray;
+
+  let materialsToShow = [];
+
+  if (activeMaterialArray && activeMaterialArray.length > 0) {
+    materialsToShow = activeMaterialArray;
+  } else if (activeMaterialDescriptor) {
+    materialsToShow = [activeMaterialDescriptor];
+  }
+
+  if (materialsToShow.length === 0) {
+    const emptySwatch = document.createElement('div');
+    emptySwatch.className = 'material-swatch empty-swatch';
+    emptySwatch.title = '未选择材质';
+    currentGrid.appendChild(emptySwatch);
+    return;
+  }
+
+  materialsToShow.forEach((mat) => {
+    const swatch = document.createElement('div');
+    swatch.className = 'material-swatch';
+    
+    let material = mat;
+    if (mat && mat.material !== undefined) {
+      material = mat.material;
+    }
+
+    let titleText = '自定义材质';
+    if (material && typeof material === 'object') {
+      titleText = material.name || titleText;
+    } else if (typeof material === 'string') {
+      titleText = material;
+    } else if (mat && mat.color) {
+      titleText = mat.color;
+    }
+    swatch.title = titleText;
+
+    applyStyleToSwatch(swatch, mat);
+    currentGrid.appendChild(swatch);
+  });
 }
 

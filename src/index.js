@@ -46,7 +46,8 @@ export {
   Blueprint3DTestMap,
   buildBlueprint3DTestMap,
   FURNITURE_DEFINITIONS,
-  FURNITURE_LIST
+  FURNITURE_LIST,
+  FENCE_SUBTYPE_DEFAULTS
 } from './presets/blueprintTestMap.js';
 
 export * from './furniture/index.js';

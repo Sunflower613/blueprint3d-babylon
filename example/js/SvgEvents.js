@@ -1,7 +1,9 @@
 import * as Topology from './Topology.js';
 import * as DragHandler from './DragHandler.js';
+import { createStoreProxy } from '../store/proxyHelper.js';
 
-let ctx = null;
+let rawCtx = null;
+const ctx = createStoreProxy(() => rawCtx);
 
 export const viewPointers = new Map();
 export let isPanning2D = false;
@@ -15,7 +17,7 @@ export let hasUserZoomedOrPanned = false;
  * @param {Object} appContext 包含外部依赖的上下文环境对象
  */
 export function initSvgEvents(appContext) {
-  ctx = appContext;
+  rawCtx = appContext;
 
   const svg = ctx.svg;
 
@@ -25,6 +27,7 @@ export function initSvgEvents(appContext) {
   svg.addEventListener('pointermove', onPointermove);
   svg.addEventListener('pointerup', onPointerup);
   svg.addEventListener('pointercancel', onPointercancel);
+  svg.addEventListener('pointerleave', onPointerleave);
   svg.addEventListener('dblclick', onDblclick);
   svg.addEventListener('click', onClick);
 }
@@ -89,7 +92,7 @@ function onPointerdown(event) {
   if (ctx.currentView !== '2d') return;
 
   if (ctx.designMode && ctx.designMode !== 'select') {
-    const target = ctx.get2DContextTargetFromElement(event.target);
+    const target = ctx.get2DTargetFromElement(event.target);
     if (target && (event.button === 0 || event.pointerType === 'touch')) {
       event.stopPropagation();
     }
@@ -199,6 +202,11 @@ function onPointermove(event) {
   }
 
   ctx.updatePointer(event);
+  if (ctx.designMode === 'picker') {
+    const target = ctx.get2DTargetFromElement(event.target);
+    const hoverColor = ctx.getPickedColorFromTarget(target);
+    ctx.updateDesignCursor(hoverColor);
+  }
   if (ctx.mode.startsWith('draw-fence')) {
     const stairsEl = event.target.closest?.('[data-stairs-id]');
     const edgeEl = event.target.closest?.('.floor-edge-hit-line');
@@ -319,7 +327,7 @@ function onPointercancel(event) {
 
 function onDblclick(event) {
   if (ctx.currentView !== '2d') return;
-  const target = ctx.get2DContextTargetFromElement(event.target);
+  const target = ctx.get2DTargetFromElement(event.target);
   if (!target) {
     hasUserZoomedOrPanned = false;
     ctx.setHasUserZoomedOrPanned(false);
@@ -327,9 +335,15 @@ function onDblclick(event) {
   }
 }
 
+function onPointerleave(event) {
+  if (ctx.designMode === 'picker') {
+    ctx.updateDesignCursor(null);
+  }
+}
+
 function onClick(event) {
   if (ctx.currentView === '2d' && ctx.designMode && ctx.designMode !== 'select') {
-    const target = ctx.get2DContextTargetFromElement(event.target);
+    const target = ctx.get2DTargetFromElement(event.target);
     if (target) {
       ctx.executeDesignTool(target);
       event.preventDefault();

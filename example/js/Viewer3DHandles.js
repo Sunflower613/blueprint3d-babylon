@@ -1,12 +1,14 @@
 import * as BABYLON from '@babylonjs/core';
+import { createStoreProxy } from '../store/proxyHelper.js';
 
-let ctx = null;
+let rawCtx = null;
+const ctx = createStoreProxy(() => rawCtx);
 
 const editHandleNodes = [];
 let editHandleDragState = null;
 
 export function initViewer3DHandles(context) {
-  ctx = context;
+  rawCtx = context;
 }
 
 export function getEditHandleNodes() {
@@ -329,16 +331,22 @@ export function pickNearest3DTarget(pointerX = ctx.viewer3d.scene.pointerX, poin
   const pickedHandle = handlePick?.pickedMesh ? findEditHandleFromNode(handlePick.pickedMesh) : null;
   if (pickedHandle) return { type: 'edit-handle', id: pickedHandle.id, handle: pickedHandle, pick: handlePick };
 
-  const pick = scene.pick(pointerX, pointerY, (mesh) => (
-    !!ctx.findOpeningIdFromNode(mesh)
-    || !!ctx.findItemIdFromNode(mesh)
-    || !!ctx.findWallIdFromNode(mesh)
-    || !!ctx.findRoomIdFromNode(mesh)
-    || !!ctx.findRoofIdFromNode(mesh)
-    || !!ctx.findStairsIdFromNode(mesh)
-    || !!ctx.findFenceIdFromNode(mesh)
-    || !!ctx.findFenceGateIdFromNode(mesh)
-  ));
+  const isBrushMode = ctx && (ctx.designMode === 'brush' || ctx.designMode === 'bucket');
+  const pick = scene.pick(pointerX, pointerY, (mesh) => {
+    if (isBrushMode && mesh.name && mesh.name.includes('pick_proxy')) {
+      return false;
+    }
+    return (
+      !!ctx.findOpeningIdFromNode(mesh)
+      || !!ctx.findItemIdFromNode(mesh)
+      || !!ctx.findWallIdFromNode(mesh)
+      || !!ctx.findRoomIdFromNode(mesh)
+      || !!ctx.findRoofIdFromNode(mesh)
+      || !!ctx.findStairsIdFromNode(mesh)
+      || !!ctx.findFenceIdFromNode(mesh)
+      || !!ctx.findFenceGateIdFromNode(mesh)
+    );
+  });
   const mesh = pick?.pickedMesh;
   if (!mesh) return null;
   const openingId = ctx.findOpeningIdFromNode(mesh);

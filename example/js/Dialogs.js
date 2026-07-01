@@ -1,4 +1,6 @@
 import { formatTimestamp } from './Store.js';
+import furnitureUploadExampleSource from '../downloads/custom-furniture-example.js?raw';
+import furnitureUploadSkillSource from '../../skills/furniture-upload/SKILL.md?raw';
 
 // ==========================================
 // 自定义弹窗系统 (已去除磨砂玻璃)
@@ -378,5 +380,74 @@ export function show3MFExportDialog() {
     };
     window.addEventListener('keydown', handleKeyDown);
   });
+}
+
+function downloadTextFile(content, fileName, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function showFurnitureUploadHelp() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'custom-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="custom-modal-container furniture-upload-modal" role="dialog" aria-modal="true" aria-labelledby="furniture-upload-modal-title">
+      <div class="custom-modal-header">
+        <h3 id="furniture-upload-modal-title" class="custom-modal-title">如何上传家具</h3>
+      </div>
+      <div class="custom-modal-body furniture-upload-modal-body">
+        <p>上传自定义 <code>.js</code> 或 <code>.mjs</code> 代码文件，即可将家具添加至自定义列表中。</p>
+        <p class="furniture-upload-tip">提示：脚本将在本地执行，请确保代码来源安全可靠。</p>
+        <div class="furniture-upload-links">
+          <button id="btn-download-furniture-example" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>下载家具模板
+          </button>
+          <button id="btn-download-furniture-skill" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>下载 AI 提示词
+          </button>
+        </div>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-close-furniture-upload-help" type="button" class="custom-modal-btn btn-primary">知道了</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  backdrop.getBoundingClientRect();
+  backdrop.classList.add('active');
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    backdrop.classList.remove('active');
+    window.removeEventListener('keydown', handleKeyDown);
+    setTimeout(() => backdrop.remove(), 200);
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cleanup();
+    }
+  };
+
+  backdrop.querySelector('#btn-download-furniture-example').addEventListener('click', () => {
+    downloadTextFile(furnitureUploadExampleSource, 'custom-furniture-example.js', 'text/javascript;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-download-furniture-skill').addEventListener('click', () => {
+    downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-close-furniture-upload-help').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) cleanup();
+  });
+  window.addEventListener('keydown', handleKeyDown);
 }
 

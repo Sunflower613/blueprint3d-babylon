@@ -1,4 +1,6 @@
 import JSZip from 'jszip';
+import * as BABYLON from '@babylonjs/core';
+import { getEditHandleNodes } from './Viewer3DHandles.js';
 import {
   createBuildingFileName,
   createDXFFileName,
@@ -6,15 +8,17 @@ import {
   stringifyDXF,
   create3MFPackage
 } from '../../src/index.js';
+import { createStoreProxy } from '../store/proxyHelper.js';
 
-let ctx = null;
+let rawCtx = null;
+const ctx = createStoreProxy(() => rawCtx);
 
 /**
  * 初始化并配置 FileManager。绑定相关下载/加载按钮的点击事件。
  * @param {Object} appContext 依赖的上下文环境对象
  */
 export function initFileManager(appContext) {
-  ctx = appContext;
+  rawCtx = appContext;
 
   const btnSave = document.getElementById('btn-save');
   if (btnSave) {
@@ -60,6 +64,11 @@ export function initFileManager(appContext) {
   }
 
   updateLocalProjectCount();
+
+  const btnTakePhoto = document.getElementById('btn-take-photo');
+  if (btnTakePhoto) {
+    btnTakePhoto.addEventListener('click', takePhoto);
+  }
 }
 
 /**
@@ -587,4 +596,146 @@ export async function loadBuildingZIP(file) {
     console.error('Failed to import ZIP:', error);
     ctx.showCustomAlert('加载失败', 'ZIP 文件解压或解析失败，请确认它是有效的 blueprint3d-babylon 场景归档包：' + (error.message || error));
   }
+}
+
+export function takePhoto() {
+  if (ctx.currentView === '3d') {
+    ctx.showToast('正在生成 3D 截图...');
+    
+    // 1. 临时隐藏 3D 辅助网格和编辑手柄
+    const originalGridState = ctx.viewer3d.show3DGrid;
+    if (originalGridState) {
+      ctx.viewer3d.clear3DGrid();
+    }
+    const hiddenNodes = [];
+    getEditHandleNodes().forEach((node) => {
+      if (node && !node.isDisposed() && node.isEnabled()) {
+        node.setEnabled(false);
+        hiddenNodes.push(node);
+      }
+    });
+
+    // 2. 保证在此帧渲染隐藏后的效果
+    ctx.scene.render();
+
+    // 3. 调用 Babylon 截图
+    BABYLON.Tools.CreateScreenshotAsync(ctx.engine, ctx.camera, { precision: 1 })
+      .then((dataUrl) => {
+        const filename = `screenshot_3d_${Date.now()}.png`;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        ctx.showToast('✓ 3D 截图已下载');
+      })
+      .catch((err) => {
+        console.error('3D 截图失败:', err);
+        ctx.showToast('⚠ 3D 截图生成失败');
+      })
+      .finally(() => {
+        // 4. 恢复 3D 网格和编辑手柄
+        if (originalGridState) {
+          ctx.refresh3DGrid();
+        }
+        hiddenNodes.forEach((node) => {
+          if (node && !node.isDisposed()) {
+            node.setEnabled(true);
+          }
+        });
+      });
+  } else {
+    ctx.showToast('正在生成 2D 截图...');
+    get2DPlanScreenshot()
+      .then((dataUrl) => {
+        const filename = `screenshot_2d_${Date.now()}.png`;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        ctx.showToast('✓ 2D 截图已下载');
+      })
+      .catch((err) => {
+        console.error('2D 截图失败:', err);
+        ctx.showToast('⚠ 2D 截图生成失败');
+      });
+  }
+}
+
+function get2DPlanScreenshot() {
+  return new Promise((resolve, reject) => {
+    const svgEl = document.getElementById('floorplan');
+    if (!svgEl) {
+      reject(new Error('未找到 floorplan SVG 元素'));
+      return;
+    }
+    
+    const svgClone = svgEl.cloneNode(true);
+    
+    // 提取所有样式表中的样式规则并放入 style 标签中
+    let styleString = '';
+    for (const styleSheet of document.styleSheets) {
+      try {
+        const rules = styleSheet.cssRules || styleSheet.rules;
+        if (rules) {
+          for (const rule of rules) {
+            styleString += rule.cssText;
+          }
+        }
+      } catch (e) {
+        // 忽略跨域的样式表
+      }
+    }
+    
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styleString;
+    svgClone.insertBefore(styleEl, svgClone.firstChild);
+    
+    // 获取实际物理尺寸，避免渲染时Image拉伸异常
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width || 720;
+    const height = rect.height || 520;
+    svgClone.setAttribute('width', width);
+    svgClone.setAttribute('height', height);
+    
+    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(svgBlob);
+    
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = 2; // 2倍高分辨率
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          const pngUrl = canvas.toDataURL('image/png');
+          resolve(pngUrl);
+        } catch (e) {
+          reject(e);
+        }
+      } else {
+        reject(new Error('无法创建 2D canvas context'));
+      }
+      URL.revokeObjectURL(blobURL);
+    };
+    
+    image.onerror = (err) => {
+      URL.revokeObjectURL(blobURL);
+      reject(err);
+    };
+    
+    image.src = blobURL;
+  });
 }

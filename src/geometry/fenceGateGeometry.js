@@ -1,5 +1,6 @@
 import * as BABYLON from '@babylonjs/core';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
+import { createBlueprintMaterial } from '../core/materials.js';
 
 /**
  * 根据大门配置及其 subtype 参数，调用 primitives 构建栅栏大门的 3D 实体组件
@@ -57,22 +58,34 @@ export function buildFenceGateGeometry(registry, group, gate, material, length, 
   ropeMaterial.diffuseColor = BABYLON.Color3.FromHexString('#3e2723');
 
   // 双材质支持
-  const frameMat = gate.frameMaterial
-    ? (gate.frameMaterial.startsWith('#') || gate.frameMaterial.startsWith('rgb')
-      ? new BABYLON.StandardMaterial(`gate_f_mat_${gate.id}`, scene)
-      : material)
-    : material;
-  if (gate.frameMaterial && (gate.frameMaterial.startsWith('#') || gate.frameMaterial.startsWith('rgb')) && frameMat !== material) {
-    frameMat.diffuseColor = BABYLON.Color3.FromHexString(gate.frameMaterial.startsWith('#') ? gate.frameMaterial : '#8d6e63');
-  }
+  // 双材质支持
+  const defaults = {
+    picket_wood: { color: '#8d6e63', frame: '#8d6e63', panel: '#8d6e63' },
+    iron_ornamental: { color: '#212121', frame: '#212121', panel: '#212121' },
+    wire_mesh: { color: '#b0bec5', frame: '#b0bec5', panel: '#b0bec5' },
+    stone_masonry: { color: '#cfd8dc', frame: '#cfd8dc', panel: '#212121' },
+    bamboo: { color: '#558b2f', frame: '#558b2f', panel: '#558b2f' },
+    glass_rail: { color: '#b0bec5', frame: '#b0bec5', panel: '#80deea' },
+    concrete: { color: '#f9fbff', frame: '#f9fbff', panel: '#f9fbff' },
+    rope: { color: '#8d6e63', frame: '#8d6e63', panel: '#3e2723' }
+  };
+  const subtypeDefaults = defaults[subtype] || defaults.picket_wood;
 
-  const panelMat = gate.panelMaterial
-    ? (gate.panelMaterial.startsWith('#') || gate.panelMaterial.startsWith('rgb')
-      ? new BABYLON.StandardMaterial(`gate_p_mat_${gate.id}`, scene)
-      : material)
-    : material;
-  if (gate.panelMaterial && (gate.panelMaterial.startsWith('#') || gate.panelMaterial.startsWith('rgb')) && panelMat !== material) {
-    panelMat.diffuseColor = BABYLON.Color3.FromHexString(gate.panelMaterial.startsWith('#') ? gate.panelMaterial : '#8d6e63');
+  const frameMatVal = gate.frameMaterial || gate.frameColor || material || subtypeDefaults.frame;
+  const frameMat = createBlueprintMaterial(scene, `gate_f_mat_${gate.id}`, frameMatVal, {
+    fallbackColor: gate.frameColor || subtypeDefaults.frame,
+    flatShading: false
+  });
+
+  const panelMatVal = gate.panelMaterial || gate.panelColor || material || subtypeDefaults.panel;
+  const panelMat = createBlueprintMaterial(scene, `gate_p_mat_${gate.id}`, panelMatVal, {
+    fallbackColor: gate.panelColor || subtypeDefaults.panel,
+    flatShading: false
+  });
+
+  if (subtype === 'glass_rail' && panelMat) {
+    panelMat.alpha = 0.4;
+    panelMat.backFaceCulling = false;
   }
 
   // 1. 两侧门柱 (仅对非石砌矮墙、非混凝土样式，其他的需要基本的立柱做门框支托)
@@ -390,16 +403,25 @@ export function buildFenceGateGeometry(registry, group, gate, material, length, 
     } else if (subtype === 'glass_rail') {
       const glassW = panelW - 0.04;
       const glassH = height * 0.8;
-      createBox(registry, `glass_panel`, { width: glassW, height: glassH, depth: 0.01 }, { position: { x: 0, y: height * 0.45, z: 0 } }, { material: glassMaterial, parent: panelGroup });
+      const glassPanel = createBox(registry, `glass_panel`, { width: glassW, height: glassH, depth: 0.01 }, { position: { x: 0, y: height * 0.45, z: 0 } }, { material: panelMat, parent: panelGroup });
+      glassPanel.metadata = { blueprintFenceComponentId: 'panel' };
 
-      createBox(registry, `clip_t`, { width: 0.06, height: 0.03, depth: 0.02 }, { position: { x: -direction * (panelW / 2 - 0.06), y: height * 0.84, z: 0 } }, { material: steelMaterial, parent: panelGroup });
-      createBox(registry, `clip_b`, { width: 0.06, height: 0.03, depth: 0.02 }, { position: { x: -direction * (panelW / 2 - 0.06), y: height * 0.06, z: 0 } }, { material: steelMaterial, parent: panelGroup });
+      const clipT = createBox(registry, `clip_t`, { width: 0.06, height: 0.03, depth: 0.02 }, { position: { x: -direction * (panelW / 2 - 0.06), y: height * 0.84, z: 0 } }, { material: frameMat, parent: panelGroup });
+      clipT.metadata = { blueprintFenceComponentId: 'frame' };
+
+      const clipB = createBox(registry, `clip_b`, { width: 0.06, height: 0.03, depth: 0.02 }, { position: { x: -direction * (panelW / 2 - 0.06), y: height * 0.06, z: 0 } }, { material: frameMat, parent: panelGroup });
+      clipB.metadata = { blueprintFenceComponentId: 'frame' };
 
       const handleSide = -direction;
       const hX = handleSide * (panelW / 2 - 0.06);
-      createCylinder(registry, `handle_bar`, { diameterTop: 0.015, diameterBottom: 0.015, height: 0.4 }, { position: { x: hX, y: height * 0.5, z: 0.03 } }, { material: steelMaterial, parent: panelGroup });
-      createBox(registry, `handle_stem_t`, { width: 0.01, height: 0.01, depth: 0.03 }, { position: { x: hX, y: height * 0.5 + 0.18, z: 0.015 } }, { material: steelMaterial, parent: panelGroup });
-      createBox(registry, `handle_stem_b`, { width: 0.01, height: 0.01, depth: 0.03 }, { position: { x: hX, y: height * 0.5 - 0.18, z: 0.015 } }, { material: steelMaterial, parent: panelGroup });
+      const handleBar = createCylinder(registry, `handle_bar`, { diameterTop: 0.015, diameterBottom: 0.015, height: 0.4 }, { position: { x: hX, y: height * 0.5, z: 0.03 } }, { material: frameMat, parent: panelGroup });
+      handleBar.metadata = { blueprintFenceComponentId: 'frame' };
+
+      const handleStemT = createBox(registry, `handle_stem_t`, { width: 0.01, height: 0.01, depth: 0.03 }, { position: { x: hX, y: height * 0.5 + 0.18, z: 0.015 } }, { material: frameMat, parent: panelGroup });
+      handleStemT.metadata = { blueprintFenceComponentId: 'frame' };
+
+      const handleStemB = createBox(registry, `handle_stem_b`, { width: 0.01, height: 0.01, depth: 0.03 }, { position: { x: hX, y: height * 0.5 - 0.18, z: 0.015 } }, { material: frameMat, parent: panelGroup });
+      handleStemB.metadata = { blueprintFenceComponentId: 'frame' };
 
     } else if (subtype === 'concrete') {
       createBox(registry, `concrete_panel`, { width: panelW, height: height * 0.95, depth: gateThickness }, { position: { x: 0, y: (height * 0.95) / 2, z: 0 } }, { material: panelMat, parent: panelGroup, receiveShadows: true, shadowCaster: true });
@@ -476,10 +498,8 @@ export function buildFenceGateGeometry(registry, group, gate, material, length, 
     });
   }
 
-  // 限制大门点击只能点中长方体碰撞箱代理，防止点击穿透板条空隙
+  // 保证大门所有构件可点击（供 3D 粉刷精确点中）
   group.getChildMeshes().forEach(mesh => {
-    if (mesh !== proxy) {
-      mesh.isPickable = false;
-    }
+    mesh.isPickable = true;
   });
 }

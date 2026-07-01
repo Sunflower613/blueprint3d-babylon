@@ -1,10 +1,9 @@
 import './styles.css';
-import furnitureUploadExampleSource from './downloads/custom-furniture-example.js?raw';
-import furnitureUploadSkillSource from '../skills/furniture-upload/SKILL.md?raw';
+
 import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
 import { boxComponent, cylinderComponent, sphereComponent } from '../src/furniture/_helpers.js';
-import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners } from './js/EditorUi.js';
-import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog } from './js/Dialogs.js';
+import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
+import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
 import { handleHotkeys } from './js/Hotkeys.js';
 import { Store, showToast, formatTimestamp } from './js/Store.js';
@@ -14,8 +13,41 @@ import * as Topology from './js/Topology.js';
 import * as DragHandler from './js/DragHandler.js';
 import * as SvgEvents from './js/SvgEvents.js';
 import * as FileManager from './js/FileManager.js';
+import { takePhoto } from './js/FileManager.js';
 import { iconSvg } from './js/Icons.js';
 import { TARGET_TYPES } from './js/types.js';
+import {
+  initTargetHandler,
+  isAllowedTarget,
+  getTargetObject,
+  isTargetLocked,
+  setTargetLocked,
+  getTargetFloorId,
+  isTargetOnCurrentFloor,
+  get2DTargetFromElement,
+  isSwitchableTarget,
+  isLightingTarget,
+  pickColorFromContextMenu,
+  showObjectContextMenu,
+  toggleTargetLock,
+  toggleTarget,
+  rotateTarget,
+  mirrorTarget,
+  copyTarget,
+  deleteTarget,
+  selectTargetDescriptor,
+  get3DTarget,
+} from './js/TargetHandler.js';
+import {
+  initMaterialManager,
+  updateComponentMaterial,
+  applyMaterialToItemComponent,
+  renderMaterialLibrary,
+  saveCustomMaterialToLocalStorage,
+  removeCustomMaterialFromLocalStorage,
+  extractMaterial,
+  applyMaterial
+} from './js/MaterialManager.js';
 import {
   initRender2D,
   renderPlan,
@@ -59,7 +91,8 @@ import {
   createTextureMaterialDescriptor,
   getRoomVertices,
   pointInRoom,
-  isSymmetricShape
+  isSymmetricShape,
+  FENCE_SUBTYPE_DEFAULTS
 } from '../src/index.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -114,9 +147,9 @@ function switchToSelectMode() {
 function setDesignMode(newMode, fromDblClick = false) {
   if (newMode !== 'brush') {
     designModeBrushLocked = false;
-    pickerCopiedItemType = null;
-    pickerCopiedItemMaterials = null;
-    pickerCopiedItemColors = null;
+    selection.pickerCopiedItemType = null;
+    selection.pickerCopiedItemMaterials = null;
+    selection.pickerCopiedItemColors = null;
   } else if (fromDblClick) {
     designModeBrushLocked = true;
   }
@@ -133,10 +166,12 @@ function setDesignMode(newMode, fromDblClick = false) {
       button.classList.toggle('locked', designModeBrushLocked);
       const shortcutText = button.querySelector('.mode-shortcut');
       if (shortcutText) {
-        if (designModeBrushLocked) {
-          shortcutText.textContent = 'B · 已锁定';
-        } else if (isActive) {
-          shortcutText.textContent = 'B · 双击锁定';
+        if (isActive) {
+          if (designModeBrushLocked) {
+            shortcutText.textContent = 'B · 已锁定';
+          } else {
+            shortcutText.textContent = 'B · 点击锁定';
+          }
         } else {
           shortcutText.textContent = 'B';
         }
@@ -172,37 +207,145 @@ function setDesignMode(newMode, fromDblClick = false) {
   }
 
   // 动态更新设计模式指针颜色为当前材质颜色
+  syncLocalToStore();
   updateDesignCursor();
 }
 
-function updateDesignCursor() {
-  if (!['picker', 'brush', 'bucket'].includes(designMode)) {
-    document.body.style.cursor = '';
-    return;
+function getPickedColorFromTarget(target) {
+  if (!target) return null;
+  let pickedMaterial = null;
+  let pickedColor = null;
+
+  if (target.type === 'room') {
+    const room = testMap.getRoom(target.id);
+    if (room) {
+      pickedMaterial = room.material;
+      pickedColor = room.color;
+    }
+  } else if (target.type === 'wall') {
+    const wall = testMap.getWall(target.id);
+    if (wall) {
+      const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+      if (side === 'front') {
+        pickedMaterial = wall.materialFront || wall.material;
+        pickedColor = wall.colorFront || wall.color;
+      } else if (side === 'back') {
+        pickedMaterial = wall.materialBack || wall.material;
+        pickedColor = wall.colorBack || wall.color;
+      } else {
+        pickedMaterial = wall.material;
+        pickedColor = wall.color;
+      }
+    }
+  } else if (target.type === 'item') {
+    const item = testMap.getItem(target.id);
+    if (item) {
+      let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
+      if (!componentId) {
+        const definition = testMap.getFurnitureDefinition?.(item.type);
+        componentId = definition?.components?.[0]?.id;
+      }
+      if (componentId) {
+        pickedMaterial = item.materials?.[componentId];
+        pickedColor = item.colors?.[componentId];
+        if (!pickedMaterial && !pickedColor) {
+          const definition = testMap.getFurnitureDefinition?.(item.type);
+          const component = definition?.components?.find(c => c.id === componentId);
+          pickedColor = component?.defaultColor || '#ffffff';
+        }
+      } else {
+        if (item.materials && Object.keys(item.materials).length > 0) {
+          pickedMaterial = Object.values(item.materials)[0];
+        } else if (item.colors && Object.keys(item.colors).length > 0) {
+          pickedColor = Object.values(item.colors)[0];
+        }
+      }
+    }
+  } else if (target.type === 'fence') {
+    const fence = testMap.getFence(target.id);
+    if (fence) {
+      const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
+      if (componentId === 'frame') {
+        pickedMaterial = fence.frameMaterial || fence.material;
+        pickedColor = fence.frameColor || fence.color;
+      } else if (componentId === 'panel') {
+        pickedMaterial = fence.panelMaterial || fence.material;
+        pickedColor = fence.panelColor || fence.color;
+      } else {
+        pickedMaterial = fence.material;
+        pickedColor = fence.color;
+      }
+    }
+  } else if (target.type === 'fence_gate') {
+    const gate = testMap.getFenceGate(target.id);
+    if (gate) {
+      const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
+      if (componentId === 'frame') {
+        pickedMaterial = gate.frameMaterial || gate.material;
+        pickedColor = gate.frameColor || gate.color;
+      } else if (componentId === 'panel') {
+        pickedMaterial = gate.panelMaterial || gate.material;
+        pickedColor = gate.panelColor || gate.color;
+      } else {
+        pickedMaterial = gate.material;
+        pickedColor = gate.color;
+      }
+    }
+  } else if (target.type === 'opening') {
+    const opening = testMap.getOpening(target.id);
+    if (opening) {
+      const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
+      if (componentId === 'frame') {
+        pickedMaterial = opening.frameMaterial || opening.material;
+      } else if (componentId === 'panel') {
+        pickedMaterial = opening.panelMaterial || opening.material;
+      } else if (componentId === 'glass') {
+        pickedMaterial = opening.glassMaterial || opening.material;
+      } else {
+        pickedMaterial = opening.material;
+      }
+      pickedColor = opening.color;
+    }
+  } else if (target.type === 'roof') {
+    const roof = testMap.getRoof ? testMap.getRoof(target.id) : null;
+    if (roof) {
+      const componentId = target.pick ? findRoofComponentIdFromNode(target.pick.pickedMesh) : null;
+      if (componentId === 'side') {
+        pickedMaterial = roof.sideMaterial || roof.material;
+        pickedColor = roof.sideColor || roof.color;
+      } else if (componentId === 'bottom') {
+        pickedMaterial = roof.bottomMaterial || roof.material;
+        pickedColor = roof.bottomColor || roof.color;
+      } else {
+        pickedMaterial = roof.material;
+        pickedColor = roof.color;
+      }
+    }
+  } else if (target.type === 'stairs') {
+    const stairs = testMap.getStairs(target.id);
+    if (stairs) {
+      const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintStairsComponentId') : null;
+      if (componentId === 'side') {
+        pickedMaterial = stairs.sideMaterial || stairs.material;
+        pickedColor = stairs.sideColor || stairs.color;
+      } else {
+        pickedMaterial = stairs.material;
+        pickedColor = stairs.color;
+      }
+    }
   }
 
-  let color = '#2a415c'; // 默认取色器颜色
-  if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
-    color = activeMaterialDescriptor.color;
+  let descriptor = pickedMaterial || pickedColor;
+  if (descriptor) {
+    if (typeof descriptor === 'string') {
+      return descriptor;
+    } else if (descriptor.color) {
+      return descriptor.color;
+    }
   }
-
-  // 转换 HEX 颜色值以保证 SVG 在 CSS URL 中能够被正确解析（例如将 # 转换为 %23）
-  const strokeColor = color.startsWith('#') ? '%23' + color.slice(1) : color;
-
-  if (designMode === 'picker') {
-    // 2px 描边滴管，热点 2 29
-    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 22 1-1h3l9-9'/%3E%3Cpath d='M3 21v-3l9-9'/%3E%3Cpath d='m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.4-3.4'/%3E%3Cpath d='M9 12 7 6l3-3 6 6'/%3E%3C/svg%3E`;
-    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 2 29, auto`, 'important');
-  } else if (designMode === 'brush') {
-    // 2px 描边材质刷，热点 4 28
-    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21v-4a4 4 0 1 1 4 4h-4'/%3E%3Cpath d='M21 3a16 16 0 0 0 -12.8 10.2'/%3E%3Cpath d='M21 3a16 16 0 0 1 -10.2 12.8'/%3E%3Cpath d='M10.5 13.5l-4 4'/%3E%3C/svg%3E`;
-    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 4 28, auto`, 'important');
-  } else if (designMode === 'bucket') {
-    // 2px 描边油漆桶，热点 5 26
-    const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='${strokeColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='m5 16l1.465 1.638a2 2 0 1 1-3.015.099zm8.737-6.263c2.299-2.3 3.23-5.095 2.081-6.245s-3.945-.217-6.244 2.082s-3.231 5.095-2.082 6.244s3.946.218 6.245-2.081'/%3E%3Cpath d='M7.492 11.818c.362.362.768.676 1.208.934l6.895 4.047c1.078.557 2.255-.075 3.692-1.512s2.07-2.614 1.512-3.692q-.557-1.077-4.047-6.895a6 6 0 0 0-.934-1.208'/%3E%3C/g%3E%3C/svg%3E`;
-    document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 5 26, auto`, 'important');
-  }
+  return null;
 }
+
 
 let currentView = '2d';
 let selectedRoomId = null;
@@ -234,9 +377,6 @@ let snapSize = 1;
 let activeMaterialDescriptor = null;
 let designMode = 'select'; // 'select' | 'picker' | 'brush' | 'bucket' | 'eraser'
 let designModeBrushLocked = false;
-let pickerCopiedItemType = null;
-let pickerCopiedItemMaterials = null;
-let pickerCopiedItemColors = null;
 let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
 const activePointers = new Map();
 let hasUserZoomedOrPanned = false;
@@ -246,78 +386,75 @@ let floorPanelCollapsed = false;
 
 let selectedTarget = { type: null, id: null };
 
+import { ui, selection, editor } from './store/index.js';
+
+function syncLocalToStore() {
+  ui.mode = mode;
+  ui.currentView = currentView;
+  ui.designMode = designMode;
+  ui.floorPanelCollapsed = floorPanelCollapsed;
+  ui.contextMenuElement = contextMenuElement;
+
+  selection.selectedTarget = selectedTarget;
+  selection.selectedRoomId = selectedRoomId;
+  selection.selectedWallId = selectedWallId;
+  selection.selectedItemId = selectedItemId;
+  selection.selectedOpeningId = selectedOpeningId;
+  selection.selectedRoofId = selectedRoofId;
+  selection.selectedStairsId = selectedStairsId;
+  selection.selectedFenceId = selectedFenceId;
+  selection.selectedFenceGateId = selectedFenceGateId;
+
+  editor.drawStart = drawStart;
+  editor.drag3DState = drag3DState;
+  editor.drawWallPreviewCylinder = drawWallPreviewCylinder;
+  editor.drawWallPreviewStartCylinder = drawWallPreviewStartCylinder;
+  editor.drawWallPreviewWall = drawWallPreviewWall;
+  editor.roofResizeState = roofResizeState;
+  editor.stairsRailingPreview2DGroup = stairsRailingPreview2DGroup;
+  editor.stairsRailingPreview3DGroup = stairsRailingPreview3DGroup;
+  editor.currentPreviewStairsId = currentPreviewStairsId;
+  editor.floorEdgeRailingPreview2DGroup = floorEdgeRailingPreview2DGroup;
+  editor.floorEdgeRailingPreview3DGroup = floorEdgeRailingPreview3DGroup;
+  editor.currentPreviewFloorEdgeIndex = currentPreviewFloorEdgeIndex;
+  editor.longPressState = longPressState;
+  editor.snapEnabled = snapEnabled;
+  editor.active3DEditTarget = active3DEditTarget;
+  editor.snapSize = snapSize;
+
+  if (editor.activeMaterialDescriptor) {
+    activeMaterialDescriptor = editor.activeMaterialDescriptor;
+  } else if (activeMaterialDescriptor) {
+    editor.activeMaterialDescriptor = activeMaterialDescriptor;
+  }
+
+  if (editor.materialLibrary && editor.materialLibrary.length > 0) {
+    materialLibrary = editor.materialLibrary;
+  } else {
+    editor.materialLibrary = materialLibrary;
+  }
+}
+
 /** @type {AppState} */
 const appState = {
-  get selectedTarget() { return selectedTarget; },
-  set selectedTarget(val) { selectedTarget = val; },
-  get mode() { return mode; },
-  set mode(val) { mode = val; },
-  get currentView() { return currentView; },
-  set currentView(val) { currentView = val; },
-  get selectedRoomId() { return selectedRoomId; },
-  set selectedRoomId(val) { selectedRoomId = val; },
-  get selectedWallId() { return selectedWallId; },
-  set selectedWallId(val) { selectedWallId = val; },
-  get selectedItemId() { return selectedItemId; },
-  set selectedItemId(val) { selectedItemId = val; },
-  get selectedOpeningId() { return selectedOpeningId; },
-  set selectedOpeningId(val) { selectedOpeningId = val; },
-  get selectedRoofId() { return selectedRoofId; },
-  set selectedRoofId(val) { selectedRoofId = val; },
-  get selectedStairsId() { return selectedStairsId; },
-  set selectedStairsId(val) { selectedStairsId = val; },
-  get selectedFenceId() { return selectedFenceId; },
-  set selectedFenceId(val) { selectedFenceId = val; },
-  get selectedFenceGateId() { return selectedFenceGateId; },
-  set selectedFenceGateId(val) { selectedFenceGateId = val; },
-  get drawStart() { return drawStart; },
-  set drawStart(val) { drawStart = val; },
-  get drag3DState() { return drag3DState; },
-  set drag3DState(val) { drag3DState = val; },
-  get drawWallPreviewCylinder() { return drawWallPreviewCylinder; },
-  set drawWallPreviewCylinder(val) { drawWallPreviewCylinder = val; },
-  get drawWallPreviewStartCylinder() { return drawWallPreviewStartCylinder; },
-  set drawWallPreviewStartCylinder(val) { drawWallPreviewStartCylinder = val; },
-  get drawWallPreviewWall() { return drawWallPreviewWall; },
-  set drawWallPreviewWall(val) { drawWallPreviewWall = val; },
-  get roofResizeState() { return roofResizeState; },
-  set roofResizeState(val) { roofResizeState = val; },
-  get stairsRailingPreview2DGroup() { return stairsRailingPreview2DGroup; },
-  set stairsRailingPreview2DGroup(val) { stairsRailingPreview2DGroup = val; },
-  get stairsRailingPreview3DGroup() { return stairsRailingPreview3DGroup; },
-  set stairsRailingPreview3DGroup(val) { stairsRailingPreview3DGroup = val; },
-  get currentPreviewStairsId() { return currentPreviewStairsId; },
-  set currentPreviewStairsId(val) { currentPreviewStairsId = val; },
-  get floorEdgeRailingPreview2DGroup() { return floorEdgeRailingPreview2DGroup; },
-  set floorEdgeRailingPreview2DGroup(val) { floorEdgeRailingPreview2DGroup = val; },
-  get floorEdgeRailingPreview3DGroup() { return floorEdgeRailingPreview3DGroup; },
-  set floorEdgeRailingPreview3DGroup(val) { floorEdgeRailingPreview3DGroup = val; },
-  get currentPreviewFloorEdgeIndex() { return currentPreviewFloorEdgeIndex; },
-  set currentPreviewFloorEdgeIndex(val) { currentPreviewFloorEdgeIndex = val; },
-  get contextMenuElement() { return contextMenuElement; },
-  set contextMenuElement(val) { contextMenuElement = val; },
-  get longPressState() { return longPressState; },
-  set longPressState(val) { longPressState = val; },
-  get snapEnabled() { return snapEnabled; },
-  set snapEnabled(val) { snapEnabled = val; },
-  get active3DEditTarget() { return active3DEditTarget; },
-  set active3DEditTarget(val) { active3DEditTarget = val; },
-  get snapSize() { return snapSize; },
-  set snapSize(val) { snapSize = val; },
-  get activeMaterialDescriptor() { return activeMaterialDescriptor; },
-  set activeMaterialDescriptor(val) { activeMaterialDescriptor = val; },
-  get materialLibrary() { return materialLibrary; },
-  set materialLibrary(val) { materialLibrary = val; },
-  get hasUserZoomedOrPanned() { return hasUserZoomedOrPanned; },
-  set hasUserZoomedOrPanned(val) { hasUserZoomedOrPanned = val; },
-  get roomCounter() { return roomCounter; },
-  set roomCounter(val) { roomCounter = val; },
-  get floorPanelCollapsed() { return floorPanelCollapsed; },
-  set floorPanelCollapsed(val) { floorPanelCollapsed = val; },
-  get designMode() { return designMode; },
-  set designMode(val) { designMode = val; },
+  ui,
+  selection,
+  editor,
+
+  get testMap() { return testMap; },
+  get entityManager() { return entityManager; },
+
   executeDesignTool: (target) => executeDesignTool(target),
   setDesignMode: (newMode, fromDblClick = false) => setDesignMode(newMode, fromDblClick),
+  getPickedColorFromTarget: (target) => getPickedColorFromTarget(target),
+  updateDesignCursor: (customColor) => updateDesignCursor(customColor),
+  get viewer3d() { return viewer3d; },
+  get scene() { return scene; },
+  get camera() { return camera; },
+  get engine() { return engine; },
+  get refresh3DGrid() { return refresh3DGrid; },
+  showToast: (msg) => showToast(msg),
+  takePhoto: () => takePhoto()
 };
 
 const stage = document.getElementById('stage');
@@ -370,14 +507,9 @@ let entityManager = new EntityManager({
   setSelectedItemId: (val) => { selectedItemId = val; },
   onSelectionChanged: (type, id) => {
     if (type === 'item') {
-      selectedRoomId = null;
-      selectedWallId = null;
-      selectedOpeningId = null;
-      selectedRoofId = null;
-      selectedStairsId = null;
-      selectedFenceId = null;
-      testMap.setSelectedWall(null);
-      testMap.setSelectedFence(null);
+      if (selectedTarget?.type !== 'item' || selectedTarget?.id !== id) {
+        selectTarget(TARGET_TYPES.ITEM, id);
+      }
     }
   },
   svgPointFromEvent: (event) => svgPointFromEvent(event),
@@ -399,13 +531,7 @@ const undo = () => store.undo();
 const redo = () => store.redo();
 
 Object.assign(appState, {
-  testMap,
-  viewer3d,
-  entityManager,
-  engine,
-  scene,
   shadowGenerator,
-  camera,
   svg,
   canvas,
   view,
@@ -542,11 +668,15 @@ Object.assign(appState, {
   // 上下文菜单与选择管理
   attachContextMenuTrigger,
   getSelectedTarget,
-  isAllowedContextTarget,
+  isAllowedTarget,
   toggleTargetLock,
-  copyContextTarget,
-  rotateContextTarget,
+  copyTarget,
+  rotateTarget,
   takePhoto,
+  selectItem,
+  showIconMenu,
+  getSelectedStructure,
+  getCanvasPickFromEvent,
 
   // 栏杆相关
   clear2DFloorEdgeRailingPreview,
@@ -556,11 +686,13 @@ Object.assign(appState, {
 
   // 辅助
   beginRoofResize,
-  get2DContextTargetFromElement,
+  get2DTargetFromElement,
   BABYLON
 });
 
 DragHandler.initDragHandler(appState);
+initTargetHandler(appState);
+initMaterialManager(appState);
 SvgEvents.initSvgEvents(appState);
 initRender2D(appState);
 initViewer3DHandles(appState);
@@ -590,6 +722,7 @@ const store = new Store({
     refreshShadows();
     updateEditor();
     renderPlan();
+    syncLocalToStore();
   },
 });
 
@@ -667,6 +800,7 @@ if (snapToggleBtn) {
     }
   }
 })();
+syncLocalToStore();
 
 viewer3d.startRenderLoop();
 
@@ -789,6 +923,7 @@ function setView(nextView) {
     clearDrawWallPreview();
     renderPlan();
   }
+  syncLocalToStore();
 }
 
 function snapValue(value) {
@@ -866,6 +1001,9 @@ function showIconMenu(clientX, clientY, actions) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'context-icon-button';
+    if (action.icon === 'trash') {
+      button.classList.add('context-icon-button-danger');
+    }
     button.title = action.title || '';
     button.setAttribute('aria-label', action.title || 'action');
     button.disabled = !!action.disabled;
@@ -944,616 +1082,10 @@ function getSelectedTarget() {
   return selectedTarget.id ? selectedTarget : null;
 }
 
-function isAllowedContextTarget(target) {
-  return Object.values(TARGET_TYPES).filter(t => t !== TARGET_TYPES.WALL).includes(target?.type);
-}
 
-function getContextTargetObject(target) {
-  if (!target) return null;
-  if (target.type === TARGET_TYPES.ITEM) return testMap.getItem(target.id);
-  if (target.type === TARGET_TYPES.OPENING) return testMap.getOpening(target.id);
-  if (target.type === TARGET_TYPES.ROOF) return testMap.getRoof?.(target.id);
-  if (target.type === TARGET_TYPES.STAIRS) return testMap.getStairs?.(target.id);
-  if (target.type === TARGET_TYPES.ROOM) return testMap.getRoom(target.id);
-  if (target.type === TARGET_TYPES.FENCE) return testMap.getFence?.(target.id);
-  if (target.type === TARGET_TYPES.FENCE_GATE) return testMap.getFenceGate?.(target.id);
-  return null;
-}
 
-function isTargetLocked(target) {
-  return !!getContextTargetObject(target)?.locked;
-}
 
-function setContextTargetLocked(target, locked) {
-  if (!isAllowedContextTarget(target)) return;
-  const value = !!locked;
-  if (target.type === TARGET_TYPES.ITEM) {
-    const item = testMap.getItem(target.id);
-    if (!item) return;
-    item.locked = value;
-    const node = testMap.itemNodes.get(item.id);
-    if (node) node.metadata = { ...(node.metadata || {}), locked: value };
-  } else if (target.type === TARGET_TYPES.OPENING) {
-    testMap.updateOpening(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.ROOF) {
-    testMap.updateRoof?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.STAIRS) {
-    testMap.updateStairs?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.ROOM) {
-    testMap.updateRoom(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.FENCE) {
-    testMap.updateFence?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.FENCE_GATE) {
-    testMap.updateFenceGate?.(target.id, { locked: value });
-  }
-}
 
-function getTargetFloorId(target) {
-  if (!target) return null;
-  if (target.type === TARGET_TYPES.ROOM) return testMap.getRoom(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.WALL) return testMap.getWall(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.OPENING) return testMap.getOpening(target.id)?.floorId || testMap.getWall(testMap.getOpening(target.id)?.wallId)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.ITEM) return testMap.getItem(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.ROOF) return testMap.getRoof?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.STAIRS) return testMap.getStairs?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.FENCE) return testMap.getFence?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.FENCE_GATE) return testMap.getFenceGate?.(target.id)?.floorId || 'floor_1';
-  return testMap.floorplan.currentFloorId;
-}
-
-function isTargetOnCurrentFloor(target) {
-  return getTargetFloorId(target) === testMap.floorplan.currentFloorId;
-}
-
-function get2DContextTargetFromElement(element) {
-  const wall = element.closest?.('[data-wall-id]');
-  if (wall?.dataset.wallId) return { type: 'wall', id: wall.dataset.wallId };
-  const item = element.closest?.('[data-item-id]');
-  if (item?.dataset.itemId) return { type: 'item', id: item.dataset.itemId };
-  const opening = element.closest?.('[data-opening-id]');
-  if (opening?.dataset.openingId) return { type: 'opening', id: opening.dataset.openingId };
-  const roof = element.closest?.('[data-roof-id]');
-  if (roof?.dataset.roofId) return { type: 'roof', id: roof.dataset.roofId };
-  const stairs = element.closest?.('[data-stairs-id]');
-  if (stairs?.dataset.stairsId) return { type: 'stairs', id: stairs.dataset.stairsId };
-  const fence = element.closest?.('[data-fence-id]');
-  if (fence?.dataset.fenceId) return { type: 'fence', id: fence.dataset.fenceId };
-  const fenceGate = element.closest?.('[data-fence-gate-id]');
-  if (fenceGate?.dataset.fenceGateId) return { type: 'fence_gate', id: fenceGate.dataset.fenceGateId };
-  const roomHit = element.closest?.('[data-room-hit-id]');
-  if (roomHit?.dataset.roomHitId) return { type: 'room', id: roomHit.dataset.roomHitId };
-  const room = element.closest?.('[data-room-id]');
-  if (room?.dataset.roomId) return { type: 'room', id: room.dataset.roomId };
-  return null;
-}
-function isSwitchableTarget(target) {
-  if (!target) return false;
-  if (target.type === 'opening' || target.type === 'fence_gate') return true;
-  if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (!item) return false;
-    const def = testMap.getFurnitureDefinition(item.type);
-    return !!(def && (def.category === 'lighting' || def.lightSource || def.isSwitchable || item.isOn !== undefined || item.lightOn !== undefined));
-  }
-  return false;
-}
-
-function isLightingTarget(target) {
-  if (!target || target.type !== 'item') return false;
-  const item = testMap.getItem(target.id);
-  if (!item) return false;
-  const def = testMap.getFurnitureDefinition(item.type);
-  return !!(def && (def.category === 'lighting' || def.lightSource));
-}
-
-function pickColorFromContextMenu(target) {
-  if (!target) return;
-  
-  // 重置之前的全量家具拷贝缓存
-  pickerCopiedItemType = null;
-  pickerCopiedItemMaterials = null;
-  pickerCopiedItemColors = null;
-
-  let pickedMaterial = null;
-  let pickedColor = null;
-
-  if (target.type === 'room') {
-    const room = testMap.getRoom(target.id);
-    if (room) {
-      pickedMaterial = room.material;
-      pickedColor = room.color;
-    }
-  } else if (target.type === 'wall') {
-    const wall = testMap.getWall(target.id);
-    if (wall) {
-      pickedMaterial = wall.materialFront || wall.materialBack || wall.material;
-      pickedColor = wall.colorFront || wall.colorBack || wall.color;
-    }
-  } else if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (item) {
-      // 暂存该家具的全部材质和颜色！用于对同类家具的全量材质复制
-      pickerCopiedItemType = item.type;
-      pickerCopiedItemMaterials = JSON.parse(JSON.stringify(item.materials || {}));
-      pickerCopiedItemColors = JSON.parse(JSON.stringify(item.colors || {}));
-      
-      const matKeys = Object.keys(item.materials || {});
-      if (matKeys.length > 0) {
-        pickedMaterial = item.materials[matKeys[0]];
-      } else {
-        const colKeys = Object.keys(item.colors || {});
-        if (colKeys.length > 0) {
-          pickedColor = item.colors[colKeys[0]];
-        }
-      }
-    }
-  } else if (target.type === 'fence') {
-    const fence = testMap.getFence(target.id);
-    if (fence) {
-      pickedMaterial = fence.material;
-      pickedColor = fence.color;
-    }
-  } else if (target.type === 'fence_gate') {
-    const gate = testMap.getFenceGate(target.id);
-    if (gate) {
-      pickedMaterial = gate.material;
-      pickedColor = gate.color;
-    }
-  } else if (target.type === 'opening') {
-    const opening = testMap.getOpening(target.id);
-    if (opening) {
-      pickedMaterial = opening.material;
-      pickedColor = opening.color;
-    }
-  } else if (target.type === 'roof') {
-    const roof = testMap.getRoof(target.id);
-    if (roof) {
-      pickedMaterial = roof.material;
-      pickedColor = roof.color;
-    }
-  } else if (target.type === 'stairs') {
-    const stairs = testMap.getStairs(target.id);
-    if (stairs) {
-      pickedMaterial = stairs.material;
-      pickedColor = stairs.color;
-    }
-  }
-
-  // 统一设置当前活动材质
-  if (pickedMaterial || pickedColor || pickerCopiedItemMaterials) {
-    if (pickedMaterial || pickedColor) {
-      let descriptor = pickedMaterial || pickedColor;
-      if (typeof descriptor === 'string') {
-        const found = materialLibrary.find(m => m.color === descriptor);
-        if (found) {
-          activeMaterialDescriptor = found;
-        } else {
-          activeMaterialDescriptor = {
-            id: 'paint-' + descriptor.replace('#', ''),
-            name: `吸取颜色 (${descriptor})`,
-            category: 'paint',
-            kind: 'paint',
-            color: descriptor
-          };
-        }
-      } else {
-        activeMaterialDescriptor = descriptor;
-      }
-      renderMaterialLibrary();
-      updateEditor();
-    }
-    showToast('已复制材质，直接进入涂刷模式');
-    
-    // 进入一次涂刷模式 (锁定为 false)
-    setDesignMode('brush', false);
-  } else {
-    showToast('该物体没有可用的材质');
-  }
-}
-
-function showObjectContextMenu(target, clientX, clientY) {
-  if (!isAllowedContextTarget(target)) return;
-  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
-  const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
-  const isSwitchable = isSwitchableTarget(target);
-  const isLighting = isLightingTarget(target);
-  const isLocked = isTargetLocked(target);
-
-  const isDoorLike = (target.type === 'fence_gate') || (target.type === 'opening' && testMap.getOpening(target.id)?.type === 'door');
-  const isDouble = target.type === 'opening'
-    ? !!testMap.getOpening(target.id)?.doubleDoor
-    : (target.type === 'fence_gate' ? !!testMap.getFenceGate(target.id)?.doubleDoor : false);
-  
-  // 检查是否是具有水体的容器家具 (浴缸、厨房水槽、洗手台) 及其放水状态
-  let isWaterContainer = false;
-  let isWaterOn = true;
-  if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom'].includes(item.type)) {
-      isWaterContainer = true;
-      isWaterOn = item.waterEnabled !== false;
-    }
-  }
-
-  // 检查是否是马桶 (toilet) 及其开盖状态
-  let isToilet = false;
-  let isLidOpen = false;
-  if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (item && item.type === 'toilet') {
-      isToilet = true;
-      isLidOpen = item.lidOpen === true;
-    }
-  }
-  
-  showIconMenu(clientX, clientY, [
-    { icon: 'copy', title: '复制', onClick: () => copyContextTarget(target) },
-    { icon: 'pipette', title: '取色', onClick: () => pickColorFromContextMenu(target) },
-    isRotatable && {
-      icon: 'rotate',
-      title: '旋转',
-      disabled: isLocked || (target.type === 'fence_gate' && !!testMap.getFenceGate(target.id)?.fenceId),
-      onClick: () => rotateContextTarget(target)
-    },
-    isMirrorable && { icon: 'flip', title: '镜像', disabled: isLocked, onClick: () => mirrorContextTarget(target) },
-    isDoorLike && {
-      icon: 'double_door',
-      title: isDouble ? '单开' : '双开',
-      disabled: isLocked,
-      onClick: () => {
-        pushHistory();
-        if (target.type === 'opening') {
-          testMap.updateOpening(target.id, { doubleDoor: !isDouble });
-        } else if (target.type === 'fence_gate') {
-          testMap.updateFenceGate(target.id, { doubleDoor: !isDouble });
-        }
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    },
-    isWaterContainer && {
-      icon: 'droplet',
-      title: isWaterOn ? '排水' : '放水',
-      disabled: isLocked,
-      onClick: () => entityManager.toggleItemWater(target.id)
-    },
-    isToilet && {
-      icon: 'door',
-      title: isLidOpen ? '合盖' : '开盖',
-      disabled: isLocked,
-      onClick: () => entityManager.toggleItemLid(target.id)
-    },
-    isSwitchable && { 
-      icon: isLighting ? 'power' : (['opening', 'fence_gate'].includes(target.type) ? 'door' : 'power'), 
-      title: '开关', 
-      disabled: isLocked,
-      onClick: () => toggleContextTarget(target) 
-    },
-    { icon: isLocked ? 'unlock' : 'lock', title: isLocked ? '\u89e3\u9501' : '\u9501\u5b9a', onClick: () => toggleTargetLock(target) },
-    { icon: 'trash', title: '\u5220\u9664', disabled: isLocked, onClick: () => deleteContextTarget(target) }
-  ]);
-}
-
-function toggleTargetLock(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (target.type === 'item') {
-    entityManager.toggleItemLock(target.id);
-    return;
-  }
-  const object = getContextTargetObject(target);
-  if (!object) return;
-  pushHistory();
-  setContextTargetLocked(target, !object.locked);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function toggleContextTarget(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (isTargetLocked(target)) return;
-  if (target.type === 'item') {
-    entityManager.toggleItemPower(target.id);
-    return;
-  }
-  pushHistory();
-  if (target.type === 'opening') {
-    const opening = testMap.getOpening(target.id);
-    if (!opening) return;
-    testMap.updateOpening(target.id, { isOpen: !opening.isOpen });
-    if (selectedOpeningId === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'fence_gate') {
-    const gate = testMap.getFenceGate(target.id);
-    if (!gate) return;
-    testMap.updateFenceGate(target.id, { isOpen: !gate.isOpen });
-    if (selectedFenceGateId === target.id) {
-      updateEditor();
-    }
-  }
-  refreshShadows();
-  renderPlan();
-}
-
-function rotateContextTarget(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (isTargetLocked(target)) return;
-  if (target.type === 'item') {
-    entityManager.rotateItem(target.id);
-    return;
-  }
-  pushHistory();
-  if (target.type === 'roof' || target.type === 'stairs') {
-    const structure = getStructure(target.type, target.id);
-    if (!structure) return;
-    const currentDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
-    const nextDegrees = (currentDegrees + 90) % 360;
-    updateStructure(target.type, target.id, { rotation: nextDegrees * Math.PI / 180 });
-    const selected = getSelectedStructure();
-    if (selected && selected.type === target.type && selected.id === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'opening') {
-    const opening = testMap.getOpening(target.id);
-    if (!opening) return;
-    const lr = !!opening.isFlippedLR;
-    const io = !!opening.isFlippedIO;
-    let state = 0;
-    if (lr && !io) state = 1;
-    else if (lr && io) state = 2;
-    else if (!lr && io) state = 3;
-    
-    const nextState = (state + 1) % 4;
-    const nextLr = (nextState === 1 || nextState === 2);
-    const nextIo = (nextState === 2 || nextState === 3);
-    
-    testMap.updateOpening(target.id, {
-      isFlippedLR: nextLr,
-      isFlippedIO: nextIo
-    });
-    if (selectedOpeningId === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'fence_gate') {
-    const gate = testMap.getFenceGate(target.id);
-    if (!gate) return;
-    const cx = (gate.from[0] + gate.to[0]) / 2;
-    const cz = (gate.from[1] + gate.to[1]) / 2;
-    const dx = gate.to[0] - gate.from[0];
-    const dz = gate.to[1] - gate.from[1];
-    // 顺时针旋转 90 度：(x, z) -> (-z, x)
-    const nextFrom = [cx + dz / 2, cz - dx / 2];
-    const nextTo = [cx - dz / 2, cz + dx / 2];
-    testMap.updateFenceGate(target.id, {
-      from: nextFrom,
-      to: nextTo
-    });
-    if (selectedFenceGateId === target.id) {
-      updateEditor();
-    }
-  } else if (target.type === 'fence') {
-    const fence = testMap.getFence(target.id);
-    if (!fence) return;
-    const cx = (fence.from[0] + fence.to[0]) / 2;
-    const cz = (fence.from[1] + fence.to[1]) / 2;
-    const dx = fence.to[0] - fence.from[0];
-    const dz = fence.to[1] - fence.from[1];
-    // 顺时针旋转 90 度：(x, z) -> (-z, x)
-    const nextFrom = [cx + dz / 2, cz - dx / 2];
-    const nextTo = [cx - dz / 2, cz + dx / 2];
-    testMap.updateFence(target.id, {
-      from: nextFrom,
-      to: nextTo
-    });
-    if (selectedFenceId === target.id) {
-      updateEditor();
-    }
-  }
-  refreshShadows();
-  renderPlan();
-}
-
-function findMatchingCurrentFloorWall(sourceWall, sourcePoint) {
-  if (!sourceWall) return null;
-  const [sx1, sz1] = sourceWall.from;
-  const [sx2, sz2] = sourceWall.to;
-  const sourceAngle = Math.atan2(sz2 - sz1, sx2 - sx1);
-  let bestWall = null;
-  let bestScore = Infinity;
-  currentWalls().forEach((wall) => {
-    const [x1, z1] = wall.from;
-    const [x2, z2] = wall.to;
-    const angle = Math.atan2(z2 - z1, x2 - x1);
-    const angleDelta = Math.abs(Math.atan2(Math.sin(angle - sourceAngle), Math.cos(angle - sourceAngle)));
-    const parallelDelta = Math.min(angleDelta, Math.abs(Math.PI - angleDelta));
-    if (parallelDelta > Math.PI / 6) return;
-    const projectedT = getWallProjectionT(wall, sourcePoint);
-    const projected = wallPointAt(wall, projectedT);
-    const distance = Math.hypot(projected.x - sourcePoint.x, projected.z - sourcePoint.z);
-    const score = distance + parallelDelta * 2;
-    if (score < bestScore) {
-      bestScore = score;
-      bestWall = wall;
-    }
-  });
-  return bestWall;
-}
-
-function mirrorContextTarget(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (isTargetLocked(target)) return;
-  pushHistory();
-  if (target.type === 'item') {
-    const item = testMap.getItem(target.id);
-    if (item) {
-      testMap.updateItem(target.id, { mirrored: !item.mirrored });
-    }
-  } else if (target.type === 'opening') {
-    const opening = testMap.getOpening(target.id);
-    if (opening) {
-      testMap.updateOpening(target.id, { isFlippedLR: !opening.isFlippedLR });
-    }
-  } else if (target.type === 'fence_gate') {
-    const gate = testMap.getFenceGate(target.id);
-    if (gate) {
-      testMap.updateFenceGate(target.id, { isFlippedLR: !gate.isFlippedLR });
-    }
-  } else if (target.type === 'roof') {
-    const roof = testMap.getRoof?.(target.id);
-    if (roof) {
-      testMap.updateRoof?.(target.id, { mirrored: !roof.mirrored });
-    }
-  } else if (target.type === 'stairs') {
-    const stairs = testMap.getStairs?.(target.id);
-    if (stairs) {
-      testMap.updateStairs?.(target.id, { mirrored: !stairs.mirrored });
-    }
-  } else if (target.type === 'fence') {
-    const fence = testMap.getFence(target.id);
-    if (fence) {
-      testMap.updateFence(target.id, {
-        from: [...fence.to],
-        to: [...fence.from]
-      });
-    }
-  }
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function copyContextTarget(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (target.type === 'item') {
-    entityManager.copyItem(target.id);
-    return;
-  }
-  pushHistory();
-  let nextSelection = null;
-  if (target.type === 'opening') {
-    const opening = testMap.getOpening(target.id);
-    const sourceWall = opening ? testMap.getWall(opening.wallId) : null;
-    if (!opening || !sourceWall) return;
-    const sourcePoint = wallPointAt(sourceWall, opening.t ?? 0.5);
-    const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
-    if (!targetWall) return;
-    const nextT = Math.min(0.92, getWallProjectionT(targetWall, sourcePoint) + 0.08);
-    const next = testMap.addOpening(targetWall.id, opening.type, nextT, opening.shape);
-    if (next) {
-      testMap.updateOpening(next.id, {
-        width: opening.width,
-        height: opening.height,
-        sillHeight: opening.sillHeight,
-        isOpen: opening.isOpen,
-        isFlippedLR: opening.isFlippedLR,
-        isFlippedIO: opening.isFlippedIO,
-        panelHidden: opening.panelHidden,
-        glassHidden: opening.glassHidden,
-        floorId: testMap.floorplan.currentFloorId
-      });
-      nextSelection = { type: 'opening', id: next.id };
-    }
-  } else if (target.type === 'roof') {
-    const roof = testMap.getRoof?.(target.id);
-    if (!roof) return;
-    const copy = testMap.addRoof({
-      ...JSON.parse(JSON.stringify(roof)),
-      id: undefined,
-      x: (roof.x || 0) + 0.5,
-      z: (roof.z || 0) + 0.5,
-      floorId: testMap.floorplan.currentFloorId,
-      locked: false
-    });
-    nextSelection = { type: 'roof', id: copy.id };
-  } else if (target.type === 'stairs') {
-    const stairs = testMap.getStairs?.(target.id);
-    if (!stairs) return;
-    const copy = testMap.addStairs({
-      ...JSON.parse(JSON.stringify(stairs)),
-      id: undefined,
-      x: (stairs.x || 0) + 0.5,
-      z: (stairs.z || 0) + 0.5,
-      floorId: testMap.floorplan.currentFloorId,
-      locked: false
-    });
-    nextSelection = { type: 'stairs', id: copy.id };
-  } else if (target.type === 'fence') {
-    const fence = testMap.getFence?.(target.id);
-    if (!fence) return;
-    const copy = testMap.addFence({
-      ...JSON.parse(JSON.stringify(fence)),
-      id: undefined,
-      from: [(fence.from?.[0] || 0) + 0.5, (fence.from?.[1] || 0) + 0.5],
-      to: [(fence.to?.[0] || 0) + 0.5, (fence.to?.[1] || 0) + 0.5],
-      floorId: testMap.floorplan.currentFloorId,
-      locked: false
-    });
-    nextSelection = { type: 'fence', id: copy.id };
-  } else if (target.type === 'room') {
-    const room = testMap.getRoom(target.id);
-    if (!room) return;
-    const copy = testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: room.floorId, locked: false });
-    nextSelection = { type: 'room', id: copy.id };
-  } else if (target.type === 'fence_gate') {
-    const gate = testMap.getFenceGate(target.id);
-    if (!gate) return;
-    const copy = testMap.addFenceGate({
-      ...JSON.parse(JSON.stringify(gate)),
-      id: undefined,
-      fenceId: null,
-      from: [(gate.from?.[0] || 0) + 0.5, (gate.from?.[1] || 0) + 0.5],
-      to: [(gate.to?.[0] || 0) + 0.5, (gate.to?.[1] || 0) + 0.5],
-      floorId: testMap.floorplan.currentFloorId,
-      locked: false
-    });
-    nextSelection = { type: 'fence_gate', id: copy.id };
-  }
-  refreshShadows();
-  selectContextTarget(nextSelection || target);
-}
-
-function deleteContextTarget(target) {
-  if (!isAllowedContextTarget(target)) return;
-  if (isTargetLocked(target)) return;
-  if (target.type === 'item') {
-    entityManager.deleteItem(target.id);
-    return;
-  }
-  if (target.type === 'room') {
-    showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
-      if (confirmed) {
-        pushHistory();
-        testMap.deleteRoom(target.id);
-        clearSelection();
-        refreshShadows();
-        renderPlan();
-      }
-    });
-    return;
-  }
-  pushHistory();
-  if (target.type === 'opening') testMap.deleteOpening(target.id);
-  if (target.type === 'roof') testMap.deleteRoof?.(target.id);
-  if (target.type === 'stairs') testMap.deleteStairs?.(target.id);
-  if (target.type === 'fence') testMap.deleteFence?.(target.id);
-  if (target.type === 'fence_gate') testMap.deleteFenceGate(target.id);
-  clearSelection();
-  refreshShadows();
-  renderPlan();
-}
-
-function selectContextTarget(target) {
-  if (!target || !isTargetOnCurrentFloor(target)) return;
-  if (target.type === 'item') selectItem(target.id);
-  if (target.type === 'opening') selectOpening(target.id);
-  if (target.type === 'roof') selectRoof(target.id);
-  if (target.type === 'stairs') selectStairs(target.id);
-  if (target.type === 'fence') selectFence(target.id);
-  if (target.type === 'room') selectRoom(target.id);
-  if (target.type === 'fence_gate') selectFenceGate(target.id);
-}
 
 function showFloorContextMenu(target, clientX, clientY) {
   if (!target?.id) return;
@@ -1996,6 +1528,19 @@ function findMetadataFromNode(node, key) {
   return null;
 }
 
+function findRoofComponentIdFromNode(node) {
+  let current = node;
+  while (current) {
+    if (current.name) {
+      if (current.name.includes('roof_side')) return 'side';
+      if (current.name.includes('roof_bottom')) return 'bottom';
+      if (current.name.includes('roof_top')) return 'top';
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
 function findOpeningIdFromNode(node) {
   return findMetadataFromNode(node, 'blueprintOpeningId');
 }
@@ -2080,257 +1625,20 @@ function get2DWallSideFromPoint(wall, point) {
 }
 
 function executeDesignTool(target) {
-  if (!activeMaterialDescriptor && (designMode === 'brush' || designMode === 'bucket')) {
-    showToast('请先在材质库中选择一个材质');
+  const isArrayMode = !!(editor.activeMaterialArray && editor.activeMaterialArray.length > 0);
+  if (!editor.activeMaterialDescriptor && !isArrayMode && (designMode === 'brush' || designMode === 'bucket')) {
+    showToast('请先选择一个材质或吸取材质');
     return;
   }
 
   // 1. 吸色器 (picker)
   if (designMode === 'picker') {
-    let pickedMaterial = null;
-    let pickedColor = null;
-
-    if (target.type === 'room') {
-      const room = testMap.getRoom(target.id);
-      if (room) {
-        pickedMaterial = room.material;
-        pickedColor = room.color;
-      }
-    } else if (target.type === 'wall') {
-      const wall = testMap.getWall(target.id);
-      if (wall) {
-        const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
-        if (side === 'front') {
-          pickedMaterial = wall.materialFront || wall.material;
-          pickedColor = wall.colorFront || wall.color;
-        } else if (side === 'back') {
-          pickedMaterial = wall.materialBack || wall.material;
-          pickedColor = wall.colorBack || wall.color;
-        } else {
-          pickedMaterial = wall.material;
-          pickedColor = wall.color;
-        }
-      }
-    } else if (target.type === 'item') {
-      const item = testMap.getItem(target.id);
-      if (item) {
-        // 暂存该家具的全部材质和颜色！用于对同类家具的全量材质复制
-        pickerCopiedItemType = item.type;
-        pickerCopiedItemMaterials = JSON.parse(JSON.stringify(item.materials || {}));
-        pickerCopiedItemColors = JSON.parse(JSON.stringify(item.colors || {}));
-
-        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
-        if (!componentId) {
-          const definition = testMap.getFurnitureDefinition?.(item.type);
-          componentId = definition?.components?.[0]?.id;
-        }
-        if (componentId) {
-          pickedMaterial = item.materials?.[componentId];
-          pickedColor = item.colors?.[componentId];
-          if (!pickedMaterial && !pickedColor) {
-            const definition = testMap.getFurnitureDefinition?.(item.type);
-            const component = definition?.components?.find(c => c.id === componentId);
-            pickedColor = component?.defaultColor || '#ffffff';
-          }
-        } else {
-          // 多材质的话就吸取第一个材质
-          if (item.materials && Object.keys(item.materials).length > 0) {
-            pickedMaterial = Object.values(item.materials)[0];
-          } else if (item.colors && Object.keys(item.colors).length > 0) {
-            pickedColor = Object.values(item.colors)[0];
-          }
-        }
-      }
-    } else if (target.type === 'fence') {
-      const fence = testMap.getFence(target.id);
-      if (fence) {
-        pickedMaterial = fence.material;
-        pickedColor = fence.color;
-      }
-    } else if (target.type === 'fence_gate') {
-      const gate = testMap.getFenceGate(target.id);
-      if (gate) {
-        pickedMaterial = gate.material;
-        pickedColor = gate.color;
-      }
-    } else if (target.type === 'opening') {
-      const opening = testMap.getOpening(target.id);
-      if (opening) {
-        pickedMaterial = opening.material;
-        pickedColor = opening.color;
-      }
-    } else if (target.type === 'roof') {
-      const roof = testMap.getRoof(target.id);
-      if (roof) {
-        pickedMaterial = roof.material;
-        pickedColor = roof.color;
-      }
-    } else if (target.type === 'stairs') {
-      const stairs = testMap.getStairs(target.id);
-      if (stairs) {
-        pickedMaterial = stairs.material;
-        pickedColor = stairs.color;
-      }
-    }
-
-    if (pickedMaterial || pickedColor) {
-      let descriptor = pickedMaterial || pickedColor;
-      if (typeof descriptor === 'string') {
-        const found = materialLibrary.find(m => m.color === descriptor);
-        if (found) {
-          activeMaterialDescriptor = found;
-        } else {
-          activeMaterialDescriptor = {
-            id: 'paint-' + descriptor.replace('#', ''),
-            name: `吸取颜色 (${descriptor})`,
-            category: 'paint',
-            kind: 'paint',
-            color: descriptor
-          };
-        }
-      } else {
-        activeMaterialDescriptor = descriptor;
-      }
-      showToast(`已吸取材质: ${activeMaterialDescriptor.name || '自定义材质'}`);
-      renderMaterialLibrary();
-      updateEditor();
-      setDesignMode('brush', false);
-    } else {
-      showToast('未找到该物体的材质');
-      setDesignMode('select');
-    }
+    extractMaterial(target, true);
   }
 
-  // 2. 材质刷 (brush)
+  // 2. 粉刷 (brush)
   else if (designMode === 'brush') {
-    if (target.type === 'item' && pickerCopiedItemType && testMap.getItem(target.id)?.type === pickerCopiedItemType) {
-      if (isTargetLocked({ type: 'item', id: target.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      const targetItem = testMap.getItem(target.id);
-      targetItem.materials = JSON.parse(JSON.stringify(pickerCopiedItemMaterials || {}));
-      targetItem.colors = JSON.parse(JSON.stringify(pickerCopiedItemColors || {}));
-      testMap.updateItem(target.id, { materials: targetItem.materials, colors: targetItem.colors });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    } else {
-      if (target.type === 'room') {
-        if (isTargetLocked({ type: 'room', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        testMap.setRoomFloorMaterial(target.id, activeMaterialDescriptor);
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'wall') {
-        const wall = testMap.getWall(target.id);
-        if (wall && wall.locked) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
-        const color = activeMaterialDescriptor.color || '#f9fbff';
-        if (side === 'front') {
-          testMap.updateWall(target.id, { materialFront: activeMaterialDescriptor, colorFront: color });
-        } else if (side === 'back') {
-          testMap.updateWall(target.id, { materialBack: activeMaterialDescriptor, colorBack: color });
-        } else {
-          testMap.updateWall(target.id, { material: activeMaterialDescriptor, color });
-        }
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'item') {
-        if (isTargetLocked({ type: 'item', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        const item = testMap.getItem(target.id);
-        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
-        if (!componentId && item) {
-          const definition = testMap.getFurnitureDefinition?.(item.type);
-          componentId = definition?.components?.[0]?.id;
-        }
-        if (componentId) {
-          pushHistory();
-          const oldId = selectedItemId;
-          selectedItemId = target.id;
-          applyMaterialToItemComponent(componentId, activeMaterialDescriptor);
-          selectedItemId = oldId;
-        } else {
-          showToast('无法确定点击的家具组件');
-        }
-      } else if (target.type === 'fence') {
-        if (isTargetLocked({ type: 'fence', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const fence = testMap.getFence(target.id);
-        const defaultColor = (fence && fence.subtype === 'concrete') ? '#f9fbff' : '#8d6e63';
-        const color = activeMaterialDescriptor.color || defaultColor;
-        testMap.updateFence(target.id, { material: activeMaterialDescriptor, color: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'fence_gate') {
-        if (isTargetLocked({ type: 'fence_gate', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const color = activeMaterialDescriptor.color || '#8d6e63';
-        testMap.updateFenceGate(target.id, { material: activeMaterialDescriptor, color: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'opening') {
-        if (isTargetLocked({ type: 'opening', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const color = activeMaterialDescriptor.color || '#ffffff';
-        testMap.updateOpening(target.id, { material: activeMaterialDescriptor, color: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'roof') {
-        if (isTargetLocked({ type: 'roof', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const color = activeMaterialDescriptor.color || '#5d4037';
-        testMap.updateRoof(target.id, { material: activeMaterialDescriptor, color: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      } else if (target.type === 'stairs') {
-        if (isTargetLocked({ type: 'stairs', id: target.id })) {
-          showToast('该物体已锁定');
-          return;
-        }
-        pushHistory();
-        const color = activeMaterialDescriptor.color || '#d7ccc8';
-        testMap.updateStairs(target.id, { material: activeMaterialDescriptor, color: color });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    }
-
-    // 重置右键取色的暂存状态
-    pickerCopiedItemType = null;
-    pickerCopiedItemMaterials = null;
-    pickerCopiedItemColors = null;
-
+    applyMaterial(target, 'brush');
     if (!designModeBrushLocked) {
       setDesignMode('select');
     }
@@ -2338,135 +1646,7 @@ function executeDesignTool(target) {
 
   // 3. 油漆桶 (bucket)
   else if (designMode === 'bucket') {
-    if (target.type === 'room') {
-      if (isTargetLocked({ type: 'room', id: target.id })) {
-        showToast('该物体已锁定');
-        return;
-      }
-      pushHistory();
-      testMap.setRoomFloorMaterial(target.id, activeMaterialDescriptor);
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    } else if (target.type === 'wall') {
-      const wall = testMap.getWall(target.id);
-      if (!wall) return;
-      const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
-      if (!side) return;
-
-      const [x1, z1] = wall.from;
-      const [x2, z2] = wall.to;
-      const dx = x2 - x1;
-      const dz = z2 - z1;
-      const length = Math.sqrt(dx * dx + dz * dz);
-      if (length < 0.01) return;
-
-      const ux = dx / length;
-      const uz = dz / length;
-      const nx = -uz;
-      const nz = ux;
-
-      const offsetMultiplier = side === 'front' ? 0.15 : -0.15;
-      const checkX = (x1 + x2) / 2 + offsetMultiplier * nx;
-      const checkZ = (z1 + z2) / 2 + offsetMultiplier * nz;
-
-      const room = testMap.getRoomAt(checkX, checkZ);
-      if (!room) {
-        showToast('油漆桶无法在室外墙面应用，请点击室内墙面');
-        return;
-      }
-
-      pushHistory();
-      const roomWallIds = Object.values(room.wallIds || {});
-      roomWallIds.forEach(wallId => {
-        const w = testMap.getWall(wallId);
-        if (!w || w.locked) return;
-
-        const [wx1, wz1] = w.from;
-        const [wx2, wz2] = w.to;
-        const wdx = wx2 - wx1;
-        const wdz = wz2 - wz1;
-        const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
-        if (wlen < 0.01) return;
-
-        const wux = wdx / wlen;
-        const wuz = wdz / wlen;
-        const wnx = -wuz;
-        const wnz = wux;
-
-        const fX = (wx1 + wx2) / 2 + 0.1 * wnx;
-        const fZ = (wz1 + wz2) / 2 + 0.1 * wnz;
-        const bX = (wx1 + wx2) / 2 - 0.1 * wnx;
-        const bZ = (wz1 + wz2) / 2 - 0.1 * wnz;
-
-        const roomF = testMap.getRoomAt(fX, fZ);
-        const roomB = testMap.getRoomAt(bX, bZ);
-
-        const color = activeMaterialDescriptor.color || '#f9fbff';
-        if (roomF && roomF.id === room.id) {
-          testMap.updateWall(w.id, { materialFront: activeMaterialDescriptor, colorFront: color });
-        } else if (roomB && roomB.id === room.id) {
-          testMap.updateWall(w.id, { materialBack: activeMaterialDescriptor, colorBack: color });
-        } else {
-          testMap.updateWall(w.id, { material: activeMaterialDescriptor, color });
-        }
-      });
-      refreshShadows();
-      updateEditor();
-      renderPlan();
-    } else if (target.type === 'item') {
-      const item = testMap.getItem(target.id);
-      if (item) {
-        pushHistory();
-        if (testMap.refreshItemRoomLinks) {
-          testMap.refreshItemRoomLinks();
-        }
-        const updatedItem = testMap.getItem(target.id);
-        const items = currentItems();
-        items.forEach(it => {
-          if (it.type === updatedItem.type && it.roomId === updatedItem.roomId && !isTargetLocked({ type: 'item', id: it.id })) {
-            it.materials = JSON.parse(JSON.stringify(updatedItem.materials || {}));
-            it.colors = JSON.parse(JSON.stringify(updatedItem.colors || {}));
-            testMap.updateItem(it.id, { materials: it.materials, colors: it.colors });
-          }
-        });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    } else if (target.type === 'fence') {
-      const fence = testMap.getFence(target.id);
-      if (fence) {
-        pushHistory();
-        const fences = testMap.floorplan.fences || [];
-        fences.forEach(f => {
-          if (f.floorId === fence.floorId && f.subtype === fence.subtype && !isTargetLocked({ type: 'fence', id: f.id })) {
-            testMap.updateFence(f.id, { material: fence.material, color: fence.color });
-          }
-        });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    } else if (target.type === 'fence_gate') {
-      const gate = testMap.getFenceGate(target.id);
-      if (gate) {
-        pushHistory();
-        const gates = testMap.floorplan.fenceGates || [];
-        gates.forEach(g => {
-          if (g.floorId === gate.floorId && g.subtype === gate.subtype && !isTargetLocked({ type: 'fence_gate', id: g.id })) {
-            testMap.updateFenceGate(g.id, {
-              frameMaterial: gate.frameMaterial,
-              panelMaterial: gate.panelMaterial,
-              color: gate.color
-            });
-          }
-        });
-        refreshShadows();
-        updateEditor();
-        renderPlan();
-      }
-    }
+    applyMaterial(target, 'bucket');
     setDesignMode('select');
   }
 
@@ -2531,7 +1711,14 @@ function executeDesignTool(target) {
         return;
       }
       pushHistory();
-      testMap.updateFence(target.id, { material: '#8d6e63', color: '#8d6e63' });
+      testMap.updateFence(target.id, {
+        material: '#8d6e63',
+        color: '#8d6e63',
+        frameMaterial: null,
+        frameColor: null,
+        panelMaterial: null,
+        panelColor: null
+      });
       refreshShadows();
       updateEditor();
       renderPlan();
@@ -2541,7 +1728,14 @@ function executeDesignTool(target) {
         return;
       }
       pushHistory();
-      testMap.updateFenceGate(target.id, { material: '#8d6e63', color: '#8d6e63' });
+      testMap.updateFenceGate(target.id, {
+        material: null,
+        color: null,
+        frameMaterial: null,
+        frameColor: null,
+        panelMaterial: null,
+        panelColor: null
+      });
       refreshShadows();
       updateEditor();
       renderPlan();
@@ -3030,11 +2224,6 @@ function getCanvasPickFromEvent(event) {
   return pickNearest3DTarget(event.clientX - rect.left, event.clientY - rect.top);
 }
 
-function get3DContextTarget(event) {
-  const target = getCanvasPickFromEvent(event);
-  if (!target || target.type === 'edit-handle') return null;
-  return isAllowedContextTarget(target) ? { type: target.type, id: target.id } : null;
-}
 
 // 阻止鼠标中键(1)在 canvas 上触发浏览器的自动滚动行为，确保中键平移流畅
 canvas.addEventListener('mousedown', (event) => {
@@ -3053,7 +2242,7 @@ canvas.addEventListener('contextmenu', (event) => {
     switchToSelectMode();
     return;
   }
-  const target = get3DContextTarget(event);
+  const target = get3DTarget(event);
   if (!target) return;
   event.preventDefault();
   event.stopPropagation();
@@ -3063,7 +2252,7 @@ canvas.addEventListener('contextmenu', (event) => {
 canvas.addEventListener('pointerdown', (event) => {
   if (mode === 'view') return;
   if (event.pointerType === 'mouse' || event.button === 2) return;
-  const target = get3DContextTarget(event);
+  const target = get3DTarget(event);
   if (!target) return;
   const startX = event.clientX;
   const startY = event.clientY;
@@ -3091,10 +2280,20 @@ canvas.addEventListener('pointermove', (event) => {
 
 canvas.addEventListener('pointerup', cancelLongPress);
 canvas.addEventListener('pointercancel', handlePointerCancel);
+canvas.addEventListener('pointerleave', () => {
+  if (designMode === 'picker') {
+    updateDesignCursor(null);
+  }
+});
 scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
+    if (designMode === 'picker') {
+      const target = pickNearest3DTarget();
+      const hoverColor = getPickedColorFromTarget(target);
+      updateDesignCursor(hoverColor);
+    }
     if (mode === 'delete-wall') {
       const target = pickNearest3DTarget();
       const hoverErasable = target && isTargetOnCurrentFloor(target) && (target.type === 'wall' || target.type === 'fence' || target.type === 'fence_gate');
@@ -3538,6 +2737,7 @@ function selectTarget(type, id) {
     set3DEditTarget('fence', id);
   }
 
+  syncLocalToStore();
   updateEditor();
   renderPlan();
 }
@@ -3590,35 +2790,6 @@ function deleteSelectedFenceGate() {
   renderPlan();
 }
 
-function applyMaterialToFenceGateFrame(material) {
-  if (!selectedFenceGateId || !material) return;
-  if (isTargetLocked({ type: 'fence_gate', id: selectedFenceGateId })) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const color = typeof material === 'string' ? material : (material.color || '#ffffff');
-  const matVal = typeof material === 'string' ? material : (material.url || material.src || color);
-  testMap.updateFenceGate(selectedFenceGateId, { frameMaterial: matVal });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToFenceGatePanel(material) {
-  if (!selectedFenceGateId || !material) return;
-  if (isTargetLocked({ type: 'fence_gate', id: selectedFenceGateId })) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const color = typeof material === 'string' ? material : (material.color || '#ffffff');
-  const matVal = typeof material === 'string' ? material : (material.url || material.src || color);
-  testMap.updateFenceGate(selectedFenceGateId, { panelMaterial: matVal });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
 
 const findNearestSeat = (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type));
 
@@ -4052,315 +3223,14 @@ function initMaterialControls() {
   });
   materialCategorySelect.value = 'paint';
   activeMaterialDescriptor = materialLibrary[0] || null;
+  editor.activeMaterialDescriptor = materialLibrary[0] || null;
+  editor.activeMaterialArray = null;
   renderMaterialLibrary();
 }
 
-function renderMaterialLibrary() {
-  updateDesignCursor();
-  const category = materialCategorySelect.value;
-  const materials = materialLibrary.filter((material) => material.category === category);
-  materialLibraryPanel.innerHTML = '';
 
-  const header = document.createElement('div');
-  header.className = 'material-library-header';
-  const activeName = activeMaterialDescriptor?.name || '未选择材质';
-  header.innerHTML = `<strong>${activeName}</strong>`;
-  // const applyFloorButton = document.createElement('button');
-  // applyFloorButton.type = 'button';
-  // applyFloorButton.textContent = '应用到地板';
-  // applyFloorButton.addEventListener('click', () => applyMaterialToFloor(activeMaterialDescriptor));
-  // header.appendChild(applyFloorButton);
-  materialLibraryPanel.appendChild(header);
 
-  // 如果是发光材质分类，添加自定义取色器卡片
-  if (category === 'emissive') {
-    const customEmissiveContainer = document.createElement('div');
-    customEmissiveContainer.className = 'custom-emissive-container';
-    customEmissiveContainer.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
 
-    const textWrapper = document.createElement('div');
-    textWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
-
-    const label = document.createElement('span');
-    label.textContent = '自定义发光颜色';
-    label.style.cssText = 'font-size: 13px; font-weight: 500; color: #172033;';
-
-    textWrapper.appendChild(label);
-
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.id = 'emissive-color-picker';
-
-    const customEmissive = materialLibrary.find(m => m.id && m.id.startsWith('emissive-custom'));
-    picker.value = customEmissive ? customEmissive.color : '#ffffff';
-    picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
-
-    const handleColorChange = (color) => {
-      const customDesc = {
-        id: `emissive-custom-${color.replace('#', '')}`,
-        name: `自定义发光 (${color})`,
-        category: 'emissive',
-        kind: 'emissive',
-        color: color
-      };
-
-      const existingIdx = materialLibrary.findIndex(m => m.id && m.id.startsWith('emissive-custom'));
-      if (existingIdx >= 0) {
-        materialLibrary[existingIdx] = customDesc;
-      } else {
-        materialLibrary.push(customDesc);
-      }
-
-      activeMaterialDescriptor = customDesc;
-      renderMaterialLibrary();
-      updateEditor();
-    };
-
-    picker.addEventListener('change', (e) => {
-      handleColorChange(e.target.value);
-    });
-
-    customEmissiveContainer.appendChild(textWrapper);
-    customEmissiveContainer.appendChild(picker);
-    materialLibraryPanel.appendChild(customEmissiveContainer);
-  }
-
-  const grid = document.createElement('div');
-  grid.className = 'material-grid';
-
-  // 仅在非发光分类下，动态创建并插入第一个“+”号上传材质方格
-  if (category !== 'emissive') {
-    const uploadButton = document.createElement('button');
-    uploadButton.type = 'button';
-    uploadButton.className = 'material-swatch upload-swatch';
-    uploadButton.title = '上传自定义材质';
-    uploadButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
-    uploadButton.addEventListener('click', () => {
-      document.getElementById('material-upload').click();
-    });
-    grid.appendChild(uploadButton);
-  }
-
-  materials.forEach((material) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `material-swatch ${activeMaterialDescriptor?.id === material.id ? 'active' : ''}`;
-    button.title = material.name;
-    if (material.kind === 'texture' && material.src) {
-      button.style.backgroundImage = `url(${material.src})`;
-    } else if (material.kind === 'mirror') {
-      // 镜面：底色 + 对角线光泽渐变
-      const c = material.color || '#e8eef4';
-      button.style.background = `linear-gradient(135deg, ${c} 0%, #ffffff 45%, ${c} 55%, #ffffff 100%)`;
-    } else if (material.kind === 'glass') {
-      // 玻璃：棋盘格透明底 + 半透明颜色覆盖
-      const c = material.color || '#e8f4ff';
-      button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
-    } else if (material.kind === 'emissive') {
-      // 发光：颜色本身 + 发光外阴影
-      const c = material.color || '#ffffff';
-      button.style.backgroundColor = c;
-      button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
-      button.style.border = '1px solid rgba(255,255,255,0.4)';
-    } else {
-      button.style.backgroundColor = material.color || '#ffffff';
-    }
-    button.addEventListener('click', () => {
-      activeMaterialDescriptor = material;
-      renderMaterialLibrary();
-      updateEditor();
-    });
-    grid.appendChild(button);
-  });
-  materialLibraryPanel.appendChild(grid);
-
-  // 当选中了自定义材质时，在列表下方渲染编辑与删除面板
-  const isCustomMaterial = activeMaterialDescriptor && activeMaterialDescriptor.id && String(activeMaterialDescriptor.id).startsWith('custom_');
-  if (isCustomMaterial && category === 'custom') {
-    // 1. 材质名称输入框 (复用全局 label.field 样式)
-    const fieldLabel = document.createElement('label');
-    fieldLabel.className = 'field';
-    fieldLabel.style.marginTop = '12px';
-
-    const span = document.createElement('span');
-    span.textContent = '材质名称';
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = activeMaterialDescriptor.name || '';
-
-    const handleSaveName = () => {
-      const newName = input.value.trim();
-      if (!newName) return;
-      
-      // 更新当前选中的材质名
-      activeMaterialDescriptor.name = newName;
-      
-      // 更新库中对应项的 name
-      const foundInLib = materialLibrary.find(m => m.id === activeMaterialDescriptor.id);
-      if (foundInLib) {
-        foundInLib.name = newName;
-      }
-      
-      pushHistory();
-      renderMaterialLibrary();
-      updateEditor();
-    };
-
-    // 监听失焦
-    input.addEventListener('change', handleSaveName);
-    
-    // 监听回车键
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        input.blur(); // 触发 blur，继而触发 change 事件
-      }
-    });
-
-    fieldLabel.appendChild(span);
-    fieldLabel.appendChild(input);
-
-    // 2. 删除按钮 (复用全局 button.danger 样式)
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'danger';
-    deleteBtn.textContent = '删除材质';
-    deleteBtn.style.width = '100%';
-    deleteBtn.addEventListener('click', async () => {
-      const confirmDelete = await showCustomConfirm('删除材质', `确定要删除自定义材质「${activeMaterialDescriptor.name}」吗？`);
-      if (confirmDelete) {
-        // 从 localStorage 移除
-        removeCustomMaterialFromLocalStorage(activeMaterialDescriptor.id);
-        // 从 materialLibrary 移除
-        materialLibrary = materialLibrary.filter(m => m.id !== activeMaterialDescriptor.id);
-        
-        // 查找自定义分类下的其它材质
-        const remainingCustom = materialLibrary.filter(m => m.category === 'custom');
-        activeMaterialDescriptor = remainingCustom[0] || null;
-        
-        pushHistory();
-        renderMaterialLibrary();
-        updateEditor();
-      }
-    });
-
-    materialLibraryPanel.appendChild(fieldLabel);
-    materialLibraryPanel.appendChild(deleteBtn);
-  }
-}
-
-function applyMaterialToRoomFloor(material) {
-  if (!selectedRoomId || !material) return;
-  if (isTargetLocked({ type: 'room', id: selectedRoomId })) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  testMap.setRoomFloorMaterial(selectedRoomId, material);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToFloor(material) {
-  if (!material) return;
-  pushHistory();
-  testMap.setFloorMaterial(material);
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToWall(material) {
-  if (!selectedWallId || !material) return;
-  const wall = testMap.getWall(selectedWallId);
-  if (wall && wall.locked) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const color = material.color || '#f9fbff';
-  testMap.updateWall(selectedWallId, { material, color });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToWallFront(material) {
-  if (!selectedWallId || !material) return;
-  const wall = testMap.getWall(selectedWallId);
-  if (wall && wall.locked) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const colorFront = material.color || '#f9fbff';
-  testMap.updateWall(selectedWallId, { materialFront: material, colorFront });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToWallBack(material) {
-  if (!selectedWallId || !material) return;
-  const wall = testMap.getWall(selectedWallId);
-  if (wall && wall.locked) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const colorBack = material.color || '#f9fbff';
-  testMap.updateWall(selectedWallId, { materialBack: material, colorBack });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToItemComponent(componentId, material) {
-  if (!selectedItemId || !material) return;
-  if (isTargetLocked({ type: 'item', id: selectedItemId })) {
-    showToast('该物体已锁定');
-    return;
-  }
-  entityManager.updateItemComponentMaterial(selectedItemId, componentId, material);
-}
-
-function applyMaterialToStructure(material, part = 'top') {
-  const selected = getSelectedStructure();
-  if (!selected?.value || !material) return;
-  if (selected.value.locked) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  if (part === 'top') {
-    updateStructure(selected.type, selected.id, { material, color: material.color || selected.value.color });
-  } else if (part === 'side') {
-    updateStructure(selected.type, selected.id, { sideMaterial: material, sideColor: material.color || selected.value.sideColor });
-  } else if (part === 'bottom') {
-    updateStructure(selected.type, selected.id, { bottomMaterial: material, bottomColor: material.color || selected.value.bottomColor });
-  }
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
-
-function applyMaterialToFence(material) {
-  if (!selectedFenceId || !material) return;
-  if (isTargetLocked({ type: 'fence', id: selectedFenceId })) {
-    showToast('该物体已锁定');
-    return;
-  }
-  pushHistory();
-  const fence = testMap.getFence(selectedFenceId);
-  const defaultColor = (fence && fence.subtype === 'concrete') ? '#f9fbff' : '#8d6e63';
-  const color = material.color || defaultColor;
-  testMap.updateFence(selectedFenceId, { material: material.url || material.src || color, color: color });
-  refreshShadows();
-  updateEditor();
-  renderPlan();
-}
 
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -4371,74 +3241,7 @@ function readFileAsDataURL(file) {
   });
 }
 
-function downloadTextFile(content, fileName, type = 'text/plain;charset=utf-8') {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
-function showFurnitureUploadHelp() {
-  const backdrop = document.createElement('div');
-  backdrop.className = 'custom-modal-backdrop';
-  backdrop.innerHTML = `
-    <div class="custom-modal-container furniture-upload-modal" role="dialog" aria-modal="true" aria-labelledby="furniture-upload-modal-title">
-      <div class="custom-modal-header">
-        <h3 id="furniture-upload-modal-title" class="custom-modal-title">\u5982\u4f55\u4e0a\u4f20\u5bb6\u5177</h3>
-      </div>
-      <div class="custom-modal-body furniture-upload-modal-body">
-        <p>\u4e0a\u4f20\u81ea\u5b9a\u4e49 <code>.js</code> \u6216 <code>.mjs</code> \u4ee3\u7801\u6587\u4ef6\uff0c\u5373\u53ef\u5c06\u5bb6\u5177\u6dfb\u52a0\u81f3\u81ea\u5b9a\u4e49\u5217\u8868\u4e2d\u3002</p>
-        <p class="furniture-upload-tip">\u63d0\u793a\uff1a\u811a\u672c\u5c06\u5728\u672c\u5730\u6267\u884c\uff0c\u8bf7\u786e\u4fdd\u4ee3\u7801\u6765\u6e90\u5b89\u5168\u53ef\u9760\u3002</p>
-        <div class="furniture-upload-links">
-          <button id="btn-download-furniture-example" type="button" class="custom-modal-btn btn-secondary btn-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>\u4e0b\u8f7d\u5bb6\u5177\u6a21\u677f
-          </button>
-          <button id="btn-download-furniture-skill" type="button" class="custom-modal-btn btn-secondary btn-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>\u4e0b\u8f7d AI \u63d0\u793a\u8bcd
-          </button>
-        </div>
-      </div>
-      <div class="custom-modal-footer">
-        <button id="btn-close-furniture-upload-help" type="button" class="custom-modal-btn btn-primary">\u77e5\u9053\u4e86</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(backdrop);
-  backdrop.getBoundingClientRect();
-  backdrop.classList.add('active');
-
-  let cleaned = false;
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    backdrop.classList.remove('active');
-    window.removeEventListener('keydown', handleKeyDown);
-    setTimeout(() => backdrop.remove(), 200);
-  };
-  const handleKeyDown = (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      cleanup();
-    }
-  };
-
-  backdrop.querySelector('#btn-download-furniture-example').addEventListener('click', () => {
-    downloadTextFile(furnitureUploadExampleSource, 'custom-furniture-example.js', 'text/javascript;charset=utf-8');
-  });
-  backdrop.querySelector('#btn-download-furniture-skill').addEventListener('click', () => {
-    downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
-  });
-  backdrop.querySelector('#btn-close-furniture-upload-help').addEventListener('click', cleanup);
-  backdrop.addEventListener('click', (event) => {
-    if (event.target === backdrop) cleanup();
-  });
-  window.addEventListener('keydown', handleKeyDown);
-}
 
 function validateUploadedFurniture(definition) {
   if (!definition || typeof definition !== 'object') return 'The factory did not return a furniture definition object.';
@@ -4664,28 +3467,7 @@ function renderFurnitureGrid() {
   });
 }
 
-function saveCustomMaterialToLocalStorage(id, src) {
-  try {
-    const storedStr = localStorage.getItem('custom_material_sources');
-    const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
-    sourcesMap[id] = src;
-    localStorage.setItem('custom_material_sources', JSON.stringify(sourcesMap));
-  } catch (e) {
-    console.error('Failed to save custom material source to localStorage:', e);
-  }
-}
 
-function removeCustomMaterialFromLocalStorage(id) {
-  try {
-    const storedStr = localStorage.getItem('custom_material_sources');
-    if (!storedStr) return;
-    const sourcesMap = JSON.parse(storedStr);
-    delete sourcesMap[id];
-    localStorage.setItem('custom_material_sources', JSON.stringify(sourcesMap));
-  } catch (e) {
-    console.error('Failed to remove custom material source from localStorage:', e);
-  }
-}
 
 function cleanFloorplanMaterials(obj) {
   if (!obj || typeof obj !== 'object') return;
@@ -4755,161 +3537,20 @@ materialUploadInput.addEventListener('change', async (event) => {
   materialLibrary.unshift(descriptor);
   saveCustomMaterialToLocalStorage(descriptor.id, src); // 同步存入本地集中存储
   activeMaterialDescriptor = descriptor;
+  editor.activeMaterialDescriptor = descriptor;
+  editor.activeMaterialArray = null;
   materialUploadInput.value = '';
   renderMaterialLibrary();
   updateEditor();
 });
 
-function get2DPlanScreenshot() {
-  return new Promise((resolve, reject) => {
-    const svgEl = document.getElementById('floorplan');
-    if (!svgEl) {
-      reject(new Error('未找到 floorplan SVG 元素'));
-      return;
-    }
-    
-    const svgClone = svgEl.cloneNode(true);
-    
-    // 提取所有样式表中的样式规则并放入 style 标签中
-    let styleString = '';
-    for (const styleSheet of document.styleSheets) {
-      try {
-        const rules = styleSheet.cssRules || styleSheet.rules;
-        if (rules) {
-          for (const rule of rules) {
-            styleString += rule.cssText;
-          }
-        }
-      } catch (e) {
-        // 忽略跨域的样式表
-      }
-    }
-    
-    const styleEl = document.createElement('style');
-    styleEl.textContent = styleString;
-    svgClone.insertBefore(styleEl, svgClone.firstChild);
-    
-    // 获取实际物理尺寸，避免渲染时Image拉伸异常
-    const rect = svgEl.getBoundingClientRect();
-    const width = rect.width || 720;
-    const height = rect.height || 520;
-    svgClone.setAttribute('width', width);
-    svgClone.setAttribute('height', height);
-    
-    const svgString = new XMLSerializer().serializeToString(svgClone);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
-    
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = 2; // 2倍高分辨率
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      
-      const context = canvas.getContext('2d');
-      if (context) {
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        
-        try {
-          const pngUrl = canvas.toDataURL('image/png');
-          resolve(pngUrl);
-        } catch (e) {
-          reject(e);
-        }
-      } else {
-        reject(new Error('无法创建 2D canvas context'));
-      }
-      URL.revokeObjectURL(blobURL);
-    };
-    
-    image.onerror = (err) => {
-      URL.revokeObjectURL(blobURL);
-      reject(err);
-    };
-    
-    image.src = blobURL;
-  });
-}
 
-function takePhoto() {
-  if (currentView === '3d') {
-    showToast('正在生成 3D 截图...');
-    
-    // 1. 临时隐藏 3D 辅助网格和编辑手柄
-    const originalGridState = viewer3d.show3DGrid;
-    if (originalGridState) {
-      viewer3d.clear3DGrid();
-    }
-    const hiddenNodes = [];
-    editHandleNodes.forEach((node) => {
-      if (node && !node.isDisposed() && node.isEnabled()) {
-        node.setEnabled(false);
-        hiddenNodes.push(node);
-      }
-    });
-
-    // 2. 保证在此帧渲染隐藏后的效果
-    scene.render();
-
-    // 3. 调用 Babylon 截图
-    BABYLON.Tools.CreateScreenshotAsync(engine, camera, { precision: 1 })
-      .then((dataUrl) => {
-        const filename = `screenshot_3d_${Date.now()}.png`;
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showToast('✓ 3D 截图已下载');
-      })
-      .catch((err) => {
-        console.error('3D 截图失败:', err);
-        showToast('⚠ 3D 截图生成失败');
-      })
-      .finally(() => {
-        // 4. 恢复 3D 网格和编辑手柄
-        if (originalGridState) {
-          refresh3DGrid();
-        }
-        hiddenNodes.forEach((node) => {
-          if (node && !node.isDisposed()) {
-            node.setEnabled(true);
-          }
-        });
-      });
-  } else {
-    showToast('正在生成 2D 截图...');
-    get2DPlanScreenshot()
-      .then((dataUrl) => {
-        const filename = `screenshot_2d_${Date.now()}.png`;
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showToast('✓ 2D 截图已下载');
-      })
-      .catch((err) => {
-        console.error('2D 截图失败:', err);
-        showToast('⚠ 2D 截图生成失败');
-      });
-  }
-}
 
 viewToggleButton.addEventListener('click', () => setView(currentView === '2d' ? '3d' : '2d'));
 undoButton.addEventListener('click', undo);
 redoButton.addEventListener('click', redo);
 
-const takePhotoButton = document.getElementById('btn-take-photo');
-if (takePhotoButton) {
-  takePhotoButton.addEventListener('click', takePhoto);
-}
+
 
 document.addEventListener('keydown', (event) => {
   handleHotkeys(event, {
@@ -4938,9 +3579,9 @@ document.addEventListener('keydown', (event) => {
     redo,
     getSelectedTarget,
     toggleTargetLock,
-    copyContextTarget,
-    rotateContextTarget,
-    isAllowedContextTarget,
+    copyTarget,
+    rotateTarget,
+    isAllowedTarget,
     isTargetLocked,
     pushHistory,
     INCHES_PER_UNIT
@@ -4960,25 +3601,68 @@ document.querySelectorAll('.tab').forEach((button) => {
 });
 
 // 初始化设计工具切换事件
+let lastDesignPointerType = '';
+let designPointerResetTimer = null;
+function rememberDesignPointerType(pointerType) {
+  lastDesignPointerType = pointerType;
+  clearTimeout(designPointerResetTimer);
+  designPointerResetTimer = setTimeout(() => {
+    lastDesignPointerType = '';
+  }, 1000);
+}
+
 document.querySelectorAll('.design-mode').forEach((button) => {
-  button.addEventListener('click', () => {
+  button.addEventListener('pointerup', (event) => {
+    rememberDesignPointerType(event.pointerType);
+  });
+
+  // Fallback for older mobile Safari versions without reliable PointerEvent data.
+  button.addEventListener('touchend', () => rememberDesignPointerType('touch'), { passive: true });
+
+  button.addEventListener('click', (event) => {
     const nextMode = button.dataset.designMode;
+    lastDesignPointerType = '';
+    clearTimeout(designPointerResetTimer);
+
+    // 粉刷的特殊处理：单击在 3 个状态间循环切换
+    if (nextMode === 'brush') {
+      if (designMode !== 'brush') {
+        // 状态 1：当前不是粉刷，切入粉刷（单次/未锁定）
+        setDesignMode('brush', false);
+      } else if (!designModeBrushLocked) {
+        // 状态 2：当前是未锁定粉刷，再次点击进入锁定粉刷
+        setDesignMode('brush', true);
+      } else {
+        // 状态 3：当前是锁定粉刷，再次点击取消粉刷（切换到选择模式）
+        setDesignMode('select');
+      }
+      return;
+    }
+
+    // 吸色、油漆桶、橡皮擦等其它设计工具，选中后再次点击可以直接取消，切换成选择模式
+    if (designMode === nextMode && designMode !== 'select') {
+      setDesignMode('select');
+      return;
+    }
+
     setDesignMode(nextMode, false);
   });
 
-  button.addEventListener('dblclick', (e) => {
-    const nextMode = button.dataset.designMode;
-    if (nextMode === 'brush') {
-      e.preventDefault();
-      e.stopPropagation();
-      setDesignMode('brush', true);
-    }
+  button.addEventListener('pointercancel', () => {
+    lastDesignPointerType = '';
+    clearTimeout(designPointerResetTimer);
   });
 });
 
 document.querySelectorAll('.mode').forEach((button) => {
   button.addEventListener('click', () => {
-    mode = button.dataset.mode;
+    const clickedMode = button.dataset.mode;
+    // 设计工具（如画墙、删墙、开洞等）选中后再次点击可以取消（切换成选择模式）
+    if (mode === clickedMode && mode !== 'select') {
+      switchToSelectMode();
+      return;
+    }
+    mode = clickedMode;
     drawStart = null;
     clearDrawWallPreview();
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
@@ -5039,7 +3723,7 @@ stage.addEventListener('contextmenu', (event) => {
     event.stopPropagation();
     return;
   }
-  const target = currentView === '2d' ? get2DContextTargetFromElement(event.target) : null;
+  const target = currentView === '2d' ? get2DTargetFromElement(event.target) : null;
   if (target) {
     event.stopPropagation();
     showObjectContextMenu(target, event.clientX, event.clientY);
@@ -5048,7 +3732,7 @@ stage.addEventListener('contextmenu', (event) => {
 
 stage.addEventListener('pointerdown', (event) => {
   if (currentView !== '2d' || event.pointerType === 'mouse' || event.button === 2) return;
-  const target = get2DContextTargetFromElement(event.target);
+  const target = get2DTargetFromElement(event.target);
   if (!target) return;
   const startX = event.clientX;
   const startY = event.clientY;
@@ -5271,6 +3955,7 @@ export function setSnapSize(val) {
 }
 
 export {
+  designMode,
   selectedTarget,
   selectTarget,
   TARGET_TYPES,
@@ -5318,14 +4003,8 @@ export {
   updateSelectedFenceColor,
   updateSelectedFenceYOffset,
   
-  applyMaterialToRoomFloor,
-  applyMaterialToWallFront,
-  applyMaterialToWallBack,
-  applyMaterialToStructure,
   applyMaterialToItemComponent,
-  applyMaterialToFence,
-  applyMaterialToFenceGateFrame,
-  applyMaterialToFenceGatePanel,
+  updateComponentMaterial,
   
   isTargetLocked,
   showToast,
@@ -5336,7 +4015,7 @@ export {
   findNearestSeat,
   isSymmetricShape,
   syncRotationInputs,
-  setContextTargetLocked,
+  setTargetLocked,
   clearSelection,
   revealRightPanelIfNeeded,
   

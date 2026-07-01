@@ -25,7 +25,7 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
 
   if (opening.glassHidden) return;
 
-  createOpeningProfileMesh(registry, `win_glass_${opening.id}`, opening, parent, {
+  const glassMesh = createOpeningProfileMesh(registry, `win_glass_${opening.id}`, opening, parent, {
     width,
     height,
     depth: 0.012,
@@ -34,4 +34,5 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
     material: glassMat,
     shadowCaster: false
   });
+  glassMesh.metadata = { ...glassMesh.metadata, blueprintOpeningComponentId: 'glass' };
 }

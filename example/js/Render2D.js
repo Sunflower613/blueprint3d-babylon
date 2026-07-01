@@ -1,9 +1,12 @@
 import { getRoomVertices } from '../../src/index.js';
 
-let ctx = null;
+import { createStoreProxy } from '../store/proxyHelper.js';
+
+let rawCtx = null;
+const ctx = createStoreProxy(() => rawCtx);
 
 export function initRender2D(context) {
-  ctx = context;
+  rawCtx = context;
 }
 
 export function worldToSvg(x, z) {

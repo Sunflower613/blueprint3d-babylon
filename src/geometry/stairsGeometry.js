@@ -511,4 +511,15 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
       });
     }
   }
+
+  // 遍历所有子网格，并为它们附加上组件元数据以便涂刷材质时区分踏面板和侧边基座
+  group.getChildMeshes().forEach(mesh => {
+    const name = mesh.name.toLowerCase();
+    if (name.includes('tread') || name.includes('stairs_step_sp_') || name.includes('stairs_step_fl_')) {
+      mesh.metadata = { ...mesh.metadata, blueprintStairsComponentId: 'top' };
+    } else {
+      mesh.metadata = { ...mesh.metadata, blueprintStairsComponentId: 'side' };
+    }
+    mesh.isPickable = true;
+  });
 }

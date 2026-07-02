@@ -110,13 +110,23 @@ const view = { width: 720, height: 520, pad: 42, minX: -6.4, maxX: 6.8, minZ: -9
 // groundPlane 已移至 Viewer3D
 
 const fallbackFurnitureImagePath = '../src/furniture/image/custom_cube.png';
+const transparentGIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
 const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
   entries.forEach(async (entry) => {
     if (!entry.isIntersecting) return;
     const img = entry.target;
     furnitureThumbnailObserver.unobserve(img);
     const loader = furnitureImageLoaders[img.dataset.thumbnailPath] || furnitureImageLoaders[fallbackFurnitureImagePath];
-    if (loader) img.src = await loader();
+    if (loader) {
+      try {
+        img.src = await loader();
+      } catch (e) {
+        img.dispatchEvent(new Event('error'));
+      }
+    } else {
+      img.dispatchEvent(new Event('error'));
+    }
   });
 }, { rootMargin: '160px' });
 
@@ -408,52 +418,63 @@ let selectedTarget = { type: null, id: null };
 
 import { ui, selection, editor } from './store/index.js';
 
+// 定义声明式同步关系配置表，解耦硬编码赋值
+const stateSyncMap = [
+  [() => mode, v => mode = v, ui, 'mode'],
+  [() => currentView, v => currentView = v, ui, 'currentView'],
+  [() => designMode, v => designMode = v, ui, 'designMode'],
+  [() => floorPanelCollapsed, v => floorPanelCollapsed = v, ui, 'floorPanelCollapsed'],
+  [() => contextMenuElement, v => contextMenuElement = v, ui, 'contextMenuElement'],
+
+  [() => selectedTarget, v => selectedTarget = v, selection, 'selectedTarget'],
+  [() => selectedRoomId, v => selectedRoomId = v, selection, 'selectedRoomId'],
+  [() => selectedWallId, v => selectedWallId = v, selection, 'selectedWallId'],
+  [() => selectedItemId, v => selectedItemId = v, selection, 'selectedItemId'],
+  [() => selectedOpeningId, v => selectedOpeningId = v, selection, 'selectedOpeningId'],
+  [() => selectedRoofId, v => selectedRoofId = v, selection, 'selectedRoofId'],
+  [() => selectedStairsId, v => selectedStairsId = v, selection, 'selectedStairsId'],
+  [() => selectedFenceId, v => selectedFenceId = v, selection, 'selectedFenceId'],
+  [() => selectedFenceGateId, v => selectedFenceGateId = v, selection, 'selectedFenceGateId'],
+
+  [() => drawStart, v => drawStart = v, editor, 'drawStart'],
+  [() => drag3DState, v => drag3DState = v, editor, 'drag3DState'],
+  [() => drawWallPreviewCylinder, v => drawWallPreviewCylinder = v, editor, 'drawWallPreviewCylinder'],
+  [() => drawWallPreviewStartCylinder, v => drawWallPreviewStartCylinder = v, editor, 'drawWallPreviewStartCylinder'],
+  [() => drawWallPreviewWall, v => drawWallPreviewWall = v, editor, 'drawWallPreviewWall'],
+  [() => roofResizeState, v => roofResizeState = v, editor, 'roofResizeState'],
+  [() => stairsRailingPreview2DGroup, v => stairsRailingPreview2DGroup = v, editor, 'stairsRailingPreview2DGroup'],
+  [() => stairsRailingPreview3DGroup, v => stairsRailingPreview3DGroup = v, editor, 'stairsRailingPreview3DGroup'],
+  [() => currentPreviewStairsId, v => currentPreviewStairsId = v, editor, 'currentPreviewStairsId'],
+  [() => floorEdgeRailingPreview2DGroup, v => floorEdgeRailingPreview2DGroup = v, editor, 'floorEdgeRailingPreview2DGroup'],
+  [() => floorEdgeRailingPreview3DGroup, v => floorEdgeRailingPreview3DGroup = v, editor, 'floorEdgeRailingPreview3DGroup'],
+  [() => currentPreviewFloorEdgeIndex, v => currentPreviewFloorEdgeIndex = v, editor, 'currentPreviewFloorEdgeIndex'],
+  [() => longPressState, v => longPressState = v, editor, 'longPressState'],
+  [() => snapEnabled, v => snapEnabled = v, editor, 'snapEnabled'],
+  [() => active3DEditTarget, v => active3DEditTarget = v, editor, 'active3DEditTarget'],
+  [() => snapSize, v => snapSize = v, editor, 'snapSize']
+];
+
 function syncLocalToStore() {
-  ui.mode = mode;
-  ui.currentView = currentView;
-  ui.designMode = designMode;
-  ui.floorPanelCollapsed = floorPanelCollapsed;
-  ui.contextMenuElement = contextMenuElement;
+  // 1. 将 app.js 的最新局部变量值自动流向对应的 Store 属性
+  for (const [getLocal, setLocal, store, key] of stateSyncMap) {
+    store[key] = getLocal();
+  }
 
-  selection.selectedTarget = selectedTarget;
-  selection.selectedRoomId = selectedRoomId;
-  selection.selectedWallId = selectedWallId;
-  selection.selectedItemId = selectedItemId;
-  selection.selectedOpeningId = selectedOpeningId;
-  selection.selectedRoofId = selectedRoofId;
-  selection.selectedStairsId = selectedStairsId;
-  selection.selectedFenceId = selectedFenceId;
-  selection.selectedFenceGateId = selectedFenceGateId;
-
-  editor.drawStart = drawStart;
-  editor.drag3DState = drag3DState;
-  editor.drawWallPreviewCylinder = drawWallPreviewCylinder;
-  editor.drawWallPreviewStartCylinder = drawWallPreviewStartCylinder;
-  editor.drawWallPreviewWall = drawWallPreviewWall;
-  editor.roofResizeState = roofResizeState;
-  editor.stairsRailingPreview2DGroup = stairsRailingPreview2DGroup;
-  editor.stairsRailingPreview3DGroup = stairsRailingPreview3DGroup;
-  editor.currentPreviewStairsId = currentPreviewStairsId;
-  editor.floorEdgeRailingPreview2DGroup = floorEdgeRailingPreview2DGroup;
-  editor.floorEdgeRailingPreview3DGroup = floorEdgeRailingPreview3DGroup;
-  editor.currentPreviewFloorEdgeIndex = currentPreviewFloorEdgeIndex;
-  editor.longPressState = longPressState;
-  editor.snapEnabled = snapEnabled;
-  editor.active3DEditTarget = active3DEditTarget;
-  editor.snapSize = snapSize;
-
+  // 2. 针对材质描述符进行防御性双向对齐
   if (editor.activeMaterialDescriptor) {
     activeMaterialDescriptor = editor.activeMaterialDescriptor;
   } else if (activeMaterialDescriptor) {
     editor.activeMaterialDescriptor = activeMaterialDescriptor;
   }
 
+  // 3. 针对材质库数据进行防御性双向对齐
   if (editor.materialLibrary && editor.materialLibrary.length > 0) {
     materialLibrary = editor.materialLibrary;
   } else {
     editor.materialLibrary = materialLibrary;
   }
 }
+
 
 /** @type {AppState} */
 const appState = {
@@ -792,9 +813,23 @@ appState.store = store;
 // 监听历史栈变化，同步撤销/重做按钮状态
 store.on('historyChanged', updateHistoryButtons);
 
-// 监听自动保存完成，显示 toast 提示
+// 监听手动保存完成，重新渲染反射探针
+store.on('saved', () => {
+  if (window.testMap && typeof window.testMap.requestReflectionProbesUpdate === 'function') {
+    window.testMap.requestReflectionProbesUpdate();
+  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionProbesUpdate === 'function') {
+    testMap.requestReflectionProbesUpdate();
+  }
+});
+
+// 监听自动保存完成，显示 toast 提示并更新反射探针
 store.on('autoSaved', () => {
   showToast('✓ 已自动保存');
+  if (window.testMap && typeof window.testMap.requestReflectionProbesUpdate === 'function') {
+    window.testMap.requestReflectionProbesUpdate();
+  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionProbesUpdate === 'function') {
+    testMap.requestReflectionProbesUpdate();
+  }
 });
 
 // 监听保存失败
@@ -3059,12 +3094,16 @@ function updateSelectedRoom() {
   if (elevation < 0) elevation = 0;
   if (elevation > wallHeight) elevation = wallHeight;
 
+  const rotationDegrees = Number(document.getElementById('room-rotation').value || 0);
+  const rotation = - (rotationDegrees * Math.PI / 180);
+
   pushHistory();
   testMap.updateRoom(selectedRoomId, {
     name: document.getElementById('room-name').value,
     width: Number(document.getElementById('room-width').value),
     depth: Number(document.getElementById('room-depth').value),
-    elevation: elevation
+    elevation: elevation,
+    rotation: rotation
   });
   refreshShadows();
   updateEditor();
@@ -3513,21 +3552,52 @@ function renderFurnitureGrid() {
     img.decoding = 'async';
     img.fetchPriority = 'low';
 
+    // 默认设置为透明像素，并开启占位图与加载中动画
+    img.src = transparentGIF;
+    img.classList.add('placeholder-active', 'loading');
+
+    // 图片加载成功后的处理（隐藏占位背景和 loading 呼吸效果）
+    img.onload = () => {
+      if (img.src !== transparentGIF) {
+        img.classList.remove('placeholder-active', 'loading');
+      }
+    };
+
+    // 真正的图片加载失败处理
+    img.onerror = async () => {
+      img.onerror = null;
+      try {
+        const loader = furnitureImageLoaders[fallbackFurnitureImagePath];
+        if (loader) {
+          const fallbackUrl = await loader();
+          // 为 fallback 设置再次失败时的 onerror
+          img.onerror = () => {
+            img.onerror = null;
+            img.src = transparentGIF;
+            img.classList.add('placeholder-active');
+            img.classList.remove('loading');
+          };
+          img.src = fallbackUrl;
+        } else {
+          throw new Error('No fallback loader');
+        }
+      } catch (e) {
+        img.src = transparentGIF;
+        img.classList.add('placeholder-active');
+        img.classList.remove('loading');
+      }
+    };
+
     if (definition.thumbnail) {
       img.src = definition.thumbnail;
     } else if (furnitureThumbnailObserver) {
       img.dataset.thumbnailPath = imgPath;
       furnitureThumbnailObserver.observe(img);
     } else {
-      loadFurnitureThumbnail(img, imgPath);
-    }
-
-    img.onerror = () => {
-      img.onerror = null;
-      loadFurnitureThumbnail(img, fallbackFurnitureImagePath).catch(() => {
-        img.style.display = 'none';
+      loadFurnitureThumbnail(img, imgPath).catch(() => {
+        img.dispatchEvent(new Event('error'));
       });
-    };
+    }
 
     const span = document.createElement('span');
     span.textContent = definition.name;

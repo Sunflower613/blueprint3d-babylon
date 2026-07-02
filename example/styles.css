@@ -2172,7 +2172,32 @@ input:checked + .slider .lock-icon {
   object-fit: contain !important;
   margin-bottom: 4px !important;
   pointer-events: none !important;
-  transition: transform 0.2s ease !important;
+  transition: transform 0.2s ease, opacity 0.2s ease !important;
+  border-radius: 6px !important;
+}
+
+/* 优雅的家具占位图背景：极简 3D 几何立方体，配合微弱的背景渐变和柔和投影 */
+.furniture-item-btn img.placeholder-active {
+  background-color: #f8fafc !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none'%3E%3Crect width='24' height='24' rx='6' fill='%23f8fafc' stroke='%23e2e8f0' stroke-width='1'/%3E%3Cg stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/%3E%3Cpolyline points='3.27 6.96 12 12.01 20.73 6.96'/%3E%3Cline x1='12' y1='22.08' x2='12' y2='12'/%3E%3C/g%3E%3C/svg%3E") !important;
+  background-size: 32px 32px !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  border: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+/* 呼吸动画：用于懒加载中的微动效 */
+@keyframes pulse-light {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.68;
+  }
+}
+
+.furniture-item-btn img.placeholder-active.loading {
+  animation: pulse-light 1.5s ease-in-out infinite !important;
 }
 
 .furniture-item-btn:hover img {

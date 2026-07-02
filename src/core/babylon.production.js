@@ -33,10 +33,15 @@ export { SpotLight } from '@babylonjs/core/Lights/spotLight.js';
 export { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator.js';
 export { PointerEventTypes } from '@babylonjs/core/Events/pointerEvents.js';
 export { Tools } from '@babylonjs/core/Misc/tools.js';
+export { ReflectionProbe } from '@babylonjs/core/Probes/reflectionProbe.js';
+
 
 // 确保在运行时所需的加载器和着色器被提前打包，防止开发环境（如 Vite 依赖预构建）动态导入时出现 404 错误
 import '@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js';
 import '@babylonjs/core/Shaders/default.vertex.js';
 import '@babylonjs/core/Shaders/default.fragment.js';
 import '@babylonjs/core/Culling/ray.js';
+import '@babylonjs/core/Rendering/outlineRenderer.js';
+import '@babylonjs/core/Shaders/outline.vertex.js';
+import '@babylonjs/core/Shaders/outline.fragment.js';
 

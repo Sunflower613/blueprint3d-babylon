@@ -193,9 +193,40 @@ export function renderRoomInteraction(room) {
 
 export function renderSelectedRoomHandles(room) {
   if (room.locked) return;
-  const a = worldToSvg(room.x - room.width / 2, room.z - room.depth / 2);
-  const b = worldToSvg(room.x + room.width / 2, room.z + room.depth / 2);
-  renderRoomHandles(room, a, b);
+
+  const width = room.width;
+  const depth = room.depth;
+  const rotation = Number(room.rotation) || 0;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  const localOffsets = {
+    north: { lx: 0, lz: -depth / 2 },
+    east: { lx: width / 2, lz: 0 },
+    south: { lx: 0, lz: depth / 2 },
+    west: { lx: -width / 2, lz: 0 }
+  };
+
+  const handles = Object.entries(localOffsets).map(([side, { lx, lz }]) => {
+    const rx = lx * cos - lz * sin;
+    const rz = lx * sin + lz * cos;
+    const svgPoint = worldToSvg(room.x + rx, room.z + rz);
+    return { side, x: svgPoint.x, y: svgPoint.y };
+  });
+
+  handles.forEach((handle) => {
+    const node = createSvgElement('rect', {
+      class: `room-resize-handle handle-${handle.side}`,
+      x: handle.x - 8,
+      y: handle.y - 8,
+      width: 16,
+      height: 16,
+      rx: 4,
+      'data-room-handle': handle.side
+    });
+    node.addEventListener('pointerdown', (event) => ctx.beginRoomResize(event, room.id, handle.side));
+    ctx.svg.appendChild(node);
+  });
 }
 
 export function renderReferenceWall(wall) {

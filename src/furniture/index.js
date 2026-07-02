@@ -230,6 +230,53 @@ const kitchen = [
 ];
 kitchen.forEach(f => f.category = 'kitchen');
 
+/** Appliance power effects shared by appliance and kitchen categories. */
+export const APPLIANCE_POWER_EFFECTS = Object.freeze({
+  washing_machine: { label: '\u6d17\u8863\u673a', glowComponents: ['panel', 'glass'], color: '#4fc3f7', pulse: true },
+  tv: { label: '\u7535\u89c6\u673a', glowComponents: ['screen'], color: '#64b5f6', pulse: true },
+  computer: { label: '\u7535\u8111', glowComponents: ['screen', 'keyboard'], color: '#81d4fa', pulse: true },
+  projector: {
+    label: '\u6295\u5f71\u4eea',
+    glowComponents: ['lens'],
+    color: '#d7eeff',
+    lightSource: { type: 'spot', offset: { x: 2.5, y: 2, z: 5 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 120, angle: Math.PI / 5 }
+  },
+  game_console: { label: '\u6e38\u620f\u4e3b\u673a', glowComponents: ['accent'], color: '#2979ff', pulse: true },
+  smart_speaker: { label: '\u667a\u80fd\u97f3\u7bb1', glowComponents: ['top'], color: '#7c4dff', pulse: true },
+  electric_fan: { label: '\u7535\u98ce\u6247', glowComponents: ['base'], color: '#80cbc4', motion: 'oscillate' },
+  aroma_diffuser: { label: '\u9999\u85b0\u673a', glowComponents: ['body'], color: '#b2ebf2', pulse: true },
+  hair_dryer: { label: '\u5439\u98ce\u673a', glowComponents: ['nozzle'], color: '#ff8a65', motion: 'vibrate' },
+  fridge: { label: '\u51b0\u7bb1', glowComponents: ['display'], color: '#80d8ff', pulse: true },
+  microwave: { label: '\u5fae\u6ce2\u7089', glowComponents: ['window', 'button'], color: '#ffb74d', pulse: true },
+  stove: { label: '\u7076\u5177', glowComponents: ['burners'], color: '#40c4ff', pulse: true },
+  range_hood: { label: '\u62bd\u6cb9\u70df\u673a', glowComponents: ['glass'], color: '#fff59d', pulse: true },
+  coffee_maker: { label: '\u5496\u5561\u673a', glowComponents: ['accent', 'pot'], color: '#ffcc80', pulse: true },
+  toaster: { label: '\u70e4\u9762\u5305\u673a', glowComponents: ['slots'], color: '#ff7043', pulse: true },
+  electric_kettle: { label: '\u7535\u70ed\u6c34\u58f6', glowComponents: ['base'], color: '#ef5350', pulse: true },
+  dishwasher: { label: '\u6d17\u7897\u673a', glowComponents: ['handle'], color: '#80d8ff', pulse: true },
+  water_dispenser: { label: '\u996e\u6c34\u673a', glowComponents: ['bottle', 'outlet'], color: '#4dd0e1', pulse: true },
+  rice_cooker: { label: '\u7535\u996d\u7172', glowComponents: ['panel'], color: '#69f0ae', pulse: true },
+  air_fryer: { label: '\u7a7a\u6c14\u70b8\u9505', glowComponents: ['display'], color: '#40c4ff', pulse: true },
+  blender: { label: '\u6405\u62cc\u673a', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' }
+});
+
+const powerControllableFurniture = [
+  ...appliances,
+  fridgeFurniture, microwaveFurniture, stoveFurniture, rangeHoodFurniture,
+  coffeeMakerFurniture, toasterFurniture, electricKettleFurniture,
+  dishwasherFurniture, waterDispenserFurniture, riceCookerFurniture,
+  airFryerFurniture, blenderFurniture
+];
+
+powerControllableFurniture.forEach((definition) => {
+  definition.isSwitchable = true;
+  definition.powerEffect = APPLIANCE_POWER_EFFECTS[definition.type];
+});
+
+export function isPowerControllable(definition) {
+  return !!definition && (definition.isSwitchable === true || !!definition.powerEffect || definition.category === 'lighting' || !!definition.lightSource);
+}
+
 const bathroom = [
   toiletFurniture, bathtubFurniture, sinkBathroomFurniture, showerCabinFurniture, mirrorBathroomFurniture,
   towelRackFurniture, toiletriesFurniture, soapDispenserFurniture, bathroomShelfFurniture, bathroomMirrorCabinetFurniture

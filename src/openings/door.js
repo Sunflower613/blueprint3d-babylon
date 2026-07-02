@@ -26,7 +26,9 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
     material: frameMat,
     skipBottom: true
   });
-  createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
+  if (opening.panelHidden) {
+    createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
+  }
 
   const isFlippedLR = !!opening.isFlippedLR;
   const isFlippedIO = !!opening.isFlippedIO;
@@ -52,56 +54,54 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
     const scaleX = Math.max(0.1, (width - frameW * 2) / width);
     const scaleY = Math.max(0.1, (height - frameW * 2) / height);
 
-    const dummyRegistry = {
-      scene: registry.scene,
-      add(mesh) { return mesh; }
-    };
-    const fullPanelMesh = createOpeningProfileMesh(dummyRegistry, `temp_full_panel_${opening.id}`, opening, null, {
+    // 直接创建左、右门扇的网格，而完全不用 CSG 切割以避开布尔运算的数值精度与破面 Bug
+    const leftPanelMesh = createOpeningProfileMesh(registry, `door_panel_left_${opening.id}`, opening, leftHinge, {
       width,
       height,
       depth: panelD,
       scaleX,
       scaleY,
       offsetX: 0,
-      material: null,
-      shadowCaster: false
+      material: panelMat,
+      shadowCaster: true
     });
-    fullPanelMesh.visibility = 0;
 
-    const fullCSG = BABYLON.CSG.FromMesh(fullPanelMesh);
+    const leftPositions = leftPanelMesh.getVerticesData("position");
+    if (leftPositions) {
+      for (let i = 0; i < leftPositions.length; i += 3) {
+        if (leftPositions[i] > 1e-5) {
+          leftPositions[i] = 0;
+        }
+      }
+      leftPanelMesh.setVerticesData("position", leftPositions);
+    }
 
-    const cutWidth = width * 1.5;
-    const cutHeight = height * 1.5;
-    const cutDepth = panelD * 2;
+    const rightPanelMesh = createOpeningProfileMesh(registry, `door_panel_right_${opening.id}`, opening, rightHinge, {
+      width,
+      height,
+      depth: panelD,
+      scaleX,
+      scaleY,
+      offsetX: 0,
+      material: panelMat,
+      shadowCaster: true
+    });
 
-    const leftCutter = BABYLON.MeshBuilder.CreateBox("left_cutter", { width: cutWidth, height: cutHeight, depth: cutDepth }, registry.scene);
-    leftCutter.position.set(cutWidth / 2, 0, 0);
-    leftCutter.computeWorldMatrix(true);
-    const leftCutterCSG = BABYLON.CSG.FromMesh(leftCutter);
-
-    const rightCutter = BABYLON.MeshBuilder.CreateBox("right_cutter", { width: cutWidth, height: cutHeight, depth: cutDepth }, registry.scene);
-    rightCutter.position.set(-cutWidth / 2, 0, 0);
-    rightCutter.computeWorldMatrix(true);
-    const rightCutterCSG = BABYLON.CSG.FromMesh(rightCutter);
-
-    const leftPanelCSG = fullCSG.subtract(leftCutterCSG);
-    const rightPanelCSG = fullCSG.subtract(rightCutterCSG);
-
-    const leftPanelMesh = leftPanelCSG.toMesh(`door_panel_left_${opening.id}`, panelMat, registry.scene);
-    const rightPanelMesh = rightPanelCSG.toMesh(`door_panel_right_${opening.id}`, panelMat, registry.scene);
-
-    registry.add(leftPanelMesh, { parent: leftHinge, shadowCaster: true });
-    registry.add(rightPanelMesh, { parent: rightHinge, shadowCaster: true });
+    const rightPositions = rightPanelMesh.getVerticesData("position");
+    if (rightPositions) {
+      for (let i = 0; i < rightPositions.length; i += 3) {
+        if (rightPositions[i] < -1e-5) {
+          rightPositions[i] = 0;
+        }
+      }
+      rightPanelMesh.setVerticesData("position", rightPositions);
+    }
 
     leftPanelMesh.metadata = { ...leftPanelMesh.metadata, blueprintOpeningComponentId: 'panel' };
     rightPanelMesh.metadata = { ...rightPanelMesh.metadata, blueprintOpeningComponentId: 'panel' };
 
     leftPanelMesh.position.set(-leftHingeX, 0, 0);
     rightPanelMesh.position.set(-rightHingeX, 0, 0);
-
-    fullPanelMesh.dispose();
-    leftCutter.dispose();
-    rightCutter.dispose();
 
     const handleD = 0.02;
     const handleH = 0.12;

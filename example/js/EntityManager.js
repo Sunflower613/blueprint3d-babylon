@@ -616,18 +616,12 @@ export class EntityManager {
   toggleItemPower(itemId) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
-    this.opts.pushHistory();
     const def = this.opts.testMap.getFurnitureDefinition(item.type);
     if (def && (def.category === 'lighting' || def.lightSource)) {
-      this.opts.testMap.updateItem(itemId, { lightOn: item.lightOn === false });
+      this.updateItemLight(itemId, item.lightOn === false);
     } else {
-      this.opts.testMap.updateItem(itemId, { isOn: item.isOn === false });
+      this.setItemPower(itemId, item.isOn !== true);
     }
-    if (this.selectedItemId === itemId) {
-      this.opts.updateEditor();
-    }
-    this.opts.refreshShadows();
-    this.opts.renderPlan();
   }
 
   /**
@@ -799,6 +793,19 @@ export class EntityManager {
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.updateItem(itemId, { lightOn });
+    this.opts.refreshShadows();
+    this.opts.updateEditor();
+    this.opts.renderPlan();
+  }
+
+  /**
+   * Set a non-light appliance power state.
+   */
+  setItemPower(itemId, isOn) {
+    const item = this.opts.testMap.getItem(itemId);
+    if (!item || item.locked) return;
+    this.opts.pushHistory();
+    this.opts.testMap.updateItem(itemId, { isOn: !!isOn });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();

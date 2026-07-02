@@ -504,6 +504,11 @@
                 <span>地板高度 (m)</span>
                 <input id="room-elevation" type="number" min="0" step="0.05" />
               </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="room-rotation" type="number" min="0" max="359" step="15" />
+                <input id="room-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
               <button id="btn-delete-room" type="button" class="danger">删除房间</button>
             </div>
 
@@ -640,7 +645,7 @@
               </label>
               <label id="item-light-field" class="check-field hidden">
                 <input id="item-light-on" type="checkbox" />
-                <span>开启灯光</span>
+                <span id="item-power-label">开启灯光</span>
               </label>
               <button id="btn-delete-item" type="button" class="danger">删除家具</button>
             </div>

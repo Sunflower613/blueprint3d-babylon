@@ -21,7 +21,9 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
     frameW,
     material: frameMat
   });
-  createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
+  if (opening.glassHidden) {
+    createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
+  }
 
   if (opening.glassHidden) return;
 

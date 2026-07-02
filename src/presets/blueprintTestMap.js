@@ -1,5 +1,5 @@
-import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
-const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData };
+import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
+const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData };
 import { BlueprintRegistry } from '../core/BlueprintRegistry.js';
 import { createFlatMaterial, createBlueprintMaterial, materialPreviewColor, normalizeMaterialDescriptor } from '../core/materials.js';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
@@ -618,6 +618,35 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
     // 统一处理所有镜面材质的区域反射探针
     this.scene.executeWhenReady(() => {
+      // 1. 自动为尚未创建反射探针的镜面材质 mesh 创建探针（例如镜面墙体、镜面地板等非家具组件）
+      this.scene.meshes.forEach((mesh) => {
+        const mat = mesh.material;
+        if (mat) {
+          const bpMaterial = mat.metadata?.blueprintMaterial;
+          if (bpMaterial?.kind === 'mirror') {
+            if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
+              return;
+            }
+            if (!mat.customReflectionProbe) {
+              const probe = new BABYLON.ReflectionProbe(`probe_${mesh.name}_${mesh.uniqueId}`, 256, this.scene, false);
+              probe.cubeTexture.level = 0.6;
+              mat.customReflectionProbe = probe;
+              mat.reflectionTexture = probe.cubeTexture;
+              mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+              mat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+              mesh.onDisposeObservable.add(() => {
+                if (mat.customReflectionProbe === probe) {
+                  probe.dispose();
+                  mat.customReflectionProbe = null;
+                }
+              });
+            }
+          }
+        }
+      });
+
+      // 2. 原有的更新每个探针坐标及过滤渲染列表的逻辑
       this.scene.meshes.forEach((mesh) => {
         if (mesh.material && mesh.material.customReflectionProbe) {
           const probe = mesh.material.customReflectionProbe;
@@ -689,13 +718,49 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       return mesh.metadata.blueprintRoomId;
     }
 
-    // 2. 溯源父节点获取家具所属房间 ID (TransformNode metadata 上挂载有 blueprintRoomId)
+    // 2. 溯源父节点获取家具所属房间 ID，同时检测是否为门/窗组件
     let current = mesh;
+    let wallIdFromOpening = null;
     while (current) {
       if (current.metadata && current.metadata.blueprintRoomId) {
         return current.metadata.blueprintRoomId;
       }
+      if (current.metadata && current.metadata.blueprintOpeningId) {
+        wallIdFromOpening = current.metadata.wallId;
+      }
       current = current.parent;
+    }
+
+    if (wallIdFromOpening) {
+      const wall = this.getWall(wallIdFromOpening);
+      if (wall) {
+        const [x1, z1] = wall.from;
+        const [x2, z2] = wall.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const angle = -Math.atan2(dz, dx);
+        const nx = Math.sin(angle);
+        const nz = Math.cos(angle);
+        const T = this.floorplan.wallThickness || 0.15;
+        const pos = mesh.getAbsolutePosition();
+
+        // 计算门板中心点在世界空间中偏向墙体的哪一侧
+        // 以墙体的起点 (x1, z1) 作为参考原点，计算偏移向量在墙体法线 (nx, nz) 上的投影
+        const rx = pos.x - x1;
+        const rz = pos.z - z1;
+        const dot = rx * nx + rz * nz;
+        // 如果 dot >= 0，说明其偏向 1 侧，优先检测 1 侧；否则优先检测 -1 侧
+        const preferredSide = dot >= 0 ? 1 : -1;
+        const sides = [preferredSide, -preferredSide];
+        for (const sideSign of sides) {
+          const checkX = pos.x + sideSign * T * nx;
+          const checkZ = pos.z + sideSign * T * nz;
+          const room = this.floorplan.floor.rooms.find((r) => r.floorId === wall.floorId && pointInRoom(r, checkX, checkZ));
+          if (room) {
+            return room.id;
+          }
+        }
+      }
     }
 
     // 3. 墙体正面/背面判定
@@ -2084,6 +2149,86 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
 
+  applyPowerEffect(definition, item, node) {
+    const effect = definition.powerEffect;
+    if (!effect) return;
+
+    const isOn = item.isOn === true;
+    const glowComponents = Array.isArray(effect.glowComponents) ? effect.glowComponents : [];
+    const glowColor = BABYLON.Color3.FromHexString(effect.color || '#66ccff');
+    const glowMeshes = node.getChildMeshes().filter((mesh) => {
+      const componentId = mesh.metadata?.blueprintFurnitureComponentId;
+      return componentId && glowComponents.includes(componentId) && mesh.material;
+    });
+
+    glowMeshes.forEach((mesh) => {
+      mesh.material.emissiveColor = isOn ? glowColor.clone() : new BABYLON.Color3(0, 0, 0);
+    });
+
+    let elapsed = 0;
+    let renderObserver = null;
+    const initialRotationY = node.rotation.y;
+    const initialPositionX = node.position.x;
+    const hasMotion = effect.motion === 'oscillate' || effect.motion === 'vibrate';
+    if (isOn && (effect.pulse || hasMotion)) {
+      renderObserver = this.scene.onBeforeRenderObservable.add(() => {
+        elapsed += this.scene.getEngine().getDeltaTime() / 1000;
+
+        if (effect.pulse) {
+          const pulseSpeed = effect.pulseSpeed ?? 2.5;
+          const pulseMin = effect.pulseMin ?? 0.35;
+          const pulseMax = effect.pulseMax ?? 1;
+          const amount = pulseMin + (pulseMax - pulseMin) * (0.5 + 0.5 * Math.sin(elapsed * pulseSpeed));
+          glowMeshes.forEach((mesh) => {
+            if (mesh.material) mesh.material.emissiveColor = glowColor.scale(amount);
+          });
+        }
+
+        if (effect.motion === 'oscillate') {
+          const speed = effect.motionSpeed ?? 1.5;
+          const amplitude = effect.motionAmplitude ?? 0.12;
+          node.rotation.y = initialRotationY + Math.sin(elapsed * speed) * amplitude;
+        } else if (effect.motion === 'vibrate') {
+          const speed = effect.motionSpeed ?? 30;
+          const amplitude = effect.motionAmplitude ?? 0.003;
+          node.position.x = initialPositionX + Math.sin(elapsed * speed) * amplitude;
+        }
+      });
+    }
+
+    let light = null;
+    if (isOn && effect.lightSource) {
+      const config = effect.lightSource;
+      const offset = config.offset || { x: 0, y: 0, z: 0 };
+      const position = new BABYLON.Vector3(inchesToUnits(offset.x || 0), inchesToUnits(offset.y || 0), inchesToUnits(offset.z || 0));
+      const color = BABYLON.Color3.FromHexString(config.color || effect.color || '#ffffff');
+
+      if (config.type === 'spot') {
+        const direction = config.direction || { x: 0, y: 0, z: 1 };
+        light = new BABYLON.SpotLight(
+          `item_power_light_${item.id}`,
+          position,
+          new BABYLON.Vector3(direction.x || 0, direction.y || 0, direction.z || 0),
+          config.angle ?? (Math.PI / 4),
+          config.exponent ?? 2,
+          this.scene
+        );
+      } else {
+        light = new BABYLON.PointLight(`item_power_light_${item.id}`, position, this.scene);
+      }
+      light.parent = node;
+      light.diffuse = color;
+      light.specular = color;
+      light.intensity = config.intensity ?? 0.8;
+      light.range = inchesToUnits(config.range ?? 120);
+    }
+
+    node.onDisposeObservable.add(() => {
+      if (renderObserver) this.scene.onBeforeRenderObservable.remove(renderObserver);
+      if (light) light.dispose();
+    });
+  }
+
   buildItem(item) {
     if (this.deferRenderWork()) return;
     const definition = getFurnitureDefinition(item.type);
@@ -2111,6 +2256,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       height: inchesToUnits(item.height) * itemScale
     };
     definition.build(this, item, node, size);
+    this.applyPowerEffect(definition, item, node);
 
     // --- 开关灯自发光与光源联动效果 ---
     const isLightOn = item.lightOn !== false;
@@ -2186,53 +2332,102 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       });
     }
 
-    // --- 镜面反射效果 ---
-    if (definition.isMirror) {
-      this.scene.executeWhenReady(() => {
-        const mirrorMesh = node.getChildMeshes().find((m) => m.metadata?.blueprintFurnitureComponentId === 'mirror');
-        if (mirrorMesh) {
-          // Keep mirrors cheap while idle. During camera movement they refresh at
-          // most 10 times/second instead of rendering the full scene every frame.
-          const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${item.id}`, 256, this.scene, false);
-          mirrorTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+    // --- 镜面反射与反射探针效果 ---
+    this.scene.executeWhenReady(() => {
+      node.getChildMeshes().forEach((mirrorMesh) => {
+        const mat = mirrorMesh.material;
+        const bpMaterial = mat?.metadata?.blueprintMaterial;
+        if (bpMaterial?.kind === 'mirror') {
+          // 规则：如果家具本身被标记为 isMirror 且组件 ID 包含 mirror (不区分大小写)，则应用实时平面反射 (MirrorTexture)
+          const componentId = mirrorMesh.metadata?.blueprintFurnitureComponentId;
+          const isMainMirror = definition.isMirror && componentId && componentId.toLowerCase().includes('mirror');
 
-          const camera = this.scene.activeCamera;
-          let lastRefreshTime = 0;
-          const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
-            const now = Date.now();
-            if (now - lastRefreshTime < 100) return;
-            lastRefreshTime = now;
-            mirrorTexture.resetRefreshCounter();
-          });
-          mirrorTexture.onDisposeObservable.add(() => {
-            if (camera && cameraObserver) {
-              camera.onViewMatrixChangedObservable.remove(cameraObserver);
+          if (isMainMirror) {
+            if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
+              return;
             }
-          });
-          // 在 3D 卫浴镜或全身大立镜中，镜面通常稍微直立或后仰
-          // 局部法线方向是 Z 轴正向 (0, 0, 1)
-          // 考虑家具旋转角 item.rotation，世界法线为：
-          // 法线指向镜面背面（取反），MirrorTexture 才能正确渲染正面反射
-          const normal = new BABYLON.Vector3(-Math.sin(item.rotation || 0), 0, -Math.cos(item.rotation || 0));
-          const pos = mirrorMesh.getAbsolutePosition();
-          mirrorTexture.mirrorPlane = BABYLON.Plane.FromPositionAndNormal(pos, normal);
 
-          // 填充渲染列表（除了镜面自己和它的后背板）
-          this.scene.meshes.forEach((m) => {
-            if (m !== mirrorMesh && !m.name.includes(item.id)) {
-              mirrorTexture.renderList.push(m);
+            // 平面反射（如卫浴镜、全身镜、梳妆台镜子等）
+            const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${item.id}_${mirrorMesh.uniqueId}`, 256, this.scene, false);
+            mirrorTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+            mirrorTexture.level = 0.6;
+
+            const camera = this.scene.activeCamera;
+            let lastRefreshTime = 0;
+            const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
+              const now = Date.now();
+              if (now - lastRefreshTime < 100) return;
+              lastRefreshTime = now;
+              mirrorTexture.resetRefreshCounter();
+            });
+            mirrorTexture.onDisposeObservable.add(() => {
+              if (camera && cameraObserver) {
+                camera.onViewMatrixChangedObservable.remove(cameraObserver);
+              }
+            });
+
+            // 根据形状计算高精度的世界法线
+            const isCylinder = mirrorMesh.metadata?.isCylinder;
+            const localNormal = isCylinder ? new BABYLON.Vector3(0, -1, 0) : new BABYLON.Vector3(0, 0, -1);
+            mirrorMesh.computeWorldMatrix(true);
+            const worldMatrix = mirrorMesh.getWorldMatrix();
+            const normal = BABYLON.Vector3.TransformNormal(localNormal, worldMatrix).normalize();
+            const pos = mirrorMesh.getAbsolutePosition();
+            mirrorTexture.mirrorPlane = BABYLON.Plane.FromPositionAndNormal(pos, normal);
+
+            // 填充渲染列表（排除自身和同家具的组件）
+            this.scene.meshes.forEach((m) => {
+              if (m !== mirrorMesh && !m.name.includes(item.id)) {
+                mirrorTexture.renderList.push(m);
+              }
+            });
+
+            mat.reflectionTexture = mirrorTexture;
+            mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            mat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+            node.onDisposeObservable.add(() => {
+              mirrorTexture.dispose();
+            });
+          } else {
+            // 反射探针（用于普通的被漆成镜面的物体、其它次要发光镜等）
+            if (mat.customReflectionProbe) {
+              return;
             }
-          });
 
-          if (mirrorMesh.material) {
-            mirrorMesh.material.reflectionTexture = mirrorTexture;
-            // 降低本身的基础漫反射底色，让镜子更清澈
-            mirrorMesh.material.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            mirrorMesh.material.specularColor = new BABYLON.Color3(0, 0, 0);
+            const probe = new BABYLON.ReflectionProbe(`probe_${item.id}_${mirrorMesh.uniqueId}`, 256, this.scene, false);
+            probe.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+            probe.position = mirrorMesh.getAbsolutePosition();
+            probe.cubeTexture.level = 0.6;
+
+            mat.customReflectionProbe = probe;
+            mat.reflectionTexture = probe.cubeTexture;
+            mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            mat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+            // 填充探针渲染列表，只包含同房间的组件，防止自反射
+            probe.renderList = [];
+            const currentRoomId = this.getMeshRoomId(mirrorMesh);
+            this.scene.meshes.forEach((otherMesh) => {
+              if (otherMesh === mirrorMesh) return;
+              if (otherMesh.name.includes(item.id) || (otherMesh.material && otherMesh.material.name.includes(item.id))) {
+                return;
+              }
+              const otherRoomId = this.getMeshRoomId(otherMesh);
+              if (currentRoomId && otherRoomId && otherRoomId !== currentRoomId) {
+                return;
+              }
+              probe.renderList.push(otherMesh);
+            });
+
+            node.onDisposeObservable.add(() => {
+              probe.dispose();
+              mat.customReflectionProbe = null;
+            });
           }
         }
       });
-    }
+    });
 
 
 
@@ -2519,7 +2714,15 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const room = this.getRoom(roomId);
     if (!room) return null;
     if (room.locked && !('locked' in patch)) return room;
-    const previous = { x: room.x, z: room.z, width: room.width, depth: room.depth, shape: room.shape, floorId: room.floorId };
+    const previous = { 
+      x: room.x, 
+      z: room.z, 
+      width: room.width, 
+      depth: room.depth, 
+      shape: room.shape, 
+      floorId: room.floorId,
+      rotation: room.rotation || 0
+    };
     Object.assign(room, patch);
     room.width = Math.max(1.2, Number(room.width));
     room.depth = Math.max(1.2, Number(room.depth));
@@ -2527,14 +2730,29 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
     const dx = room.x - previous.x;
     const dz = room.z - previous.z;
+    const prevRot = previous.rotation || 0;
+    const currRot = room.rotation || 0;
+    const dRot = currRot - prevRot;
+
     const shouldMoveItems = options.moveItems ?? (!('width' in patch) && !('depth' in patch));
-    if ((dx || dz) && shouldMoveItems) {
+    if ((dx || dz || dRot) && shouldMoveItems) {
+      const cos = Math.cos(dRot);
+      const sin = Math.sin(dRot);
       this.floorplan.items.forEach((item) => {
         if (item.floorId !== room.floorId) return;
-        const belongedToRoom = item.roomId === room.id || pointInRoom(previous, item.x, item.z);
+        const belongedToRoom = options.isDragging
+          ? item.roomId === room.id
+          : (item.roomId === room.id || pointInRoom(previous, item.x, item.z));
         if (!belongedToRoom) return;
-        item.x = Number((item.x + dx).toFixed(3));
-        item.z = Number((item.z + dz).toFixed(3));
+
+        const lx = item.x - previous.x;
+        const lz = item.z - previous.z;
+        const rx = lx * cos - lz * sin;
+        const rz = lx * sin + lz * cos;
+
+        item.x = Number((room.x + rx).toFixed(3));
+        item.z = Number((room.z + rz).toFixed(3));
+        item.rotation = Number(((item.rotation || 0) + dRot).toFixed(4));
         item.roomId = room.id;
       });
     }

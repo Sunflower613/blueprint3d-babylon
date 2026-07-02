@@ -315,6 +315,9 @@ export function updateEditor() {
       roomElevationInput.max = wallHeight;
       roomElevationInput.value = Number((room.elevation || 0).toFixed(2));
     }
+    const roomRotationDegrees = Math.round(((-room.rotation || 0) * 180 / Math.PI + 360) % 360);
+    document.getElementById('room-rotation').value = roomRotationDegrees;
+    document.getElementById('room-rotation-range').value = roomRotationDegrees;
 
     document.getElementById('room-locked').checked = !!room.locked;
     document.getElementById('btn-delete-room').disabled = !!room.locked;
@@ -390,9 +393,16 @@ export function updateEditor() {
     const lightField = document.getElementById('item-light-field');
     if (lightField) {
       const def = testMap.getFurnitureDefinition(item.type);
+      const powerInput = document.getElementById('item-light-on');
+      const powerLabel = document.getElementById('item-power-label');
       if (def.category === 'lighting' || def.lightSource) {
         lightField.classList.remove('hidden');
-        document.getElementById('item-light-on').checked = item.lightOn !== false;
+        powerInput.checked = item.lightOn !== false;
+        if (powerLabel) powerLabel.textContent = '开启灯光';
+      } else if (def.powerEffect) {
+        lightField.classList.remove('hidden');
+        powerInput.checked = item.isOn === true;
+        if (powerLabel) powerLabel.textContent = `开启${def.powerEffect.label || '设备'}`;
       } else {
         lightField.classList.add('hidden');
       }
@@ -906,7 +916,7 @@ export function initUiEventListeners() {
     if (!button) return;
     const type = button.dataset.addItem;
     const definition = testMap.getFurnitureDefinition(type);
-    const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : currentRooms()[0];
+    const room = selection.selectedRoomId ? testMap.getRoom(selection.selectedRoomId) : currentRooms()[0];
     let x = room ? room.x : 0;
     let z = room ? room.z : 0;
     let elevation = undefined;
@@ -963,8 +973,12 @@ export function initUiEventListeners() {
     if (item && room) testMap.assignItemToRoom(item.id, room.id);
   });
 
-  ['room-width', 'room-depth', 'room-name', 'room-elevation'].forEach((id) => {
+  ['room-width', 'room-depth', 'room-name', 'room-elevation', 'room-rotation'].forEach((id) => {
     document.getElementById(id).addEventListener('change', updateSelectedRoom);
+  });
+  document.getElementById('room-rotation-range').addEventListener('input', (event) => {
+    document.getElementById('room-rotation').value = event.target.value;
+    updateSelectedRoom();
   });
 
   ['floor-name', 'floor-wall-height', 'floor-height', 'floor-hide-roof', 'floor-hide-wall'].forEach((id) => {
@@ -1087,7 +1101,14 @@ export function initUiEventListeners() {
 
   document.getElementById('item-light-on').addEventListener('change', (event) => {
     if (!selection.selectedItemId) return;
-    entityManager.updateItemLight(selection.selectedItemId, event.target.checked);
+    const item = testMap.getItem(selection.selectedItemId);
+    if (!item) return;
+    const def = testMap.getFurnitureDefinition(item.type);
+    if (def.category === 'lighting' || def.lightSource) {
+      entityManager.updateItemLight(selection.selectedItemId, event.target.checked);
+    } else if (def.powerEffect) {
+      entityManager.setItemPower(selection.selectedItemId, event.target.checked);
+    }
   });
 
   document.getElementById('opening-position').addEventListener('change', (event) => {

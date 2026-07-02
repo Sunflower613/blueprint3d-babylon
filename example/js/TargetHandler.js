@@ -103,7 +103,7 @@ export function isSwitchableTarget(target) {
     const item = ctx.testMap.getItem(target.id);
     if (!item) return false;
     const def = ctx.testMap.getFurnitureDefinition(item.type);
-    return !!(def && (def.category === 'lighting' || def.lightSource || def.isSwitchable || item.isOn !== undefined || item.lightOn !== undefined));
+    return !!(def && (def.category === 'lighting' || def.lightSource || def.powerEffect || def.isSwitchable || item.isOn !== undefined || item.lightOn !== undefined));
   }
   return false;
 }
@@ -122,7 +122,7 @@ export function pickColorFromContextMenu(target) {
 
 export function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedTarget(target)) return;
-  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence', 'wall'].includes(target.type);
+  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence', 'wall', 'room'].includes(target.type);
   const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
@@ -152,6 +152,23 @@ export function showObjectContextMenu(target, clientX, clientY) {
     if (item && item.type === 'toilet') {
       isToilet = true;
       isLidOpen = item.lidOpen === true;
+    }
+  }
+
+  // 检查门窗隐藏状态
+  const isOpening = target.type === 'opening';
+  let isDoor = false;
+  let isWindow = false;
+  let isPanelHidden = false;
+  let isGlassHidden = false;
+
+  if (isOpening) {
+    const opening = ctx.testMap.getOpening(target.id);
+    if (opening) {
+      isDoor = opening.type === 'door';
+      isWindow = opening.type === 'window';
+      isPanelHidden = !!opening.panelHidden;
+      isGlassHidden = !!opening.glassHidden;
     }
   }
   
@@ -198,6 +215,30 @@ export function showObjectContextMenu(target, clientX, clientY) {
       title: '开关', 
       disabled: isLocked,
       onClick: () => toggleTarget(target) 
+    },
+    isDoor && {
+      icon: isPanelHidden ? 'eye' : 'eye_off',
+      title: isPanelHidden ? '显示门板' : '隐藏门板',
+      disabled: isLocked,
+      onClick: () => {
+        ctx.pushHistory();
+        ctx.testMap.updateOpening(target.id, { panelHidden: !isPanelHidden });
+        ctx.refreshShadows();
+        ctx.updateEditor();
+        ctx.renderPlan();
+      }
+    },
+    isWindow && {
+      icon: isGlassHidden ? 'eye' : 'eye_off',
+      title: isGlassHidden ? '显示玻璃' : '隐藏玻璃',
+      disabled: isLocked,
+      onClick: () => {
+        ctx.pushHistory();
+        ctx.testMap.updateOpening(target.id, { glassHidden: !isGlassHidden });
+        ctx.refreshShadows();
+        ctx.updateEditor();
+        ctx.renderPlan();
+      }
     },
     { icon: isLocked ? 'unlock' : 'lock', title: isLocked ? '解锁' : '锁定', onClick: () => toggleTargetLock(target) },
     { icon: 'trash', title: '删除', disabled: isLocked, onClick: () => deleteTarget(target) }
@@ -276,6 +317,15 @@ export function rotateTarget(target) {
     ctx.updateStructure(target.type, target.id, { rotation: nextDegrees * Math.PI / 180 });
     const selected = ctx.getSelectedStructure();
     if (selected && selected.type === target.type && selected.id === target.id) {
+      ctx.updateEditor();
+    }
+  } else if (target.type === 'room') {
+    const room = ctx.testMap.getRoom(target.id);
+    if (!room) return;
+    const currentDegrees = Math.round(((-room.rotation || 0) * 180 / Math.PI + 360) % 360);
+    const nextDegrees = (currentDegrees + 90) % 360;
+    ctx.testMap.updateRoom(target.id, { rotation: - (nextDegrees * Math.PI / 180) });
+    if (selection.selectedRoomId === target.id) {
       ctx.updateEditor();
     }
   } else if (target.type === 'opening') {

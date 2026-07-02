@@ -299,16 +299,26 @@ export function refresh3DEditHandles() {
 
   const halfW = bounds.width / 2;
   const halfD = bounds.depth / 2;
+  const rot = Number(bounds.target?.rotation) || 0;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+
+  const getPos = (lx, lz) => {
+    const rx = lx * cos - lz * sin;
+    const rz = lx * sin + lz * cos;
+    return { x: bounds.x + rx, y, z: bounds.z + rz };
+  };
+
   create3DEditHandle(type, id, 'move', 'center', { x: bounds.x, y, z: bounds.z }, '#1f8fff');
-  create3DEditHandle(type, id, 'resize', 'north', { x: bounds.x, y, z: bounds.z - halfD }, '#ff9f1c', Math.PI);
-  create3DEditHandle(type, id, 'resize', 'south', { x: bounds.x, y, z: bounds.z + halfD }, '#ff9f1c', 0);
-  create3DEditHandle(type, id, 'resize', 'east', { x: bounds.x + halfW, y, z: bounds.z }, '#ff9f1c', Math.PI / 2);
-  create3DEditHandle(type, id, 'resize', 'west', { x: bounds.x - halfW, y, z: bounds.z }, '#ff9f1c', -Math.PI / 2);
-  if (type === 'roof' || type === 'stairs') {
-    create3DEditHandle(type, id, 'rotate', 'rotation', { x: bounds.x + halfW + 0.4, y, z: bounds.z - halfD - 0.4 }, '#2ec456', 0);
+  create3DEditHandle(type, id, 'resize', 'north', getPos(0, -halfD), '#ff9f1c', Math.PI - rot);
+  create3DEditHandle(type, id, 'resize', 'south', getPos(0, halfD), '#ff9f1c', 0 - rot);
+  create3DEditHandle(type, id, 'resize', 'east', getPos(halfW, 0), '#ff9f1c', Math.PI / 2 - rot);
+  create3DEditHandle(type, id, 'resize', 'west', getPos(-halfW, 0), '#ff9f1c', -Math.PI / 2 - rot);
+  if (type === 'roof' || type === 'stairs' || type === 'room') {
+    create3DEditHandle(type, id, 'rotate', 'rotation', getPos(halfW + 0.4, -halfD - 0.4), '#2ec456', 0 - rot);
   }
   if (type === 'roof') {
-    create3DEditHandle(type, id, 'curve', 'curve', { x: bounds.x - halfW - 0.4, y, z: bounds.z + halfD + 0.4 }, '#9b5de5', 0);
+    create3DEditHandle(type, id, 'curve', 'curve', getPos(-halfW - 0.4, halfD + 0.4), '#9b5de5', 0 - rot);
   }
 }
 
@@ -374,6 +384,9 @@ export function begin3DEditHandleDrag(handle, event) {
   const bounds = get3DEditTargetBounds(handle.type, handle.id);
   const groundPoint = ctx.groundPointFromPointer();
   if (!bounds || !groundPoint) return false;
+  if (handle.type === 'room') {
+    ctx.testMap.refreshItemRoomLinks();
+  }
   ctx.setActive3DEditTarget({ type: handle.type, id: handle.id });
   editHandleDragState = {
     type: handle.type,
@@ -386,7 +399,7 @@ export function begin3DEditHandleDrag(handle, event) {
       to: [bounds.toX, bounds.toZ],
       x: bounds.x,
       z: bounds.z
-    } : { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth },
+    } : { x: bounds.x, z: bounds.z, width: bounds.width, depth: bounds.depth, target: bounds.target },
     offsetX: bounds.x - groundPoint.x,
     offsetZ: bounds.z - groundPoint.z,
     historyPushed: false
@@ -400,9 +413,9 @@ export function begin3DEditHandleDrag(handle, event) {
   }
 
   if (handle.action === 'rotate') {
-    const structure = getStructure(handle.type, handle.id);
-    if (structure) {
-      editHandleDragState.originalRotation = structure.rotation || 0;
+    const targetObj = bounds.target;
+    if (targetObj) {
+      editHandleDragState.originalRotation = targetObj.rotation || 0;
       const dx = groundPoint.x - bounds.x;
       const dz = groundPoint.z - bounds.z;
       editHandleDragState.startAngle = Math.atan2(dz, dx);
@@ -418,14 +431,22 @@ export function begin3DEditHandleDrag(handle, event) {
 
   if (handle.action === 'resize') {
     let dragOffset = 0;
-    const left = bounds.x - bounds.width / 2;
-    const right = bounds.x + bounds.width / 2;
-    const top = bounds.z - bounds.depth / 2;
-    const bottom = bounds.z + bounds.depth / 2;
-    if (handle.side === 'west') dragOffset = left - groundPoint.x;
-    if (handle.side === 'east') dragOffset = right - groundPoint.x;
-    if (handle.side === 'north') dragOffset = top - groundPoint.z;
-    if (handle.side === 'south') dragOffset = bottom - groundPoint.z;
+    const left = -bounds.width / 2;
+    const right = bounds.width / 2;
+    const top = -bounds.depth / 2;
+    const bottom = bounds.depth / 2;
+    const rot = Number(bounds.target?.rotation) || 0;
+    const dx = groundPoint.x - bounds.x;
+    const dz = groundPoint.z - bounds.z;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    const lx = dx * cos + dz * sin;
+    const lz = -dx * sin + dz * cos;
+
+    if (handle.side === 'west') dragOffset = left - lx;
+    if (handle.side === 'east') dragOffset = right - lx;
+    if (handle.side === 'north') dragOffset = top - lz;
+    if (handle.side === 'south') dragOffset = bottom - lz;
     editHandleDragState.dragOffset = dragOffset;
   }
 
@@ -553,7 +574,7 @@ export function update3DEditTarget(type, id, patch, options = {}) {
   } else if (type === 'room') {
     const rebuild = options.rebuild !== false;
     const moveItems = options.moveItems !== false;
-    ctx.testMap.updateRoom(id, patch, { moveItems, rebuild });
+    ctx.testMap.updateRoom(id, patch, { moveItems, rebuild, isDragging: !rebuild });
     if (rebuild) ctx.refreshShadows();
     else syncRoomMovePreview(id);
   } else {
@@ -613,12 +634,15 @@ export function move3DEditHandle(groundPoint) {
     const normalizedDegrees = normalizeRotationDegrees(degrees);
     const rotationRad = normalizedDegrees * Math.PI / 180;
     
-    const node = state.type === 'roof' ? ctx.testMap.roofNodes?.get(state.id) : ctx.testMap.stairNodes?.get(state.id);
-    if (node) {
-      node.rotation.y = rotationRad;
+    if (state.type === 'room') {
+      update3DEditTarget('room', state.id, { rotation: rotationRad }, { rebuild: true });
+    } else {
+      const node = state.type === 'roof' ? ctx.testMap.roofNodes?.get(state.id) : ctx.testMap.stairNodes?.get(state.id);
+      if (node) {
+        node.rotation.y = rotationRad;
+      }
+      updateStructure(state.type, state.id, { rotation: rotationRad }, false);
     }
-    
-    updateStructure(state.type, state.id, { rotation: rotationRad }, false);
     
     if (!state.historyPushed && Math.abs(deltaAngle) > 0.02) {
       ctx.pushHistory();
@@ -742,47 +766,57 @@ export function move3DEditHandle(groundPoint) {
   } else {
     const minWidth = state.type === 'stairs' ? 0.6 : (state.type === 'room' ? 1.2 : 1);
     const minDepth = state.type === 'stairs' ? 1.2 : (state.type === 'room' ? 1.2 : 1);
-    const left = original.x - original.width / 2;
-    const right = original.x + original.width / 2;
-    const top = original.z - original.depth / 2;
-    const bottom = original.z + original.depth / 2;
+    const left = -original.width / 2;
+    const right = original.width / 2;
+    const top = -original.depth / 2;
+    const bottom = original.depth / 2;
+    const side = state.side;
+    const rot = Number(original.target?.rotation) || 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+
+    // 将当前鼠标 3D 地面坐标转换到局部坐标
+    const dx = groundPoint.x - original.x;
+    const dz = groundPoint.z - original.z;
+    const lx = dx * cos + dz * sin;
+    const lz = -dx * sin + dz * cos;
 
     let w = original.width;
     let d = original.depth;
-    let x = original.x;
-    let z = original.z;
+    let localCenterX = 0;
+    let localCenterZ = 0;
 
-    if (state.side === 'west' || state.side === 'east') {
-      if (state.side === 'west') {
-        const snappedRight = ctx.snapNumber(right);
-        const nextLeft = Math.min(ctx.snapNumber(groundPoint.x + state.dragOffset), snappedRight - minWidth);
-        w = snappedRight - nextLeft;
-        x = snappedRight - w / 2;
+    if (side === 'west' || side === 'east') {
+      if (side === 'west') {
+        const nextLeft = Math.min(ctx.snapNumber(lx + state.dragOffset), right - minWidth);
+        w = right - nextLeft;
+        localCenterX = right - w / 2;
       } else {
-        const snappedLeft = ctx.snapNumber(left);
-        const nextRight = Math.max(ctx.snapNumber(groundPoint.x + state.dragOffset), snappedLeft + minWidth);
-        w = nextRight - snappedLeft;
-        x = snappedLeft + w / 2;
+        const nextRight = Math.max(ctx.snapNumber(lx + state.dragOffset), left + minWidth);
+        w = nextRight - left;
+        localCenterX = left + w / 2;
       }
     }
 
-    if (state.side === 'north' || state.side === 'south') {
-      if (state.side === 'north') {
-        const snappedBottom = ctx.snapNumber(bottom);
-        const nextTop = Math.min(ctx.snapNumber(groundPoint.z + state.dragOffset), snappedBottom - minDepth);
-        d = snappedBottom - nextTop;
-        z = snappedBottom - d / 2;
+    if (side === 'north' || side === 'south') {
+      if (side === 'north') {
+        const nextTop = Math.min(ctx.snapNumber(lz + state.dragOffset), bottom - minDepth);
+        d = bottom - nextTop;
+        localCenterZ = bottom - d / 2;
       } else {
-        const snappedTop = ctx.snapNumber(top);
-        const nextBottom = Math.max(ctx.snapNumber(groundPoint.z + state.dragOffset), snappedTop + minDepth);
-        d = nextBottom - snappedTop;
-        z = snappedTop + d / 2;
+        const nextBottom = Math.max(ctx.snapNumber(lz + state.dragOffset), top + minDepth);
+        d = nextBottom - top;
+        localCenterZ = top + d / 2;
       }
     }
+
+    // 局部中心转换回世界坐标
+    const nextX = Number((original.x + localCenterX * cos - localCenterZ * sin).toFixed(3));
+    const nextZ = Number((original.z + localCenterX * sin + localCenterZ * cos).toFixed(3));
 
     patch = {
-      x: Number(x.toFixed(3)),
-      z: Number(z.toFixed(3)),
+      x: nextX,
+      z: nextZ,
       width: ctx.snapNumber(w),
       depth: ctx.snapNumber(d)
     };

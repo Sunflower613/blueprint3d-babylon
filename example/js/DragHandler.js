@@ -54,6 +54,7 @@ export function beginRoomDrag(event, roomId) {
   event.preventDefault();
   event.stopPropagation();
   ctx.selectRoom(roomId);
+  ctx.testMap.refreshItemRoomLinks();
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
   const point = ctx.svgPointFromEvent(event);
@@ -79,20 +80,30 @@ export function beginRoomResize(event, roomId, side) {
   ctx.selectRoom(roomId);
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
-  const original = { x: room.x, z: room.z, width: room.width, depth: room.depth };
-  const left = original.x - original.width / 2;
-  const right = original.x + original.width / 2;
-  const top = original.z - original.depth / 2;
-  const bottom = original.z + original.depth / 2;
+
+  const original = { x: room.x, z: room.z, width: room.width, depth: room.depth, rotation: room.rotation || 0 };
+  const left = -original.width / 2;
+  const right = original.width / 2;
+  const top = -original.depth / 2;
+  const bottom = original.depth / 2;
+
   const point = ctx.svgPointFromEvent(event);
   const world = ctx.svgToWorld(point.x, point.y);
 
+  // 将世界坐标投射到房间的局部坐标系
+  const dx = world.x - original.x;
+  const dz = world.z - original.z;
+  const cos = Math.cos(original.rotation);
+  const sin = Math.sin(original.rotation);
+  const lx = dx * cos + dz * sin;
+  const lz = -dx * sin + dz * cos;
+
   let offsetX = 0;
   let offsetZ = 0;
-  if (side === 'west') offsetX = left - world.x;
-  if (side === 'east') offsetX = right - world.x;
-  if (side === 'north') offsetZ = bottom - world.z;
-  if (side === 'south') offsetZ = top - world.z;
+  if (side === 'west') offsetX = left - lx;
+  if (side === 'east') offsetX = right - lx;
+  if (side === 'north') offsetZ = bottom - lz;
+  if (side === 'south') offsetZ = top - lz;
 
   states.roomResize = {
     roomId,
@@ -118,7 +129,7 @@ export function moveRoomDrag(event) {
     ctx.pushHistory();
     states.roomDrag.historyPushed = true;
   }
-  ctx.testMap.updateRoom(room.id, { x: nextX, z: nextZ }, { moveItems: true, rebuild: false });
+  ctx.testMap.updateRoom(room.id, { x: nextX, z: nextZ }, { moveItems: true, rebuild: false, isDragging: true });
   ctx.syncRoomMovePreview(room.id);
   ctx.refreshShadows();
   ctx.updateEditor();
@@ -131,35 +142,49 @@ export function moveRoomResize(event) {
   if (!room || room.locked) return;
   const point = ctx.svgPointFromEvent(event);
   const world = ctx.svgToWorld(point.x, point.y);
+  
   const original = states.roomResize.original;
-  const left = original.x - original.width / 2;
-  const right = original.x + original.width / 2;
-  const top = original.z - original.depth / 2;
-  const bottom = original.z + original.depth / 2;
+  const left = -original.width / 2;
+  const right = original.width / 2;
+  const top = -original.depth / 2;
+  const bottom = original.depth / 2;
   const side = states.roomResize.side;
+  const rotation = original.rotation;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  // 将世界坐标投射到房间的局部坐标系
+  const dx = world.x - original.x;
+  const dz = world.z - original.z;
+  const lx = dx * cos + dz * sin;
+  const lz = -dx * sin + dz * cos;
 
   let nextWidth = original.width;
   let nextDepth = original.depth;
-  let nextX = original.x;
-  let nextZ = original.z;
+  let localCenterX = 0;
+  let localCenterZ = 0;
 
   if (side === 'west') {
-    const nextLeft = Math.min(ctx.snapNumber(world.x + states.roomResize.offsetX), right - 1.2);
+    const nextLeft = Math.min(ctx.snapNumber(lx + states.roomResize.offsetX), right - 1.2);
     nextWidth = ctx.snapNumber(right - nextLeft);
-    nextX = Number((right - nextWidth / 2).toFixed(3));
+    localCenterX = right - nextWidth / 2;
   } else if (side === 'east') {
-    const nextRight = Math.max(ctx.snapNumber(world.x + states.roomResize.offsetX), left + 1.2);
+    const nextRight = Math.max(ctx.snapNumber(lx + states.roomResize.offsetX), left + 1.2);
     nextWidth = ctx.snapNumber(nextRight - left);
-    nextX = Number((left + nextWidth / 2).toFixed(3));
+    localCenterX = left + nextWidth / 2;
   } else if (side === 'north') {
-    const nextBottom = Math.max(ctx.snapNumber(world.z + states.roomResize.offsetZ), top + 1.2);
+    const nextBottom = Math.max(ctx.snapNumber(lz + states.roomResize.offsetZ), top + 1.2);
     nextDepth = ctx.snapNumber(nextBottom - top);
-    nextZ = Number((top + nextDepth / 2).toFixed(3));
+    localCenterZ = top + nextDepth / 2;
   } else if (side === 'south') {
-    const nextTop = Math.min(ctx.snapNumber(world.z + states.roomResize.offsetZ), bottom - 1.2);
+    const nextTop = Math.min(ctx.snapNumber(lz + states.roomResize.offsetZ), bottom - 1.2);
     nextDepth = ctx.snapNumber(bottom - nextTop);
-    nextZ = Number((bottom - nextDepth / 2).toFixed(3));
+    localCenterZ = bottom - nextDepth / 2;
   }
+
+  // 局部中心转换回世界坐标
+  const nextX = Number((original.x + localCenterX * cos - localCenterZ * sin).toFixed(3));
+  const nextZ = Number((original.z + localCenterX * sin + localCenterZ * cos).toFixed(3));
 
   const patch = {
     x: nextX,

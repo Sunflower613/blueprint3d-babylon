@@ -65,10 +65,20 @@ export function getRoomVertices(room, local = false) {
   const depth = Math.max(1.2, Number(room.depth) || 4);
   const originX = local ? 0 : Number(room.x) || 0;
   const originZ = local ? 0 : Number(room.z) || 0;
-  return getRoomLocalVertices(room.shape).map((point) => ({
-    x: originX + point.x * width,
-    z: originZ + point.z * depth
-  }));
+  const rotation = Number(room.rotation) || 0;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  return getRoomLocalVertices(room.shape).map((point) => {
+    const lx = point.x * width;
+    const lz = point.z * depth;
+    const rx = lx * cos - lz * sin;
+    const rz = lx * sin + lz * cos;
+    return {
+      x: originX + rx,
+      z: originZ + rz
+    };
+  });
 }
 
 export function getRoomBounds(room) {

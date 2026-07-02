@@ -137,7 +137,7 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
 
     // Use the shared, prefiltered environment map. A per-material ReflectionProbe
     // is prohibitively expensive and leaks easily when editor items are rebuilt.
-    material.reflectionTexture = createEnvironmentReflectionTexture(scene, name, 0.8);
+    material.reflectionTexture = createEnvironmentReflectionTexture(scene, name, 0.5);
 
     // 缩放反射采样的图案，使其在视觉上变小
     if (material.reflectionTexture) {
@@ -234,11 +234,12 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   };
 
   if (normalized.kind === 'texture' && normalized.src) {
+    const invertY = normalized.invertY !== undefined ? normalized.invertY : (options.invertY !== undefined ? options.invertY : true);
     const texture = new BABYLON.Texture(
       normalized.src,
       scene,
       false,
-      true,
+      invertY,
       BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
       () => {
         if (material.isDisposed) {

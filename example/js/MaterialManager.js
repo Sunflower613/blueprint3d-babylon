@@ -432,6 +432,26 @@ function findRoofComponentIdFromNode(node) {
   return null;
 }
 
+function getFenceDefaultColor(subtype, componentId) {
+  const defaults = FENCE_SUBTYPE_DEFAULTS[subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
+  if (componentId === 'frame') return defaults.frameColor;
+  if (componentId === 'panel') return defaults.panelColor;
+  return defaults.color;
+}
+
+function getOpeningDefaultColor(openingType, componentId) {
+  if (openingType === 'door') {
+    if (componentId === 'frame') return '#b8c4d4'; // trim
+    if (componentId === 'panel') return '#8c5a32'; // door
+    return '#8c5a32';
+  } else {
+    // window
+    if (componentId === 'frame') return '#b8c4d4'; // trim
+    if (componentId === 'glass') return '#75d7ff'; // window
+    return '#75d7ff';
+  }
+}
+
 export function extractMaterial(target, precise = true) {
   if (!target) return;
   
@@ -491,13 +511,13 @@ export function extractMaterial(target, precise = true) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
         if (componentId === 'frame') {
           pickedMaterial = fence.frameMaterial || fence.material;
-          pickedColor = fence.frameColor || fence.color;
+          pickedColor = fence.frameColor || fence.color || getFenceDefaultColor(fence.subtype, 'frame');
         } else if (componentId === 'panel') {
           pickedMaterial = fence.panelMaterial || fence.material;
-          pickedColor = fence.panelColor || fence.color;
+          pickedColor = fence.panelColor || fence.color || getFenceDefaultColor(fence.subtype, 'panel');
         } else {
           pickedMaterial = fence.material;
-          pickedColor = fence.color;
+          pickedColor = fence.color || getFenceDefaultColor(fence.subtype, 'color');
         }
       }
     } else if (target.type === 'fence_gate') {
@@ -506,13 +526,13 @@ export function extractMaterial(target, precise = true) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
         if (componentId === 'frame') {
           pickedMaterial = gate.frameMaterial || gate.material;
-          pickedColor = gate.frameColor || gate.color;
+          pickedColor = gate.frameColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame');
         } else if (componentId === 'panel') {
           pickedMaterial = gate.panelMaterial || gate.material;
-          pickedColor = gate.panelColor || gate.color;
+          pickedColor = gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'panel');
         } else {
           pickedMaterial = gate.material;
-          pickedColor = gate.color;
+          pickedColor = gate.color || getFenceDefaultColor(gate.subtype, 'color');
         }
       }
     } else if (target.type === 'opening') {
@@ -521,14 +541,17 @@ export function extractMaterial(target, precise = true) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
         if (componentId === 'frame') {
           pickedMaterial = opening.frameMaterial || opening.material;
+          pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'frame');
         } else if (componentId === 'panel') {
           pickedMaterial = opening.panelMaterial || opening.material;
+          pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'panel');
         } else if (componentId === 'glass') {
           pickedMaterial = opening.glassMaterial || opening.material;
+          pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'glass');
         } else {
           pickedMaterial = opening.material;
+          pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'color');
         }
-        pickedColor = opening.color;
       }
     } else if (target.type === 'roof') {
       const roof = ctx.testMap.getRoof(target.id);
@@ -536,13 +559,13 @@ export function extractMaterial(target, precise = true) {
         const componentId = target.pick ? findRoofComponentIdFromNode(target.pick.pickedMesh) : null;
         if (componentId === 'side') {
           pickedMaterial = roof.sideMaterial || roof.material;
-          pickedColor = roof.sideColor || roof.color;
+          pickedColor = roof.sideColor || roof.color || '#b75b54';
         } else if (componentId === 'bottom') {
           pickedMaterial = roof.bottomMaterial || roof.material;
-          pickedColor = roof.bottomColor || roof.color;
+          pickedColor = roof.bottomColor || roof.color || '#b75b54';
         } else {
           pickedMaterial = roof.material;
-          pickedColor = roof.color;
+          pickedColor = roof.color || '#b75b54';
         }
       }
     } else if (target.type === 'stairs') {
@@ -551,10 +574,10 @@ export function extractMaterial(target, precise = true) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintStairsComponentId') : null;
         if (componentId === 'side') {
           pickedMaterial = stairs.sideMaterial || stairs.material;
-          pickedColor = stairs.sideColor || stairs.color;
+          pickedColor = stairs.sideColor || stairs.color || '#d8c0a0';
         } else {
           pickedMaterial = stairs.material;
-          pickedColor = stairs.color;
+          pickedColor = stairs.color || '#d8c0a0';
         }
       }
     }
@@ -647,12 +670,12 @@ export function extractMaterial(target, precise = true) {
         materialsArray.push({
           componentId: 'frame',
           material: fence.frameMaterial || fence.material || null,
-          color: fence.frameColor || fence.color || '#ffffff'
+          color: fence.frameColor || fence.color || getFenceDefaultColor(fence.subtype, 'frame')
         });
         materialsArray.push({
           componentId: 'panel',
           material: fence.panelMaterial || fence.material || null,
-          color: fence.panelColor || fence.color || '#ffffff'
+          color: fence.panelColor || fence.color || getFenceDefaultColor(fence.subtype, 'panel')
         });
       }
     } else if (target.type === 'fence_gate') {
@@ -661,12 +684,12 @@ export function extractMaterial(target, precise = true) {
         materialsArray.push({
           componentId: 'frame',
           material: gate.frameMaterial || gate.material || null,
-          color: gate.frameColor || gate.color || '#ffffff'
+          color: gate.frameColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame')
         });
         materialsArray.push({
           componentId: 'panel',
           material: gate.panelMaterial || gate.material || null,
-          color: gate.panelColor || gate.color || '#ffffff'
+          color: gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'panel')
         });
       }
     } else if (target.type === 'opening') {
@@ -675,17 +698,17 @@ export function extractMaterial(target, precise = true) {
         materialsArray.push({
           componentId: 'frame',
           material: opening.frameMaterial || opening.material || null,
-          color: opening.color || '#ffffff'
+          color: opening.color || getOpeningDefaultColor(opening.type, 'frame')
         });
         materialsArray.push({
           componentId: 'panel',
           material: opening.panelMaterial || opening.material || null,
-          color: opening.color || '#ffffff'
+          color: opening.color || getOpeningDefaultColor(opening.type, 'panel')
         });
         materialsArray.push({
           componentId: 'glass',
           material: opening.glassMaterial || opening.material || null,
-          color: opening.color || '#ffffff'
+          color: opening.color || getOpeningDefaultColor(opening.type, 'glass')
         });
       }
     } else if (target.type === 'roof') {

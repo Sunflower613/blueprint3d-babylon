@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>blueprint3d-babylon 测试地图</title>
+    <script type="module" crossorigin src="/blueprint3d-babylon/assets/index-BeWXb2G-.js"></script>
+    <link rel="stylesheet" crossorigin href="/blueprint3d-babylon/assets/index-B-HKvUl6.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="workspace">
+        <aside class="panel left-panel">
+          <button id="btn-toggle-left" class="toggle-side-btn" type="button" aria-label="收起面板">‹</button>
+          <div class="left-panel-content">
+            <nav class="tabs" aria-label="编辑模式">
+            <div class="tabs-slider"></div>
+            <button class="tab active" type="button" data-tab="floorplan">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 12H3"/><path d="M12 3v18"/></svg>
+              <span class="tab-text">户型</span>
+            </button>
+            <button class="tab" type="button" data-tab="design">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(1.2, 1.2) scale(0.9)"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.63-.77 1.63-1.7 0-.43-.16-.83-.41-1.16a.81.81 0 0 1-.22-.56c0-.44.33-.8 1.72-.8 5.48 0 9.28-4.5 9.28-10C24 6.5 18.62 2 12 2z"/></g></svg>
+              <span class="tab-text">设计</span>
+            </button>
+            <button class="tab" type="button" data-tab="items">
+              <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5"/><path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4H2Z"/><path d="M6 18v2"/><path d="M18 18v2"/></svg>
+              <span class="tab-text">家具</span>
+            </button>
+          </nav>
+
+          <section class="tool-section" data-panel="floorplan">
+            <h2>建筑工具</h2>
+            <div class="segmented floor-tools">
+              <button class="mode active" type="button" data-mode="select">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7.07 17 2.51-7.39L21 11.1z"/></svg>
+                <span class="mode-text">选择</span>
+                <span class="mode-shortcut">Space</span>
+              </button>
+              <button class="mode" type="button" data-mode="view">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="mode-text">查看</span>
+                <span class="mode-shortcut">V</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-wall">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                <span class="mode-text">画墙</span>
+                <span class="mode-shortcut">L</span>
+              </button>
+              <button class="mode" type="button" data-mode="delete-wall">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21Z"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                <span class="mode-text">删墙</span>
+                <span class="mode-shortcut">E</span>
+              </button>
+              <button class="mode hidden" type="button" data-mode="add-room">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                <span class="mode-text">房间</span>
+                <span class="mode-shortcut">R</span>
+              </button>
+              <button class="mode hidden" type="button" data-mode="add-door">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/></svg>
+                <span class="mode-text">加门</span>
+                <span class="mode-shortcut">D</span>
+              </button>
+              <button class="mode hidden" type="button" data-mode="add-window">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg>
+                <span class="mode-text">加窗</span>
+                <span class="mode-shortcut">W</span>
+              </button>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="room">
+              <button class="tool-group-toggle" type="button" aria-expanded="false" aria-controls="room-tools">
+                <span>房间</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="room-tools" class="segmented room-tools hidden">
+                <button class="mode" type="button" data-mode="add-room-square"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16"/></svg><span class="mode-text">方形</span><span class="mode-shortcut">R</span></button>
+                <button class="mode" type="button" data-mode="add-room-l-shape"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h9v7h7v9H4z"/></svg><span class="mode-text">L形</span></button>
+                <button class="mode" type="button" data-mode="add-room-circle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg><span class="mode-text">圆形</span></button>
+                <button class="mode" type="button" data-mode="add-room-octagon"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 8 0 5 5 0 8-5 5H8l-5-5V8z"/></svg><span class="mode-text">八角</span></button>
+                <button class="mode" type="button" data-mode="add-room-diamond"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 9-9 9-9-9z"/></svg><span class="mode-text">四角</span></button>
+                <button class="mode" type="button" data-mode="add-room-sector"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a16 16 0 0 1 16 16H4z"/></svg><span class="mode-text">扇形</span></button>
+                <button class="mode" type="button" data-mode="add-room-semicircle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18a8 8 0 0 1 16 0z"/></svg><span class="mode-text">半圆</span></button>
+                <button class="mode" type="button" data-mode="add-room-right-triangle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16z"/></svg><span class="mode-text">三角形</span></button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="door">
+              <button class="tool-group-toggle" type="button" aria-expanded="false" aria-controls="door-tools"><span>门</span><svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div id="door-tools" class="segmented opening-tools hidden">
+                <button class="mode" type="button" data-mode="add-door-square"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18"/></svg><span class="mode-text">方形</span><span class="mode-shortcut">D</span></button>
+                <button class="mode" type="button" data-mode="add-door-diamond"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 8 9-8 9-8-9z"/></svg><span class="mode-text">四角</span></button>
+                <button class="mode" type="button" data-mode="add-door-circle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg><span class="mode-text">圆形</span></button>
+                <button class="mode" type="button" data-mode="add-door-semicircle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18a8 8 0 0 1 16 0z"/></svg><span class="mode-text">半圆形</span></button>
+                <button class="mode" type="button" data-mode="add-door-round-arch"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V10a7 7 0 0 1 14 0v11z"/></svg><span class="mode-text">圆顶方形</span></button>
+                <button class="mode" type="button" data-mode="add-door-pointed-arch"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V10l7-7 7 7v11z"/></svg><span class="mode-text">尖顶方形</span></button>
+                <button class="mode" type="button" data-mode="add-door-quarter-sector"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a16 16 0 0 1 16 16H4z"/></svg><span class="mode-text">扇形</span></button>
+                <button class="mode" type="button" data-mode="add-door-right-triangle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16z"/></svg><span class="mode-text">三角形</span></button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="window">
+              <button class="tool-group-toggle" type="button" aria-expanded="false" aria-controls="window-tools"><span>窗</span><svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div id="window-tools" class="segmented opening-tools hidden">
+                <button class="mode" type="button" data-mode="add-window-square"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16"/></svg><span class="mode-text">方形</span><span class="mode-shortcut">W</span></button>
+                <button class="mode" type="button" data-mode="add-window-diamond"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 9-9 9-9-9z"/></svg><span class="mode-text">四角</span></button>
+                <button class="mode" type="button" data-mode="add-window-circle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg><span class="mode-text">圆形</span></button>
+                <button class="mode" type="button" data-mode="add-window-semicircle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18a8 8 0 0 1 16 0z"/></svg><span class="mode-text">半圆形</span></button>
+                <button class="mode" type="button" data-mode="add-window-round-arch"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V10a7 7 0 0 1 14 0v11z"/></svg><span class="mode-text">圆顶方形</span></button>
+                <button class="mode" type="button" data-mode="add-window-pointed-arch"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V10l7-7 7 7v11z"/></svg><span class="mode-text">尖顶方形</span></button>
+                <button class="mode" type="button" data-mode="add-window-quarter-sector"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a16 16 0 0 1 16 16H4z"/></svg><span class="mode-text">扇形</span></button>
+                <button class="mode" type="button" data-mode="add-window-right-triangle"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16z"/></svg><span class="mode-text">三角形</span></button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="roof">
+              <button class="tool-group-toggle" type="button" aria-expanded="false" aria-controls="roof-tools">
+                <span>屋顶</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="roof-tools" class="segmented roof-tools">
+              <button class="mode" type="button" data-mode="add-roof-gable">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12L2 20h20Z"/></svg>
+                <span class="mode-text">双斜坡</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-shed">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 20 L22 10 L22 20 Z"/></svg>
+                <span class="mode-text">单斜坡</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-arch">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 20 C2 8 22 8 22 20 Z"/></svg>
+                <span class="mode-text">拱形顶</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-dome">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20 A7 7 0 0 1 19 20 Z"/></svg>
+                <span class="mode-text">穹型顶</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-trapezoid">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M4 20 L8 10 L16 10 L20 20 Z"/></svg>
+                <span class="mode-text">梯形顶</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-hip">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 20 L7 12 L17 12 L22 20 Z M7 12 L12 6 L17 12"/></svg>
+                <span class="mode-text">四角顶</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-roof-flat">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><rect x="4" y="14" width="16" height="4" rx="1"/></svg>
+                <span class="mode-text">平屋顶</span>
+              </button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="stairs">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="stairs-tools">
+                <span>楼梯</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="stairs-tools" class="segmented stairs-tools">
+              <button class="mode" type="button" data-mode="add-stairs-straight">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20h14"/><path d="M10 16h10"/><path d="M14 12h6"/><path d="M18 8h2"/><path d="M2 20h4v-4h4v-4h4V8h4V4h4"/></svg>
+                <span class="mode-text">直跑楼梯</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-stairs-lshape">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h6v-6h6v-6h6V4"/><path d="M2 20v-4h4v-4h4v-4h4V4h6"/></svg>
+                <span class="mode-text">L形折返</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-stairs-ushape">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-8h6v8"/><path d="M15 20v-8h6v8"/><path d="M9 12h6"/></svg>
+                <span class="mode-text">U形折返</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-stairs-spiral">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M12 6c4 0 4 4 0 4s-4 4 0 4 4 4 0 4"/></svg>
+                <span class="mode-text">旋转楼梯</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-stairs-curved">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 A16 16 0 0 1 20 4"/><path d="M8 20 A12 12 0 0 1 20 8"/></svg>
+                <span class="mode-text">弧形楼梯</span>
+              </button>
+              <button class="mode" type="button" data-mode="add-stairs-floating">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h6 M8 14h6 M14 10h6"/><path d="M2 20 L22 8" stroke-dasharray="2,2"/></svg>
+                <span class="mode-text">悬浮楼梯</span>
+              </button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="fence">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="fence-tools">
+                <span>栅栏</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="fence-tools" class="segmented fence-tools">
+              <button class="mode" type="button" data-mode="draw-fence-picket_wood">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 8h16M4 16h16"/></svg>
+                <span class="mode-text">木栅栏</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-iron_ornamental">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V2M18 22V2M2 6h20M2 18h20M12 22V2"/></svg>
+                <span class="mode-text">铁艺栏</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-wire_mesh">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V2M20 22V2M4 6l16 4M4 12l16 4M4 18l16-4"/></svg>
+                <span class="mode-text">铁丝网</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-stone_masonry">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V10h18v12M3 14h18M3 18h18M9 10v12M15 10v12"/></svg>
+                <span class="mode-text">石砌矮墙</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-bamboo">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22V2M12 22V2M19 22V2M3 10h18M3 16h18"/></svg>
+                <span class="mode-text">竹篱笆</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-glass_rail">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 6h16M4 20h16M9 6v14M15 6v14"/></svg>
+                <span class="mode-text">玻璃护栏</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-concrete">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                <span class="mode-text">混凝土墙</span>
+              </button>
+              <button class="mode" type="button" data-mode="draw-fence-rope">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 8c4 3 12 3 16 0M4 14c4 3 12 3 16 0"/></svg>
+                <span class="mode-text">绳索栏</span>
+              </button>
+              </div>
+            </div>
+
+            <div class="building-tool-group" data-tool-group="fence-gate">
+              <button class="tool-group-toggle" type="button" aria-expanded="true" aria-controls="fence-gate-tools">
+                <span>栅栏门</span>
+                <svg class="tool-group-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="fence-gate-tools" class="segmented fence-gate-tools">
+                <button class="mode" type="button" data-mode="add-fence-gate-picket_wood">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4h3v18M18 22V4h3v18M6 8h12M6 16h12M9 8v8M15 8v8"/></svg>
+                  <span class="mode-text">木大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-iron_ornamental">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4M21 22V4M6 6h12M6 18h12M12 22V4M9 10a3 3 0 0 1 6 0"/></svg>
+                  <span class="mode-text">铁艺门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-wire_mesh">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V4M21 22V4M3 8l18 4M3 14l18-4M3 18l18 2"/></svg>
+                  <span class="mode-text">铁丝网门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-stone_masonry">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6h4v16M17 22V6h4v16M7 10h10M7 16h10M12 22V10"/></svg>
+                  <span class="mode-text">石砌大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-bamboo">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M9 22V4M15 22V4M4 8h16M4 16h16"/></svg>
+                  <span class="mode-text">竹大门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-glass_rail">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M20 22V4M4 6h16M4 18h16"/></svg>
+                  <span class="mode-text">玻璃门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-concrete">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18"/></svg>
+                  <span class="mode-text">混凝土门</span>
+                </button>
+                <button class="mode" type="button" data-mode="add-fence-gate-rope">
+                  <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 10c3 2 6 2 9 0M12 10c3 2 6 2 9 0M3 15c3 2 6 2 9 0M12 15c3 2 6 2 9 0"/></svg>
+                  <span class="mode-text">绳索门</span>
+                </button>
+              </div>
+            </div>
+
+            <label class="check-field">
+              <input id="snap-enabled" type="checkbox" checked />
+              <span>对齐网格</span>
+            </label>
+            <label class="field compact-field" style="display: none;">
+              <span>网格尺寸（米）</span>
+              <input id="snap-size" type="number" min="0.1" max="2" step="0.1" value="1" />
+            </label>
+            <p class="hint">选择房间后可拖动移动，也可拖动四周手柄调节长宽。选择墙体可设置长度或直接删除。</p>
+          </section>
+
+          <section class="tool-section hidden" data-panel="design">
+            <h2>设计工具</h2>
+            <div class="segmented design-tools" role="toolbar" aria-label="设计工具">
+              <button class="design-mode" type="button" data-design-mode="picker" title="吸取材质">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 9-8.414 8.414A2 2 0 0 0 3 18.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 3.828 21h1.344a2 2 0 0 0 1.414-.586L15 12"/><path d="m18 9 .4.4a1 1 0 1 1-3 3l-3.8-3.8a1 1 0 1 1 3-3l.4.4 3.4-3.4a1 1 0 1 1 3 3z"/><path d="m2 22 .414-.414"/></svg>
+                <span class="mode-text">吸取</span>
+                <span class="mode-shortcut">I</span>
+              </button>
+              <button class="design-mode" type="button" data-design-mode="brush" title="刷材质；点击锁定">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.622 17.897-10.68-2.913"/><path d="M18.376 2.622a1 1 0 1 1 3.002 3.002L17.36 9.643a.5.5 0 0 0 0 .707l.944.944a2.41 2.41 0 0 1 0 3.408l-.944.944a.5.5 0 0 1-.707 0L8.354 7.348a.5.5 0 0 1 0-.707l.944-.944a2.41 2.41 0 0 1 3.408 0l.944.944a.5.5 0 0 0 .707 0z"/><path d="M9 8c-1.804 2.71-3.97 3.46-6.583 3.948a.507.507 0 0 0-.302.819l7.32 8.883a1 1 0 0 0 1.185.204C12.735 20.405 16 16.792 16 15"/></svg>
+                <span class="mode-text">粉刷</span>
+                <span class="mode-shortcut">B</span>
+              </button>
+              <button class="design-mode" type="button" data-design-mode="bucket" title="填充材质">
+                <svg class="mode-icon" style="transform: scaleX(-1)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7 6 2"/><path d="M18.992 12H2.041"/><path d="M21.145 18.38A3.34 3.34 0 0 1 20 16.5a3.3 3.3 0 0 1-1.145 1.88c-.575.46-.855 1.02-.855 1.595A2 2 0 0 0 20 22a2 2 0 0 0 2-2.025c0-.58-.285-1.13-.855-1.595"/><path d="m8.5 4.5 2.148-2.148a1.205 1.205 0 0 1 1.704 0l7.296 7.296a1.205 1.205 0 0 1 0 1.704l-7.592 7.592a3.615 3.615 0 0 1-5.112 0l-3.888-3.888a3.615 3.615 0 0 1 0-5.112L5.67 7.33"/></svg>
+                <span class="mode-text">填充</span>
+                <span class="mode-shortcut">G</span>
+              </button>
+              <button class="design-mode" type="button" data-design-mode="eraser" title="清除材质">
+                <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21"/><path d="m5.082 11.09 8.828 8.828"/></svg>
+                <span class="mode-text">清除</span>
+                <span class="mode-shortcut">C</span>
+              </button>
+            </div>
+            <div id="current-material-panel" class="field compact-field">
+              <span>当前材质</span>
+              <div id="current-material-grid" class="material-grid"></div>
+            </div>
+            <div class="material-uploader">
+              <div class="field">
+                <span>材质分类</span>
+                <select id="material-category"></select>
+              </div>
+              <input id="material-upload" type="file" accept="image/*" hidden />
+            </div>
+            <div id="material-library" class="material-library"></div>
+            <div id="design-selection-panel" class="design-selection"></div>
+            <button id="btn-reset-material" type="button">重置</button>
+            <div id="hidden-floor-color-container" style="display: none;">
+              <label id="floor-color-field" class="field">
+                <span>地板颜色</span>
+                <input id="floor-color" type="color" value="#f4efe6" />
+              </label>
+            </div>
+          </section>
+
+          <section class="tool-section hidden" data-panel="items">
+            <div class="furniture-filter-wrapper">
+              <div class="search-input-wrapper">
+                <span class="search-icon-prefix" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+                <input id="furniture-search-input" type="search" placeholder="搜索家具" autocomplete="off" aria-label="搜索家具" />
+                <button id="btn-clear-furniture-search" class="clear-search-btn hidden" type="button" aria-label="清空家具搜索" title="清空搜索">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <div class="field">
+                <span>家具分类</span>
+                <select id="furniture-category-select"></select>
+              </div>
+            </div>
+            <div id="item-grid" class="item-grid"></div>
+            <div id="furniture-upload-actions" class="furniture-upload-actions hidden">
+              <button id="btn-upload-furniture" class="furniture-upload-button" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4"/><path d="M3 15v4a2 2 0 0 0 2 2"/></svg>
+                <span>上传家具</span>
+              </button>
+              <button id="btn-furniture-upload-help" class="furniture-upload-help" type="button" aria-label="自定义家具上传帮助" title="如何上传家具">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"/><path d="M12 18h.01"/></svg>
+              </button>
+              <input id="furniture-upload-input" type="file" accept=".js,.mjs,text/javascript,application/javascript" hidden />
+            </div>
+          </section>
+        </div>
+      </aside>
+
+        <section id="stage" class="stage" data-view="2d">
+          <div class="stage-controls">
+            <div class="control-group-left">
+              <div class="file-dropdown">
+                <button id="btn-file-menu" type="button" class="btn-icon btn-menu" title="文件">
+                  <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+                </button>
+                <div id="file-menu-content" class="dropdown-content hidden">
+                  <button id="btn-new" type="button">
+                    <span>新建</span>
+                    <span class="shortcut">Ctrl+Alt+N</span>
+                  </button>
+                  <button id="btn-open-local" type="button">
+                    <span>打开</span>
+                    <span class="badge" id="open-project-badge">0</span>
+                    <span class="shortcut">Ctrl+O</span>
+                  </button>
+                  <button id="btn-save-local" type="button">
+                    <span>保存</span>
+                    <span class="shortcut">Ctrl+S</span>
+                  </button>
+                  
+                  <div class="submenu-wrapper">
+                    <button id="btn-export-menu" type="button" class="has-submenu">
+                      <span>导出</span>
+                      <span class="shortcut">▸</span>
+                    </button>
+                    <div class="submenu-content hidden">
+                      <button id="btn-save" type="button">
+                        <span>导出 JSON</span>
+                        <span class="shortcut">Ctrl+E</span>
+                      </button>
+                      <button id="btn-export-zip" type="button">导出 ZIP（含资源）</button>
+                      <button id="btn-export-dxf" type="button">导出 CAD（DXF）</button>
+                      <button id="btn-export-3mf" type="button">导出 3MF</button>
+                    </div>
+                  </div>
+                  <button id="btn-load" type="button">
+                    <span>导入</span>
+                    <span class="shortcut">Ctrl+I</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="control-group-right">
+              <button id="btn-take-photo" type="button" class="btn-icon" title="拍照 (F12)">
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
+              <button id="btn-snap-toggle" type="button" class="btn-icon" title="对齐网格">
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="9" y1="3" x2="9" y2="21"/>
+                  <line x1="15" y1="3" x2="15" y2="21"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="3" y1="15" x2="21" y2="15"/>
+                </svg>
+              </button>
+              <button id="btn-undo" type="button" class="btn-icon" title="撤销" disabled>
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+              </button>
+              <button id="btn-redo" type="button" class="btn-icon" title="重做" disabled>
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+              </button>
+              <button id="btn-reset-camera" type="button" class="btn-icon hidden" title="重置视角">
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+              </button>
+              <button id="btn-view-toggle" class="primary" type="button" aria-pressed="false">3D</button>
+              <input id="building-file-input" type="file" accept=".json,.b3dbuilding,.b3dbuilding.json,application/json,.zip" hidden />
+            </div>
+          </div>
+
+          <div id="floor-floating-group" class="floor-floating-group"></div>
+
+          <div class="view-card plan-card" data-view-card="2d">
+            <svg id="floorplan" viewBox="0 0 720 520" role="img" aria-label="2D 户型编辑器"></svg>
+          </div>
+          <div class="view-card canvas-card" data-view-card="3d">
+            <canvas id="render-canvas"></canvas>
+          </div>
+        </section>
+
+        <aside id="right-panel" class="panel right-panel">
+          <button id="btn-toggle-right" class="toggle-side-btn" type="button" aria-label="收起面板">›</button>
+          <div class="right-panel-content">
+            <h2>对象属性</h2>
+            <div id="empty-state" class="empty-state">请选择房间、墙、家具、门或窗</div>
+
+            <div id="floor-editor" class="editor hidden">
+              <strong id="selected-floor-name">楼层属性</strong>
+              <label class="field">
+                <span>楼层名称</span>
+                <input id="floor-name" type="text" />
+              </label>
+              <label class="field">
+                <span>楼层高度（米）</span>
+                <input id="floor-wall-height" type="number" min="0.5" step="0.1" />
+              </label>
+              <label class="field">
+                <span>地板高度/厚度（米）</span>
+                <input id="floor-height" type="number" min="0.01" step="0.01" />
+              </label>
+              <label class="check-field">
+                <input id="floor-hide-roof" type="checkbox" />
+                <span>隐藏屋顶</span>
+              </label>
+              <label class="check-field">
+                <input id="floor-hide-wall" type="checkbox" />
+                <span>隐藏墙体</span>
+              </label>
+            </div>
+
+            <div id="room-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong id="selected-room-name">房间</strong>
+                <label class="switch">
+                  <input id="room-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <label class="field">
+                <span>房间名称</span>
+                <input id="room-name" type="text" />
+              </label>
+              <div class="fields-row">
+                <label class="field">
+                  <span>长度 (m)</span>
+                  <input id="room-width" type="number" min="1.2" step="0.1" />
+                </label>
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="room-depth" type="number" min="1.2" step="0.1" />
+                </label>
+              </div>
+              <label class="field">
+                <span>地板高度 (m)</span>
+                <input id="room-elevation" type="number" min="0" step="0.05" />
+              </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="room-rotation" type="number" min="0" max="359" step="15" />
+                <input id="room-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <button id="btn-delete-room" type="button" class="danger">删除房间</button>
+            </div>
+
+            <div id="wall-editor" class="editor hidden">
+              <strong id="selected-wall-name">墙面</strong>
+              <label class="field">
+                <span>墙体长度 (m)</span>
+                <input id="wall-length" type="number" min="0.2" step="0.1" />
+              </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="wall-rotation" type="number" min="0" max="359" step="90" />
+                <input id="wall-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <p class="hint">墙面颜色 and 材质请在左侧“设计”面板调整。</p>
+              <button id="btn-delete-wall" type="button" class="danger">删除墙体</button>
+            </div>
+
+            <div id="fence-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong id="selected-fence-name">栅栏</strong>
+                <label class="switch">
+                  <input id="fence-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <div class="field">
+                <span>栅栏类型</span>
+                <select id="fence-subtype">
+                  <option value="picket_wood" data-icon='<path d="M4 22V4M20 22V4M4 8h16M4 16h16"/>'>木栅栏</option>
+                  <option value="iron_ornamental" data-icon='<path d="M6 22V2M18 22V2M2 6h20M2 18h20M12 22V2"/>'>铁艺栏</option>
+                  <option value="wire_mesh" data-icon='<path d="M4 22V2M20 22V2M4 6l16 4M4 12l16 4M4 18l16-4"/>'>铁丝网</option>
+                  <option value="stone_masonry" data-icon='<path d="M3 22V10h18v12M3 14h18M3 18h18M9 10v12M15 10v12"/>'>石砌矮墙</option>
+                  <option value="bamboo" data-icon='<path d="M5 22V2M12 22V2M19 22V2M3 10h18M3 16h18"/>'>竹篱笆</option>
+                  <option value="glass_rail" data-icon='<path d="M4 22V4M20 22V4M4 6h16M4 20h16M9 6v14M15 6v14"/>'>玻璃护栏</option>
+                  <option value="concrete" data-icon='<rect x="3" y="3" width="18" height="18" rx="2"/>'>混凝土墙</option>
+                  <option value="rope" data-icon='<path d="M4 22V4M20 22V4M4 8c4 3 12 3 16 0M4 14c4 3 12 3 16 0"/>'>绳索栏</option>
+                </select>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>栅栏长度 (m)</span>
+                  <input id="fence-length" type="number" min="0.2" step="0.1" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="fence-height" type="number" min="0.2" max="3.0" step="0.1" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>离地高度 (m)</span>
+                  <input id="fence-yoffset" type="number" step="0.05" />
+                </label>
+              </div>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="fence-rotation" type="number" min="0" max="359" step="15" />
+                <input id="fence-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <button id="btn-delete-fence" type="button" class="danger">删除栅栏</button>
+            </div>
+
+            <div id="item-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong id="selected-name">家具</strong>
+                <label class="switch">
+                  <input id="item-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="item-width" type="number" min="0.1" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>深度 (m)</span>
+                  <input id="item-depth" type="number" min="0.1" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="item-height" type="number" min="0.1" step="0.01" />
+                </label>
+              </div>
+              <label class="field">
+                <span>离地高度 (m)</span>
+                <input id="item-elevation" type="number" min="0" step="0.01" />
+                <input id="item-elevation-range" type="range" min="0" max="3" step="0.01" />
+              </label>
+              <label class="field">
+                <span>旋转（度）</span>
+                <input id="item-rotation" type="number" min="0" max="359" step="15" />
+                <input id="item-rotation-range" type="range" min="0" max="360" step="1" />
+              </label>
+              <label class="field">
+                <span>缩放</span>
+                <input id="item-scale" type="number" min="0.5" max="4" step="0.1" />
+                <input id="item-scale-range" type="range" min="0.5" max="4" step="0.05" />
+              </label>
+              <label id="item-pose-field" class="field hidden">
+                <span>木偶姿态</span>
+                <select id="item-pose">
+                  <option value="stand">站立</option>
+                  <option value="sit">坐下</option>
+                  <option value="lie">平躺</option>
+                </select>
+              </label>
+              <label class="check-field">
+                <input id="item-mirrored" type="checkbox" />
+                <span>镜像翻转</span>
+              </label>
+              <label id="item-light-field" class="check-field hidden">
+                <input id="item-light-on" type="checkbox" />
+                <span id="item-power-label">开启灯光</span>
+              </label>
+              <button id="btn-delete-item" type="button" class="danger">删除家具</button>
+            </div>
+
+            <div id="opening-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong id="selected-opening-name">门窗</strong>
+                <label class="switch">
+                  <input id="opening-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <label class="field">
+                <span>沿墙位置</span>
+                <input id="opening-position" type="range" min="8" max="92" step="1" />
+              </label>
+              <div class="field">
+                <span>轮廓</span>
+                <select id="opening-shape">
+                  <option value="square" data-icon='<rect x="5" y="3" width="14" height="18"/>'>方形</option>
+                  <option value="diamond" data-icon='<path d="m12 3 8 9-8 9-8-9z"/>'>四角</option>
+                  <option value="circle" data-icon='<circle cx="12" cy="12" r="8"/>'>圆形</option>
+                  <option value="semicircle" data-icon='<path d="M4 18a8 8 0 0 1 16 0z"/>'>半圆形</option>
+                  <option value="round-arch" data-icon='<path d="M5 21V10a7 7 0 0 1 14 0v11z"/>'>圆顶方形</option>
+                  <option value="pointed-arch" data-icon='<path d="M5 21V10l7-7 7 7v11z"/>'>尖顶方形</option>
+                  <option value="quarter-sector" data-icon='<path d="M4 4a16 16 0 0 1 16 16H4z"/>'>扇形</option>
+                  <option value="right-triangle" data-icon='<path d="M4 4v16h16z"/>'>三角形</option>
+                </select>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="opening-width" type="number" min="0.25" max="3.6" step="0.05" />
+                </label>
+                <label id="opening-height-field" class="field hidden">
+                  <span>高度 (m)</span>
+                  <input id="opening-height" type="number" min="0.3" max="2.2" step="0.05" />
+                </label>
+              </div>
+              <label id="opening-sill-field" class="field hidden">
+                <span>离地高度 (m)</span>
+                <input id="opening-sill-height" type="number" min="0" max="2.4" step="0.05" />
+              </label>
+              <label id="opening-open-field" class="check-field hidden">
+                <input id="opening-open" type="checkbox" />
+                <span>开启状态</span>
+              </label>
+              <label id="opening-double-door-field" class="check-field hidden">
+                <input id="opening-double-door" type="checkbox" />
+                <span>双开门</span>
+              </label>
+              <label id="opening-flip-lr-field" class="check-field hidden">
+                <input id="opening-flip-lr" type="checkbox" />
+                <span>左右翻转</span>
+              </label>
+              <label id="opening-flip-io-field" class="check-field hidden">
+                <input id="opening-flip-io" type="checkbox" />
+                <span>内外翻转</span>
+              </label>
+              <label class="check-field">
+                <input id="opening-content-hidden" type="checkbox" />
+                <span id="opening-content-hidden-label">隐藏门板</span>
+              </label>
+              <button id="btn-delete-opening" type="button" class="danger">删除门窗</button>
+            </div>
+
+            <div id="fence-gate-editor" class="editor hidden">
+              <div class="editor-header">
+                <strong>栅栏门属性</strong>
+                <label class="switch">
+                  <input id="fence-gate-locked" type="checkbox" />
+                  <span class="slider">
+                    <span class="slider-button">
+                      <svg class="slider-icon unlock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                      </svg>
+                      <svg class="slider-icon lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <div class="field">
+                <span>样式</span>
+                <select id="fence-gate-subtype">
+                  <option value="picket_wood" data-icon='<path d="M3 22V4h3v18M18 22V4h3v18M6 8h12M6 16h12M9 8v8M15 8v8"/>'>木栅栏门</option>
+                  <option value="iron_ornamental" data-icon='<path d="M3 22V4M21 22V4M6 6h12M6 18h12M12 22V4M9 10a3 3 0 0 1 6 0"/>'>铁艺栏杆门</option>
+                  <option value="wire_mesh" data-icon='<path d="M3 22V4M21 22V4M3 8l18 4M3 14l18-4M3 18l18 2"/>'>铁丝网门</option>
+                  <option value="stone_masonry" data-icon='<path d="M3 22V6h4v16M17 22V6h4v16M7 10h10M7 16h10M12 22V10"/>'>石砌矮墙门</option>
+                  <option value="bamboo" data-icon='<path d="M4 22V4M20 22V4M9 22V4M15 22V4M4 8h16M4 16h16"/>'>竹大门</option>
+                  <option value="glass_rail" data-icon='<path d="M4 22V4M20 22V4M4 6h16M4 18h16"/>'>玻璃门</option>
+                  <option value="concrete" data-icon='<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18"/>'>混凝土门</option>
+                  <option value="rope" data-icon='<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 10c3 2 6 2 9 0M12 10c3 2 6 2 9 0M3 15c3 2 6 2 9 0M12 15c3 2 6 2 9 0"/>'>绳索栅栏门</option>
+                </select>
+              </div>
+              <label id="fence-gate-position-field" class="field hidden">
+                <span>沿栏位置</span>
+                <input id="fence-gate-position" type="range" min="2" max="98" step="1" />
+              </label>
+              <div class="fields-row">
+                <label class="field">
+                  <span>宽度 (m)</span>
+                  <input id="fence-gate-width" type="number" min="0.4" max="3.0" step="0.05" />
+                </label>
+                <label class="field">
+                  <span>高度 (m)</span>
+                  <input id="fence-gate-height" type="number" min="0.2" max="2.5" step="0.05" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="field">
+                  <span>厚度 (m)</span>
+                  <input id="fence-gate-thickness" type="number" min="0.04" max="0.5" step="0.01" />
+                </label>
+                <label class="field">
+                  <span>离地高度 (m)</span>
+                  <input id="fence-gate-yoffset" type="number" min="-1" max="2" step="0.05" />
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="check-field">
+                  <input id="fence-gate-open" type="checkbox" />
+                  <span>开启状态</span>
+                </label>
+                <label class="check-field">
+                  <input id="fence-gate-double-door" type="checkbox" />
+                  <span>双开门</span>
+                </label>
+              </div>
+              <div class="fields-row">
+                <label class="check-field">
+                  <input id="fence-gate-flip-lr" type="checkbox" />
+                  <span>左右翻转</span>
+                </label>
+                <label class="check-field">
+                  <input id="fence-gate-flip-io" type="checkbox" />
+                  <span>内外翻转</span>
+                </label>
+              </div>
+              <label class="check-field">
+                <input id="fence-gate-content-hidden" type="checkbox" />
+                <span>隐藏门板</span>
+              </label>
+              <button id="btn-delete-fence-gate" type="button" class="danger">删除栅栏门</button>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <!-- Keep main.js as the entry: loading app.js directly duplicates it through EditorUi's circular import under Vite HMR. -->
+  </body>
+</html>

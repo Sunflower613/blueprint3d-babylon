@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { Mesh, VertexData } from '../core/babylon.js';
+const BABYLON = { Mesh, VertexData };
 import { createBox } from '../core/primitives.js';
 import { getOpeningVertices, triangulateOpening } from './openingShapes.js';
 
@@ -19,33 +20,48 @@ export function createOpeningProfileMesh(registry, name, opening, parent, option
   const indices = [];
   const normals = [];
   const uvs = [];
-  const halfDepth = depth / 2;
 
-  vertices.forEach((point) => {
-    positions.push(point.x, point.y, halfDepth);
-    uvs.push(point.x / Math.max(width, 0.001) + 0.5, point.y / Math.max(height, 0.001) + 0.5);
-  });
-  vertices.forEach((point) => {
-    positions.push(point.x, point.y, -halfDepth);
-    uvs.push(point.x / Math.max(width, 0.001) + 0.5, point.y / Math.max(height, 0.001) + 0.5);
-  });
-  const backOffset = vertices.length;
-  triangulated.triangles.forEach(([a, b, c]) => {
-    indices.push(a, b, c, backOffset + a, backOffset + c, backOffset + b);
-  });
-  vertices.forEach((point, index) => {
-    const nextIndex = (index + 1) % vertices.length;
-    const next = vertices[nextIndex];
-    const sideOffset = positions.length / 3;
-    positions.push(
-      point.x, point.y, halfDepth,
-      next.x, next.y, halfDepth,
-      next.x, next.y, -halfDepth,
-      point.x, point.y, -halfDepth
-    );
-    uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-    indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
-  });
+  if (options.flat) {
+    const isBack = options.faceDirection === 'back';
+    vertices.forEach((point) => {
+      positions.push(point.x, point.y, 0);
+      uvs.push(point.x / Math.max(width, 0.001) + 0.5, point.y / Math.max(height, 0.001) + 0.5);
+    });
+    triangulated.triangles.forEach(([a, b, c]) => {
+      if (isBack) {
+        indices.push(a, c, b);
+      } else {
+        indices.push(a, b, c);
+      }
+    });
+  } else {
+    const halfDepth = depth / 2;
+    vertices.forEach((point) => {
+      positions.push(point.x, point.y, halfDepth);
+      uvs.push(point.x / Math.max(width, 0.001) + 0.5, point.y / Math.max(height, 0.001) + 0.5);
+    });
+    vertices.forEach((point) => {
+      positions.push(point.x, point.y, -halfDepth);
+      uvs.push(point.x / Math.max(width, 0.001) + 0.5, point.y / Math.max(height, 0.001) + 0.5);
+    });
+    const backOffset = vertices.length;
+    triangulated.triangles.forEach(([a, b, c]) => {
+      indices.push(a, b, c, backOffset + a, backOffset + c, backOffset + b);
+    });
+    vertices.forEach((point, index) => {
+      const nextIndex = (index + 1) % vertices.length;
+      const next = vertices[nextIndex];
+      const sideOffset = positions.length / 3;
+      positions.push(
+        point.x, point.y, halfDepth,
+        next.x, next.y, halfDepth,
+        next.x, next.y, -halfDepth,
+        point.x, point.y, -halfDepth
+      );
+      uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
+      indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
+    });
+  }
 
   const mesh = new BABYLON.Mesh(name, registry.scene);
   BABYLON.VertexData.ComputeNormals(positions, indices, normals);

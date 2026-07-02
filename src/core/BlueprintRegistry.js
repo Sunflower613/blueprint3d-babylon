@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { TransformNode, Vector3 } from './babylon.js';
+const BABYLON = { TransformNode, Vector3 };
 
 export function normalizeVector3(value, fallback = BABYLON.Vector3.Zero()) {
   if (value instanceof BABYLON.Vector3) return value;

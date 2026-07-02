@@ -1,4 +1,4 @@
-import { getRoomVertices } from '../../src/index.js';
+import { getRoomVertices } from '../../src/rooms/roomShapes.js';
 
 import { createStoreProxy } from '../store/proxyHelper.js';
 

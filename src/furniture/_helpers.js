@@ -1,4 +1,3 @@
-import * as BABYLON from '@babylonjs/core';
 import { createBlueprintMaterial, materialPreviewColor } from '../core/materials.js';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 

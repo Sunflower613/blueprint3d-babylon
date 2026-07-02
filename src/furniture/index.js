@@ -219,13 +219,14 @@ const bedroom = [
 bedroom.forEach(f => f.category = 'bedroom');
 
 const appliances = [
-  fridgeFurniture, washingMachineFurniture, microwaveFurniture, stoveFurniture, tvFurniture, computerFurniture, projectorFurniture, gameConsoleFurniture, smartSpeakerFurniture, electricFanFurniture, aromaDiffuserFurniture, hairDryerFurniture, rangeHoodFurniture, coffeeMakerFurniture, toasterFurniture, electricKettleFurniture, dishwasherFurniture, waterDispenserFurniture, riceCookerFurniture, airFryerFurniture, blenderFurniture
+  washingMachineFurniture, tvFurniture, computerFurniture, projectorFurniture, gameConsoleFurniture, smartSpeakerFurniture, electricFanFurniture, aromaDiffuserFurniture, hairDryerFurniture
 ];
 appliances.forEach(f => f.category = 'appliances');
 
 const kitchen = [
   sinkKitchenFurniture, kitchenwareFurniture, knifeBlockFurniture, spiceRackFurniture, kitchenHooksFurniture,
-  coffeeCupSetFurniture, teapotTeaCupsFurniture, wineGlassesFurniture, fruitPlatterFurniture, pairMugsFurniture
+  coffeeCupSetFurniture, teapotTeaCupsFurniture, wineGlassesFurniture, fruitPlatterFurniture, pairMugsFurniture,
+  fridgeFurniture, microwaveFurniture, stoveFurniture, rangeHoodFurniture, coffeeMakerFurniture, toasterFurniture, electricKettleFurniture, dishwasherFurniture, waterDispenserFurniture, riceCookerFurniture, airFryerFurniture, blenderFurniture
 ];
 kitchen.forEach(f => f.category = 'kitchen');
 

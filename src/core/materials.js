@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, StandardMaterial, Texture } from './babylon.js';
+const BABYLON = { Color3, StandardMaterial, Texture };
 
 export function createFlatMaterial(scene, name, colorHex, options = {}) {
   const material = new BABYLON.StandardMaterial(name, scene);

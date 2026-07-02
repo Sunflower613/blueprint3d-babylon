@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, Vector3, VertexBuffer } from './babylon.js';
+const BABYLON = { Color3, Vector3, VertexBuffer };
 import { triangulateRoom } from '../rooms/index.js';
 import {
   DEFAULT_WALL_THICKNESS,
@@ -594,4 +595,3 @@ export function create3MFPackage(floorplan, options = {}) {
 export function create3MFFileName(name = 'blueprint-building') {
   return `${safeName(name)}-${new Date().toISOString().replace(/[:.]/g, '-')}.3mf`;
 }
-

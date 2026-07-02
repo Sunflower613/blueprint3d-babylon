@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, Material, StandardMaterial, TransformNode } from '../core/babylon.js';
+const BABYLON = { Color3, Material, StandardMaterial, TransformNode };
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 import { createBlueprintMaterial } from '../core/materials.js';
 

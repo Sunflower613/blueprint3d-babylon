@@ -21,6 +21,22 @@ const STORAGE_KEY_PROJECTS_INDEX = 'blueprint3d-projects-index';
 const STORAGE_KEY_PROJECT_PREFIX = 'blueprint3d-project-';
 const STORAGE_KEY_CURRENT_PROJECT = 'blueprint3d-current-project';
 
+export function readLocalSave() {
+  try {
+    const rawBuilding = localStorage.getItem(STORAGE_KEY_BUILDING);
+    const rawMaterial = localStorage.getItem(STORAGE_KEY_MATERIAL);
+    const rawUI = localStorage.getItem(STORAGE_KEY_UI_STATE);
+    return {
+      buildingData: rawBuilding ? JSON.parse(rawBuilding) : null,
+      materialLibrary: rawMaterial ? JSON.parse(rawMaterial) : null,
+      uiState: rawUI ? JSON.parse(rawUI) : null,
+    };
+  } catch (error) {
+    console.error('Failed to read local save:', error);
+    return { buildingData: null, materialLibrary: null, uiState: null };
+  }
+}
+
 // =============================================
 // 简易 EventEmitter
 // =============================================

@@ -1,4 +1,4 @@
-import { getRoomVertices } from '../../src/index.js';
+import { getRoomVertices } from '../../src/rooms/roomShapes.js';
 
 /**
  * 空间拓扑与网格对齐相关算法
@@ -117,8 +117,12 @@ export function projectPointToFence(point, fence, snapEnabled, snapSize) {
   const lenSq = fdx * fdx + fdz * fdz;
   if (lenSq <= 0.001) return { t: 0.5, distance: Infinity };
 
-  let t = Math.max(0.01, Math.min(0.99, ((point.x - ax) * fdx + (point.z - az) * fdz) / lenSq));
+  const rawT = Math.max(0.01, Math.min(0.99, ((point.x - ax) * fdx + (point.z - az) * fdz) / lenSq));
+  const rawProjX = ax + fdx * rawT;
+  const rawProjZ = az + fdz * rawT;
+  const rawDistance = Math.hypot(point.x - rawProjX, point.z - rawProjZ);
 
+  let t = rawT;
   if (snapEnabled && snapSize) {
     const rawCenterX = ax + fdx * t;
     const rawCenterZ = az + fdz * t;
@@ -126,11 +130,7 @@ export function projectPointToFence(point, fence, snapEnabled, snapSize) {
     t = Math.max(0.01, Math.min(0.99, ((snapped.x - ax) * fdx + (snapped.z - az) * fdz) / lenSq));
   }
 
-  const projX = ax + fdx * t;
-  const projZ = az + fdz * t;
-  const distance = Math.hypot(point.x - projX, point.z - projZ);
-
-  return { t, distance };
+  return { t, distance: rawDistance };
 }
 
 /**
@@ -912,4 +912,3 @@ export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
   }
   return result;
 }
-

@@ -4,7 +4,10 @@
   "description": "面向 Babylon.js 的蓝图式 2D/3D 建筑编辑库，服务粉色城堡与家园沙盘测试地图。",
   "type": "module",
   "license": "MIT",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css",
+    "./src/core/babylon.production.js"
+  ],
   "main": "./src/index.js",
   "module": "./src/index.js",
   "exports": {
@@ -14,10 +17,11 @@
     "./furniture": "./src/furniture/index.js",
     "./rooms": "./src/rooms/index.js",
     "./openings": "./src/openings/index.js",
-    "./materials": "./src/core/materialCatalog.js"
+    "./materials": "./src/core/materialCatalog.js",
+    "./babylon-runtime": "./src/core/babylon.production.js"
   },
   "scripts": {
-    "build": "vite build example --outDir ../../dist-blueprint-test --emptyOutDir",
+    "build": "vite build --config vite.config.js --outDir ../../dist-blueprint-test --emptyOutDir",
     "test": "node --test tests/*.test.mjs"
   },
   "peerDependencies": {

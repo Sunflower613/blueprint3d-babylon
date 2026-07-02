@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
+const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData };
 import { BlueprintRegistry } from '../core/BlueprintRegistry.js';
 import { createFlatMaterial, createBlueprintMaterial, materialPreviewColor, normalizeMaterialDescriptor } from '../core/materials.js';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
@@ -577,7 +578,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.selectedWallId = null;
     this.selectedFenceId = null;
     this.selectedFenceGateId = null;
-    this.build();
+    this.renderingEnabled = options.renderingEnabled !== false;
+    this.renderingDirty = true;
+    if (this.renderingEnabled) this.build();
   }
 
   createMaterials(palette) {
@@ -594,6 +597,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   build() {
+    if (!this.renderingEnabled) {
+      this.renderingDirty = true;
+      return;
+    }
+    this.renderingDirty = false;
     this.clearBuiltMeshes();
     this.buildFloors();
     this.buildWalls();
@@ -659,6 +667,18 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         }
       });
     });
+  }
+
+  enableRendering() {
+    if (this.renderingEnabled && !this.renderingDirty) return;
+    this.renderingEnabled = true;
+    this.build();
+  }
+
+  deferRenderWork() {
+    if (this.renderingEnabled) return false;
+    this.renderingDirty = true;
+    return true;
   }
 
   getMeshRoomId(mesh) {
@@ -1277,6 +1297,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildFloors() {
+    if (this.deferRenderWork()) return;
     this.floorplan.floor.rooms.filter((room) => this.isFloorVisible(room.floorId)).forEach((room) => {
       const floorY = this.getFloorElevation(room.floorId);
       const floorMaterial = createBlueprintMaterial(this.scene, `floor_${room.id}`, room.material || this.floorplan.floor.material || room.color || this.floorplan.floor.color, {
@@ -1335,6 +1356,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildWalls(wallIds = null) {
+    if (this.deferRenderWork()) return;
     const visibleWalls = this.floorplan.walls.filter((wall) => this.isFloorVisible(wall.floorId));
     // 1. 定义带容差的邻接墙查询辅助函数
     const getAdjacentWalls = (P, currentWallId) => {
@@ -1713,6 +1735,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildOpenings(openingIds = null) {
+    if (this.deferRenderWork()) return;
     this.floorplan.openings
       .filter((opening) => this.isFloorVisible(opening.floorId) && (!openingIds || openingIds.has(opening.id)))
       .forEach((opening) => {
@@ -1746,6 +1769,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildRoofs() {
+    if (this.deferRenderWork()) return;
     this.floorplan.roofs.filter((roof) => {
       const roofFloor = this.getFloor(roof.floorId);
       if (roofFloor && roofFloor.hideRoof) return false;
@@ -1843,6 +1867,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildStairs() {
+    if (this.deferRenderWork()) return;
     this.floorplan.stairs.filter((stairs) => this.isFloorVisible(stairs.floorId)).forEach((stairs) => {
       const floorY = this.getFloorElevation(stairs.floorId);
       const stairsOffset = this.getStairsElevationOffset(stairs);
@@ -1867,6 +1892,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildFences(fenceIds = null) {
+    if (this.deferRenderWork()) return;
     this.floorplan.fences
       .filter((fence) => this.isFloorVisible(fence.floorId) && (!fenceIds || fenceIds.has(fence.id)))
       .forEach((fence) => {
@@ -1901,6 +1927,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
       const occupiedIntervals = [];
       (this.floorplan.fenceGates || []).forEach(gate => {
+        if (gate.fenceId !== fence.id) return;
         const gFrom = gate.from || [0, 0];
         const gTo = gate.to || [1, 0];
         const gcx = (gFrom[0] + gTo[0]) / 2;
@@ -1964,7 +1991,21 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         if (fence.tilt) {
           renderLength = subLen / Math.cos(fence.tilt);
         }
-        buildFenceGeometry(this, subGroup, fence, material, renderLength, fence.height || 1.1, fence.thickness || 0.1);
+        const skipStartPost = s > 0.001;
+        const skipEndPost = e < 0.999;
+        buildFenceGeometry(
+          this,
+          subGroup,
+          {
+            ...fence,
+            skipStartPost,
+            skipEndPost
+          },
+          material,
+          renderLength,
+          fence.height || 1.1,
+          fence.thickness || 0.1
+        );
       });
       
       this.fenceNodes.set(fence.id, group);
@@ -1972,6 +2013,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   buildFenceGates(gateIds = null) {
+    if (this.deferRenderWork()) return;
     this.floorplan.fenceGates ||= [];
     this.floorplan.fenceGates
       .filter((gate) => this.isFloorVisible(gate.floorId) && (!gateIds || gateIds.has(gate.id)))
@@ -2043,6 +2085,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
 
   buildItem(item) {
+    if (this.deferRenderWork()) return;
     const definition = getFurnitureDefinition(item.type);
     item.colors ||= {};
     item.materials ||= {};
@@ -2890,10 +2933,15 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
       let renderLength = sourceLength;
       if (sourceFence.tilt) renderLength /= Math.cos(sourceFence.tilt);
+      renderLength += 0.02;
       buildFenceGeometry(
         this,
         root,
-        sourceFence,
+        {
+          ...sourceFence,
+          skipStartPost: true,
+          skipEndPost: true
+        },
         baseMaterial,
         renderLength,
         sourceFence.height || 1.1,
@@ -3011,6 +3059,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
     const fenceTilt = gate.fenceId ? (this.getFence(gate.fenceId)?.tilt || 0) : 0;
     node.rotation.z = fenceTilt;
+
+    if (this.fenceGateDragPreviews.has(gateId)) {
+      this.syncFenceGateDragPreview(gateId);
+    }
   }
 
   deleteFenceGate(gateId) {
@@ -3109,16 +3161,19 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const mesh = createOpeningProfileMesh(this, `opening_drag_fill_${opening.id}_${side}`, opening, root, {
         width,
         height,
-        depth: 0.004,
+        depth: 0,
+        flat: true,
+        faceDirection: side,
         material,
         shadowCaster: false
       });
       mesh.position.z = z;
       mesh.isPickable = false;
+      mesh.receiveShadows = false;
       mesh.metadata = { openingDragFill: true, blueprintOpeningId: opening.id, side };
     };
-    createFillFace('front', frontMaterial, wallT / 2 + 0.002);
-    createFillFace('back', backMaterial, -wallT / 2 - 0.002);
+    createFillFace('front', frontMaterial, wallT / 2 + 0.0002);
+    createFillFace('back', backMaterial, -wallT / 2 - 0.0002);
 
     const plugins = wallMaterials.map((material) => new OpeningHolePreviewPlugin(material, this, openingId));
     this.openingDragPreviews.set(openingId, {

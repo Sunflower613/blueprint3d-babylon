@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { MeshBuilder, TransformNode } from './babylon.js';
+const BABYLON = { MeshBuilder, TransformNode };
 import { setTransform } from './BlueprintRegistry.js';
 
 export function createBox(registry, name, size, transform = {}, options = {}) {

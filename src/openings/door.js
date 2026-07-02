@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { CSG, MeshBuilder, TransformNode } from '../core/babylon.js';
+const BABYLON = { CSG, MeshBuilder, TransformNode };
 import { createBox, createCylinder } from '../core/primitives.js';
 import { createBlueprintMaterial } from '../core/materials.js';
 import { buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';

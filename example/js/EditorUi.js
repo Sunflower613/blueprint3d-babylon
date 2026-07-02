@@ -59,7 +59,7 @@ import {
   getShelfLayerHeights,
   getItemsCountOnBookshelf,
   getSelectedStructure
-} from '../app.js';
+} from './EditorUiContext.js';
 
 
 
@@ -1518,4 +1518,3 @@ export function renderCurrentMaterial() {
     currentGrid.appendChild(swatch);
   });
 }
-

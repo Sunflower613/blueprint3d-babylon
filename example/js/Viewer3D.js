@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 } from '../../src/core/babylon.js';
+const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 };
 
 /**
  * Viewer3D — 3D 渲染引擎封装
@@ -59,7 +60,8 @@ export class Viewer3D {
     this.shadowGenerator.blurKernel = 24;
     // ========== 环境纹理（用于镜面反射） ==========
     // 创建程序化环境纹理，使 kind:'mirror' 材质有可见的反射效果
-    this._initEnvironmentTexture();
+    this._environmentInitialized = false;
+    this._renderLoopStarted = false;
 
     // ========== 地面平面（用于射线拾取） ==========
     /** @type {BABYLON.Plane} 地面平面 */
@@ -80,8 +82,18 @@ export class Viewer3D {
    * 启动渲染循环并监听窗口 resize
    */
   startRenderLoop() {
+    if (this._renderLoopStarted) return;
+    this._renderLoopStarted = true;
     this.engine.runRenderLoop(() => this.scene.render());
     window.addEventListener('resize', this._resizeHandler);
+  }
+
+  prepareFor3D() {
+    if (!this._environmentInitialized) {
+      this._environmentInitialized = true;
+      this._initEnvironmentTexture();
+    }
+    this.startRenderLoop();
   }
 
   /**

@@ -553,7 +553,8 @@ export const chandelierFurniture = {
   }
 };
 
-import * as BABYLON from '@babylonjs/core';
+import { Color3, MeshBuilder, StandardMaterial } from '../core/babylon.js';
+const BABYLON = { Color3, MeshBuilder, StandardMaterial };
 
 // 12. 艺术木偶人 (Mannequin)
 export const mannequinFurniture = {
@@ -2447,8 +2448,6 @@ export const piggyBankFurniture = {
     }, { position: { x: size.width * 0.3, y: size.height * 0.85, z: size.depth * 0.15 } }, { parent: node });
   }
 };
-
-
 
 
 

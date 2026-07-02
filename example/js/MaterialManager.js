@@ -1,4 +1,4 @@
-import { FENCE_SUBTYPE_DEFAULTS } from '../../src/index.js';
+import { FENCE_SUBTYPE_DEFAULTS } from '../../src/presets/blueprintTestMap.js';
 import { TARGET_TYPES } from './types.js';
 import { isTargetLocked } from './TargetHandler.js';
 import { selection, editor } from '../store/index.js';
@@ -32,6 +32,27 @@ export function removeCustomMaterialFromLocalStorage(id) {
   }
 }
 
+export function getActiveMaterialDisplayName(mat) {
+  if (!mat) return '未选择材质';
+  if (typeof mat === 'string') {
+    if (mat.startsWith('#')) return `纯色：${mat}`;
+    return mat;
+  }
+  
+  const isPureColor = (
+    (mat.kind === 'color' || mat.kind === 'paint') ||
+    (!mat.kind && mat.color && !mat.src)
+  );
+  
+  if (isPureColor) {
+    const colorVal = mat.color || '#ffffff';
+    if (!mat.name || mat.name === '颜色' || mat.name === '自定义材质' || mat.name.startsWith('吸取颜色')) {
+      return `纯色：${colorVal}`;
+    }
+  }
+  return mat.name || '自定义材质';
+}
+
 export function renderMaterialLibrary() {
   ctx.updateDesignCursor();
   const materialCategorySelect = document.getElementById('material-category');
@@ -48,7 +69,7 @@ export function renderMaterialLibrary() {
   if (editor.activeMaterialArray && editor.activeMaterialArray.length > 0) {
     activeName = `已吸取材质数组 (${editor.activeMaterialArray.length}个材质)`;
   } else if (editor.activeMaterialDescriptor) {
-    activeName = editor.activeMaterialDescriptor.name || '自定义材质';
+    activeName = getActiveMaterialDisplayName(editor.activeMaterialDescriptor);
   }
   header.innerHTML = `<strong>${activeName}</strong>`;
   materialLibraryPanel.appendChild(header);
@@ -557,7 +578,8 @@ export function extractMaterial(target, precise = true) {
         editor.activeMaterialDescriptor = descriptor;
       }
       editor.activeMaterialArray = null; // 清除全量数组
-      ctx.showToast(`已吸取材质: ${editor.activeMaterialDescriptor.name || '自定义材质'}`);
+      const displayName = getActiveMaterialDisplayName(editor.activeMaterialDescriptor);
+      ctx.showToast(`已吸取材质: ${displayName}`);
       renderMaterialLibrary();
       ctx.updateEditor();
       ctx.setDesignMode('brush', false);
@@ -943,22 +965,33 @@ export function applyMaterial(target, designMode) {
       }
     }
   }
-
-  // 2. 油漆桶模式 (bucket)
   else if (designMode === 'bucket') {
     if (target.type === 'room') {
-      ctx.pushHistory();
-      const material = isArrayMode ? activeMaterialArray[0].material : activeMaterialDescriptor;
-      ctx.testMap.setRoomFloorMaterial(target.id, material);
-      ctx.refreshShadows();
-      ctx.updateEditor();
-      ctx.renderPlan();
+      if (activeMaterialDescriptor || isArrayMode) {
+        ctx.pushHistory();
+        const material = isArrayMode ? activeMaterialArray[0].material : activeMaterialDescriptor;
+        ctx.testMap.setRoomFloorMaterial(target.id, material);
+        ctx.refreshShadows();
+        ctx.updateEditor();
+        ctx.renderPlan();
+      } else {
+        ctx.showToast('请在面板中选择新材质以修改地板材质');
+      }
     } else if (target.type === 'wall') {
       const wall = ctx.testMap.getWall(target.id);
       if (!wall) return;
       const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
       if (!side) return;
 
+      // 提取当前墙面这一侧的现有材质和颜色
+      const srcMaterial = side === 'front' 
+        ? (wall.materialFront !== undefined && wall.materialFront !== null ? wall.materialFront : wall.material) 
+        : (wall.materialBack !== undefined && wall.materialBack !== null ? wall.materialBack : wall.material);
+      const srcColor = side === 'front'
+        ? (wall.colorFront !== undefined && wall.colorFront !== null ? wall.colorFront : wall.color)
+        : (wall.colorBack !== undefined && wall.colorBack !== null ? wall.colorBack : wall.color);
+
+      // 定位当前点击所朝向的房间
       const [x1, z1] = wall.from;
       const [x2, z2] = wall.to;
       const dx = x2 - x1;
@@ -977,12 +1010,23 @@ export function applyMaterial(target, designMode) {
 
       const room = ctx.testMap.getRoomAt(checkX, checkZ);
       if (!room) {
-        ctx.showToast('油漆桶无法在室外墙面应用，请点击室内墙面');
+        // 如果点击的朝向没有房间（属于室外侧），仅涂当前这堵墙的这一侧
+        ctx.pushHistory();
+        if (side === 'front') {
+          ctx.testMap.updateWall(wall.id, { materialFront: srcMaterial, colorFront: srcColor });
+        } else {
+          ctx.testMap.updateWall(wall.id, { materialBack: srcMaterial, colorBack: srcColor });
+        }
+        ctx.showToast('已更新当前墙面（室外侧不进行批量同步）');
+        ctx.refreshShadows();
+        ctx.updateEditor();
+        ctx.renderPlan();
         return;
       }
 
       ctx.pushHistory();
       const roomWallIds = Object.values(room.wallIds || {});
+      let count = 0;
       roomWallIds.forEach(wallId => {
         const w = ctx.testMap.getWall(wallId);
         if (!w || w.locked) return;
@@ -991,11 +1035,12 @@ export function applyMaterial(target, designMode) {
         const [wx2, wz2] = w.to;
         const wdx = wx2 - wx1;
         const wdz = wz2 - wz1;
-        const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
-        if (wlen < 0.01) return;
+        const wlen = Math.sqrt(wdx * wdx + wdx * wdx); // 仅做防错，重新算
+        const realLen = Math.sqrt(wdx * wdx + wdz * wdz);
+        if (realLen < 0.01) return;
 
-        const wux = wdx / wlen;
-        const wuz = wdz / wlen;
+        const wux = wdx / realLen;
+        const wuz = wdz / realLen;
         const wnx = -wuz;
         const wnz = wux;
 
@@ -1010,172 +1055,306 @@ export function applyMaterial(target, designMode) {
         const isF = roomF && roomF.id === room.id;
         const isB = roomB && roomB.id === room.id;
 
-        if (isArrayMode) {
-          // 材质数组油漆桶 -> 全量应用到该房间所有墙的对应面上
-          const frontEntry = activeMaterialArray.find(e => e.componentId === 'front') || activeMaterialArray[0];
-          const backEntry = activeMaterialArray.find(e => e.componentId === 'back') || activeMaterialArray[1] || frontEntry;
-          
-          if (isF) {
-            ctx.testMap.updateWall(w.id, { materialFront: frontEntry.material, colorFront: frontEntry.color });
-          } else if (isB) {
-            ctx.testMap.updateWall(w.id, { materialBack: backEntry.material, colorBack: backEntry.color });
-          } else {
-            ctx.testMap.updateWall(w.id, {
-              materialFront: frontEntry.material,
-              colorFront: frontEntry.color,
-              materialBack: backEntry.material,
-              colorBack: backEntry.color
-            });
-          }
+        if (isF) {
+          ctx.testMap.updateWall(w.id, { materialFront: srcMaterial, colorFront: srcColor });
+          count++;
+        } else if (isB) {
+          ctx.testMap.updateWall(w.id, { materialBack: srcMaterial, colorBack: srcColor });
+          count++;
         } else {
-          // 单一材质油漆桶 -> 只应用到该房间所有墙的对应侧面上
-          const color = activeMaterialDescriptor.color || '#f9fbff';
-          if (isF) {
-            ctx.testMap.updateWall(w.id, { materialFront: activeMaterialDescriptor, colorFront: color });
-          } else if (isB) {
-            ctx.testMap.updateWall(w.id, { materialBack: activeMaterialDescriptor, colorBack: color });
-          } else {
-            ctx.testMap.updateWall(w.id, { material: activeMaterialDescriptor, color });
-          }
+          ctx.testMap.updateWall(w.id, { material: srcMaterial, color: srcColor });
+          count++;
         }
       });
 
+      ctx.showToast(`已将该墙面的材质应用到房间内其他 ${count} 面墙上`);
       ctx.refreshShadows();
       ctx.updateEditor();
       ctx.renderPlan();
     } else if (target.type === 'item') {
-      // 先对目标 item 应用材质
-      applyMaterial({ type: 'item', id: target.id }, 'brush');
-      
       const updatedItem = ctx.testMap.getItem(target.id);
       if (updatedItem) {
         ctx.pushHistory();
         if (ctx.testMap.refreshItemRoomLinks) {
           ctx.testMap.refreshItemRoomLinks();
         }
-        
-        // 获取所有家具，同步本房间内同类家具的材质
-        const items = ctx.testMap.items || [];
+        const currentRoomId = updatedItem.roomId;
+
+        const items = ctx.testMap.floorplan?.items || ctx.testMap.items || [];
+        let count = 0;
         items.forEach(it => {
-          if (it.type === updatedItem.type && it.roomId === updatedItem.roomId && it.id !== updatedItem.id && !isTargetLocked({ type: 'item', id: it.id })) {
+          const isSameRoom = (currentRoomId && it.roomId === currentRoomId) || (!currentRoomId && !it.roomId);
+          if (it.type === updatedItem.type && isSameRoom && it.id !== updatedItem.id && !isTargetLocked({ type: 'item', id: it.id })) {
             it.materials = JSON.parse(JSON.stringify(updatedItem.materials || {}));
             it.colors = JSON.parse(JSON.stringify(updatedItem.colors || {}));
             ctx.testMap.updateItem(it.id, { materials: it.materials, colors: it.colors });
+            count++;
           }
         });
-        
+
+        if (currentRoomId) {
+          ctx.showToast(`已将该家具的材质应用到房间内其他 ${count} 个相同家具上`);
+        } else {
+          ctx.showToast(`已将该室外家具的材质应用到同层室外其他 ${count} 个相同家具上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
       }
     } else if (target.type === 'fence') {
-      // 先对目标 fence 应用材质
-      applyMaterial({ type: 'fence', id: target.id }, 'brush');
-
       const fence = ctx.testMap.getFence(target.id);
       if (fence) {
         ctx.pushHistory();
+
+        // 实时计算被点击 fence 的空间房间归属
+        let fenceRoomId = null;
+        if (target.pick && target.pick.pickedPoint) {
+          const room = ctx.testMap.getRoomAt(target.pick.pickedPoint.x, target.pick.pickedPoint.z);
+          if (room) fenceRoomId = room.id;
+        } else {
+          const mx = (fence.from[0] + fence.to[0]) / 2;
+          const mz = (fence.from[1] + fence.to[1]) / 2;
+          const room = ctx.testMap.getRoomAt(mx, mz);
+          if (room) fenceRoomId = room.id;
+        }
+
         const fences = ctx.testMap.floorplan.fences || [];
+        let count = 0;
         fences.forEach(f => {
           if (f.floorId === fence.floorId && f.subtype === fence.subtype && f.id !== fence.id && !isTargetLocked({ type: 'fence', id: f.id })) {
-            ctx.testMap.updateFence(f.id, {
-              material: fence.material,
-              color: fence.color,
-              frameMaterial: fence.frameMaterial,
-              frameColor: fence.frameColor,
-              panelMaterial: fence.panelMaterial,
-              panelColor: fence.panelColor
-            });
+            const fmx = (f.from[0] + f.to[0]) / 2;
+            const fmz = (f.from[1] + f.to[1]) / 2;
+            const fRoom = ctx.testMap.getRoomAt(fmx, fmz);
+            const fRoomId = fRoom ? fRoom.id : null;
+
+            const isSameRoom = (fenceRoomId && fRoomId === fenceRoomId) || (!fenceRoomId && !fRoomId);
+            if (isSameRoom) {
+              ctx.testMap.updateFence(f.id, {
+                material: fence.material,
+                color: fence.color,
+                frameMaterial: fence.frameMaterial,
+                frameColor: fence.frameColor,
+                panelMaterial: fence.panelMaterial,
+                panelColor: fence.panelColor
+              });
+              count++;
+            }
           }
         });
+
+        if (fenceRoomId) {
+          ctx.showToast(`已将该栏杆的材质应用到房间内其他 ${count} 个相同栏杆上`);
+        } else {
+          ctx.showToast(`已将该栏杆的材质应用到同层室外其他 ${count} 个相同栏杆上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
       }
     } else if (target.type === 'fence_gate') {
-      applyMaterial({ type: 'fence_gate', id: target.id }, 'brush');
-
       const gate = ctx.testMap.getFenceGate(target.id);
       if (gate) {
         ctx.pushHistory();
+
+        // 实时计算被点击 gate 的空间房间归属
+        let gateRoomId = null;
+        if (target.pick && target.pick.pickedPoint) {
+          const room = ctx.testMap.getRoomAt(target.pick.pickedPoint.x, target.pick.pickedPoint.z);
+          if (room) gateRoomId = room.id;
+        } else {
+          const gmx = (gate.from[0] + gate.to[0]) / 2;
+          const gmz = (gate.from[1] + gate.to[1]) / 2;
+          const room = ctx.testMap.getRoomAt(gmx, gmz);
+          if (room) gateRoomId = room.id;
+        }
+
         const gates = ctx.testMap.floorplan.fenceGates || [];
+        let count = 0;
         gates.forEach(g => {
           if (g.floorId === gate.floorId && g.subtype === gate.subtype && g.id !== gate.id && !isTargetLocked({ type: 'fence_gate', id: g.id })) {
-            ctx.testMap.updateFenceGate(g.id, {
-              frameMaterial: gate.frameMaterial,
-              frameColor: gate.frameColor,
-              panelMaterial: gate.panelMaterial,
-              panelColor: gate.panelColor
-            });
+            const gmx = (g.from[0] + g.to[0]) / 2;
+            const gmz = (g.from[1] + g.to[1]) / 2;
+            const gRoom = ctx.testMap.getRoomAt(gmx, gmz);
+            const gRoomId = gRoom ? gRoom.id : null;
+
+            const isSameRoom = (gateRoomId && gRoomId === gateRoomId) || (!gateRoomId && !gRoomId);
+            if (isSameRoom) {
+              ctx.testMap.updateFenceGate(g.id, {
+                frameMaterial: gate.frameMaterial,
+                frameColor: gate.frameColor,
+                panelMaterial: gate.panelMaterial,
+                panelColor: gate.panelColor
+              });
+              count++;
+            }
           }
         });
+
+        if (gateRoomId) {
+          ctx.showToast(`已将该栏杆门的材质应用到房间内其他 ${count} 个相同栏杆门上`);
+        } else {
+          ctx.showToast(`已将该栏杆门的材质应用到同层室外其他 ${count} 个相同栏杆门上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
       }
     } else if (target.type === 'opening') {
-      applyMaterial({ type: 'opening', id: target.id }, 'brush');
-
       const opening = ctx.testMap.getOpening(target.id);
       if (opening) {
         ctx.pushHistory();
+
+        // 实时计算被点击 opening 的空间房间归属
+        let opRoomId = null;
+        if (target.pick && target.pick.pickedPoint) {
+          const room = ctx.testMap.getRoomAt(target.pick.pickedPoint.x, target.pick.pickedPoint.z);
+          if (room) opRoomId = room.id;
+        }
+        if (!opRoomId) {
+          const wall = opening ? ctx.testMap.getWall(opening.wallId) : null;
+          if (wall) {
+            const mx = (wall.from[0] + wall.to[0]) / 2;
+            const mz = (wall.from[1] + wall.to[1]) / 2;
+            const room = ctx.testMap.getRoomAt(mx, mz);
+            if (room) opRoomId = room.id;
+          }
+        }
+
         const openings = ctx.testMap.floorplan.openings || [];
+        let count = 0;
+
+        let roomWallSet = new Set();
+        if (opRoomId) {
+          const roomObj = ctx.testMap.getRoom(opRoomId);
+          const roomWallIds = roomObj ? Object.values(roomObj.wallIds || {}) : [];
+          roomWallSet = new Set(roomWallIds);
+        }
+
         openings.forEach(op => {
-          // 同类且同层
           if (op.floorId === opening.floorId && op.type === opening.type && op.id !== opening.id && !isTargetLocked({ type: 'opening', id: op.id })) {
-            ctx.testMap.updateOpening(op.id, {
-              material: opening.material,
-              color: opening.color,
-              frameMaterial: opening.frameMaterial,
-              panelMaterial: opening.panelMaterial,
-              glassMaterial: opening.glassMaterial
-            });
+            if (opRoomId) {
+              if (roomWallSet.has(op.wallId)) {
+                ctx.testMap.updateOpening(op.id, {
+                  material: opening.material,
+                  color: opening.color,
+                  frameMaterial: opening.frameMaterial,
+                  panelMaterial: opening.panelMaterial,
+                  glassMaterial: opening.glassMaterial
+                });
+                count++;
+              }
+            } else {
+              const opWall = ctx.testMap.getWall(op.wallId);
+              let opWallRoomId = null;
+              if (opWall) {
+                const opmx = (opWall.from[0] + opWall.to[0]) / 2;
+                const opmz = (opWall.from[1] + opWall.to[1]) / 2;
+                const opRoom = ctx.testMap.getRoomAt(opmx, opmz);
+                if (opRoom) opWallRoomId = opRoom.id;
+              }
+              if (!opWallRoomId) {
+                ctx.testMap.updateOpening(op.id, {
+                  material: opening.material,
+                  color: opening.color,
+                  frameMaterial: opening.frameMaterial,
+                  panelMaterial: opening.panelMaterial,
+                  glassMaterial: opening.glassMaterial
+                });
+                count++;
+              }
+            }
           }
         });
+
+        if (opRoomId) {
+          ctx.showToast(`已将该门窗的材质应用到房间内其他 ${count} 个相同门窗上`);
+        } else {
+          ctx.showToast(`已将该室外门窗的材质应用到同层室外其他 ${count} 个相同门窗上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
       }
     } else if (target.type === 'roof') {
-      applyMaterial({ type: 'roof', id: target.id }, 'brush');
-
       const roof = ctx.testMap.getRoof(target.id);
       if (roof) {
         ctx.pushHistory();
+
+        // 实时计算被点击 roof 的空间房间归属
+        let roofRoomId = null;
+        if (target.pick && target.pick.pickedPoint) {
+          const room = ctx.testMap.getRoomAt(target.pick.pickedPoint.x, target.pick.pickedPoint.z);
+          if (room) roofRoomId = room.id;
+        }
+
         const roofs = ctx.testMap.floorplan.roofs || [];
+        let count = 0;
         roofs.forEach(r => {
           if (r.floorId === roof.floorId && r.id !== roof.id && !isTargetLocked({ type: 'roof', id: r.id })) {
-            ctx.testMap.updateRoof(r.id, {
-              material: roof.material,
-              color: roof.color,
-              sideMaterial: roof.sideMaterial,
-              sideColor: roof.sideColor,
-              bottomMaterial: roof.bottomMaterial,
-              bottomColor: roof.bottomColor
-            });
+            const rRoom = ctx.testMap.getRoomAt(r.x || 0, r.z || 0);
+            const rRoomId = rRoom ? rRoom.id : null;
+
+            const isSameRoom = (roofRoomId && rRoomId === roofRoomId) || (!roofRoomId && !rRoomId);
+            if (isSameRoom) {
+              ctx.testMap.updateRoof(r.id, {
+                material: roof.material,
+                color: roof.color,
+                sideMaterial: roof.sideMaterial,
+                sideColor: roof.sideColor,
+                bottomMaterial: roof.bottomMaterial,
+                bottomColor: roof.bottomColor
+              });
+              count++;
+            }
           }
         });
+
+        if (roofRoomId) {
+          ctx.showToast(`已将该屋顶的材质应用到房间内其他 ${count} 个屋顶上`);
+        } else {
+          ctx.showToast(`已将该屋顶的材质应用到同层室外其他 ${count} 个屋顶上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
       }
     } else if (target.type === 'stairs') {
-      applyMaterial({ type: 'stairs', id: target.id }, 'brush');
-
       const stairs = ctx.testMap.getStairs(target.id);
       if (stairs) {
         ctx.pushHistory();
+
+        // 实时计算被点击 stairs 的空间房间归属
+        let stairsRoomId = null;
+        if (target.pick && target.pick.pickedPoint) {
+          const room = ctx.testMap.getRoomAt(target.pick.pickedPoint.x, target.pick.pickedPoint.z);
+          if (room) stairsRoomId = room.id;
+        }
+
         const stairsList = ctx.testMap.floorplan.stairs || [];
+        let count = 0;
         stairsList.forEach(st => {
           if (st.floorId === stairs.floorId && st.id !== stairs.id && !isTargetLocked({ type: 'stairs', id: st.id })) {
-            ctx.testMap.updateStairs(st.id, {
-              material: stairs.material,
-              color: stairs.color,
-              sideMaterial: stairs.sideMaterial,
-              sideColor: stairs.sideColor
-            });
+            const stRoom = ctx.testMap.getRoomAt(st.x || 0, st.z || 0);
+            const stRoomId = stRoom ? stRoom.id : null;
+
+            const isSameRoom = (stairsRoomId && stRoomId === stairsRoomId) || (!stairsRoomId && !stRoomId);
+            if (isSameRoom) {
+              ctx.testMap.updateStairs(st.id, {
+                material: stairs.material,
+                color: stairs.color,
+                sideMaterial: stairs.sideMaterial,
+                sideColor: stairs.sideColor
+              });
+              count++;
+            }
           }
         });
+
+        if (stairsRoomId) {
+          ctx.showToast(`已将该楼梯的材质应用到房间内其他 ${count} 个楼梯上`);
+        } else {
+          ctx.showToast(`已将该楼梯的材质应用到同层室外其他 ${count} 个楼梯上`);
+        }
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();

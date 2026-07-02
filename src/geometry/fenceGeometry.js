@@ -1,4 +1,5 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, Material, StandardMaterial, TransformNode } from '../core/babylon.js';
+const BABYLON = { Color3, Material, StandardMaterial, TransformNode };
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 import { createBlueprintMaterial } from '../core/materials.js';
 
@@ -15,6 +16,8 @@ import { createBlueprintMaterial } from '../core/materials.js';
 export function buildFenceGeometry(registry, group, fence, material, length, height, thickness) {
   const subtype = fence.subtype || 'picket_wood';
   const scene = registry.scene;
+  const skipStartPost = !!fence.skipStartPost;
+  const skipEndPost = !!fence.skipEndPost;
 
   // 建立一个点击碰撞箱代理长方体 (pick_proxy)，防止射线穿过空隙 (NEW)
   const proxyThickness = Math.max(0.12, thickness * 1.2);
@@ -76,43 +79,53 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postHeight = height * 1.05;
     
     // 两端粗木立柱
-    const postStart = createBox(registry, `post_start_${fence.id}`, {
-      width: postWidth,
-      height: postHeight,
-      depth: postWidth
-    }, {
-      position: { x: -length / 2, y: postHeight / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipStartPost) {
+      const postStart = createBox(registry, `post_start_${fence.id}`, {
+        width: postWidth,
+        height: postHeight,
+        depth: postWidth
+      }, {
+        position: { x: -length / 2, y: postHeight / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
-    const postEnd = createBox(registry, `post_end_${fence.id}`, {
-      width: postWidth,
-      height: postHeight,
-      depth: postWidth
-    }, {
-      position: { x: length / 2, y: postHeight / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipEndPost) {
+      const postEnd = createBox(registry, `post_end_${fence.id}`, {
+        width: postWidth,
+        height: postHeight,
+        depth: postWidth
+      }, {
+        position: { x: length / 2, y: postHeight / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
     // 两根横向拉梁 (高 0.25 * height 和 0.75 * height)
     const railHeight = 0.05;
     const railThickness = thickness * 0.4;
+    const activeStartPostWidth = skipStartPost ? 0 : postWidth;
+    const activeEndPostWidth = skipEndPost ? 0 : postWidth;
+    const totalRailOffset = (activeStartPostWidth + activeEndPostWidth) / 2;
+    const railWidth = length - totalRailOffset;
+    const railX = (activeStartPostWidth - activeEndPostWidth) / 4;
+
     const railBottom = createBox(registry, `rail_bottom_${fence.id}`, {
-      width: length - postWidth,
+      width: railWidth,
       height: railHeight,
       depth: railThickness
     }, {
-      position: { x: 0, y: height * 0.25, z: 0 }
+      position: { x: railX, y: height * 0.25, z: 0 }
     }, {
       material: frameMaterial,
       parent: group,
@@ -122,11 +135,11 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     railBottom.metadata = { blueprintFenceComponentId: 'frame' };
 
     const railTop = createBox(registry, `rail_top_${fence.id}`, {
-      width: length - postWidth,
+      width: railWidth,
       height: railHeight,
       depth: railThickness
     }, {
-      position: { x: 0, y: height * 0.75, z: 0 }
+      position: { x: railX, y: height * 0.75, z: 0 }
     }, {
       material: frameMaterial,
       parent: group,
@@ -137,8 +150,11 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
 
     // 垂直尖顶木板，每隔 0.25 米排一块
     const picketSpacing = 0.22;
-    const count = Math.max(1, Math.floor((length - postWidth * 2) / picketSpacing));
-    const startX = -(count - 1) * picketSpacing / 2;
+    const totalPicketOffset = activeStartPostWidth + activeEndPostWidth;
+    const activeLen = length - totalPicketOffset;
+    const count = Math.max(1, Math.round(activeLen / picketSpacing));
+    const picketXOffset = (activeStartPostWidth - activeEndPostWidth) / 4;
+    const startX = picketXOffset - (count - 1) * picketSpacing / 2;
     
     for (let i = 0; i < count; i++) {
       const curX = startX + i * picketSpacing;
@@ -182,33 +198,37 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postHeight = height * 1.1;
     
     // 黑色两端金属立柱
-    const postStart = createBox(registry, `post_start_${fence.id}`, {
-      width: postWidth,
-      height: postHeight,
-      depth: postWidth
-    }, {
-      position: { x: -length / 2, y: postHeight / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipStartPost) {
+      const postStart = createBox(registry, `post_start_${fence.id}`, {
+        width: postWidth,
+        height: postHeight,
+        depth: postWidth
+      }, {
+        position: { x: -length / 2, y: postHeight / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
-    const postEnd = createBox(registry, `post_end_${fence.id}`, {
-      width: postWidth,
-      height: postHeight,
-      depth: postWidth
-    }, {
-      position: { x: length / 2, y: postHeight / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipEndPost) {
+      const postEnd = createBox(registry, `post_end_${fence.id}`, {
+        width: postWidth,
+        height: postHeight,
+        depth: postWidth
+      }, {
+        position: { x: length / 2, y: postHeight / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
     // 两根横向拉铁条
     const railBottom = createBox(registry, `rail_bottom_${fence.id}`, {
@@ -299,33 +319,37 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const postRadius = 0.03;
     
     // 两端不锈钢立柱
-    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
-      diameterTop: postRadius * 2,
-      diameterBottom: postRadius * 2,
-      height: height
-    }, {
-      position: { x: -length / 2, y: height / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipStartPost) {
+      const postStart = createCylinder(registry, `post_start_${fence.id}`, {
+        diameterTop: postRadius * 2,
+        diameterBottom: postRadius * 2,
+        height: height
+      }, {
+        position: { x: -length / 2, y: height / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
-    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
-      diameterTop: postRadius * 2,
-      diameterBottom: postRadius * 2,
-      height: height
-    }, {
-      position: { x: length / 2, y: height / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipEndPost) {
+      const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
+        diameterTop: postRadius * 2,
+        diameterBottom: postRadius * 2,
+        height: height
+      }, {
+        position: { x: length / 2, y: height / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
     // 顶底两根钢管拉梁
     const railBottom = createCylinder(registry, `rail_bottom_${fence.id}`, {
@@ -544,33 +568,37 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const mainBambooRad = 0.016;
 
     // 两端较粗的支撑立竹
-    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
-      diameterTop: mainBambooRad * 2.2,
-      diameterBottom: mainBambooRad * 2.2,
-      height: height * 1.05
-    }, {
-      position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipStartPost) {
+      const postStart = createCylinder(registry, `post_start_${fence.id}`, {
+        diameterTop: mainBambooRad * 2.2,
+        diameterBottom: mainBambooRad * 2.2,
+        height: height * 1.05
+      }, {
+        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
-    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
-      diameterTop: mainBambooRad * 2.2,
-      diameterBottom: mainBambooRad * 2.2,
-      height: height * 1.05
-    }, {
-      position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipEndPost) {
+      const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
+        diameterTop: mainBambooRad * 2.2,
+        diameterBottom: mainBambooRad * 2.2,
+        height: height * 1.05
+      }, {
+        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
     // 3根横向主干竹子
     const activeLen = length - mainBambooRad * 4;
@@ -776,55 +804,58 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     // ==========================================
     const postRad = 0.04;
     
-    // 1. 左右两个木立柱
-    const postStart = createCylinder(registry, `post_start_${fence.id}`, {
-      diameterTop: postRad * 2,
-      diameterBottom: postRad * 2,
-      height: height * 1.05
-    }, {
-      position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postStart.metadata = { blueprintFenceComponentId: 'frame' };
+    // 1. 左右两个木立柱与圆木帽
+    if (!skipStartPost) {
+      const postStart = createCylinder(registry, `post_start_${fence.id}`, {
+        diameterTop: postRad * 2,
+        diameterBottom: postRad * 2,
+        height: height * 1.05
+      }, {
+        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postStart.metadata = { blueprintFenceComponentId: 'frame' };
 
-    const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
-      diameterTop: postRad * 2,
-      diameterBottom: postRad * 2,
-      height: height * 1.05
-    }, {
-      position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    postEnd.metadata = { blueprintFenceComponentId: 'frame' };
+      const postStartCap = createSphere(registry, `post_start_cap_${fence.id}`, {
+        diameter: postRad * 2.2
+      }, {
+        position: { x: -length / 2, y: height * 1.05, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group
+      });
+      postStartCap.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
-    // 柱子顶端圆形木帽
-    const postStartCap = createSphere(registry, `post_start_cap_${fence.id}`, {
-      diameter: postRad * 2.2
-    }, {
-      position: { x: -length / 2, y: height * 1.05, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group
-    });
-    postStartCap.metadata = { blueprintFenceComponentId: 'frame' };
+    if (!skipEndPost) {
+      const postEnd = createCylinder(registry, `post_end_${fence.id}`, {
+        diameterTop: postRad * 2,
+        diameterBottom: postRad * 2,
+        height: height * 1.05
+      }, {
+        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      postEnd.metadata = { blueprintFenceComponentId: 'frame' };
 
-    const postEndCap = createSphere(registry, `post_end_cap_${fence.id}`, {
-      diameter: postRad * 2.2
-    }, {
-      position: { x: length / 2, y: height * 1.05, z: 0 }
-    }, {
-      material: frameMaterial,
-      parent: group
-    });
-    postEndCap.metadata = { blueprintFenceComponentId: 'frame' };
+      const postEndCap = createSphere(registry, `post_end_cap_${fence.id}`, {
+        diameter: postRad * 2.2
+      }, {
+        position: { x: length / 2, y: height * 1.05, z: 0 }
+      }, {
+        material: frameMaterial,
+        parent: group
+      });
+      postEndCap.metadata = { blueprintFenceComponentId: 'frame' };
+    }
 
     // 2. 三根下垂绳索
     const ropeHeights = [height * 0.25, height * 0.55, height * 0.85];

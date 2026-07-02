@@ -11,12 +11,13 @@ export function initTargetHandler(context) {
 }
 
 export function isAllowedTarget(target) {
-  return Object.values(TARGET_TYPES).filter(t => t !== TARGET_TYPES.WALL).includes(target?.type);
+  return Object.values(TARGET_TYPES).includes(target?.type);
 }
 
 export function getTargetObject(target) {
   if (!target) return null;
   if (target.type === TARGET_TYPES.ITEM) return ctx.testMap.getItem(target.id);
+  if (target.type === TARGET_TYPES.WALL) return ctx.testMap.getWall(target.id);
   if (target.type === TARGET_TYPES.OPENING) return ctx.testMap.getOpening(target.id);
   if (target.type === TARGET_TYPES.ROOF) return ctx.testMap.getRoof?.(target.id);
   if (target.type === TARGET_TYPES.STAIRS) return ctx.testMap.getStairs?.(target.id);
@@ -47,6 +48,8 @@ export function setTargetLocked(target, locked) {
     ctx.testMap.updateStairs?.(target.id, { locked: value });
   } else if (target.type === TARGET_TYPES.ROOM) {
     ctx.testMap.updateRoom(target.id, { locked: value });
+  } else if (target.type === TARGET_TYPES.WALL) {
+    ctx.testMap.updateWall(target.id, { locked: value });
   } else if (target.type === TARGET_TYPES.FENCE) {
     ctx.testMap.updateFence?.(target.id, { locked: value });
   } else if (target.type === TARGET_TYPES.FENCE_GATE) {
@@ -119,7 +122,7 @@ export function pickColorFromContextMenu(target) {
 
 export function showObjectContextMenu(target, clientX, clientY) {
   if (!isAllowedTarget(target)) return;
-  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
+  const isRotatable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence', 'wall'].includes(target.type);
   const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
@@ -251,7 +254,21 @@ export function rotateTarget(target) {
     return;
   }
   ctx.pushHistory();
-  if (target.type === 'roof' || target.type === 'stairs') {
+  if (target.type === 'wall') {
+    const wall = ctx.testMap.getWall(target.id);
+    if (wall) {
+      const cx = (wall.from[0] + wall.to[0]) / 2;
+      const cz = (wall.from[1] + wall.to[1]) / 2;
+      const dx = wall.to[0] - wall.from[0];
+      const dz = wall.to[1] - wall.from[1];
+      const nextFrom = [Number((cx + dz / 2).toFixed(3)), Number((cz - dx / 2).toFixed(3))];
+      const nextTo = [Number((cx - dz / 2).toFixed(3)), Number((cz + dx / 2).toFixed(3))];
+      ctx.testMap.updateWall(target.id, { from: nextFrom, to: nextTo });
+      if (selection.selectedWallId === target.id) {
+        ctx.updateEditor();
+      }
+    }
+  } else if (target.type === 'roof' || target.type === 'stairs') {
     const structure = ctx.getStructure(target.type, target.id);
     if (!structure) return;
     const currentDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
@@ -398,7 +415,28 @@ export function copyTarget(target) {
   }
   ctx.pushHistory();
   let nextSelection = null;
-  if (target.type === 'opening') {
+  if (target.type === 'wall') {
+    const wall = ctx.testMap.getWall(target.id);
+    if (wall) {
+      const copy = ctx.testMap.addWall(
+        [wall.from[0] + 1.0, wall.from[1] + 1.0],
+        [wall.to[0] + 1.0, wall.to[1] + 1.0]
+      );
+      if (copy) {
+        ctx.testMap.updateWall(copy.id, {
+          color: wall.color,
+          material: wall.material,
+          materialFront: wall.materialFront,
+          colorFront: wall.colorFront,
+          materialBack: wall.materialBack,
+          colorBack: wall.colorBack,
+          floorId: ctx.testMap.floorplan.currentFloorId,
+          locked: false
+        });
+        nextSelection = { type: 'wall', id: copy.id };
+      }
+    }
+  } else if (target.type === 'opening') {
     const opening = ctx.testMap.getOpening(target.id);
     const sourceWall = opening ? ctx.testMap.getWall(opening.wallId) : null;
     if (!opening || !sourceWall) return;
@@ -460,7 +498,7 @@ export function copyTarget(target) {
   } else if (target.type === 'room') {
     const room = ctx.testMap.getRoom(target.id);
     if (!room) return;
-    const copy = ctx.testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: room.floorId, locked: false });
+    const copy = ctx.testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: ctx.testMap.floorplan.currentFloorId, locked: false });
     nextSelection = { type: 'room', id: copy.id };
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getFenceGate(target.id);
@@ -485,6 +523,14 @@ export function deleteTarget(target) {
   if (isTargetLocked(target)) return;
   if (target.type === 'item') {
     ctx.entityManager.deleteItem(target.id);
+    return;
+  }
+  if (target.type === 'wall') {
+    ctx.pushHistory();
+    ctx.testMap.deleteWall(target.id);
+    ctx.clearSelection();
+    ctx.refreshShadows();
+    ctx.renderPlan();
     return;
   }
   if (target.type === 'room') {
@@ -513,6 +559,7 @@ export function deleteTarget(target) {
 export function selectTargetDescriptor(target) {
   if (!target || !isTargetOnCurrentFloor(target)) return;
   if (target.type === 'item') ctx.selectItem(target.id);
+  if (target.type === 'wall') ctx.selectWall(target.id);
   if (target.type === 'opening') ctx.selectOpening(target.id);
   if (target.type === 'roof') ctx.selectRoof(target.id);
   if (target.type === 'stairs') ctx.selectStairs(target.id);

@@ -1,12 +1,11 @@
-import './styles.css';
-
 import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
 import { boxComponent, cylinderComponent, sphereComponent } from '../src/furniture/_helpers.js';
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
+import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
 import { handleHotkeys } from './js/Hotkeys.js';
-import { Store, showToast, formatTimestamp } from './js/Store.js';
+import { Store, showToast, formatTimestamp, readLocalSave } from './js/Store.js';
 import { EntityManager } from './js/EntityManager.js';
 import { Viewer3D } from './js/Viewer3D.js';
 import * as Topology from './js/Topology.js';
@@ -78,27 +77,48 @@ import {
   syncWallMovePreview,
   syncFenceMovePreview
 } from './js/Viewer3DHandles.js';
-import * as BABYLON from '@babylonjs/core';
-const furnitureImages = import.meta.glob('../src/furniture/image/*.png', { eager: true });
+import { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3 } from '../src/core/babylon.js';
+const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3 };
+const furnitureImageLoaders = import.meta.glob('../src/furniture/image/*.png', {
+  query: '?url',
+  import: 'default'
+});
 import {
   Blueprint3DTestMap,
   BLUEPRINT3D_TEST_FLOORPLAN,
+  FENCE_SUBTYPE_DEFAULTS
+} from '../src/presets/blueprintTestMap.js';
+import {
   FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
-  FURNITURE_CATEGORIES,
+  FURNITURE_CATEGORIES
+} from '../src/furniture/index.js';
+import {
   MATERIAL_CATEGORIES,
   DEFAULT_MATERIAL_PACKS,
-  createTextureMaterialDescriptor,
+  createTextureMaterialDescriptor
+} from '../src/core/materialCatalog.js';
+import {
   getRoomVertices,
-  pointInRoom,
-  isSymmetricShape,
-  FENCE_SUBTYPE_DEFAULTS
-} from '../src/index.js';
+  pointInRoom
+} from '../src/rooms/roomShapes.js';
+import { isSymmetricShape } from '../src/openings/openingShapes.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const INCHES_PER_UNIT = 39.37;
 const view = { width: 720, height: 520, pad: 42, minX: -6.4, maxX: 6.8, minZ: -9.2, maxZ: 4.2 };
 // groundPlane 已移至 Viewer3D
+
+const fallbackFurnitureImagePath = '../src/furniture/image/custom_cube.png';
+const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
+  entries.forEach(async (entry) => {
+    if (!entry.isIntersecting) return;
+    const img = entry.target;
+    furnitureThumbnailObserver.unobserve(img);
+    const loader = furnitureImageLoaders[img.dataset.thumbnailPath] || furnitureImageLoaders[fallbackFurnitureImagePath];
+    if (loader) img.src = await loader();
+  });
+}, { rootMargin: '160px' });
 
 let mode = 'select';
 
@@ -487,7 +507,12 @@ scene.onBeforeRenderObservable.add(() => {
   });
 });
 
-let testMap = new Blueprint3DTestMap(scene);
+const initialLocalSave = readLocalSave();
+if (initialLocalSave.buildingData) restoreFloorplanMaterials(initialLocalSave.buildingData);
+let testMap = new Blueprint3DTestMap(scene, {
+  floorplan: initialLocalSave.buildingData || BLUEPRINT3D_TEST_FLOORPLAN,
+  renderingEnabled: false
+});
 
 // 初始化物体管理器 EntityManager
 let entityManager = new EntityManager({
@@ -687,10 +712,46 @@ Object.assign(appState, {
   // 辅助
   beginRoofResize,
   get2DTargetFromElement,
-  BABYLON
+  BABYLON,
+
+  // EditorUi dependencies are injected here to avoid importing app.js back.
+  updateSelectedRoom,
+  updateSelectedFloor,
+  updateSelectedStructure,
+  updateSelectedRotation,
+  updateSelectedScale,
+  updateSelectedPose,
+  updateSelectedWallLength,
+  updateSelectedWallRotation,
+  previewSelectedWallRotation,
+  commitSelectedStructureRotation,
+  previewSelectedStructureRotation,
+  deleteSelectedStructure,
+  updateSelectedSize,
+  updateSelectedOpening,
+  updateSelectedFenceGate,
+  deleteSelectedFenceGate,
+  updateSelectedFenceSubtype,
+  updateSelectedFenceLength,
+  updateSelectedFenceHeight,
+  updateSelectedFenceColor,
+  updateSelectedFenceYOffset,
+  applyMaterialToItemComponent,
+  updateComponentMaterial,
+  isSymmetricShape,
+  syncRotationInputs,
+  setTargetLocked,
+  revealRightPanelIfNeeded,
+  getSnapEnabled,
+  setSnapEnabled,
+  getSnapSize,
+  setSnapSize,
+  getShelfLayerHeights,
+  getItemsCountOnBookshelf
 });
 
 DragHandler.initDragHandler(appState);
+initEditorUiContext(appState);
 initTargetHandler(appState);
 initMaterialManager(appState);
 SvgEvents.initSvgEvents(appState);
@@ -774,16 +835,10 @@ if (snapToggleBtn) {
 
 // 启动时检查是否有本地保存的数据，直接恢复（不再弹出确认框）
 (function autoRestoreLocalSave() {
-  if (store.hasLocalSave()) {
-    const saved = store.loadFromLocal();
+  if (initialLocalSave.buildingData || initialLocalSave.materialLibrary?.length) {
+    const saved = initialLocalSave;
     if (saved.buildingData) {
-      restoreFloorplanMaterials(saved.buildingData); // 还原场景快照中的自定义材质 src
-      testMap.loadJSON(saved.buildingData);
-      syncFloorControls();
-      hasUserZoomedOrPanned = false;
-      refreshShadows();
-      updateEditor();
-      renderPlan();
+      // The saved floorplan was supplied to the constructor, so no second rebuild is needed.
       showToast('已自动恢复本地数据');
     }
     if (saved.materialLibrary && saved.materialLibrary.length) {
@@ -801,8 +856,6 @@ if (snapToggleBtn) {
   }
 })();
 syncLocalToStore();
-
-viewer3d.startRenderLoop();
 
 // ==========================================
 // 历史管理代理与基础3D代理函数
@@ -911,6 +964,8 @@ function setView(nextView) {
   }
 
   if (nextView === '3d') {
+    viewer3d.prepareFor3D();
+    testMap.enableRendering();
     refresh3DGrid();
     requestAnimationFrame(() => {
       engine.resize();
@@ -1514,8 +1569,13 @@ const canPlaceOnTable = Topology.canPlaceOnTable;
 const findTableBelow = (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
 const findBookshelfNearby = (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
 const snapToBookshelf = (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type));
-const getShelfLayerHeights = (bookshelf) => Topology.getShelfLayerHeights(bookshelf, (type) => testMap.getFurnitureDefinition(type));
-const getItemsCountOnBookshelf = (bookshelf, items) => Topology.getItemsCountOnBookshelf(bookshelf, items, (type) => testMap.getFurnitureDefinition(type));
+function getShelfLayerHeights(bookshelf) {
+  return Topology.getShelfLayerHeights(bookshelf, (type) => testMap.getFurnitureDefinition(type));
+}
+
+function getItemsCountOnBookshelf(bookshelf, items) {
+  return Topology.getItemsCountOnBookshelf(bookshelf, items, (type) => testMap.getFurnitureDefinition(type));
+}
 const moveItemTo = (itemId, x, z) => entityManager.moveItemTo(itemId, x, z);
 // SVG 事件绑定已迁移至 SvgEvents.js 中管理
 
@@ -1626,7 +1686,7 @@ function get2DWallSideFromPoint(wall, point) {
 
 function executeDesignTool(target) {
   const isArrayMode = !!(editor.activeMaterialArray && editor.activeMaterialArray.length > 0);
-  if (!editor.activeMaterialDescriptor && !isArrayMode && (designMode === 'brush' || designMode === 'bucket')) {
+  if (!editor.activeMaterialDescriptor && !isArrayMode && designMode === 'brush') {
     showToast('请先选择一个材质或吸取材质');
     return;
   }
@@ -3414,10 +3474,15 @@ function initFurnitureButtons() {
   restoreCustomFurnitureFromLocalStorage();
   renderFurnitureGrid();
 }
+async function loadFurnitureThumbnail(img, path) {
+  const loader = furnitureImageLoaders[path] || furnitureImageLoaders[fallbackFurnitureImagePath];
+  if (loader) img.src = await loader();
+}
 
 function renderFurnitureGrid() {
   const itemGrid = document.getElementById('item-grid');
   if (!itemGrid) return;
+  furnitureThumbnailObserver?.disconnect();
   itemGrid.innerHTML = '';
 
   const categorySelect = document.getElementById('furniture-category-select');
@@ -3443,20 +3508,25 @@ function renderFurnitureGrid() {
 
     const img = document.createElement('img');
     const imgPath = `../src/furniture/image/${definition.type}.png`;
-    const resolvedUrl = definition.thumbnail || furnitureImages[imgPath]?.default || furnitureImages['../src/furniture/image/custom_cube.png']?.default || '';
-    img.src = resolvedUrl;
     img.alt = definition.name;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.fetchPriority = 'low';
 
+    if (definition.thumbnail) {
+      img.src = definition.thumbnail;
+    } else if (furnitureThumbnailObserver) {
+      img.dataset.thumbnailPath = imgPath;
+      furnitureThumbnailObserver.observe(img);
+    } else {
+      loadFurnitureThumbnail(img, imgPath);
+    }
+
     img.onerror = () => {
-      const cubeFallback = furnitureImages['../src/furniture/image/custom_cube.png']?.default || '';
-      if (cubeFallback && img.src !== cubeFallback) {
-        img.src = cubeFallback;
-      } else {
+      img.onerror = null;
+      loadFurnitureThumbnail(img, fallbackFurnitureImagePath).catch(() => {
         img.style.display = 'none';
-      }
+      });
     };
 
     const span = document.createElement('span');

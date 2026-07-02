@@ -8,6 +8,13 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: 'example',
+  optimizeDeps: {
+    exclude: [
+      '@babylonjs/core',
+      '@babylonjs/gui',
+      'blueprint3d-babylon/babylon-runtime'
+    ]
+  },
   server: {
     port: 3000,
     configureServer(server) {
@@ -41,8 +48,15 @@ export default defineConfig({
     }
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src')
-    }
+    alias: [
+      {
+        find: 'blueprint3d-babylon/babylon-runtime',
+        replacement: path.resolve(__dirname, 'src/core/babylon.production.js')
+      },
+      {
+        find: '@',
+        replacement: path.resolve(__dirname, 'src')
+      }
+    ]
   }
 });

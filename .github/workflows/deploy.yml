@@ -1,0 +1,35 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    concurrency: ci-${{ github.ref }} # 避免并发冲突，取消之前未完成的任务
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies 🔧
+        run: npm install
+
+      - name: Build 🏗️
+        run: npx vite build --config vite.config.js --outDir dist --base /blueprint3d-babylon/
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist # 部署打包出来的 dist 文件夹
+          branch: gh-pages # 部署到 gh-pages 分支

@@ -164,6 +164,16 @@ export function renderMaterialLibrary() {
       button.style.backgroundColor = c;
       button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
       button.style.border = '1px solid rgba(255,255,255,0.4)';
+    } else if (material.kind === 'metal') {
+      const c = material.color || '#e6e6e6';
+      const isMatte = material.roughness !== undefined && material.roughness > 0.4;
+      if (isMatte) {
+        button.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%), linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.15) 100%), ${c}`;
+        button.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.25)';
+      } else {
+        button.style.background = `linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0.8) 45%, rgba(0,0,0,0.3) 60%, rgba(255,255,255,0.3) 80%, rgba(0,0,0,0.1) 100%), ${c}`;
+        button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.2)';
+      }
     } else {
       button.style.backgroundColor = material.color || '#ffffff';
     }
@@ -452,6 +462,37 @@ function getOpeningDefaultColor(openingType, componentId) {
   }
 }
 
+function tryUpdateToFullMaterial(matOrColor) {
+  if (!matOrColor) return null;
+  let colorVal = typeof matOrColor === 'string' ? matOrColor : matOrColor.color;
+  if (!colorVal) return matOrColor;
+
+  // 1. 如果是对象，且包含明确的高级材质属性 (如 kind 为 metal, mirror, glass, emissive, texture 等)
+  if (typeof matOrColor === 'object' && matOrColor.kind && matOrColor.kind !== 'color' && matOrColor.kind !== 'paint') {
+    return matOrColor;
+  }
+
+  // 2. 尝试从材质库中根据颜色值匹配具有特殊属性的材质定义 (如金属、镜面、发光、玻璃等)
+  const foundRich = editor.materialLibrary.find(m => m.color === colorVal && m.kind && m.kind !== 'color' && m.kind !== 'paint');
+  if (foundRich) return foundRich;
+
+  // 3. 如果没找到特殊属性材质，则在整个材质库里查找任何匹配项
+  const foundAny = editor.materialLibrary.find(m => m.color === colorVal);
+  if (foundAny) return foundAny;
+
+  // 4. 仍然找不到 (属于自定义的颜色)，如果是字符串则构建一个默认涂料描述符，是对象则直接返回该对象
+  if (typeof matOrColor === 'string') {
+    return {
+      id: 'paint-' + matOrColor.replace('#', ''),
+      name: `吸取颜色 (${matOrColor})`,
+      category: 'paint',
+      kind: 'paint',
+      color: matOrColor
+    };
+  }
+  return matOrColor;
+}
+
 export function extractMaterial(target, precise = true) {
   if (!target) return;
   
@@ -583,23 +624,7 @@ export function extractMaterial(target, precise = true) {
     }
 
     if (pickedMaterial || pickedColor) {
-      let descriptor = pickedMaterial || pickedColor;
-      if (typeof descriptor === 'string') {
-        const found = editor.materialLibrary.find(m => m.color === descriptor);
-        if (found) {
-          editor.activeMaterialDescriptor = found;
-        } else {
-          editor.activeMaterialDescriptor = {
-            id: 'paint-' + descriptor.replace('#', ''),
-            name: `吸取颜色 (${descriptor})`,
-            category: 'paint',
-            kind: 'paint',
-            color: descriptor
-          };
-        }
-      } else {
-        editor.activeMaterialDescriptor = descriptor;
-      }
+      editor.activeMaterialDescriptor = tryUpdateToFullMaterial(pickedMaterial || pickedColor);
       editor.activeMaterialArray = null; // 清除全量数组
       const displayName = getActiveMaterialDisplayName(editor.activeMaterialDescriptor);
       ctx.showToast(`已吸取材质: ${displayName}`);
@@ -618,24 +643,30 @@ export function extractMaterial(target, precise = true) {
     if (target.type === 'room') {
       const room = ctx.testMap.getRoom(target.id);
       if (room) {
+        const rawMat = room.material || null;
+        const rawCol = room.color || '#ffffff';
         materialsArray.push({
           componentId: 'floor',
-          material: room.material || null,
-          color: room.color || '#ffffff'
+          material: tryUpdateToFullMaterial(rawMat || rawCol),
+          color: rawCol
         });
       }
     } else if (target.type === 'wall') {
       const wall = ctx.testMap.getWall(target.id);
       if (wall) {
+        const rawMatFront = wall.materialFront || wall.material || null;
+        const rawColFront = wall.colorFront || wall.color || '#ffffff';
+        const rawMatBack = wall.materialBack || wall.material || null;
+        const rawColBack = wall.colorBack || wall.color || '#ffffff';
         materialsArray.push({
           componentId: 'front',
-          material: wall.materialFront || wall.material || null,
-          color: wall.colorFront || wall.color || '#ffffff'
+          material: tryUpdateToFullMaterial(rawMatFront || rawColFront),
+          color: rawColFront
         });
         materialsArray.push({
           componentId: 'back',
-          material: wall.materialBack || wall.material || null,
-          color: wall.colorBack || wall.color || '#ffffff'
+          material: tryUpdateToFullMaterial(rawMatBack || rawColBack),
+          color: rawColBack
         });
       }
     } else if (target.type === 'item') {
@@ -645,10 +676,12 @@ export function extractMaterial(target, precise = true) {
         const definition = ctx.testMap.getFurnitureDefinition?.(item.type);
         if (definition && definition.components) {
           definition.components.forEach(comp => {
+            const rawMat = item.materials?.[comp.id] || null;
+            const rawCol = item.colors?.[comp.id] || comp.defaultColor || '#ffffff';
             materialsArray.push({
               componentId: comp.id,
-              material: item.materials?.[comp.id] || null,
-              color: item.colors?.[comp.id] || comp.defaultColor || '#ffffff'
+              material: tryUpdateToFullMaterial(rawMat || rawCol),
+              color: rawCol
             });
           });
         } else {
@@ -656,10 +689,12 @@ export function extractMaterial(target, precise = true) {
           const colKeys = Object.keys(item.colors || {});
           const allKeys = Array.from(new Set([...matKeys, ...colKeys]));
           allKeys.forEach(k => {
+            const rawMat = item.materials?.[k] || null;
+            const rawCol = item.colors?.[k] || '#ffffff';
             materialsArray.push({
               componentId: k,
-              material: item.materials?.[k] || null,
-              color: item.colors?.[k] || '#ffffff'
+              material: tryUpdateToFullMaterial(rawMat || rawCol),
+              color: rawCol
             });
           });
         }
@@ -667,81 +702,105 @@ export function extractMaterial(target, precise = true) {
     } else if (target.type === 'fence') {
       const fence = ctx.testMap.getFence(target.id);
       if (fence) {
+        const rawMatFrame = fence.frameMaterial || fence.material || null;
+        const rawColFrame = fence.frameColor || fence.color || getFenceDefaultColor(fence.subtype, 'frame');
+        const rawMatPanel = fence.panelMaterial || fence.material || null;
+        const rawColPanel = fence.panelColor || fence.color || getFenceDefaultColor(fence.subtype, 'panel');
         materialsArray.push({
           componentId: 'frame',
-          material: fence.frameMaterial || fence.material || null,
-          color: fence.frameColor || fence.color || getFenceDefaultColor(fence.subtype, 'frame')
+          material: tryUpdateToFullMaterial(rawMatFrame || rawColFrame),
+          color: rawColFrame
         });
         materialsArray.push({
           componentId: 'panel',
-          material: fence.panelMaterial || fence.material || null,
-          color: fence.panelColor || fence.color || getFenceDefaultColor(fence.subtype, 'panel')
+          material: tryUpdateToFullMaterial(rawMatPanel || rawColPanel),
+          color: rawColPanel
         });
       }
     } else if (target.type === 'fence_gate') {
       const gate = ctx.testMap.getFenceGate(target.id);
       if (gate) {
+        const rawMatFrame = gate.frameMaterial || gate.material || null;
+        const rawColFrame = gate.frameColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame');
+        const rawMatPanel = gate.panelMaterial || gate.material || null;
+        const rawColPanel = gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'panel');
         materialsArray.push({
           componentId: 'frame',
-          material: gate.frameMaterial || gate.material || null,
-          color: gate.frameColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame')
+          material: tryUpdateToFullMaterial(rawMatFrame || rawColFrame),
+          color: rawColFrame
         });
         materialsArray.push({
           componentId: 'panel',
-          material: gate.panelMaterial || gate.material || null,
-          color: gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'panel')
+          material: tryUpdateToFullMaterial(rawMatPanel || rawColPanel),
+          color: rawColPanel
         });
       }
     } else if (target.type === 'opening') {
       const opening = ctx.testMap.getOpening(target.id);
       if (opening) {
+        const rawMatFrame = opening.frameMaterial || opening.material || null;
+        const rawColFrame = opening.color || getOpeningDefaultColor(opening.type, 'frame');
+        const rawMatPanel = opening.panelMaterial || opening.material || null;
+        const rawColPanel = opening.color || getOpeningDefaultColor(opening.type, 'panel');
+        const rawMatGlass = opening.glassMaterial || opening.material || null;
+        const rawColGlass = opening.color || getOpeningDefaultColor(opening.type, 'glass');
         materialsArray.push({
           componentId: 'frame',
-          material: opening.frameMaterial || opening.material || null,
-          color: opening.color || getOpeningDefaultColor(opening.type, 'frame')
+          material: tryUpdateToFullMaterial(rawMatFrame || rawColFrame),
+          color: rawColFrame
         });
         materialsArray.push({
           componentId: 'panel',
-          material: opening.panelMaterial || opening.material || null,
-          color: opening.color || getOpeningDefaultColor(opening.type, 'panel')
+          material: tryUpdateToFullMaterial(rawMatPanel || rawColPanel),
+          color: rawColPanel
         });
         materialsArray.push({
           componentId: 'glass',
-          material: opening.glassMaterial || opening.material || null,
-          color: opening.color || getOpeningDefaultColor(opening.type, 'glass')
+          material: tryUpdateToFullMaterial(rawMatGlass || rawColGlass),
+          color: rawColGlass
         });
       }
     } else if (target.type === 'roof') {
       const roof = ctx.testMap.getRoof(target.id);
       if (roof) {
+        const rawMatTop = roof.material || null;
+        const rawColTop = roof.color || '#b75b54';
+        const rawMatSide = roof.sideMaterial || null;
+        const rawColSide = roof.sideColor || '#b75b54';
+        const rawMatBottom = roof.bottomMaterial || null;
+        const rawColBottom = roof.bottomColor || '#b75b54';
         materialsArray.push({
           componentId: 'top',
-          material: roof.material || null,
-          color: roof.color || '#b75b54'
+          material: tryUpdateToFullMaterial(rawMatTop || rawColTop),
+          color: rawColTop
         });
         materialsArray.push({
           componentId: 'side',
-          material: roof.sideMaterial || null,
-          color: roof.sideColor || '#b75b54'
+          material: tryUpdateToFullMaterial(rawMatSide || rawColSide),
+          color: rawColSide
         });
         materialsArray.push({
           componentId: 'bottom',
-          material: roof.bottomMaterial || null,
-          color: roof.bottomColor || '#b75b54'
+          material: tryUpdateToFullMaterial(rawMatBottom || rawColBottom),
+          color: rawColBottom
         });
       }
     } else if (target.type === 'stairs') {
       const stairs = ctx.testMap.getStairs(target.id);
       if (stairs) {
+        const rawMatTop = stairs.material || null;
+        const rawColTop = stairs.color || '#d8c0a0';
+        const rawMatSide = stairs.sideMaterial || null;
+        const rawColSide = stairs.sideColor || '#d8c0a0';
         materialsArray.push({
           componentId: 'top',
-          material: stairs.material || null,
-          color: stairs.color || '#d8c0a0'
+          material: tryUpdateToFullMaterial(rawMatTop || rawColTop),
+          color: rawColTop
         });
         materialsArray.push({
           componentId: 'side',
-          material: stairs.sideMaterial || null,
-          color: stairs.sideColor || '#d8c0a0'
+          material: tryUpdateToFullMaterial(rawMatSide || rawColSide),
+          color: rawColSide
         });
       }
     }

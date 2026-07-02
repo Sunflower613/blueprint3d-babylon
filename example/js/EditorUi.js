@@ -636,7 +636,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     if (floorColorField) {
       group.appendChild(floorColorField);
     }
-    group.appendChild(createApplyMaterialButton('应用当前材质到房间地板', () => updateComponentMaterial('room', room.id, 'floor', activeMaterialDescriptor)));
+    group.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('room', room.id, 'floor', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(group);
     return;
   }
@@ -647,7 +647,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupFront.appendChild(createColorField('墙正面材质', wall.colorFront || wall.color || '#f9fbff', (color) => {
       updateComponentMaterial('wall', wall.id, 'front', color);
     }, getMaterialFriendlyName(wall.materialFront)));
-    groupFront.appendChild(createApplyMaterialButton('应用当前材质到墙的正面', () => updateComponentMaterial('wall', wall.id, 'front', activeMaterialDescriptor)));
+    groupFront.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, 'front', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupFront);
 
     const groupBack = document.createElement('div');
@@ -655,7 +655,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupBack.appendChild(createColorField('墙背面材质', wall.colorBack || wall.color || '#f9fbff', (color) => {
       updateComponentMaterial('wall', wall.id, 'back', color);
     }, getMaterialFriendlyName(wall.materialBack)));
-    groupBack.appendChild(createApplyMaterialButton('应用当前材质到墙的背面', () => updateComponentMaterial('wall', wall.id, 'back', activeMaterialDescriptor)));
+    groupBack.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, 'back', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupBack);
     return;
   }
@@ -670,22 +670,20 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const groupTop = document.createElement('div');
     groupTop.className = 'component-material-row';
     const labelTop = structureType === 'roof' ? '瓦片' : '踏步材质';
-    const btnTextTop = structureType === 'roof' ? '应用瓦片材质' : '应用顶部材质';
     groupTop.appendChild(createColorField(labelTop, structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0'), (color) => {
       updateComponentMaterial(structureType, structure.id, 'top', color);
     }, getMaterialFriendlyName(structure.material)));
-    groupTop.appendChild(createApplyMaterialButton(btnTextTop, () => updateComponentMaterial(structureType, structure.id, 'top', activeMaterialDescriptor)));
+    groupTop.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'top', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupTop);
 
     // 2. 墙面 (屋顶) / 侧面材质 (楼梯)
     const groupSide = document.createElement('div');
     groupSide.className = 'component-material-row';
     const labelSide = structureType === 'roof' ? '墙面' : '侧面材质';
-    const btnTextSide = structureType === 'roof' ? '应用墙面材质' : '应用侧面材质';
     groupSide.appendChild(createColorField(labelSide, structure.sideColor || (structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0')), (color) => {
       updateComponentMaterial(structureType, structure.id, 'side', color);
     }, getMaterialFriendlyName(structure.sideMaterial || structure.material)));
-    groupSide.appendChild(createApplyMaterialButton(btnTextSide, () => updateComponentMaterial(structureType, structure.id, 'side', activeMaterialDescriptor)));
+    groupSide.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'side', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupSide);
 
     // 3. 天花板 (仅当是屋顶时)
@@ -695,7 +693,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       groupBottom.appendChild(createColorField('天花板', structure.bottomColor || '#ffffff', (color) => {
         updateComponentMaterial(structureType, structure.id, 'bottom', color);
       }, getMaterialFriendlyName(structure.bottomMaterial || structure.bottomColor || '#ffffff')));
-      groupBottom.appendChild(createApplyMaterialButton('应用天花板材质', () => updateComponentMaterial(structureType, structure.id, 'bottom', activeMaterialDescriptor)));
+      groupBottom.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'bottom', activeMaterialDescriptor)));
       designSelectionPanel.appendChild(groupBottom);
     }
     return;
@@ -717,7 +715,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
         }
         entityManager.updateItemComponentColor(item.id, component.id, color);
       }, getMaterialFriendlyName(item.materials?.[component.id])));
-      group.appendChild(createApplyMaterialButton(`应用当前材质到${component.label}`, () => applyMaterialToItemComponent(component.id, activeMaterialDescriptor)));
+      group.appendChild(createApplyMaterialButton('应用当前材质', () => applyMaterialToItemComponent(component.id, activeMaterialDescriptor)));
       designSelectionPanel.appendChild(group);
     });
     return;
@@ -1486,6 +1484,16 @@ function applyStyleToSwatch(button, mat) {
     button.style.backgroundColor = c;
     button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
     button.style.border = '1px solid rgba(255,255,255,0.4)';
+  } else if (kind === 'metal') {
+    const c = color || '#e6e6e6';
+    const isMatte = material.roughness !== undefined && material.roughness > 0.4;
+    if (isMatte) {
+      button.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%), linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.15) 100%), ${c}`;
+      button.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.25)';
+    } else {
+      button.style.background = `linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0.8) 45%, rgba(0,0,0,0.3) 60%, rgba(255,255,255,0.3) 80%, rgba(0,0,0,0.1) 100%), ${c}`;
+      button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.2)';
+    }
   } else {
     button.style.backgroundColor = color || '#ffffff';
   }

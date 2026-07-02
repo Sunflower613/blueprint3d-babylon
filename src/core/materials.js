@@ -1,4 +1,9 @@
 import { Color3, StandardMaterial, Texture } from './babylon.js';
+import lightFineWoodUrl from '../textures/light_fine_wood.jpg';
+import marbletilesUrl from '../textures/marbletiles.jpg';
+import wallmapYellowUrl from '../textures/wallmap_yellow.png';
+import lightBrickUrl from '../textures/light_brick.jpg';
+
 const BABYLON = { Color3, StandardMaterial, Texture };
 
 export function createFlatMaterial(scene, name, colorHex, options = {}) {
@@ -79,13 +84,26 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
 
   // 纹理材质
   if (value.kind === 'texture' || value.src) {
+    let src = value.src;
+    if (src && typeof src === 'string') {
+      if (src.includes('marbletiles.jpg')) {
+        src = marbletilesUrl;
+      } else if (src.includes('light_fine_wood.jpg')) {
+        src = lightFineWoodUrl;
+      } else if (src.includes('wallmap_yellow.png')) {
+        src = wallmapYellowUrl;
+      } else if (src.includes('light_brick.jpg')) {
+        src = lightBrickUrl;
+      }
+    }
+
     return {
       id: value.id,
       kind: 'texture',
       category: value.category || 'custom',
       name: value.name || value.fileName || '自定义材质',
       fileName: value.fileName,
-      src: value.src,
+      src: src,
       scale: Number(value.scale || 1),
       color: value.color || fallbackColor
     };

@@ -891,6 +891,8 @@ if (snapToggleBtn) {
   }
 })();
 syncLocalToStore();
+renderMaterialLibrary();
+
 
 // ==========================================
 // 历史管理代理与基础3D代理函数

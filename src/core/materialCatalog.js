@@ -29,6 +29,12 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-camel', name: '驼色', category: 'paint', color: '#bfa38a' },
   { id: 'paint-warm-sand', name: '暖砂灰', category: 'paint', color: '#cbd0cc' },
   { id: 'paint-terracotta', name: '砖红', category: 'paint', color: '#b56b61' },
+  { id: 'paint-classic-grey', name: '高级灰', category: 'paint', color: '#9aa3a6' },
+  { id: 'paint-morandi-green', name: '莫兰迪绿', category: 'paint', color: '#b5c4b1' },
+  { id: 'paint-morandi-blue', name: '莫兰迪蓝', category: 'paint', color: '#8e9fa9' },
+  { id: 'paint-morandi-orange', name: '莫兰迪橘', category: 'paint', color: '#cda393' },
+  { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' },
+
   { id: 'wood-honey', name: '蜂蜜木纹', category: 'wood', color: '#c58b4f' },
   { id: 'stone-light', name: '浅石纹', category: 'stone', color: '#d7d2c8' },
   // --- 金属材质 ---

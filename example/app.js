@@ -12,7 +12,7 @@ import * as Topology from './js/Topology.js';
 import * as DragHandler from './js/DragHandler.js';
 import * as SvgEvents from './js/SvgEvents.js';
 import * as FileManager from './js/FileManager.js';
-import { takePhoto } from './js/FileManager.js';
+import { takePhoto, updateLocalProjectCount } from './js/FileManager.js';
 import { iconSvg } from './js/Icons.js';
 import { TARGET_TYPES } from './js/types.js';
 import {
@@ -75,10 +75,11 @@ import {
   same3DEditTarget,
   syncRoomMovePreview,
   syncWallMovePreview,
-  syncFenceMovePreview
+  syncFenceMovePreview,
+  updateHandleHoverState
 } from './js/Viewer3DHandles.js';
-import { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3 } from '../src/core/babylon.js';
-const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3 };
+import { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools } from '../src/core/babylon.js';
+const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools };
 const furnitureImageLoaders = import.meta.glob('../src/furniture/image/*.png', {
   query: '?url',
   import: 'default'
@@ -170,6 +171,7 @@ function switchToSelectMode() {
     drawStart = null;
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate.dataset.mode === 'select'));
     handleModeChange(mode);
+    syncLocalToStore();
     renderPlan();
   }
 }
@@ -569,7 +571,8 @@ let entityManager = new EntityManager({
   findTableBelow: (item) => findTableBelow(item),
   findNearestSeat: (item) => findNearestSeat(item),
   findBookshelfNearby: (item) => findBookshelfNearby(item),
-  snapToBookshelf: (item, bookshelf) => snapToBookshelf(item, bookshelf)
+  snapToBookshelf: (item, bookshelf) => snapToBookshelf(item, bookshelf),
+  getDrag3DState: () => drag3DState
 });
 
 const pushHistory = () => store.pushHistory();
@@ -2237,6 +2240,7 @@ function begin3DDrag(pointerInfo) {
     offsetZ: item.z - groundPoint.z,
     originalX: item.x,
     originalZ: item.z,
+    originalElevation: item.elevation || 0,
     historyPushed: false
   };
   document.body.classList.add('is-dragging-3d');
@@ -2278,6 +2282,14 @@ function move3DDrag(pointerInfo) {
 function end3DDrag(event) {
   if (!drag3DState) return;
   if (event?.pointerId !== undefined && drag3DState.pointerId !== event.pointerId) return;
+
+  if (drag3DState.type === 'item') {
+    const item = testMap.getItem(drag3DState.itemId);
+    if (item) {
+      entityManager.moveItemTo(drag3DState.itemId, item.x, item.z, true);
+    }
+  }
+
   canvas.releasePointerCapture?.(drag3DState.pointerId);
   const openingId = drag3DState.type === 'opening' ? drag3DState.openingId : null;
   const fenceGateId = drag3DState.type === 'fence_gate' ? drag3DState.gateId : null;
@@ -2386,6 +2398,7 @@ scene.onPointerObservable.add((pointerInfo) => {
   if (currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
+    updateHandleHoverState();
     if (designMode === 'picker') {
       const target = pickNearest3DTarget();
       const hoverColor = getPickedColorFromTarget(target);
@@ -2829,6 +2842,7 @@ function selectTarget(type, id) {
   testMap.setSelectedWall(type === TARGET_TYPES.WALL ? id : null);
   testMap.setSelectedFence(type === TARGET_TYPES.FENCE ? id : null);
   testMap.setSelectedFenceGate(type === TARGET_TYPES.FENCE_GATE ? id : null);
+  testMap.setSelectedRoom(type === TARGET_TYPES.ROOM ? id : null);
 
   if (type === TARGET_TYPES.FENCE && id) {
     set3DEditTarget('fence', id);
@@ -3809,6 +3823,7 @@ document.querySelectorAll('.mode').forEach((button) => {
     clearDrawWallPreview();
     document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
     handleModeChange(mode);
+    syncLocalToStore();
     renderPlan();
   });
 });

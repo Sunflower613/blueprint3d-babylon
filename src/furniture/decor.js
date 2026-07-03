@@ -1,4 +1,5 @@
-import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js';
+import { boxComponent, cylinderComponent, sphereComponent, getComponentMaterial, markComponent } from './_helpers.js';
+
 
 // 1. 多层绿植盆景 (Plant)
 export const plantFurniture = {
@@ -567,12 +568,8 @@ export const mannequinFurniture = {
   build(registry, item, node, size) {
     const type = item.pose || 'stand';
 
-    // 通体柔白木偶人材质
-    const puppetMat = new BABYLON.StandardMaterial(`puppet_white_${item.id}`, registry.scene);
-    puppetMat.diffuseColor = new BABYLON.Color3(0.95, 0.95, 0.95);
-    puppetMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-    puppetMat.emissiveColor = new BABYLON.Color3(0.08, 0.08, 0.08);
-    puppetMat.maxSimultaneousLights = 16;
+    // 动态获取木质构件的材质或颜色
+    const puppetMat = getComponentMaterial(registry, item, mannequinFurniture, 'wood');
 
     // 清理旧节点，防止姿态切换时重叠
     node.getChildMeshes().forEach((m) => m.dispose());
@@ -695,6 +692,12 @@ export const mannequinFurniture = {
         hand.parent = node;
       });
     }
+
+    // 统一为生成的子网格赋予动态材质并标记组件，支持涂色与材质修改
+    node.getChildMeshes().forEach((mesh) => {
+      mesh.material = puppetMat;
+      markComponent(mesh, item, 'wood');
+    });
   }
 };
 
@@ -1609,12 +1612,12 @@ export const largeCactusFurniture = {
     const side1 = cylinderComponent(registry, item, largeCactusFurniture, 'body', {
       diameterTop: 0.05, diameterBottom: 0.05, height: size.height * 0.25
     }, { position: { x: size.width * 0.18, y: size.height * 0.62, z: 0 } }, { parent: node });
-    side1.rotation.z = Math.PI * 0.12;
+    side1.rotation.z = -Math.PI * 0.12;
 
     const side2 = cylinderComponent(registry, item, largeCactusFurniture, 'body', {
       diameterTop: 0.05, diameterBottom: 0.05, height: size.height * 0.2
     }, { position: { x: -size.width * 0.16, y: size.height * 0.5, z: size.depth * 0.05 } }, { parent: node });
-    side2.rotation.z = -Math.PI * 0.12;
+    side2.rotation.z = Math.PI * 0.12;
   }
 };
 
@@ -1636,7 +1639,7 @@ export const eucalyptusVaseFurniture = {
       const stem = cylinderComponent(registry, item, eucalyptusVaseFurniture, 'leaves', {
         diameterTop: 0.01, diameterBottom: 0.015, height: size.height * 0.7
       }, { position: { x: c * 0.04, y: size.height * 0.5, z: 0 } }, { parent: node });
-      stem.rotation.z = c * Math.PI * 0.08;
+      stem.rotation.z = -c * Math.PI * 0.08;
 
       for (let l = 0; l < 5; l++) {
         sphereComponent(registry, item, eucalyptusVaseFurniture, 'leaves', {
@@ -2285,9 +2288,38 @@ export const storageBasketFurniture = {
     { id: 'basket', label: '密织竹藤', defaultColor: '#c7a75c' }
   ],
   build(registry, item, node, size) {
+    // 侧壁和底板的厚度，基于整体尺寸的 5%，最大不超过 0.5
+    const thickness = Math.min(0.5, size.width * 0.05, size.depth * 0.05, size.height * 0.05);
+
+    // 1. 底板
     boxComponent(registry, item, storageBasketFurniture, 'basket', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+      width: size.width, height: thickness, depth: size.depth
+    }, { position: { x: 0, y: thickness / 2, z: 0 } }, { parent: node });
+
+    // 侧板高度为总高度减去底板厚度
+    const sideH = size.height - thickness;
+    // 侧板的Y轴中心位置
+    const sideY = thickness + sideH / 2;
+
+    // 2. 前侧板
+    boxComponent(registry, item, storageBasketFurniture, 'basket', {
+      width: size.width, height: sideH, depth: thickness
+    }, { position: { x: 0, y: sideY, z: -size.depth / 2 + thickness / 2 } }, { parent: node });
+
+    // 3. 后侧板
+    boxComponent(registry, item, storageBasketFurniture, 'basket', {
+      width: size.width, height: sideH, depth: thickness
+    }, { position: { x: 0, y: sideY, z: size.depth / 2 - thickness / 2 } }, { parent: node });
+
+    // 4. 左侧板 (在深度方向上缩水以防止与前后侧板重叠)
+    boxComponent(registry, item, storageBasketFurniture, 'basket', {
+      width: thickness, height: sideH, depth: size.depth - 2 * thickness
+    }, { position: { x: -size.width / 2 + thickness / 2, y: sideY, z: 0 } }, { parent: node });
+
+    // 5. 右侧板 (在深度方向上缩水以防止与前后侧板重叠)
+    boxComponent(registry, item, storageBasketFurniture, 'basket', {
+      width: thickness, height: sideH, depth: size.depth - 2 * thickness
+    }, { position: { x: size.width / 2 - thickness / 2, y: sideY, z: 0 } }, { parent: node });
   }
 };
 

@@ -192,6 +192,15 @@ export function renderRoomInteraction(room) {
 }
 
 export function renderSelectedRoomHandles(room) {
+  // 始终渲染顶层蓝色外围线框（即使房间被锁定也显示）
+  const points = getRoomVertices(room).map((point) => worldToSvg(point.x, point.z));
+  const outline = createSvgElement('polygon', {
+    points: points.map((p) => `${p.x},${p.y}`).join(' '),
+    class: 'room-selected-outline',
+    style: 'pointer-events: none;'
+  });
+  ctx.svg.appendChild(outline);
+
   if (room.locked) return;
 
   const width = room.width;

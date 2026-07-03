@@ -161,6 +161,27 @@ export function findNearestFenceTrack(point, fences, snapEnabled, snapSize) {
 const INCHES_PER_UNIT = 39.37;
 
 /**
+ * 判断是否为卧室大家具
+ * @param {string} type
+ * @returns {boolean}
+ */
+export function isBigBedroomItem(type) {
+  return type.includes('bed') || type.includes('crib') || type === 'mattress' || type === 'vanity' || type === 'hammock';
+}
+
+/**
+ * 判断是否为厨卫大家电或大盆水槽
+ * @param {string} type
+ * @returns {boolean}
+ */
+export function isBigKitchenBathItem(type) {
+  return type === 'fridge' || type === 'toilet' || type === 'bathtub' || 
+         type === 'washing_machine' || type === 'stove' || type === 'shower_cabin' || 
+         type === 'dishwasher' || type === 'water_dispenser' || type === 'range_hood' ||
+         type === 'sink_kitchen' || type === 'sink_bathroom';
+}
+
+/**
  * 判断某个家具物品是否可以放置在桌子上方
  * @param {Object} item 待放置的物品
  * @param {Object} definition 该物品的家具定义
@@ -189,18 +210,14 @@ export function canPlaceOnTable(item, definition) {
   
   // 3. 卧室大类过滤：大件床铺及梳妆台/吊网不能摆放，其余精细摆件（如化妆品、香水、眼影盒、文具等）允许吸附
   if (category === 'bedroom') {
-    const isBigBedroomItem = type.includes('bed') || type.includes('crib') || type === 'mattress' || type === 'vanity' || type === 'hammock';
-    if (isBigBedroomItem) {
+    if (isBigBedroomItem(type)) {
       return false;
     }
   }
   
   // 4. 厨卫大类过滤：大件电器与大盆（如冰箱、马桶、浴缸、洗衣机、淋浴房等）不能摆放，其余小厨电与洗漱用品（如咖啡机、面包机、洗手液、茶杯组、水果盘等）允许吸附
-  if (category === 'kitchen-bath') {
-    const isBigKitchenBathItem = type === 'fridge' || type === 'toilet' || type === 'bathtub' || 
-                                  type === 'washing_machine' || type === 'stove' || type === 'shower_cabin' || 
-                                  type === 'dishwasher' || type === 'water_dispenser' || type === 'range_hood';
-    if (isBigKitchenBathItem) {
+  if (category === 'kitchen-bath' || category === 'kitchen' || category === 'bathroom') {
+    if (isBigKitchenBathItem(type)) {
       return false;
     }
   }
@@ -222,6 +239,134 @@ export function canPlaceOnTable(item, definition) {
     return false;
   }
   return true;
+}
+
+/**
+ * 检测垂直网格线 x_grid 上是否有一面垂直墙体阻挡当前家具
+ * @param {number} x_grid - 要检测的垂直网格线坐标
+ * @param {number} targetZ - 家具当前目标位置 Z 坐标
+ * @param {number} halfD - 家具在当前旋转状态下的半深尺寸（Z轴跨度）
+ * @param {Array<Object>} walls - 墙体对象列表
+ * @returns {boolean}
+ */
+export function hasVerticalWallAt(x_grid, targetZ, halfD, walls) {
+  const tolerance = 0.05; // 允许的误差范围
+  for (const wall of walls) {
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    // 垂直墙体
+    if (Math.abs(x1 - x2) < 0.01) {
+      const wallX = (x1 + x2) / 2;
+      if (Math.abs(x_grid - wallX) < tolerance) {
+        // 检查 Z 方向是否有重叠
+        const minZ = Math.min(z1, z2);
+        const maxZ = Math.max(z1, z2);
+        if (targetZ + halfD >= minZ - tolerance && targetZ - halfD <= maxZ + tolerance) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * 检测水平网格线 z_grid 上是否有一面水平墙体阻挡当前家具
+ * @param {number} z_grid - 要检测的水平网格线坐标
+ * @param {number} targetX - 家具当前目标位置 X 坐标
+ * @param {number} halfW - 家具在当前旋转状态下的半宽尺寸（X轴跨度）
+ * @param {Array<Object>} walls - 墙体对象列表
+ * @returns {boolean}
+ */
+export function hasHorizontalWallAt(z_grid, targetX, halfW, walls) {
+  const tolerance = 0.05; // 允许的误差范围
+  for (const wall of walls) {
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    // 水平墙体
+    if (Math.abs(z1 - z2) < 0.01) {
+      const wallZ = (z1 + z2) / 2;
+      if (Math.abs(z_grid - wallZ) < tolerance) {
+        // 检查 X 方向是否有重叠
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        if (targetX + halfW >= minX - tolerance && targetX - halfW <= maxX + tolerance) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * 统一处理拖拽位置的网格吸附与特殊挂墙/贴壁吸附计算
+ * @returns {{x: number, z: number}}
+ */
+export function calculateSnappedPosition({
+  item,
+  definition,
+  x,
+  z,
+  snapSize,
+  wallThickness,
+  walls,
+  shouldSnapToEdge,
+  inchesToWorld
+}) {
+  let finalX = x;
+  let finalZ = z;
+
+  if (shouldSnapToEdge) {
+    // 贴墙家具：边缘对齐网格线，并对有墙体的地方向内侧偏移 wallThickness / 2 避免嵌进墙里
+    const w_world = inchesToWorld(item.width || definition.defaultSize.width) * (item.scale || 1);
+    const d_world = inchesToWorld(item.depth || definition.defaultSize.depth) * (item.scale || 1);
+    const rotation = item.rotation || 0;
+
+    // 根据当前旋转弧度，计算家具包围盒投影到世界坐标 X、Z 轴的实际半宽与半深尺寸
+    const cosVal = Math.abs(Math.cos(rotation));
+    const sinVal = Math.abs(Math.sin(rotation));
+    const halfW = (w_world / 2) * cosVal + (d_world / 2) * sinVal;
+    const halfD = (w_world / 2) * sinVal + (d_world / 2) * cosVal;
+
+    // X轴：分别计算左边缘与右边缘吸附的目标网格线
+    const x_grid_left = Math.round((x - halfW) / snapSize) * snapSize;
+    const x_grid_right = Math.round((x + halfW) / snapSize) * snapSize;
+
+    // 检查对应的目标网格线处是否有墙体
+    const hasWallLeft = hasVerticalWallAt(x_grid_left, z, halfD, walls);
+    const hasWallRight = hasVerticalWallAt(x_grid_right, z, halfD, walls);
+
+    // 如果网格线处有墙，吸附坐标需要向内侧收缩 wallThickness / 2
+    const offsetLeft = hasWallLeft ? wallThickness / 2 : 0;
+    const offsetRight = hasWallRight ? wallThickness / 2 : 0;
+
+    const snapLeft = x_grid_left + offsetLeft + halfW;
+    const snapRight = x_grid_right - offsetRight - halfW;
+    finalX = Math.abs(snapLeft - x) < Math.abs(snapRight - x) ? snapLeft : snapRight;
+
+    // Z轴：分别计算下边缘与上边缘吸附的目标网格线
+    const z_grid_bottom = Math.round((z - halfD) / snapSize) * snapSize;
+    const z_grid_top = Math.round((z + halfD) / snapSize) * snapSize;
+
+    // 检查对应的目标网格线处是否有墙体
+    const hasWallBottom = hasHorizontalWallAt(z_grid_bottom, x, halfW, walls);
+    const hasWallTop = hasHorizontalWallAt(z_grid_top, x, halfW, walls);
+
+    // 如果网格线处有墙，吸附坐标需要向内侧收缩 wallThickness / 2
+    const offsetBottom = hasWallBottom ? wallThickness / 2 : 0;
+    const offsetTop = hasWallTop ? wallThickness / 2 : 0;
+
+    const snapBottom = z_grid_bottom + offsetBottom + halfD;
+    const snapTop = z_grid_top - offsetTop - halfD;
+    finalZ = Math.abs(snapBottom - z) < Math.abs(snapTop - z) ? snapBottom : snapTop;
+  } else {
+    // 常规家具：中心点对齐格子中心
+    finalX = Math.round((x - snapSize / 2) / snapSize) * snapSize + snapSize / 2;
+    finalZ = Math.round((z - snapSize / 2) / snapSize) * snapSize + snapSize / 2;
+  }
+
+  return { x: finalX, z: finalZ };
 }
 
 /**
@@ -435,7 +580,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     const tilt1 = Math.atan2(landHeight, l1Depth);
     const yOffset1 = landHeight / 2;
 
-    // 第一跑
+    // 第一段楼梯
     segments.push({
       from: getWordPos(-width / 2, -depth / 2),
       to: getWordPos(-width / 2, depth / 2 - width),
@@ -450,7 +595,7 @@ export function getStairsRailingSegments(stairs, testMap) {
       yOffset: yOffset1
     });
 
-    // 第二跑
+    // 第二段楼梯
     const l2Length = depth - width;
     const tilt2 = Math.atan2(height - landHeight, l2Length);
     const yOffset2 = landHeight + (height - landHeight) / 2;
@@ -482,7 +627,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     const tilt1 = Math.atan2(landHeight, u1Depth);
     const yOffset1 = landHeight / 2;
 
-    // 第一跑
+    // 第一段楼梯
     segments.push({
       from: getWordPos(-width / 2, -depth / 2),
       to: getWordPos(-width / 2, depth / 2 - landDepth),
@@ -497,7 +642,7 @@ export function getStairsRailingSegments(stairs, testMap) {
       yOffset: yOffset1
     });
 
-    // 第二跑
+    // 第二段楼梯
     const tilt2 = Math.atan2(height - landHeight, u1Depth);
     const yOffset2 = landHeight + (height - landHeight) / 2;
 
@@ -729,13 +874,13 @@ export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
   let clampedLocalX = localX;
   let clampedLocalZ = 0.0; // 默认锁定在搁板深度正中线（局部Z = 0）
   
-  if (bookshelf.type === 'corner_shelf') {
+  if (bookshelfDef.type === 'corner_shelf') {
     const maxLocalX = bWidth / 2 - 0.02 * scale;
     clampedLocalX = Math.max(-maxLocalX, Math.min(maxLocalX, localX));
     clampedLocalZ = 0.0;
   } else {
     // 排除两边侧外框板的厚度（防止溢出），锁定在搁板中线上
-    const sideWallT = (bookshelf.type === 'shoerack' ? 0.03 : 0.04) * scale;
+    const sideWallT = (bookshelfDef.type === 'shoerack' ? 0.03 : 0.04) * scale;
     const maxLocalX = bWidth / 2 - sideWallT;
     clampedLocalX = Math.max(-maxLocalX, Math.min(maxLocalX, localX));
     clampedLocalZ = 0.0;
@@ -770,7 +915,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
   const bHeight = (bookshelf.height || bookshelfDef.defaultSize.height) / INCHES_PER_UNIT * scale; // 米
   
   let localShelvesY = [];
-  if (bookshelf.type === 'bookshelf') {
+  if (bookshelfDef.type === 'bookshelf') {
     // 实用书架：底座0.06m，隔板厚度0.03m（表面在其上方0.015m），比例 0.25, 0.50, 0.75，顶面1.0
     localShelvesY = [
       0.06 * scale,
@@ -779,7 +924,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
       bHeight * 0.75 + 0.015 * scale,
       bHeight
     ];
-  } else if (bookshelf.type === 'shoerack') {
+  } else if (bookshelfDef.type === 'shoerack') {
     // 矮鞋架：比例 0.32, 0.72，搁板厚度0.02m（表面在其上方0.01m），顶面1.0
     localShelvesY = [
       0.0,
@@ -787,7 +932,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
       bHeight * 0.72 + 0.01 * scale,
       bHeight
     ];
-  } else if (bookshelf.type === 'display_cabinet') {
+  } else if (bookshelfDef.type === 'display_cabinet') {
     // 玻璃展示柜：比例 0.28, 0.52, 0.76，层板厚度0.02m，顶面1.0
     localShelvesY = [
       0.04 * scale, // 底部外框底面高约 0.04m
@@ -796,7 +941,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
       bHeight * 0.76 + 0.01 * scale,
       bHeight
     ];
-  } else if (bookshelf.type === 'grid_cabinet') {
+  } else if (bookshelfDef.type === 'grid_cabinet') {
     // 九宫格收纳柜：比例 0.33, 0.66，隔板厚度0.02m，顶面1.0
     localShelvesY = [
       0.03 * scale, // 底部外框厚度约 0.03m
@@ -804,7 +949,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
       bHeight * 0.66 + 0.01 * scale,
       bHeight
     ];
-  } else if (bookshelf.type === 'corner_shelf') {
+  } else if (bookshelfDef.type === 'corner_shelf') {
     // 转角置物架：比例 0.15, 0.40, 0.65, 0.90，层板厚度0.02m
     localShelvesY = [
       bHeight * 0.15 + 0.01 * scale,
@@ -892,11 +1037,19 @@ export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
   const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
   const snapMargin = 0.0; // 仅联动属于本柜架轮廓内部的物件，决不连带隔壁柜架上的邻近物件
   
+  const bookshelfH = bookshelf.height || bookshelfDef.defaultSize.height;
+  const topElevation = (bookshelf.elevation || 0) + bookshelfH * otherScale;
+  const bottomElevation = bookshelf.elevation || 0;
+
   for (const item of allItems) {
     if (item.id === bookshelf.id) continue;
     const itemDef = getFurnitureDefinition(item.type);
     if (!itemDef) continue;
     if (!canPlaceOnTable(item, itemDef)) continue;
+    
+    // 增加高程范围判定，防止把非本柜架上的邻近、地面重叠或高处物件误吸附随动
+    const itemElev = item.elevation || 0;
+    if (itemElev < bottomElevation + 0.1 || itemElev > topElevation + 5.0) continue;
     
     const dx = item.x - cx;
     const dz = item.z - cz;

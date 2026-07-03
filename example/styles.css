@@ -576,6 +576,13 @@ button:disabled {
   stroke-width: 3;
 }
 
+.room-selected-outline {
+  fill: none;
+  stroke: #36c2ff;
+  stroke-width: 3;
+  pointer-events: none;
+}
+
 .room-hit-rect {
   fill: transparent;
   cursor: move;

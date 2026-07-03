@@ -287,7 +287,7 @@ export const picnicTableFurniture = {
     // 3. A字形交叉连体支架 (Frame)
     [-1, 1].forEach((xSide) => {
       boxComponent(registry, item, picnicTableFurniture, 'frame', {
-        width: 0.04, height: size.height, depth: size.depth
+        width: 0.04, height: size.height * 0.98, depth: size.depth
       }, { position: { x: xSide * size.width * 0.38, y: size.height / 2, z: 0 } }, { parent: node });
     });
   }

@@ -1,5 +1,5 @@
-import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
-const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, TransformNode, Vector3, VertexBuffer, VertexData };
+import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, Texture, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
+const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, Texture, TransformNode, Vector3, VertexBuffer, VertexData };
 import { BlueprintRegistry } from '../core/BlueprintRegistry.js';
 import { createFlatMaterial, createBlueprintMaterial, materialPreviewColor, normalizeMaterialDescriptor } from '../core/materials.js';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
@@ -578,6 +578,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.selectedWallId = null;
     this.selectedFenceId = null;
     this.selectedFenceGateId = null;
+    this.selectedRoomId = null;
+    this.roomSelectionOutlineMesh = null;
+    this.enableAdvancedRendering = false;
     this.renderingEnabled = options.renderingEnabled !== false;
     this.renderingDirty = true;
     if (this.renderingEnabled) this.build();
@@ -615,86 +618,323 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.setSelectedWall(this.selectedWallId);
     this.setSelectedFence(this.selectedFenceId);
     this.setSelectedFenceGate(this.selectedFenceGateId);
+    this.setSelectedRoom(this.selectedRoomId);
 
-    // 统一处理所有镜面材质的区域反射探针
+    // 统一处理所有镜面与金属材质的反射贴图
     this.scene.executeWhenReady(() => {
-      // 1. 自动为尚未创建反射探针的镜面材质 mesh 创建探针（例如镜面墙体、镜面地板等非家具组件）
       this.scene.meshes.forEach((mesh) => {
         const mat = mesh.material;
         if (mat) {
           const bpMaterial = mat.metadata?.blueprintMaterial;
-          if (bpMaterial?.kind === 'mirror') {
-            if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
-              return;
-            }
-            if (!mat.customReflectionProbe) {
-              const probe = new BABYLON.ReflectionProbe(`probe_${mesh.name}_${mesh.uniqueId}`, 256, this.scene, false);
-              probe.cubeTexture.level = 0.6;
-              mat.customReflectionProbe = probe;
-              mat.reflectionTexture = probe.cubeTexture;
-              mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-              mat.specularColor = new BABYLON.Color3(0, 0, 0);
-
-              mesh.onDisposeObservable.add(() => {
-                if (mat.customReflectionProbe === probe) {
-                  probe.dispose();
-                  mat.customReflectionProbe = null;
-                }
-              });
-            }
+          if (bpMaterial?.kind === 'mirror' || bpMaterial?.kind === 'metal') {
+            const itemId = mesh.metadata?.itemId || null;
+            const node = itemId ? this.itemNodes.get(itemId) : null;
+            this.applyReflectionToMesh(mesh, itemId, node);
           }
         }
       });
+    });
+  }
 
-      // 2. 原有的更新每个探针坐标及过滤渲染列表的逻辑
-      this.scene.meshes.forEach((mesh) => {
-        if (mesh.material && mesh.material.customReflectionProbe) {
-          const probe = mesh.material.customReflectionProbe;
+  createMirrorTextureForMesh(mirrorMesh, itemId, node) {
+    const mat = mirrorMesh.material;
+    if (!mat) return;
+    
+    const isMainMirror = !!mirrorMesh.metadata?.isMainMirror;
+    const textureSize = this.enableAdvancedRendering 
+      ? (isMainMirror ? 2048 : 1024) 
+      : 256;
+    const cleanTarget = node || mirrorMesh;
 
-          // 若反射贴图已被覆写为其他贴图（例如平面 MirrorTexture），则销毁该探针以节省开销
-          if (mesh.material.reflectionTexture !== probe.cubeTexture) {
-            probe.dispose();
-            mesh.material.customReflectionProbe = null;
-            return;
-          }
+    if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
+      const currentSize = mat.reflectionTexture.getSize();
+      if (currentSize && currentSize.width === textureSize) {
+        return;
+      }
+      
+      if (mat.reflectionTextureObserver && cleanTarget) {
+        cleanTarget.onDisposeObservable.remove(mat.reflectionTextureObserver);
+        mat.reflectionTextureObserver = null;
+      }
+      try {
+        mat.reflectionTexture.dispose();
+      } catch (_) {}
+      mat.reflectionTexture = null;
+    }
 
-          // 设置探针的刷新率（由于是静态/区域反射，仅渲染一次保障性能）
-          probe.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+    if (mat.customReflectionProbe) {
+      if (mat.reflectionTextureObserver && cleanTarget) {
+        cleanTarget.onDisposeObservable.remove(mat.reflectionTextureObserver);
+        mat.reflectionTextureObserver = null;
+      }
+      mat.customReflectionProbe.dispose();
+      mat.customReflectionProbe = null;
+    }
 
-          // 设置探针的位置为 mesh 的世界绝对坐标
-          probe.position = mesh.getAbsolutePosition();
+    if (!mat._savedColors) {
+      mat._savedColors = {
+        diffuseColor: mat.diffuseColor ? mat.diffuseColor.clone() : new BABYLON.Color3(1, 1, 1),
+        specularColor: mat.specularColor ? mat.specularColor.clone() : new BABYLON.Color3(1, 1, 1)
+      };
+    }
 
-          // 获取自反射排除标识（例如 item_ID, wall_ID 等中的 ID 字符串）
-          let excludeId = null;
-          if (mesh.material.name) {
-            const match = mesh.material.name.match(/^(item|wall|floor|ceiling)_([a-zA-Z0-9\-]+)/);
-            if (match) {
-              excludeId = match[2];
-            }
-          }
+    const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${itemId || 'common'}_${mirrorMesh.uniqueId}`, textureSize, this.scene, false);
+    mirrorTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+    mirrorTexture.level = 0.6;
 
-          // 重新填充探针的渲染列表
-          probe.renderList = [];
-          const currentRoomId = this.getMeshRoomId(mesh);
+    const camera = this.scene.activeCamera;
+    let lastRefreshTime = 0;
+    const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
+      const now = Date.now();
+      if (now - lastRefreshTime < 100) return;
+      lastRefreshTime = now;
+      mirrorTexture.resetRefreshCounter();
+    });
+    
+    mirrorTexture.onDisposeObservable.add(() => {
+      if (camera && cameraObserver) {
+        camera.onViewMatrixChangedObservable.remove(cameraObserver);
+      }
+    });
 
-          this.scene.meshes.forEach((otherMesh) => {
-            // 排除自身
-            if (otherMesh === mesh) return;
-            // 如果有排除 ID，则排除名字包含该 ID 的所有其他部件（比如镜框、背板、相连墙面等）
-            if (excludeId && (otherMesh.name.includes(excludeId) || (otherMesh.material && otherMesh.material.name.includes(excludeId)))) {
-              return;
-            }
+    const isCylinder = mirrorMesh.metadata?.isCylinder;
+    const side = mirrorMesh.metadata?.side;
+    let localNormal;
+    if (isCylinder) {
+      localNormal = new BABYLON.Vector3(0, -1, 0);
+    } else if (side === 'back') {
+      localNormal = new BABYLON.Vector3(0, 0, 1);
+    } else {
+      localNormal = new BABYLON.Vector3(0, 0, -1);
+    }
+    mirrorMesh.computeWorldMatrix(true);
+    const worldMatrix = mirrorMesh.getWorldMatrix();
+    const normal = BABYLON.Vector3.TransformNormal(localNormal, worldMatrix).normalize();
+    const pos = mirrorMesh.getAbsolutePosition();
+    mirrorTexture.mirrorPlane = BABYLON.Plane.FromPositionAndNormal(pos, normal);
 
-            // 房间隔离过滤
-            const otherRoomId = this.getMeshRoomId(otherMesh);
-            if (currentRoomId && otherRoomId && otherRoomId !== currentRoomId) {
-              return; // 跨房间物体的反射被过滤掉
-            }
+    let excludeId = itemId || null;
+    if (!excludeId && mat.name) {
+      const match = mat.name.match(/^(item|wall|floor|ceiling)_([\w\-]+)/);
+      if (match) {
+        excludeId = match[2];
+      }
+    }
 
-            probe.renderList.push(otherMesh);
-          });
+    this.scene.meshes.forEach((m) => {
+      if (m !== mirrorMesh) {
+        if (m.name && (
+          m.name.includes('grid_3d') || 
+          m.name.includes('floor_grid_3d') || 
+          m.name.includes('edit_handle') || 
+          m.name.includes('move_handle_collision')
+        )) {
+          return;
         }
+        if (m.metadata?.blueprintEditHandle) {
+          return;
+        }
+        if (excludeId && (m.name.includes(excludeId) || (m.material && m.material.name.includes(excludeId)))) {
+          return;
+        }
+        mirrorTexture.renderList.push(m);
+      }
+    });
+
+    mat.reflectionTexture = mirrorTexture;
+    mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    mat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+    if (cleanTarget) {
+      const observer = cleanTarget.onDisposeObservable.add(() => {
+        try {
+          mirrorTexture.dispose();
+        } catch (_) {}
       });
+      mat.reflectionTextureObserver = observer;
+    }
+  }
+
+  createReflectionProbeForMesh(mirrorMesh, itemId, node) {
+    const mat = mirrorMesh.material;
+    if (!mat) return;
+    const bpMaterial = mat.metadata?.blueprintMaterial;
+    const isMirrorKind = bpMaterial?.kind === 'mirror';
+
+    if (mat.customReflectionProbe) {
+      return;
+    }
+
+    if (!isMirrorKind && !mat._savedStaticReflectionTexture) {
+      mat._savedStaticReflectionTexture = mat.reflectionTexture;
+    }
+
+    if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
+      const cleanTarget = node || mirrorMesh;
+      if (mat.reflectionTextureObserver && cleanTarget) {
+        cleanTarget.onDisposeObservable.remove(mat.reflectionTextureObserver);
+        mat.reflectionTextureObserver = null;
+      }
+      try {
+        mat.reflectionTexture.dispose();
+      } catch (_) {}
+      mat.reflectionTexture = null;
+    }
+
+    const probe = new BABYLON.ReflectionProbe(`probe_${itemId || 'common'}_${mirrorMesh.uniqueId}`, 256, this.scene, false);
+    probe.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+    probe.position = mirrorMesh.getAbsolutePosition();
+    
+    if (isMirrorKind) {
+      probe.cubeTexture.level = 0.6;
+      probe.cubeTexture.coordinatesMode = BABYLON.Texture.INVCUBIC_MODE;
+      
+      const currentRoomId = this.getMeshRoomId(mirrorMesh);
+      const room = currentRoomId ? this.getRoom(currentRoomId) : null;
+      let sizeX = 5.0;
+      let sizeZ = 5.0;
+      let sizeY = 3.0;
+      
+      if (room) {
+        const bounds = getRoomBounds(room);
+        if (bounds) {
+          sizeX = Math.max(3.0, bounds.right - bounds.left);
+          sizeZ = Math.max(3.0, bounds.bottom - bounds.top);
+          sizeY = room.wallHeight ?? this.floorplan.wallHeight ?? 3.0;
+        }
+      }
+      
+      probe.cubeTexture.boundingBoxPosition = mirrorMesh.getAbsolutePosition();
+      probe.cubeTexture.boundingBoxSize = new BABYLON.Vector3(sizeX, sizeY, sizeZ);
+    } else {
+      const originalLevel = mat._savedStaticReflectionTexture ? mat._savedStaticReflectionTexture.level : 0.55;
+      probe.cubeTexture.level = originalLevel;
+    }
+
+    mat.customReflectionProbe = probe;
+    mat.reflectionTexture = probe.cubeTexture;
+
+    if (isMirrorKind) {
+      if (!mat._savedColors) {
+        mat._savedColors = {
+          diffuseColor: mat.diffuseColor ? mat.diffuseColor.clone() : new BABYLON.Color3(1, 1, 1),
+          specularColor: mat.specularColor ? mat.specularColor.clone() : new BABYLON.Color3(1, 1, 1)
+        };
+      }
+      mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+      mat.specularColor = new BABYLON.Color3(0, 0, 0);
+    }
+
+    probe.renderList = [];
+    const currentRoomId = this.getMeshRoomId(mirrorMesh);
+    
+    let excludeId = itemId || null;
+    if (!excludeId && mat.name) {
+      const match = mat.name.match(/^(item|wall|floor|ceiling)_([\w\-]+)/);
+      if (match) {
+        excludeId = match[2];
+      }
+    }
+
+    this.scene.meshes.forEach((otherMesh) => {
+      if (otherMesh === mirrorMesh) return;
+      if (otherMesh.name && (
+        otherMesh.name.includes('grid_3d') || 
+        otherMesh.name.includes('floor_grid_3d') || 
+        otherMesh.name.includes('edit_handle') || 
+        otherMesh.name.includes('move_handle_collision')
+      )) {
+        return;
+      }
+      if (otherMesh.metadata?.blueprintEditHandle) {
+        return;
+      }
+      if (excludeId && (otherMesh.name.includes(excludeId) || (otherMesh.material && otherMesh.material.name.includes(excludeId)))) {
+        return;
+      }
+      const otherRoomId = this.getMeshRoomId(otherMesh);
+      if (currentRoomId && otherRoomId && otherRoomId !== currentRoomId) {
+        return;
+      }
+      probe.renderList.push(otherMesh);
+    });
+
+    const cleanTarget = node || mirrorMesh;
+    if (cleanTarget) {
+      const observer = cleanTarget.onDisposeObservable.add(() => {
+        try {
+          probe.dispose();
+        } catch (_) {}
+        mat.customReflectionProbe = null;
+      });
+      mat.reflectionTextureObserver = observer;
+    }
+  }
+
+  restoreStaticReflectionTextureForMesh(mirrorMesh, node) {
+    const mat = mirrorMesh.material;
+    if (!mat) return;
+
+    if (mat.customReflectionProbe) {
+      const cleanTarget = node || mirrorMesh;
+      if (mat.reflectionTextureObserver && cleanTarget) {
+        cleanTarget.onDisposeObservable.remove(mat.reflectionTextureObserver);
+        mat.reflectionTextureObserver = null;
+      }
+      try {
+        mat.customReflectionProbe.dispose();
+      } catch (_) {}
+      mat.customReflectionProbe = null;
+    }
+
+    if (mat._savedStaticReflectionTexture) {
+      mat.reflectionTexture = mat._savedStaticReflectionTexture;
+    }
+    
+    if (mat._savedColors) {
+      mat.diffuseColor = mat._savedColors.diffuseColor.clone();
+      mat.specularColor = mat._savedColors.specularColor.clone();
+    }
+  }
+
+  applyReflectionToMesh(mesh, itemId, node) {
+    const mat = mesh.material;
+    if (!mat) return;
+    const bpMaterial = mat.metadata?.blueprintMaterial;
+    if (!bpMaterial) return;
+
+    if (bpMaterial.kind === 'mirror') {
+      const isMainMirror = !!mesh.metadata?.isMainMirror;
+      if (this.enableAdvancedRendering) {
+        this.createMirrorTextureForMesh(mesh, itemId, node);
+      } else {
+        if (isMainMirror) {
+          this.createMirrorTextureForMesh(mesh, itemId, node);
+        } else {
+          this.createReflectionProbeForMesh(mesh, itemId, node);
+        }
+      }
+    } else if (bpMaterial.kind === 'metal') {
+      if (this.enableAdvancedRendering) {
+        this.createReflectionProbeForMesh(mesh, itemId, node);
+      } else {
+        this.restoreStaticReflectionTextureForMesh(mesh, node);
+      }
+    }
+  }
+
+  setAdvancedRendering(enabled) {
+    this.enableAdvancedRendering = !!enabled;
+    
+    this.scene.meshes.forEach((mesh) => {
+      const mat = mesh.material;
+      if (!mat) return;
+      const bpMaterial = mat.metadata?.blueprintMaterial;
+      if (bpMaterial?.kind === 'mirror' || bpMaterial?.kind === 'metal') {
+        const itemId = mesh.metadata?.itemId || null;
+        const node = itemId ? this.itemNodes.get(itemId) : null;
+        this.applyReflectionToMesh(mesh, itemId, node);
+      }
     });
   }
 
@@ -1153,6 +1393,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
     this.root.getChildren().forEach((child) => child.dispose(false, true));
+    this.roomSelectionOutlineMesh = null;
   }
 
   getStairFloorHoles(room) {
@@ -2337,94 +2578,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       node.getChildMeshes().forEach((mirrorMesh) => {
         const mat = mirrorMesh.material;
         const bpMaterial = mat?.metadata?.blueprintMaterial;
-        if (bpMaterial?.kind === 'mirror') {
-          // 规则：如果家具本身被标记为 isMirror 且组件 ID 包含 mirror (不区分大小写)，则应用实时平面反射 (MirrorTexture)
+        if (bpMaterial?.kind === 'mirror' || bpMaterial?.kind === 'metal') {
+          mirrorMesh.metadata = mirrorMesh.metadata || {};
+          mirrorMesh.metadata.itemId = item.id;
           const componentId = mirrorMesh.metadata?.blueprintFurnitureComponentId;
           const isMainMirror = definition.isMirror && componentId && componentId.toLowerCase().includes('mirror');
-
-          if (isMainMirror) {
-            if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
-              return;
-            }
-
-            // 平面反射（如卫浴镜、全身镜、梳妆台镜子等）
-            const mirrorTexture = new BABYLON.MirrorTexture(`mirror_txt_${item.id}_${mirrorMesh.uniqueId}`, 256, this.scene, false);
-            mirrorTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-            mirrorTexture.level = 0.6;
-
-            const camera = this.scene.activeCamera;
-            let lastRefreshTime = 0;
-            const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
-              const now = Date.now();
-              if (now - lastRefreshTime < 100) return;
-              lastRefreshTime = now;
-              mirrorTexture.resetRefreshCounter();
-            });
-            mirrorTexture.onDisposeObservable.add(() => {
-              if (camera && cameraObserver) {
-                camera.onViewMatrixChangedObservable.remove(cameraObserver);
-              }
-            });
-
-            // 根据形状计算高精度的世界法线
-            const isCylinder = mirrorMesh.metadata?.isCylinder;
-            const localNormal = isCylinder ? new BABYLON.Vector3(0, -1, 0) : new BABYLON.Vector3(0, 0, -1);
-            mirrorMesh.computeWorldMatrix(true);
-            const worldMatrix = mirrorMesh.getWorldMatrix();
-            const normal = BABYLON.Vector3.TransformNormal(localNormal, worldMatrix).normalize();
-            const pos = mirrorMesh.getAbsolutePosition();
-            mirrorTexture.mirrorPlane = BABYLON.Plane.FromPositionAndNormal(pos, normal);
-
-            // 填充渲染列表（排除自身和同家具的组件）
-            this.scene.meshes.forEach((m) => {
-              if (m !== mirrorMesh && !m.name.includes(item.id)) {
-                mirrorTexture.renderList.push(m);
-              }
-            });
-
-            mat.reflectionTexture = mirrorTexture;
-            mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            mat.specularColor = new BABYLON.Color3(0, 0, 0);
-
-            node.onDisposeObservable.add(() => {
-              mirrorTexture.dispose();
-            });
-          } else {
-            // 反射探针（用于普通的被漆成镜面的物体、其它次要发光镜等）
-            if (mat.customReflectionProbe) {
-              return;
-            }
-
-            const probe = new BABYLON.ReflectionProbe(`probe_${item.id}_${mirrorMesh.uniqueId}`, 256, this.scene, false);
-            probe.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-            probe.position = mirrorMesh.getAbsolutePosition();
-            probe.cubeTexture.level = 0.6;
-
-            mat.customReflectionProbe = probe;
-            mat.reflectionTexture = probe.cubeTexture;
-            mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            mat.specularColor = new BABYLON.Color3(0, 0, 0);
-
-            // 填充探针渲染列表，只包含同房间的组件，防止自反射
-            probe.renderList = [];
-            const currentRoomId = this.getMeshRoomId(mirrorMesh);
-            this.scene.meshes.forEach((otherMesh) => {
-              if (otherMesh === mirrorMesh) return;
-              if (otherMesh.name.includes(item.id) || (otherMesh.material && otherMesh.material.name.includes(item.id))) {
-                return;
-              }
-              const otherRoomId = this.getMeshRoomId(otherMesh);
-              if (currentRoomId && otherRoomId && otherRoomId !== currentRoomId) {
-                return;
-              }
-              probe.renderList.push(otherMesh);
-            });
-
-            node.onDisposeObservable.add(() => {
-              probe.dispose();
-              mat.customReflectionProbe = null;
-            });
-          }
+          mirrorMesh.metadata.isMainMirror = !!isMainMirror;
+          this.applyReflectionToMesh(mirrorMesh, item.id, node);
         }
       });
     });
@@ -2462,6 +2622,86 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
         node.outlineColor = BABYLON.Color3.FromHexString('#36c2ff');
       }
     });
+  }
+
+  setSelectedRoom(roomId) {
+    this.selectedRoomId = roomId;
+
+    if (this.roomSelectionOutlineMesh) {
+      this.roomSelectionOutlineMesh.dispose(false, true);
+      this.roomSelectionOutlineMesh = null;
+    }
+
+    this.floorNodes.forEach((node) => {
+      if (node.getChildMeshes) {
+        node.getChildMeshes().forEach((mesh) => {
+          mesh.renderOutline = false;
+        });
+      }
+    });
+
+    if (!roomId) return;
+
+    const room = this.getRoom(roomId);
+    if (!room) return;
+
+    const group = this.floorNodes.get(room.id);
+    if (!group) return;
+
+    const floorY = this.getFloorElevation(room.floorId);
+    const floorObj = this.getFloor(room.floorId);
+    const currentFloorHeight = floorObj ? (floorObj.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
+    const wallHeight = floorObj ? (floorObj.wallHeight ?? this.floorplan.wallHeight ?? 3.0) : (this.floorplan.wallHeight ?? 3.0);
+
+    const yBottom = (room.elevation || 0) + currentFloorHeight / 2;
+    const yTop = yBottom + wallHeight;
+
+    const { vertices } = triangulateRoom(room);
+    if (!vertices || vertices.length < 3) return;
+    const n = vertices.length;
+
+    const lines = [];
+
+    // A. 底部多边形闭环
+    for (let i = 0; i < n; i++) {
+      const p1 = vertices[i];
+      const p2 = vertices[(i + 1) % n];
+      lines.push([
+        new BABYLON.Vector3(p1.x, yBottom, p1.z),
+        new BABYLON.Vector3(p2.x, yBottom, p2.z)
+      ]);
+    }
+
+    // B. 顶部多边形闭环
+    for (let i = 0; i < n; i++) {
+      const p1 = vertices[i];
+      const p2 = vertices[(i + 1) % n];
+      lines.push([
+        new BABYLON.Vector3(p1.x, yTop, p1.z),
+        new BABYLON.Vector3(p2.x, yTop, p2.z)
+      ]);
+    }
+
+    // C. 垂直立柱
+    for (let i = 0; i < n; i++) {
+      const p = vertices[i];
+      lines.push([
+        new BABYLON.Vector3(p.x, yBottom, p.z),
+        new BABYLON.Vector3(p.x, yTop, p.z)
+      ]);
+    }
+
+    const outlineMesh = BABYLON.MeshBuilder.CreateLineSystem(
+      `room_outline_${room.id}`,
+      { lines: lines, updatable: false },
+      this.scene
+    );
+
+    outlineMesh.color = BABYLON.Color3.FromHexString('#36c2ff');
+    outlineMesh.isPickable = false;
+    outlineMesh.parent = group;
+
+    this.roomSelectionOutlineMesh = outlineMesh;
   }
 
   getRoom(roomId) {

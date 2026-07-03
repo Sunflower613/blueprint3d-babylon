@@ -44,4 +44,17 @@ import '@babylonjs/core/Culling/ray.js';
 import '@babylonjs/core/Rendering/outlineRenderer.js';
 import '@babylonjs/core/Shaders/outline.vertex.js';
 import '@babylonjs/core/Shaders/outline.fragment.js';
+import '@babylonjs/core/Misc/screenshotTools.js';
+
+// 显式导入引擎的常用扩展，以防止其在模块化打包或依赖排除时因副作用未执行导致相关 prototype 方法缺失
+import '@babylonjs/core/Engines/Extensions/engine.alpha.js';
+import '@babylonjs/core/Engines/Extensions/engine.rawTexture.js';
+import '@babylonjs/core/Engines/Extensions/engine.readTexture.js';
+import '@babylonjs/core/Engines/Extensions/engine.dynamicBuffer.js';
+import '@babylonjs/core/Engines/Extensions/engine.cubeTexture.js';
+import '@babylonjs/core/Engines/Extensions/engine.renderTarget.js';
+import '@babylonjs/core/Engines/Extensions/engine.renderTargetTexture.js';
+import '@babylonjs/core/Engines/Extensions/engine.renderTargetCube.js';
+import '@babylonjs/core/Engines/Extensions/engine.prefilteredCubeTexture.js';
+import '@babylonjs/core/Engines/Extensions/engine.uniformBuffer.js';
 

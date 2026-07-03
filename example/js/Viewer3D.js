@@ -46,12 +46,12 @@ export class Viewer3D {
     // ========== 光照 ==========
     /** @type {BABYLON.HemisphericLight} 半球光 */
     this.hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), this.scene);
-    this.hemi.intensity = 0.72;
-    this.hemi.groundColor = new BABYLON.Color3(0.5, 0.5, 0.5); // 设定下半球环境光颜色为淡灰色，使所有背光的物体底面（如天花板底面）受光照亮
+    this.hemi.intensity = 0.55;
+    this.hemi.groundColor = new BABYLON.Color3(0.45, 0.45, 0.45); // 设定下半球环境光颜色为淡灰色，使所有背光的物体底面（如天花板底面）受光照亮
     /** @type {BABYLON.DirectionalLight} 方向光（太阳光） */
     this.sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-0.4, -1, -0.5), this.scene);
     this.sun.position.set(8, 12, 8);
-    this.sun.intensity = 0.78;
+    this.sun.intensity = 0.60;
 
     // ========== 阴影 ==========
     /** @type {BABYLON.ShadowGenerator} 阴影生成器 */

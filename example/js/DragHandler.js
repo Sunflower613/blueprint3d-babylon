@@ -53,7 +53,9 @@ export function beginRoomDrag(event, roomId) {
   if (ctx.mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
-  ctx.selectRoom(roomId);
+  if (ctx.selectedRoomId !== roomId) {
+    ctx.selectRoom(roomId);
+  }
   ctx.testMap.refreshItemRoomLinks();
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
@@ -77,7 +79,9 @@ export function beginRoomResize(event, roomId, side) {
   if (ctx.mode !== 'select') return;
   event.preventDefault();
   event.stopPropagation();
-  ctx.selectRoom(roomId);
+  if (ctx.selectedRoomId !== roomId) {
+    ctx.selectRoom(roomId);
+  }
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
 
@@ -102,8 +106,8 @@ export function beginRoomResize(event, roomId, side) {
   let offsetZ = 0;
   if (side === 'west') offsetX = left - lx;
   if (side === 'east') offsetX = right - lx;
-  if (side === 'north') offsetZ = bottom - lz;
-  if (side === 'south') offsetZ = top - lz;
+  if (side === 'north') offsetZ = top - lz;
+  if (side === 'south') offsetZ = bottom - lz;
 
   states.roomResize = {
     roomId,
@@ -173,13 +177,13 @@ export function moveRoomResize(event) {
     nextWidth = ctx.snapNumber(nextRight - left);
     localCenterX = left + nextWidth / 2;
   } else if (side === 'north') {
-    const nextBottom = Math.max(ctx.snapNumber(lz + states.roomResize.offsetZ), top + 1.2);
-    nextDepth = ctx.snapNumber(nextBottom - top);
-    localCenterZ = top + nextDepth / 2;
-  } else if (side === 'south') {
     const nextTop = Math.min(ctx.snapNumber(lz + states.roomResize.offsetZ), bottom - 1.2);
     nextDepth = ctx.snapNumber(bottom - nextTop);
     localCenterZ = bottom - nextDepth / 2;
+  } else if (side === 'south') {
+    const nextBottom = Math.max(ctx.snapNumber(lz + states.roomResize.offsetZ), top + 1.2);
+    nextDepth = ctx.snapNumber(nextBottom - top);
+    localCenterZ = top + nextDepth / 2;
   }
 
   // 局部中心转换回世界坐标
@@ -221,7 +225,9 @@ export function beginWallDrag(event, wallId) {
   event.preventDefault();
   event.stopPropagation();
   ctx.rememberPointer(event);
-  ctx.selectWall(wallId);
+  if (ctx.selectedWallId !== wallId) {
+    ctx.selectWall(wallId);
+  }
   const wall = ctx.testMap.getWall(wallId);
   if (!wall) return;
   const point = ctx.svgPointFromEvent(event);
@@ -299,7 +305,9 @@ export function beginOpeningDrag(event, openingId) {
   if (event.button === 2) return;
   event.preventDefault();
   event.stopPropagation();
-  ctx.selectOpening(openingId);
+  if (ctx.selectedOpeningId !== openingId) {
+    ctx.selectOpening(openingId);
+  }
   const opening = ctx.testMap.getOpening(openingId);
   if (ctx.mode === 'delete-wall') {
     if (opening?.locked) return;
@@ -377,7 +385,9 @@ export function beginFenceDrag(event, fenceId) {
   if (event.button === 2) return;
   event.stopPropagation();
   ctx.rememberPointer(event);
-  ctx.selectFence(fenceId);
+  if (ctx.selectedFenceId !== fenceId) {
+    ctx.selectFence(fenceId);
+  }
   const fence = ctx.testMap.getFence(fenceId);
   if (!fence || fence.locked) return;
   const point = ctx.svgPointFromEvent(event);
@@ -456,7 +466,9 @@ export function beginFenceGateDrag(event, gateId) {
   if (event.button === 2) return;
   event.stopPropagation();
   ctx.rememberPointer(event);
-  ctx.selectFenceGate(gateId);
+  if (ctx.selectedFenceGateId !== gateId) {
+    ctx.selectFenceGate(gateId);
+  }
   const gate = ctx.testMap.getFenceGate(gateId);
   if (!gate || gate.locked) return;
 
@@ -577,7 +589,9 @@ export function beginFenceHandleDrag(event, fenceId, handle) {
   if (event.button === 2) return;
   event.stopPropagation();
   ctx.rememberPointer(event);
-  ctx.selectFence(fenceId);
+  if (ctx.selectedFenceId !== fenceId) {
+    ctx.selectFence(fenceId);
+  }
   const fence = ctx.testMap.getFence(fenceId);
   if (!fence || fence.locked) return;
   const point = ctx.svgPointFromEvent(event);

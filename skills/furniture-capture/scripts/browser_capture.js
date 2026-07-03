@@ -9,25 +9,42 @@
  * 5. 将 Base64 截图提交给 3001 端口的接收后台保存落盘，并在全部完成后完美还原用户原本场景。
  */
 (async () => {
-  // 如果这是刷新后启动：
-  const savedCamStr = sessionStorage.getItem('temp_capture_camera');
-  if (!savedCamStr) {
-    // 刷新前：记录用户最新调整的视角并刷新
-    const { camera } = await import('./app.js');
-    sessionStorage.setItem('temp_capture_camera', JSON.stringify({
-      alpha: camera.alpha,
-      beta: camera.beta,
-      target: [camera.target.x, camera.target.y, camera.target.z]
-    }));
-    console.log("已备份用户调好的最新视角，正在刷新页面加载新代码并断开 HMR...");
-    
-    location.reload();
-    return;
-  }
+  // 是否使用默认内置的最佳 3D 视角（免刷新、免手动调，直接一键截图落盘）
+  const USE_DEFAULT_CAMERA = true;
 
-  // 刷新后执行：
-  const savedCam = JSON.parse(savedCamStr);
-  sessionStorage.removeItem('temp_capture_camera'); // 用完即删
+  // 内置的默认最佳 3D 视角数据（旋转 180 度以纠正视角至对面正面）
+  const DEFAULT_CAMERA = {
+    alpha: -1.0471975511965976 + Math.PI,
+    beta: 1.0471975511965976,
+    target: [0, 0, -2.2]
+  };
+
+  let savedCam = null;
+
+  if (USE_DEFAULT_CAMERA) {
+    savedCam = DEFAULT_CAMERA;
+    console.log("使用脚本内置的默认 3D 视角进行截图...");
+  } else {
+    // 如果这是刷新后启动：
+    const savedCamStr = sessionStorage.getItem('temp_capture_camera');
+    if (!savedCamStr) {
+      // 刷新前：记录用户最新调整的视角并刷新
+      const { camera } = await import('./app.js');
+      sessionStorage.setItem('temp_capture_camera', JSON.stringify({
+        alpha: camera.alpha,
+        beta: camera.beta,
+        target: [camera.target.x, camera.target.y, camera.target.z]
+      }));
+      console.log("已备份用户调好的最新视角，正在刷新页面加载新代码并断开 HMR...");
+      
+      location.reload();
+      return;
+    }
+
+    // 刷新后执行：
+    savedCam = JSON.parse(savedCamStr);
+    sessionStorage.removeItem('temp_capture_camera'); // 用完即删
+  }
 
   const { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, editHandleNodes, entityManager, BABYLON } = await import('./app.js');
 
@@ -65,6 +82,18 @@
 
   // 4. 通过备份数据结构动态清空实体来构建完全兼容的空场景
   const emptyScene = JSON.parse(JSON.stringify(backupData));
+  
+  // 清空单层扁平结构的顶层实体
+  emptyScene.walls = [];
+  emptyScene.rooms = [];
+  emptyScene.items = [];
+  emptyScene.openings = [];
+  emptyScene.roofs = [];
+  emptyScene.stairs = [];
+  emptyScene.fences = [];
+  emptyScene.gates = [];
+  
+  // 清空多层结构的各层实体
   if (emptyScene.floors) {
     const clearFloor = (floor) => {
       floor.walls = [];
@@ -74,6 +103,7 @@
       floor.roofs = [];
       floor.stairs = [];
       floor.fences = [];
+      floor.gates = [];
     };
     if (Array.isArray(emptyScene.floors)) {
       emptyScene.floors.forEach(clearFloor);
@@ -89,6 +119,8 @@
     console.log(`正在截图: ${def.name} (${def.type})`);
     
     testMap.loadJSON(emptyScene);
+    // 加载空场景后，强力隐藏 3D 网格线（避免 loadJSON 内部重绘将其勾起）
+    viewer3d.clear3DGrid();
     
     // 自动检测是否被切回了 2D 视图，如果是在 2D 状态，则点击切回 3D 并等待稳定
     const stage = document.getElementById('stage');
@@ -129,6 +161,9 @@
     camera.alpha = savedCam.alpha;
     camera.beta = savedCam.beta;
     camera.radius = Math.max(0.18, maxDim * 2.3);
+
+    // 强迫更新相机的视图矩阵，确保在渲染及截图前属性修改立即生效
+    camera.getViewMatrix(true);
 
     // 强迫更新渲染
     scene.render();

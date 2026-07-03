@@ -1,5 +1,5 @@
 import { pointInRoom } from '../../src/rooms/index.js';
-import { getItemsOnBookshelf } from './Topology.js';
+import { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition } from './Topology.js';
 
 const INCHES_PER_UNIT = 39.37;
 
@@ -71,13 +71,21 @@ export class EntityManager {
       return !!definition.snapToEdge;
     }
 
-    const category = definition.category;
+    const category = definition.category || '';
 
     // 1. 储物柜类 (storage)：书架、衣柜、鞋架、矮柜、橱柜等 100% 贴墙
-    // 2. 卧室大件 (bedroom)：各种床、梳妆台等通常床头或一侧靠墙
-    // 3. 厨卫家电 (kitchen-bath)：冰箱、洗衣机、灶台、淋浴房、浴缸、马桶、台盆等全部贴墙
-    if (category === 'storage' || category === 'kitchen-bath' || category === 'bedroom') {
+    if (category === 'storage') {
       return true;
+    }
+
+    // 2. 卧室大件 (bedroom)：床铺及梳妆台等大件贴墙；排除精细小摆件（化妆品、笔筒、日历等）
+    if (category === 'bedroom') {
+      return isBigBedroomItem(type);
+    }
+
+    // 3. 厨卫家电及台盆 (kitchen-bath/kitchen/bathroom)：大件电器与台盆全部贴墙；排除小厨摆、餐具、皂液器等小摆件
+    if (category === 'kitchen-bath' || category === 'kitchen' || category === 'bathroom') {
+      return isBigKitchenBathItem(type);
     }
 
     // 4. 桌台类 (tables)：书桌 (desk)、电脑桌、床头桌、长餐桌、条案/玄关桌等靠墙；
@@ -95,63 +103,7 @@ export class EntityManager {
     return false;
   }
 
-  /**
-   * 检测垂直网格线 x_grid 上是否有一面垂直墙体阻挡当前家具
-   * @param {number} x_grid - 要检测的垂直网格线坐标
-   * @param {number} targetZ - 家具当前目标位置 Z 坐标
-   * @param {number} halfD - 家具在当前旋转状态下的半深尺寸（Z轴跨度）
-   * @returns {boolean}
-   */
-  hasVerticalWallAt(x_grid, targetZ, halfD) {
-    const walls = this.opts.getWalls();
-    const tolerance = 0.02;
-    for (const wall of walls) {
-      const [x1, z1] = wall.from;
-      const [x2, z2] = wall.to;
-      const isVertical = Math.abs(x1 - x2) < tolerance;
-      if (isVertical) {
-        const wallX = (x1 + x2) / 2;
-        if (Math.abs(x_grid - wallX) < tolerance) {
-          const minZ = Math.min(z1, z2);
-          const maxZ = Math.max(z1, z2);
-          // 判断家具在 Z 轴上的投影是否与这面垂直墙的范围有重叠
-          if (targetZ + halfD >= minZ - tolerance && targetZ - halfD <= maxZ + tolerance) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
 
-  /**
-   * 检测水平网格线 z_grid 上是否有一面水平墙体阻挡当前家具
-   * @param {number} z_grid - 要检测的水平网格线坐标
-   * @param {number} targetX - 家具当前目标位置 X 坐标
-   * @param {number} halfW - 家具在当前旋转状态下的半宽尺寸（X轴跨度）
-   * @returns {boolean}
-   */
-  hasHorizontalWallAt(z_grid, targetX, halfW) {
-    const walls = this.opts.getWalls();
-    const tolerance = 0.02;
-    for (const wall of walls) {
-      const [x1, z1] = wall.from;
-      const [x2, z2] = wall.to;
-      const isHorizontal = Math.abs(z1 - z2) < tolerance;
-      if (isHorizontal) {
-        const wallZ = (z1 + z2) / 2;
-        if (Math.abs(z_grid - wallZ) < tolerance) {
-          const minX = Math.min(x1, x2);
-          const maxX = Math.max(x1, x2);
-          // 判断家具在 X 轴上的投影是否与这面水平墙的范围有重叠
-          if (targetX + halfW >= minX - tolerance && targetX - halfW <= maxX + tolerance) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
 
   /**
    * 选中家具物品
@@ -189,6 +141,35 @@ export class EntityManager {
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
 
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
+
+    /*
+    // 实时调试面板显示家具属性与吸附状态
+    let debugDiv = document.getElementById('debug-snap-info');
+    if (!debugDiv) {
+      debugDiv = document.createElement('div');
+      debugDiv.id = 'debug-snap-info';
+      debugDiv.style.position = 'fixed';
+      debugDiv.style.top = '120px'; // 避开可能存在的顶部导航栏
+      debugDiv.style.left = '20px';
+      debugDiv.style.background = 'rgba(15, 23, 42, 0.9)';
+      debugDiv.style.color = '#38bdf8';
+      debugDiv.style.border = '1px solid #0284c7';
+      debugDiv.style.borderRadius = '8px';
+      debugDiv.style.padding = '12px';
+      debugDiv.style.zIndex = '99999';
+      debugDiv.style.fontFamily = 'monospace';
+      debugDiv.style.pointerEvents = 'none';
+      debugDiv.style.fontSize = '13px';
+      debugDiv.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3)';
+      document.body.appendChild(debugDiv);
+    }
+    debugDiv.innerHTML = `<div><strong>[家具调试信息]</strong></div>
+                          <div>ID: ${item.id}</div>
+                          <div>类型: ${item.type}</div>
+                          <div>分类: ${definition?.category || '无'}</div>
+                          <div>边缘吸附 (shouldSnapToEdge): <span style="color: ${this.shouldSnapToEdge(item.type) ? '#4ade80' : '#f87171'}">${this.shouldSnapToEdge(item.type)}</span></div>`;
+    */
+
     let finalX = x;
     let finalZ = z;
 
@@ -196,56 +177,19 @@ export class EntityManager {
     const snapSize = this.opts.getSnapSize();
 
     if (snapEnabled && snapSize) {
-      if (this.shouldSnapToEdge(item.type)) {
-        // 贴墙家具：边缘对齐网格线，并对有墙体的地方向内侧偏移 wallThickness / 2 避免嵌进墙里
-        const w_world = this.opts.inchesToWorld(item.width || definition.defaultSize.width) * (item.scale || 1);
-        const d_world = this.opts.inchesToWorld(item.depth || definition.defaultSize.depth) * (item.scale || 1);
-        const rotation = item.rotation || 0;
-
-        // 根据当前旋转弧度，计算家具包围盒投影到世界坐标 X、Z 轴的实际半宽与半深尺寸
-        const cosVal = Math.abs(Math.cos(rotation));
-        const sinVal = Math.abs(Math.sin(rotation));
-        const halfW = (w_world / 2) * cosVal + (d_world / 2) * sinVal;
-        const halfD = (w_world / 2) * sinVal + (d_world / 2) * cosVal;
-
-        const wallThickness = this.opts.testMap.floorplan.wallThickness || 0.18;
-
-        // X轴：分别计算左边缘与右边缘吸附的目标网格线
-        const x_grid_left = Math.round((x - halfW) / snapSize) * snapSize;
-        const x_grid_right = Math.round((x + halfW) / snapSize) * snapSize;
-
-        // 检查对应的目标网格线处是否有墙体
-        const hasWallLeft = this.hasVerticalWallAt(x_grid_left, z, halfD);
-        const hasWallRight = this.hasVerticalWallAt(x_grid_right, z, halfD);
-
-        // 如果网格线处有墙，吸附坐标需要向内侧收缩 wallThickness / 2
-        const offsetLeft = hasWallLeft ? wallThickness / 2 : 0;
-        const offsetRight = hasWallRight ? wallThickness / 2 : 0;
-
-        const snapLeft = x_grid_left + offsetLeft + halfW;
-        const snapRight = x_grid_right - offsetRight - halfW;
-        finalX = Math.abs(snapLeft - x) < Math.abs(snapRight - x) ? snapLeft : snapRight;
-
-        // Z轴：分别计算下边缘与上边缘吸附的目标网格线
-        const z_grid_bottom = Math.round((z - halfD) / snapSize) * snapSize;
-        const z_grid_top = Math.round((z + halfD) / snapSize) * snapSize;
-
-        // 检查对应的目标网格线处是否有墙体
-        const hasWallBottom = this.hasHorizontalWallAt(z_grid_bottom, x, halfW);
-        const hasWallTop = this.hasHorizontalWallAt(z_grid_top, x, halfW);
-
-        // 如果网格线处有墙，吸附坐标需要向内侧收缩 wallThickness / 2
-        const offsetBottom = hasWallBottom ? wallThickness / 2 : 0;
-        const offsetTop = hasWallTop ? wallThickness / 2 : 0;
-
-        const snapBottom = z_grid_bottom + offsetBottom + halfD;
-        const snapTop = z_grid_top - offsetTop - halfD;
-        finalZ = Math.abs(snapBottom - z) < Math.abs(snapTop - z) ? snapBottom : snapTop;
-      } else {
-        // 常规家具：中心点对齐格子中心
-        finalX = Math.round((x - snapSize / 2) / snapSize) * snapSize + snapSize / 2;
-        finalZ = Math.round((z - snapSize / 2) / snapSize) * snapSize + snapSize / 2;
-      }
+      const snappedPos = calculateSnappedPosition({
+        item,
+        definition,
+        x,
+        z,
+        snapSize,
+        wallThickness: this.opts.testMap.floorplan.wallThickness || 0.18,
+        walls: this.opts.getWalls(),
+        shouldSnapToEdge: this.shouldSnapToEdge(item.type),
+        inchesToWorld: this.opts.inchesToWorld.bind(this.opts)
+      });
+      finalX = snappedPos.x;
+      finalZ = snappedPos.z;
     }
 
     const snapped = {
@@ -395,12 +339,56 @@ export class EntityManager {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
               item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
             } else {
-              item.elevation = 0;
+              // 释放时无桌面：恢复为拖拽开始时的初始高程（而非强置为 0，防止手动调高物品释放时坠地）
+              let origElevation = 0;
+              if (this.dragState && this.dragState.itemId === itemId) {
+                origElevation = this.dragState.originalElevation || 0;
+              } else if (this.opts.getDrag3DState) {
+                const d3s = this.opts.getDrag3DState();
+                if (d3s && d3s.itemId === itemId) {
+                  origElevation = d3s.originalElevation || 0;
+                }
+              }
+              item.elevation = origElevation;
             }
           }
         } else {
-          // 移动过程中：为了丝滑无抖动，不触发任何吸附，高程置为 0（贴着地表滑动）
-          item.elevation = 0;
+          // 移动过程中：实时做高程抬升反馈，但不对齐 X/Z/Rotation 以保证移动手感丝滑
+          let targetElevation = null;
+
+          // 1. 尝试检测下方的书架高度
+          const bookshelfBelow = this.opts.findBookshelfNearby ? this.opts.findBookshelfNearby(item) : null;
+          if (bookshelfBelow) {
+            const snappedState = this.opts.snapToBookshelf ? this.opts.snapToBookshelf(item, bookshelfBelow) : null;
+            if (snappedState) {
+              targetElevation = snappedState.elevation;
+            }
+          }
+
+          // 2. 若没有书架，尝试检测下方桌台的顶面高度
+          if (targetElevation === null) {
+            const tableBelow = this.opts.findTableBelow(item);
+            if (tableBelow) {
+              const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
+              targetElevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+            }
+          }
+
+          // 3. 若什么都没检测到，退回到物件的拖拽初始高度（防止手动调高高度在移动中坠地）
+          if (targetElevation === null) {
+            let origElevation = 0;
+            if (this.dragState && this.dragState.itemId === itemId) {
+              origElevation = this.dragState.originalElevation || 0;
+            } else if (this.opts.getDrag3DState) {
+              const d3s = this.opts.getDrag3DState();
+              if (d3s && d3s.itemId === itemId) {
+                origElevation = d3s.originalElevation || 0;
+              }
+            }
+            targetElevation = origElevation;
+          }
+
+          item.elevation = targetElevation;
         }
       }
     }
@@ -460,6 +448,7 @@ export class EntityManager {
       offsetZ: item.z - world.z,
       originalX: item.x,
       originalZ: item.z,
+      originalElevation: item.elevation || 0,
       historyPushed: false
     };
     this.opts.setPointerCapture(event.pointerId);
@@ -897,7 +886,10 @@ export class EntityManager {
   updateChildrenOnBookshelf(bookshelf, beforeState) {
     const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
     const definition = this.opts.testMap.getFurnitureDefinition(bookshelf.type);
-    if (!definition || !supportedTypes.includes(definition.type)) return;
+    if (!definition) return;
+    
+    const isMannequin = definition.type.includes('clothing_mannequin');
+    if (!supportedTypes.includes(definition.type) && !isMannequin) return;
     
     const dx = bookshelf.x - beforeState.x;
     const dz = bookshelf.z - beforeState.z;
@@ -905,12 +897,67 @@ export class EntityManager {
     const de = (bookshelf.elevation || 0) - (beforeState.elevation || 0);
     if (Math.abs(dx) < 0.0001 && Math.abs(dz) < 0.0001 && Math.abs(dr) < 0.0001 && Math.abs(de) < 0.0001) return;
     
-    // 找出在移动前放置在该书架上的所有物品
-    const itemsOnShelf = getItemsOnBookshelf(
-      beforeState, 
-      this.opts.testMap.floorplan.items, 
-      (type) => this.opts.testMap.getFurnitureDefinition(type)
-    );
+    // 判断是否在拖拽该书架/柜子/模特
+    let isDraggingThis = false;
+    let initialChildrenIds = null;
+
+    if (this.dragState && this.dragState.itemId === bookshelf.id) {
+      isDraggingThis = true;
+      initialChildrenIds = this.dragState.initialChildrenIds || null;
+    } else if (this.opts.getDrag3DState) {
+      const d3s = this.opts.getDrag3DState();
+      if (d3s && d3s.type === 'item' && d3s.itemId === bookshelf.id) {
+        isDraggingThis = true;
+        initialChildrenIds = d3s.initialChildrenIds || null;
+      }
+    }
+
+    // 找出在移动前放置在该书架/模特上的所有物品
+    let itemsOnShelf;
+    if (isDraggingThis && initialChildrenIds) {
+      // 如果已在拖拽中缓存了子摆件列表，直接使用缓存的 ID 列表进行过滤
+      itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => initialChildrenIds.includes(item.id));
+    } else {
+      if (isMannequin) {
+        // 动态扫描穿在模特身上的衣物帽子鞋子
+        itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => {
+          if (item.id === bookshelf.id) return false;
+          if (!item.type.startsWith('clothing_') || item.type.includes('mannequin')) return false;
+
+          // 距离检测 (米)
+          const cdx = item.x - beforeState.x;
+          const cdz = item.z - beforeState.z;
+          const distSq = cdx * cdx + cdz * cdz;
+          if (distSq > 0.05 * 0.05) return false; // 容差 0.05 米
+
+          // 高度范围检测 (英寸)
+          const modelH = (bookshelf.height || definition.defaultSize.height) * (bookshelf.scale || 1);
+          const itemElev = item.elevation || 0;
+          const modelElev = beforeState.elevation || 0;
+          return itemElev >= modelElev && itemElev <= modelElev + modelH + 5;
+        });
+      } else {
+        // 否则进行动态空间扫描书架小摆件
+        itemsOnShelf = getItemsOnBookshelf(
+          beforeState, 
+          this.opts.testMap.floorplan.items, 
+          (type) => this.opts.testMap.getFurnitureDefinition(type)
+        );
+      }
+      
+      // 如果是在拖拽状态下的首次更新，把扫到的结果缓存起来，在后续拖拽帧中使用
+      if (isDraggingThis) {
+        const ids = itemsOnShelf.map(item => item.id);
+        if (this.dragState && this.dragState.itemId === bookshelf.id) {
+          this.dragState.initialChildrenIds = ids;
+        } else if (this.opts.getDrag3DState) {
+          const d3s = this.opts.getDrag3DState();
+          if (d3s && d3s.type === 'item' && d3s.itemId === bookshelf.id) {
+            d3s.initialChildrenIds = ids;
+          }
+        }
+      }
+    }
     
     for (const childItem of itemsOnShelf) {
       // 1. 计算小摆件相对于柜子旧状态的局部坐标 (lx, lz)

@@ -69,6 +69,7 @@ export function ensure3DGridControls() {
   const snapEnabledField = document.getElementById('snap-enabled')?.closest('.check-field');
   const anchor = snapSizeField || snapEnabledField;
   if (!anchor?.parentElement) return;
+
   const label = document.createElement('label');
   label.className = 'check-field';
   const input = document.createElement('input');
@@ -82,6 +83,22 @@ export function ensure3DGridControls() {
   input.addEventListener('change', (event) => {
     viewer3d.show3DGrid = event.target.checked;
     refresh3DGrid();
+  });
+
+  const advLabel = document.createElement('label');
+  advLabel.className = 'check-field';
+  const advInput = document.createElement('input');
+  advInput.id = 'show-advanced-rendering';
+  advInput.type = 'checkbox';
+  advInput.checked = testMap ? !!testMap.enableAdvancedRendering : false;
+  const advSpan = document.createElement('span');
+  advSpan.textContent = '开启高级渲染';
+  advLabel.append(advInput, advSpan);
+  label.insertAdjacentElement('afterend', advLabel);
+  advInput.addEventListener('change', (event) => {
+    if (testMap && typeof testMap.setAdvancedRendering === 'function') {
+      testMap.setAdvancedRendering(event.target.checked);
+    }
   });
 }
 

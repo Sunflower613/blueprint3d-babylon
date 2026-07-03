@@ -56,6 +56,7 @@ function updateStructure(type, id, patch, rebuild = true) {
 export function clear3DEditHandles() {
   editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
   ctx.setActive3DEditTarget(null);
+  hoveredHandle = null;
 }
 
 export function get3DEditTargetBounds(type, id) {
@@ -144,6 +145,22 @@ export function create3DEditHandle(type, id, action, side, position, color, rota
   let handle = null;
   const scene = ctx.viewer3d.scene;
 
+  const dragState = getEditHandleDragState();
+  const isDraggingThis = dragState &&
+    dragState.type === type &&
+    dragState.id === id &&
+    dragState.action === action &&
+    dragState.side === side;
+
+  // 创建可视材质 (用于普通手柄，或者移动手柄的子可视网格)
+  const mat = new BABYLON.StandardMaterial('edit_handle_mat_' + type + '_' + id + '_' + action + '_' + (side || 'center'), scene);
+  mat.diffuseColor = BABYLON.Color3.FromHexString(color);
+  mat.emissiveColor = BABYLON.Color3.FromHexString(color).scale(isDraggingThis ? 0.45 : 0.12);
+  mat.alpha = isDraggingThis ? 1.0 : 0.45;
+  mat.specularColor = new BABYLON.Color3(0, 0, 0);
+  mat.disableDepthWrite = true;
+  mat.depthFunction = BABYLON.Engine.ALWAYS;
+
   if (action === 'move') {
     const centerDisc = BABYLON.MeshBuilder.CreateCylinder("center_disc", {
       height: 0.06,
@@ -177,7 +194,32 @@ export function create3DEditHandle(type, id, action, side, position, color, rota
       meshesToMerge.push(shaft, tip);
     });
     
-    handle = BABYLON.Mesh.MergeMeshes(meshesToMerge, true, true, undefined, false, true);
+    const visualMesh = BABYLON.Mesh.MergeMeshes(meshesToMerge, true, true, undefined, false, true);
+    visualMesh.name = 'edit_handle_visual_' + type + '_' + id + '_move_center';
+    visualMesh.isPickable = false;
+    visualMesh.material = mat;
+    visualMesh.renderingGroupId = 3;
+    visualMesh.alwaysSelectAsActiveMesh = true;
+    visualMesh.renderOutline = isDraggingThis;
+    visualMesh.outlineWidth = 0.05;
+    visualMesh.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
+
+    const collisionBox = BABYLON.MeshBuilder.CreateBox("move_handle_collision", {
+      width: 0.55,
+      height: 0.02,
+      depth: 0.55
+    }, scene);
+    
+    const transparentMat = new BABYLON.StandardMaterial('move_handle_collision_mat_' + type + '_' + id, scene);
+    transparentMat.alpha = 0;
+    transparentMat.disableDepthWrite = true;
+    transparentMat.depthFunction = BABYLON.Engine.ALWAYS;
+    
+    collisionBox.material = transparentMat;
+    collisionBox.renderOutline = false;
+    
+    visualMesh.parent = collisionBox;
+    handle = collisionBox;
   } else if (action === 'rotate') {
     const radius = 0.24;
     const path = [];
@@ -245,20 +287,24 @@ export function create3DEditHandle(type, id, action, side, position, color, rota
     handle.rotation.y = rotationY;
   }
   
-  handle.material = new BABYLON.StandardMaterial(handle.name + '_mat', scene);
-  handle.material.diffuseColor = BABYLON.Color3.FromHexString(color);
-  handle.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.35);
-  handle.material.specularColor = new BABYLON.Color3(0, 0, 0);
-  handle.material.disableDepthWrite = true;
-  handle.material.depthFunction = BABYLON.Engine.ALWAYS;
-  handle.metadata = { blueprintEditHandle: { type, id, action, side } };
+  // 对于非 move 手柄，在此处统一赋予材质和 outline 属性
+  if (action !== 'move') {
+    handle.material = mat;
+    handle.renderOutline = isDraggingThis;
+    handle.outlineWidth = 0.05;
+    handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
+  }
+
+  // 统一的 metadata 和事件配置
+  handle.metadata = { blueprintEditHandle: { type, id, action, side, color } };
   handle.isPickable = true;
   handle.renderingGroupId = 3;
   handle.alwaysSelectAsActiveMesh = true;
-  handle.renderOutline = true;
-  handle.outlineWidth = 0.05; // 轮廓线也相应加粗
-  handle.outlineColor = BABYLON.Color3.FromHexString('#ffffff');
-  
+
+  if (isDraggingThis) {
+    hoveredHandle = handle;
+  }
+
   editHandleNodes.push(handle);
   return handle;
 }
@@ -268,6 +314,7 @@ export function refresh3DEditHandles() {
   if (!activeTarget || ctx.currentView !== '3d') return;
   const { type, id } = activeTarget;
   const bounds = get3DEditTargetBounds(type, id);
+  hoveredHandle = null;
   editHandleNodes.splice(0).forEach((node) => node.dispose(false, true));
   if (!bounds || ctx.isTargetLocked({ type, id })) {
     ctx.setActive3DEditTarget(null);
@@ -381,6 +428,7 @@ export function pickNearest3DTarget(pointerX = ctx.viewer3d.scene.pointerX, poin
 
 export function begin3DEditHandleDrag(handle, event) {
   if (ctx.isTargetLocked({ type: handle.type, id: handle.id })) return false;
+  setHandleHighlight(handle, true);
   const bounds = get3DEditTargetBounds(handle.type, handle.id);
   const groundPoint = ctx.groundPointFromPointer();
   if (!bounds || !groundPoint) return false;
@@ -840,4 +888,68 @@ export function move3DEditHandle(groundPoint) {
   }
 
   update3DEditTarget(state.type, state.id, patch, { moveItems, rebuild });
+}
+
+let hoveredHandle = null;
+
+export function setHandleHighlight(handle, highlight) {
+  if (!handle) return;
+  const isMove = handle.name && handle.name.includes('move');
+  const targetMesh = isMove ? (handle.getChildren?.()?.[0] || handle) : handle;
+
+  if (!targetMesh || !targetMesh.material) return;
+  const info = handle.metadata?.blueprintEditHandle;
+  const color = info?.color || '#ffffff';
+  if (highlight) {
+    targetMesh.material.alpha = 1.0;
+    targetMesh.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.45);
+    targetMesh.renderOutline = true;
+  } else {
+    targetMesh.material.alpha = 0.45;
+    targetMesh.material.emissiveColor = BABYLON.Color3.FromHexString(color).scale(0.12);
+    targetMesh.renderOutline = false;
+  }
+}
+
+export function updateHandleHoverState(pointerX = ctx.viewer3d.scene.pointerX, pointerY = ctx.viewer3d.scene.pointerY) {
+  const scene = ctx.viewer3d.scene;
+  if (!scene || ctx.currentView !== '3d') return;
+
+  const handlePick = scene.pick(pointerX, pointerY, (mesh) => !!findEditHandleFromNode(mesh));
+  const pickedHandleMesh = handlePick?.pickedMesh;
+
+  const dragState = getEditHandleDragState();
+
+  if (pickedHandleMesh) {
+    if (hoveredHandle !== pickedHandleMesh) {
+      if (hoveredHandle) {
+        const infoPrev = hoveredHandle.metadata?.blueprintEditHandle;
+        const isDraggingPrev = dragState && infoPrev &&
+          dragState.type === infoPrev.type &&
+          dragState.id === infoPrev.id &&
+          dragState.action === infoPrev.action &&
+          dragState.side === infoPrev.side;
+
+        if (!isDraggingPrev) {
+          setHandleHighlight(hoveredHandle, false);
+        }
+      }
+      setHandleHighlight(pickedHandleMesh, true);
+      hoveredHandle = pickedHandleMesh;
+    }
+  } else {
+    if (hoveredHandle) {
+      const infoPrev = hoveredHandle.metadata?.blueprintEditHandle;
+      const isDraggingPrev = dragState && infoPrev &&
+        dragState.type === infoPrev.type &&
+        dragState.id === infoPrev.id &&
+        dragState.action === infoPrev.action &&
+        dragState.side === infoPrev.side;
+
+      if (!isDraggingPrev) {
+        setHandleHighlight(hoveredHandle, false);
+      }
+      hoveredHandle = null;
+    }
+  }
 }

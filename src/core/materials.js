@@ -10,7 +10,12 @@ export function createFlatMaterial(scene, name, colorHex, options = {}) {
   const material = new BABYLON.StandardMaterial(name, scene);
   const color = BABYLON.Color3.FromHexString(colorHex || '#ffffff');
 
-  material.diffuseColor = color;
+  if (options.isFloor) {
+    // 限制地板最大漫反射强度，防止大面积白底/浅色地板在强直射光下过曝，保留明暗细节
+    material.diffuseColor = color.scale(0.85);
+  } else {
+    material.diffuseColor = color;
+  }
   material.specularColor = options.specularColor || new BABYLON.Color3(0, 0, 0);
   material.flatShading = options.flatShading !== false;
   material.maxSimultaneousLights = 16;

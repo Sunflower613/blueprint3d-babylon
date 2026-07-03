@@ -313,15 +313,38 @@ export const displayCabinetFurniture = {
   ],
   build(registry, item, node, size) {
     const wallT = 0.04;
-    // 1. 柜体大壳
+    const backT = 0.01;
+
+    // 1. 柜体框架 (左、右、顶、底、背)
+    // 左
     boxComponent(registry, item, displayCabinetFurniture, 'cabinet', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: -size.width / 2 + wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 右
+    boxComponent(registry, item, displayCabinetFurniture, 'cabinet', {
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: size.width / 2 - wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 顶
+    boxComponent(registry, item, displayCabinetFurniture, 'cabinet', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: size.height - wallT / 2, z: 0 } }, { parent: node });
+
+    // 底
+    boxComponent(registry, item, displayCabinetFurniture, 'cabinet', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: wallT / 2, z: 0 } }, { parent: node });
+
+    // 背
+    boxComponent(registry, item, displayCabinetFurniture, 'cabinet', {
+      width: size.width, height: size.height, depth: backT
+    }, { position: { x: 0, y: size.height / 2, z: -size.depth / 2 + backT / 2 } }, { parent: node });
 
     // 2. 玻璃门板 (Glass Panel) - 半透明浅蓝色
     boxComponent(registry, item, displayCabinetFurniture, 'glass', {
-      width: size.width - wallT * 1.5, height: size.height * 0.88, depth: 0.01
-    }, { position: { x: 0, y: size.height * 0.48, z: size.depth / 2 + 0.005 } }, { parent: node });
+      width: size.width - wallT * 1.5, height: size.height * 0.94, depth: 0.01
+    }, { position: { x: 0, y: size.height / 2, z: size.depth / 2 + 0.005 } }, { parent: node });
 
     // 3. 层板
     const innerW = size.width - wallT * 2;
@@ -352,7 +375,7 @@ export const wallShelfFurniture = {
 export const gridCabinetFurniture = {
   type: 'grid_cabinet',
   name: '九宫格收纳柜',
-  defaultSize: { width: 36, depth: 12, height: 36 },
+  defaultSize: { width: 39.37, depth: 12, height: 39.37 },
   components: [
     { id: 'frame', label: '外框', defaultColor: '#f5f5f5' },
     { id: 'divider', label: '格挡板', defaultColor: '#d2b48c' },
@@ -360,9 +383,33 @@ export const gridCabinetFurniture = {
   ],
   build(registry, item, node, size) {
     const wallT = 0.03;
+    const backT = 0.01;
+
+    // 1. 柜体框架 (左、右、顶、底、背)
+    // 左
     boxComponent(registry, item, gridCabinetFurniture, 'frame', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: -size.width / 2 + wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 右
+    boxComponent(registry, item, gridCabinetFurniture, 'frame', {
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: size.width / 2 - wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 顶
+    boxComponent(registry, item, gridCabinetFurniture, 'frame', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: size.height - wallT / 2, z: 0 } }, { parent: node });
+
+    // 底
+    boxComponent(registry, item, gridCabinetFurniture, 'frame', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: wallT / 2, z: 0 } }, { parent: node });
+
+    // 背
+    boxComponent(registry, item, gridCabinetFurniture, 'frame', {
+      width: size.width, height: size.height, depth: backT
+    }, { position: { x: 0, y: size.height / 2, z: -size.depth / 2 + backT / 2 } }, { parent: node });
 
     const innerW = size.width - wallT * 2;
     const innerH = size.height - wallT * 2;
@@ -382,13 +429,13 @@ export const gridCabinetFurniture = {
       width: shelfH, height: innerH, depth: size.depth - 0.01
     }, { position: { x: size.width * 0.16, y: size.height / 2, z: 0.005 } }, { parent: node });
 
-    boxComponent(registry, item, gridCabinetFurniture, 'basket', {
-      width: size.width * 0.26, height: size.height * 0.26, depth: size.depth - 0.02
-    }, { position: { x: -size.width * 0.3, y: size.height * 0.8, z: 0.01 } }, { parent: node });
+    // boxComponent(registry, item, gridCabinetFurniture, 'basket', {
+    //   width: size.width * 0.26, height: size.height * 0.26, depth: size.depth - 0.02
+    // }, { position: { x: -size.width * 0.3, y: size.height * 0.8, z: 0.01 } }, { parent: node });
 
-    boxComponent(registry, item, gridCabinetFurniture, 'basket', {
-      width: size.width * 0.26, height: size.height * 0.26, depth: size.depth - 0.02
-    }, { position: { x: size.width * 0.3, y: size.height * 0.2, z: 0.01 } }, { parent: node });
+    // boxComponent(registry, item, gridCabinetFurniture, 'basket', {
+    //   width: size.width * 0.26, height: size.height * 0.26, depth: size.depth - 0.02
+    // }, { position: { x: size.width * 0.3, y: size.height * 0.2, z: 0.01 } }, { parent: node });
   }
 };
 
@@ -493,30 +540,61 @@ export const fileCabinetFurniture = {
 export const wineRackFurniture = {
   type: 'wine_rack',
   name: '木质红酒架',
-  defaultSize: { width: 16, depth: 12, height: 16 },
+  defaultSize: { width: 13, depth: 12, height: 13 },
   components: [
     { id: 'frame', label: '红酒外架', defaultColor: '#5c4033' },
-    { id: 'bottles', label: '红酒瓶', defaultColor: '#2f4f4f' }
+    { id: 'divider', label: '菱形隔板', defaultColor: '#8a6b51' }
   ],
   build(registry, item, node, size) {
+    const wallT = 0.02;
+    const backT = 0.01;
+
+    // 1. 红酒架外架 (左、右、顶、底、背)
+    // 左
     boxComponent(registry, item, wineRackFurniture, 'frame', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: -size.width / 2 + wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
 
-    for (let r = 0; r < 2; r++) {
-      for (let c = -1; c <= 1; c++) {
-        cylinderComponent(registry, item, wineRackFurniture, 'bottles', {
-          diameterTop: 0.06, diameterBottom: 0.06, height: size.depth * 0.8
-        }, { position: { x: c * 0.12, y: size.height * 0.3 + r * 0.4 * size.height, z: 0 } }, { parent: node });
-      }
-    }
+    // 右
+    boxComponent(registry, item, wineRackFurniture, 'frame', {
+      width: wallT, height: size.height, depth: size.depth
+    }, { position: { x: size.width / 2 - wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
 
-    const meshes = node.getChildren();
-    meshes.forEach(m => {
-      if (m.name.includes('bottles')) {
-        m.rotation.x = Math.PI * 0.5;
-      }
-    });
+    // 顶
+    boxComponent(registry, item, wineRackFurniture, 'frame', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: size.height - wallT / 2, z: 0 } }, { parent: node });
+
+    // 底
+    boxComponent(registry, item, wineRackFurniture, 'frame', {
+      width: size.width - wallT * 2, height: wallT, depth: size.depth
+    }, { position: { x: 0, y: wallT / 2, z: 0 } }, { parent: node });
+
+    // 背
+    boxComponent(registry, item, wineRackFurniture, 'frame', {
+      width: size.width, height: size.height, depth: backT
+    }, { position: { x: 0, y: size.height / 2, z: -size.depth / 2 + backT / 2 } }, { parent: node });
+
+    // 2. 菱形隔板 (X字斜插板)
+    const innerW = size.width - wallT * 2;
+    const innerH = size.height - wallT * 2;
+    const shelfL = Math.sqrt(innerW * innerW + innerH * innerH);
+    const shelfD = size.depth - backT - 0.01;
+    const theta = Math.atan2(innerH, innerW);
+
+    boxComponent(registry, item, wineRackFurniture, 'divider', {
+      width: shelfL, height: 0.015, depth: shelfD
+    }, {
+      position: { x: 0, y: size.height / 2, z: backT / 2 },
+      rotation: { x: 0, y: 0, z: theta }
+    }, { parent: node });
+
+    boxComponent(registry, item, wineRackFurniture, 'divider', {
+      width: shelfL, height: 0.015, depth: shelfD
+    }, {
+      position: { x: 0, y: size.height / 2, z: backT / 2 },
+      rotation: { x: 0, y: 0, z: -theta }
+    }, { parent: node });
   }
 };
 

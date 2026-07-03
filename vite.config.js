@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: 'example',
+  base: '/blueprint3d-babylon/example/',
   optimizeDeps: {
     exclude: [
       '@babylonjs/core',
@@ -16,7 +17,9 @@ export default defineConfig({
     ]
   },
   server: {
+    host: '0.0.0.0',
     port: 3000,
+    allowedHosts: ['.pengyg.top', 'pengyg.top'],
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (req.url === '/api/save-image' && req.method === 'POST') {

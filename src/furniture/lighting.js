@@ -215,7 +215,7 @@ export const deskLampLight = {
   lightSource: {
     type: 'spot',
     offset: { x: 0, y: 7, z: 3 },
-    direction: { x: 0, y: -1, z: 0.2 },
+    direction: { x: 0.2, y: -1, z: 0.2 },
     angle: Math.PI / 4,
     exponent: 2.0,
     color: '#fffbe6',
@@ -249,18 +249,18 @@ export const deskLampLight = {
     }
 
     // 灯罩
-    cylinderComponent(registry, item, deskLampLight, 'shade', {
+    const shadeMesh = cylinderComponent(registry, item, deskLampLight, 'shade', {
       diameterTop: size.width * 0.44, diameterBottom: size.width * 0.75, height: shadeH, tessellation: 16
     }, { position: { x: 0, y: size.height - shadeH / 2, z: size.depth * 0.2 } }, { parent: node });
-    const shadeMesh = node.getChildren().find(child => child.name.includes('shade'));
     if (shadeMesh) {
-      shadeMesh.rotation.x = Math.PI * 0.12;
+      shadeMesh.rotation.x = -Math.PI * 0.1;
+      shadeMesh.rotation.z = Math.PI * 0.1; 
     }
 
-    // 发光LED
+    // 发光LED，将 parent 设置为 shadeMesh，使其在局部坐标系中始终跟灯罩轴线对齐
     sphereComponent(registry, item, deskLampLight, 'bulb', {
       diameter: size.width * 0.3, segments: 10
-    }, { position: { x: 0, y: size.height - shadeH * 0.9, z: size.depth * 0.2 + 0.1 } }, { parent: node });
+    }, { position: { x: 0, y: -shadeH * 0.22, z: 0 } }, { parent: shadeMesh });
   }
 };
 

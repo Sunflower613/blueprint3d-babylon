@@ -495,3 +495,208 @@ export const lavaLampLight = {
     }, { position: { x: size.width * 0.08, y: baseH + bodyH * 0.75, z: -size.width * 0.04 } }, { parent: node });
   }
 };
+
+// 11. 庭院灯柱 (Garden Lantern Post)
+export const gardenLanternPostFurniture = {
+  type: 'garden_lantern_post',
+  name: '庭院灯柱',
+  defaultSize: { width: 14, depth: 14, height: 84 },
+  emissiveComponents: ['bulb'],
+  lightColorComponent: 'bulb',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: 74, z: 0 },
+    color: '#fffae6',
+    intensity: 0.85,
+    range: 160
+  },
+  components: [
+    { id: 'base', label: '底座', defaultColor: '#75777d' },
+    { id: 'pole', label: '灯柱', defaultColor: '#555a62' },
+    { id: 'glass', label: '玻璃罩', defaultColor: '#ffffff' },
+    { id: 'cap', label: '顶盖', defaultColor: '#3a3a3a' },
+    { id: 'bulb', label: '灯泡', defaultColor: '#f7e5a6' }
+  ],
+  build(registry, item, node, size) {
+    // 底座
+    boxComponent(registry, item, gardenLanternPostFurniture, 'base', {
+      width: size.width * 0.6,
+      height: size.height * 0.08,
+      depth: size.depth * 0.6
+    }, { position: { x: 0, y: size.height * 0.04, z: 0 } }, { parent: node });
+
+    // 灯柱
+    cylinderComponent(registry, item, gardenLanternPostFurniture, 'pole', {
+      diameterTop: 0.04,
+      diameterBottom: 0.05,
+      height: size.height * 0.78,
+      tessellation: 16
+    }, { position: { x: 0, y: size.height * 0.47, z: 0 } }, { parent: node });
+
+    const lampH = size.height * 0.14;
+    const lampY = size.height * 0.88;
+    const glassW = size.width * 0.8;
+    const glassD = size.depth * 0.8;
+    const t = 0.01; // 玻璃厚度
+
+    // 前玻璃罩
+    boxComponent(registry, item, gardenLanternPostFurniture, 'glass', {
+      width: glassW, height: lampH - t, depth: t
+    }, { position: { x: 0, y: lampY - t / 2, z: -glassD / 2 + t / 2 } }, { parent: node });
+
+    // 后玻璃罩
+    boxComponent(registry, item, gardenLanternPostFurniture, 'glass', {
+      width: glassW, height: lampH - t, depth: t
+    }, { position: { x: 0, y: lampY - t / 2, z: glassD / 2 - t / 2 } }, { parent: node });
+
+    // 左玻璃罩
+    boxComponent(registry, item, gardenLanternPostFurniture, 'glass', {
+      width: t, height: lampH - t, depth: glassD - t * 2
+    }, { position: { x: -glassW / 2 + t / 2, y: lampY - t / 2, z: 0 } }, { parent: node });
+
+    // 右玻璃罩
+    boxComponent(registry, item, gardenLanternPostFurniture, 'glass', {
+      width: t, height: lampH - t, depth: glassD - t * 2
+    }, { position: { x: glassW / 2 - t / 2, y: lampY - t / 2, z: 0 } }, { parent: node });
+
+    // 顶盖
+    boxComponent(registry, item, gardenLanternPostFurniture, 'cap', {
+      width: size.width,
+      height: t * 2,
+      depth: size.depth
+    }, { position: { x: 0, y: lampY + lampH / 2 - t, z: 0 } }, { parent: node });
+
+    // 灯泡 (发光体)
+    sphereComponent(registry, item, gardenLanternPostFurniture, 'bulb', {
+      diameter: size.width * 0.35, segments: 12
+    }, { position: { x: 0, y: lampY, z: 0 } }, { parent: node });
+  }
+};
+
+// 12. 庭院地灯 (Garden Bollard Light)
+export const gardenBollardLightFurniture = {
+  type: 'garden_bollard_light',
+  name: '庭院地灯',
+  defaultSize: { width: 8, depth: 8, height: 20 },
+  emissiveComponents: ['bulb'],
+  lightColorComponent: 'bulb',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: 14, z: 0 },
+    color: '#ffebb3',
+    intensity: 0.7,
+    range: 120
+  },
+  components: [
+    { id: 'base', label: '底座', defaultColor: '#474747' },
+    { id: 'pole', label: '立柱', defaultColor: '#5c5c5c' },
+    { id: 'glass', label: '玻璃罩', defaultColor: '#ffffff' },
+    { id: 'cap', label: '顶盖', defaultColor: '#3a3a3a' },
+    { id: 'bulb', label: '灯泡', defaultColor: '#ffebb3' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.1;
+    const poleH = size.height * 0.4;
+    const glassH = size.height * 0.4;
+    const capH = size.height * 0.1;
+
+    // 底座
+    boxComponent(registry, item, gardenBollardLightFurniture, 'base', {
+      width: size.width, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    // 立柱
+    cylinderComponent(registry, item, gardenBollardLightFurniture, 'pole', {
+      diameterTop: size.width * 0.35, diameterBottom: size.width * 0.35, height: poleH, tessellation: 12
+    }, { position: { x: 0, y: baseH + poleH / 2, z: 0 } }, { parent: node });
+
+    const glassY = baseH + poleH + glassH / 2;
+    const glassW = size.width * 0.78;
+    const glassD = size.depth * 0.78;
+    const t = 0.01;
+
+    // 前玻璃罩
+    boxComponent(registry, item, gardenBollardLightFurniture, 'glass', {
+      width: glassW, height: glassH - t, depth: t
+    }, { position: { x: 0, y: glassY - t / 2, z: -glassD / 2 + t / 2 } }, { parent: node });
+
+    // 后玻璃罩
+    boxComponent(registry, item, gardenBollardLightFurniture, 'glass', {
+      width: glassW, height: glassH - t, depth: t
+    }, { position: { x: 0, y: glassY - t / 2, z: glassD / 2 - t / 2 } }, { parent: node });
+
+    // 左玻璃罩
+    boxComponent(registry, item, gardenBollardLightFurniture, 'glass', {
+      width: t, height: glassH - t, depth: glassD - t * 2
+    }, { position: { x: -glassW / 2 + t / 2, y: glassY - t / 2, z: 0 } }, { parent: node });
+
+    // 右玻璃罩
+    boxComponent(registry, item, gardenBollardLightFurniture, 'glass', {
+      width: t, height: glassH - t, depth: glassD - t * 2
+    }, { position: { x: glassW / 2 - t / 2, y: glassY - t / 2, z: 0 } }, { parent: node });
+
+    // 顶盖
+    boxComponent(registry, item, gardenBollardLightFurniture, 'cap', {
+      width: size.width * 1.1, height: capH, depth: size.depth * 1.1
+    }, { position: { x: 0, y: baseH + poleH + glassH + capH / 2, z: 0 } }, { parent: node });
+
+    // 灯泡
+    sphereComponent(registry, item, gardenBollardLightFurniture, 'bulb', {
+      diameter: size.width * 0.3, segments: 12
+    }, { position: { x: 0, y: baseH + poleH + glassH / 2, z: 0 } }, { parent: node });
+  }
+};
+
+// 13. 庭院灯笼 (Garden Lantern)
+export const gardenLanternFurniture = {
+  type: 'garden_lantern',
+  name: '庭院灯笼',
+  defaultSize: { width: 12, depth: 12, height: 24 },
+  emissiveComponents: ['paper'],
+  lightColorComponent: 'paper',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: 11, z: 0 },
+    color: '#ffe6b3',
+    intensity: 0.8,
+    range: 140
+  },
+  components: [
+    { id: 'base', label: '底座', defaultColor: '#807d79' },
+    { id: 'body', label: '网格架', defaultColor: '#4a443a' },
+    { id: 'paper', label: '透光罩', defaultColor: '#fffae6' },
+    { id: 'roof', label: '灯顶盖', defaultColor: '#6e6659' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.15;
+    const lanternH = size.height * 0.7;
+    const roofH = size.height * 0.15;
+
+    // 底座
+    boxComponent(registry, item, gardenLanternFurniture, 'base', {
+      width: size.width, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    const bodyY = baseH + lanternH / 2;
+    const postW = 0.02;
+
+    // 四角立柱支架
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, gardenLanternFurniture, 'body', {
+          width: postW, height: lanternH, depth: postW
+        }, { position: { x: xSide * (size.width / 2 - postW / 2), y: bodyY, z: zSide * (size.depth / 2 - postW / 2) } }, { parent: node });
+      });
+    });
+
+    // 透光发光罩
+    boxComponent(registry, item, gardenLanternFurniture, 'paper', {
+      width: size.width * 0.76, height: lanternH * 0.9, depth: size.depth * 0.76
+    }, { position: { x: 0, y: bodyY, z: 0 } }, { parent: node });
+
+    // 灯顶盖
+    boxComponent(registry, item, gardenLanternFurniture, 'roof', {
+      width: size.width * 1.15, height: roofH, depth: size.depth * 1.15
+    }, { position: { x: 0, y: baseH + lanternH + roofH / 2, z: 0 } }, { parent: node });
+  }
+};

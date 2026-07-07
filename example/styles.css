@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: light;
   font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
   background: #edf2f7;
@@ -443,6 +443,43 @@ button:disabled {
   .submenu-wrapper .has-submenu .shortcut {
     display: none !important;
   }
+  .right-panel-content,
+  .left-panel-content {
+    height: 30vh !important;
+  }
+  .view-card {
+  max-height: 100vh !important;
+}
+
+  .left-panel .toggle-side-btn {
+    top: auto;
+    bottom: -20px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) rotate(0deg);
+    width: 48px;
+    height: 20px;
+    min-height: 20px;
+    border-radius: 0 0 8px 8px;
+    border-top: 0;
+    border-left: 1px solid rgba(42, 65, 92, 0.12);
+    border-right: 1px solid rgba(42, 65, 92, 0.12);
+  }
+
+  .right-panel .toggle-side-btn {
+    top: -20px;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) rotate(0deg);
+    width: 48px;
+    height: 20px;
+    min-height: 20px;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 0;
+    border-left: 1px solid rgba(42, 65, 92, 0.12);
+    border-right: 1px solid rgba(42, 65, 92, 0.12);
+  }
 }
 
 .view-card {
@@ -809,21 +846,6 @@ body.is-dragging-3d * {
     margin-bottom: 12px;
   }
 
-  .left-panel .toggle-side-btn {
-    top: auto;
-    bottom: -20px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) rotate(90deg);
-    width: 48px;
-    height: 20px;
-    min-height: 20px;
-    border-radius: 0 0 8px 8px;
-    border-top: 0;
-    border-left: 1px solid rgba(42, 65, 92, 0.12);
-    border-right: 1px solid rgba(42, 65, 92, 0.12);
-  }
-
   .right-panel {
     transition: height 0.25s ease, padding 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
     overflow: visible;
@@ -844,20 +866,6 @@ body.is-dragging-3d * {
     margin-top: 12px;
   }
 
-  .right-panel .toggle-side-btn {
-    top: -20px;
-    bottom: auto;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) rotate(-90deg);
-    width: 48px;
-    height: 20px;
-    min-height: 20px;
-    border-radius: 8px 8px 0 0;
-    border-bottom: 0;
-    border-left: 1px solid rgba(42, 65, 92, 0.12);
-    border-right: 1px solid rgba(42, 65, 92, 0.12);
-  }
 }
 
 @media (max-height: 540px) and (orientation: landscape) {
@@ -898,20 +906,7 @@ body.is-dragging-3d * {
     margin-bottom: 0 !important;
   }
 
-  /* 恢复左折叠按钮为侧向拉环把手 */
-  .left-panel .toggle-side-btn {
-    top: 90% !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: -15px !important;
-    transform: translateY(-50%) rotate(0deg) !important;
-    width: 15px !important;
-    height: 30px !important;
-    border-radius: 0 8px 8px 0 !important;
-    border-left: 0 !important;
-    border-top: 1px solid rgba(42, 65, 92, 0.12) !important;
-    border-bottom: 1px solid rgba(42, 65, 92, 0.12) !important;
-  }
+  
 
   .right-panel {
     height: 100vh !important;
@@ -934,20 +929,7 @@ body.is-dragging-3d * {
     margin-top: 0 !important;
   }
 
-  /* 恢复右折叠按钮为侧向拉环把手 */
-  .right-panel .toggle-side-btn {
-    top: 90% !important;
-    bottom: auto !important;
-    left: -15px !important;
-    right: auto !important;
-    transform: translateY(-50%) rotate(0deg) !important;
-    width: 15px !important;
-    height: 30px !important;
-    border-radius: 8px 0 0 8px !important;
-    border-right: 0 !important;
-    border-top: 1px solid rgba(42, 65, 92, 0.12) !important;
-    border-bottom: 1px solid rgba(42, 65, 92, 0.12) !important;
-  }
+ 
 
   .panel {
     padding: 8px;

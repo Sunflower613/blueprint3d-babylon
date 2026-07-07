@@ -5,7 +5,8 @@ import { createFlatMaterial, createBlueprintMaterial, materialPreviewColor, norm
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 import { createBuildingFile, parseBuildingFile, stringifyBuildingFile } from '../core/buildingFile.js';
 import { stringifyDXF, create3MFPackage } from '../core/exporters.js';
-import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition } from '../furniture/index.js';
+import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition, isAppliancePowerOn } from '../furniture/index.js';
+import { healingMusic } from '../audio/healingMusic.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
 import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } from '../openings/index.js';
 import { createOpeningProfileMesh } from '../openings/geometry.js';
@@ -2394,13 +2395,22 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const effect = definition.powerEffect;
     if (!effect) return;
 
-    const isOn = item.isOn === true;
+    const isOn = isAppliancePowerOn(item);
     const glowComponents = Array.isArray(effect.glowComponents) ? effect.glowComponents : [];
     const glowColor = BABYLON.Color3.FromHexString(effect.color || '#66ccff');
     const glowMeshes = node.getChildMeshes().filter((mesh) => {
       const componentId = mesh.metadata?.blueprintFurnitureComponentId;
       return componentId && glowComponents.includes(componentId) && mesh.material;
     });
+    const spinNodeIds = Array.isArray(effect.spinNodes) ? effect.spinNodes : [];
+    const spinNodes = node.getChildTransformNodes(false).filter((child) => {
+      return spinNodeIds.includes(child.metadata?.powerMotionId);
+    });
+    const pulseScaleIds = Array.isArray(effect.pulseScaleComponents) ? effect.pulseScaleComponents : [];
+    const pulseScaleMeshes = node.getChildMeshes().filter((mesh) => {
+      return pulseScaleIds.includes(mesh.metadata?.blueprintFurnitureComponentId);
+    });
+    const initialScalings = new Map(pulseScaleMeshes.map((mesh) => [mesh, mesh.scaling.clone()]));
 
     glowMeshes.forEach((mesh) => {
       mesh.material.emissiveColor = isOn ? glowColor.clone() : new BABYLON.Color3(0, 0, 0);
@@ -2411,9 +2421,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const initialRotationY = node.rotation.y;
     const initialPositionX = node.position.x;
     const hasMotion = effect.motion === 'oscillate' || effect.motion === 'vibrate';
-    if (isOn && (effect.pulse || hasMotion)) {
+    const hasComponentAnimation = spinNodes.length > 0 || pulseScaleMeshes.length > 0;
+    if (isOn && (effect.pulse || hasMotion || hasComponentAnimation)) {
       renderObserver = this.scene.onBeforeRenderObservable.add(() => {
-        elapsed += this.scene.getEngine().getDeltaTime() / 1000;
+        const deltaSeconds = this.scene.getEngine().getDeltaTime() / 1000;
+        elapsed += deltaSeconds;
 
         if (effect.pulse) {
           const pulseSpeed = effect.pulseSpeed ?? 2.5;
@@ -2422,6 +2434,20 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           const amount = pulseMin + (pulseMax - pulseMin) * (0.5 + 0.5 * Math.sin(elapsed * pulseSpeed));
           glowMeshes.forEach((mesh) => {
             if (mesh.material) mesh.material.emissiveColor = glowColor.scale(amount);
+          });
+        }
+
+        spinNodes.forEach((spinNode) => {
+          spinNode.rotation.y += deltaSeconds * (effect.spinSpeed ?? 2);
+        });
+
+        if (pulseScaleMeshes.length > 0) {
+          const scaleAmount = 1 + Math.sin(elapsed * (effect.pulseScaleSpeed ?? 7)) * (effect.pulseScaleAmount ?? 0.035);
+          pulseScaleMeshes.forEach((mesh) => {
+            const initial = initialScalings.get(mesh);
+            if (initial) {
+              mesh.scaling.set(initial.x * scaleAmount, initial.y * scaleAmount, initial.z * scaleAmount);
+            }
           });
         }
 
@@ -2464,9 +2490,16 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       light.range = inchesToUnits(config.range ?? 120);
     }
 
+    let ownsHealingMusic = false;
+    if (isOn && effect.audio === 'healing') {
+      healingMusic.acquire(item.id);
+      ownsHealingMusic = true;
+    }
+
     node.onDisposeObservable.add(() => {
       if (renderObserver) this.scene.onBeforeRenderObservable.remove(renderObserver);
       if (light) light.dispose();
+      if (ownsHealingMusic) healingMusic.release(item.id);
     });
   }
 

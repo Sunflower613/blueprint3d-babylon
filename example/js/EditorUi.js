@@ -945,6 +945,8 @@ export function initUiEventListeners() {
       const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
       
       const isShelfSelected = selectedItem && selectedDef && supportedTypes.includes(selectedDef.type);
+      const isMannequinSelected = selectedItem && selectedDef && selectedDef.type.includes('clothing_mannequin');
+      const isAddingClothing = definition.type.startsWith('clothing_') && !definition.type.includes('mannequin');
       
       if (isShelfSelected) {
         x = selectedItem.x;
@@ -961,6 +963,48 @@ export function initUiEventListeners() {
         } else {
           elevation = selectedItem.elevation || 0;
         }
+      } else if (isMannequinSelected && isAddingClothing) {
+        x = selectedItem.x;
+        z = selectedItem.z;
+        rotation = selectedItem.rotation || 0;
+
+        // 计算模特的各个节点高度
+        const modelHeight = (selectedItem.height || selectedDef.defaultSize.height) * (selectedItem.scale || 1);
+        const modelWidth = (selectedItem.width || selectedDef.defaultSize.width) * (selectedItem.scale || 1);
+        
+        let gender = 'male';
+        if (selectedDef.type.includes('female')) gender = 'female';
+        else if (selectedDef.type.includes('child')) gender = 'child';
+
+        const plateH = modelHeight * 0.03;
+        const rodH = modelHeight * 0.48;
+        const hipsY = plateH + rodH;
+        const hipsH = modelHeight * 0.12;
+        const chestY = hipsY + hipsH;
+        const chestH = modelHeight * 0.24;
+        const neckY = chestY + chestH;
+        const neckH = modelHeight * 0.05;
+        const headY = neckY + neckH;
+        const headD = gender === 'child' ? modelWidth * 0.5 : modelWidth * 0.4;
+
+        const clothType = definition.type;
+        const clothHeight = (definition.defaultSize.height || 0);
+
+        if (clothType.includes('cap') || clothType.includes('beanie') || clothType.includes('fedora') || clothType.includes('hat') || clothType.includes('beret')) {
+          // 帽子
+          elevation = (selectedItem.elevation || 0) + (headY + headD * 0.25);
+        } else if (clothType.includes('shoes') || clothType.includes('sneakers') || clothType.includes('boots') || clothType.includes('heels') || clothType.includes('sandals') || clothType.includes('slippers')) {
+          // 鞋子
+          elevation = (selectedItem.elevation || 0) + plateH;
+        } else if (clothType.includes('jeans') || clothType.includes('trousers') || clothType.includes('sweatpants') || clothType.includes('shorts') || clothType.includes('pants') || clothType.includes('skirt')) {
+          // 裤子/短裙
+          elevation = (selectedItem.elevation || 0) + (chestY - clothHeight);
+        } else {
+          // 上衣/连衣裙
+          elevation = (selectedItem.elevation || 0) + (neckY - clothHeight);
+        }
+        
+        elevation = Number(elevation.toFixed(2));
       } else {
         const bookshelfBelow = findBookshelfNearby({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
         if (bookshelfBelow) {
@@ -1489,10 +1533,18 @@ function applyStyleToSwatch(button, mat) {
   const color = material.color || mat.color || '#ffffff';
 
   if (kind === 'texture' && src) {
-    button.style.backgroundImage = `url(${src})`;
+    button.style.backgroundImage = `linear-gradient(${color}cc, ${color}cc), url(${src})`;
+    button.style.backgroundBlendMode = 'multiply';
+    button.style.backgroundPosition = 'center';
+    button.style.backgroundSize = 'cover';
+    button.style.backgroundColor = color;
   } else if (kind === 'mirror') {
     const c = color || '#e8eef4';
     button.style.background = `linear-gradient(135deg, ${c} 0%, #ffffff 45%, ${c} 55%, #ffffff 100%)`;
+  } else if (kind === 'stained-glass') {
+    button.style.background = 'conic-gradient(from 18deg at 42% 55%, #f27462 0 14%, #2b2023 14% 15%, #f2c95c 15% 29%, #2b2023 29% 30%, #4238de 30% 42%, #2b2023 42% 43%, #cf4b91 43% 62%, #2b2023 62% 63%, #ef9f58 63% 82%, #2b2023 82% 83%, #7557c9 83%)';
+    button.style.backgroundSize = '38px 38px';
+    button.style.boxShadow = 'inset 0 0 8px rgba(255,255,255,0.35), 0 0 7px rgba(142,76,201,0.3)';
   } else if (kind === 'glass') {
     const c = color || '#e8f4ff';
     button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;

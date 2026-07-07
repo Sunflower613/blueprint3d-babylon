@@ -151,7 +151,8 @@ export const diningTableLongFurniture = {
   defaultSize: { width: 72, depth: 36, height: 30 },
   components: [
     { id: 'top', label: '长桌面', defaultColor: '#b07443' },
-    { id: 'legs', label: '粗桌腿', defaultColor: '#784924' }
+    { id: 'legs', label: '粗桌腿', defaultColor: '#784924' },
+    { id: 'cloth', label: '长条桌布', defaultColor: '#4c6a58' }
   ],
   build(registry, item, node, size) {
     const topH = 0.05;
@@ -171,6 +172,26 @@ export const diningTableLongFurniture = {
         }, { position: { x: x * xOffset, y: legH / 2, z: z * zOffset } }, { parent: node });
       });
     });
+
+    // 绿色长条桌布，带有两端垂悬效果
+    const clothZ = size.depth * 0.38;
+    const clothThick = 0.002;
+    const hangH = 0.22;
+
+    // 桌面平铺部分
+    boxComponent(registry, item, diningTableLongFurniture, 'cloth', {
+      width: size.width, height: clothThick, depth: clothZ
+    }, { position: { x: 0, y: size.height + clothThick / 2, z: 0 } }, { parent: node });
+
+    // 左侧悬挂部分
+    boxComponent(registry, item, diningTableLongFurniture, 'cloth', {
+      width: clothThick, height: hangH, depth: clothZ
+    }, { position: { x: -size.width / 2 - clothThick / 2, y: size.height - hangH / 2, z: 0 } }, { parent: node });
+
+    // 右侧悬挂部分
+    boxComponent(registry, item, diningTableLongFurniture, 'cloth', {
+      width: clothThick, height: hangH, depth: clothZ
+    }, { position: { x: size.width / 2 + clothThick / 2, y: size.height - hangH / 2, z: 0 } }, { parent: node });
   }
 };
 
@@ -289,6 +310,168 @@ export const picnicTableFurniture = {
       boxComponent(registry, item, picnicTableFurniture, 'frame', {
         width: 0.04, height: size.height * 0.98, depth: size.depth
       }, { position: { x: xSide * size.width * 0.38, y: size.height / 2, z: 0 } }, { parent: node });
+    });
+  }
+};
+
+// 11. 露台餐桌 (Patio Dining Table)
+export const patioDiningTableFurniture = {
+  type: 'patio_dining_table',
+  name: '\u9732\u53f0\u9910\u684c',
+  defaultSize: { width: 66, depth: 36, height: 30 },
+  components: [
+    { id: 'top', label: '\u684c\u9762', defaultColor: '#d4b08a' },
+    { id: 'legs', label: '\u684c\u817f', defaultColor: '#6b6f75' },
+    { id: 'frame', label: '\u8fde\u63a5\u67b6', defaultColor: '#52565d' }
+  ],
+  build(registry, item, node, size) {
+    const topH = 0.05;
+    boxComponent(registry, item, patioDiningTableFurniture, 'top', {
+      width: size.width, height: topH, depth: size.depth
+    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+
+    const legH = size.height - topH;
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, patioDiningTableFurniture, 'legs', {
+          width: 0.05, height: legH, depth: 0.05
+        }, { position: { x: xSide * size.width * 0.42, y: legH / 2, z: zSide * size.depth * 0.38 } }, { parent: node });
+      });
+    });
+
+    // 添加两根 Z 方向 of the cross-framing to hold the center bar
+    [-1, 1].forEach((xSide) => {
+      boxComponent(registry, item, patioDiningTableFurniture, 'frame', {
+        width: 0.03, height: 0.03, depth: size.depth * 0.76
+      }, { position: { x: xSide * size.width * 0.39, y: legH * 0.36, z: 0 } }, { parent: node });
+    });
+
+    // 中间纵向拉杆
+    boxComponent(registry, item, patioDiningTableFurniture, 'frame', {
+      width: size.width * 0.78, height: 0.03, depth: 0.03
+    }, { position: { x: 0, y: legH * 0.36, z: 0 } }, { parent: node });
+  }
+};
+
+// 12. 庭院小圆桌 (Bistro Table)
+export const bistroTableFurniture = {
+  type: 'bistro_table',
+  name: '\u5ead\u9662\u5c0f\u5706\u684c',
+  defaultSize: { width: 26, depth: 26, height: 28 },
+  components: [
+    { id: 'glass', label: '\u73bb\u7483\u53f0\u9762', defaultColor: '#e0f2f1' },
+    { id: 'frame', label: '\u91d1\u5c5e\u6846\u67b6', defaultColor: '#37474f' }
+  ],
+  build(registry, item, node, size) {
+    // 1. 四角金属桌腿
+    const legRadius = 0.03;
+    const legH = size.height;
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
+          diameterTop: legRadius * 2,
+          diameterBottom: legRadius * 2,
+          height: legH,
+          tessellation: 16
+        }, {
+          position: {
+            x: xSide * size.width * 0.35,
+            y: legH / 2,
+            z: zSide * size.depth * 0.35
+          }
+        }, { parent: node });
+      });
+    });
+
+    // 2. 顶层玻璃台面
+    const topGlassH = 0.03;
+    cylinderComponent(registry, item, bistroTableFurniture, 'glass', {
+      diameterTop: size.width,
+      diameterBottom: size.width,
+      height: topGlassH,
+      tessellation: 24
+    }, {
+      position: { x: 0, y: size.height - topGlassH / 2, z: 0 }
+    }, { parent: node });
+
+    // 3. 顶层金属支撑环（托盘）
+    const topSupportH = 0.02;
+    cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
+      diameterTop: size.width * 0.94,
+      diameterBottom: size.width * 0.94,
+      height: topSupportH,
+      tessellation: 24
+    }, {
+      position: { x: 0, y: size.height - topGlassH - topSupportH / 2, z: 0 }
+    }, { parent: node });
+
+    // 4. 底层玻璃层板
+    const shelfGlassH = 0.025;
+    const shelfY = size.height * 0.45;
+    cylinderComponent(registry, item, bistroTableFurniture, 'glass', {
+      diameterTop: size.width * 0.8,
+      diameterBottom: size.width * 0.8,
+      height: shelfGlassH,
+      tessellation: 24
+    }, {
+      position: { x: 0, y: shelfY, z: 0 }
+    }, { parent: node });
+
+    // 5. 底层金属支撑环
+    const shelfSupportH = 0.02;
+    cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
+      diameterTop: size.width * 0.74,
+      diameterBottom: size.width * 0.74,
+      height: shelfSupportH,
+      tessellation: 24
+    }, {
+      position: { x: 0, y: shelfY - shelfGlassH / 2 - shelfSupportH / 2, z: 0 }
+    }, { parent: node });
+  }
+};
+
+// 13. 藤编户外茶几 (Rattan Coffee Table)
+export const rattanCoffeeTableFurniture = {
+  type: 'rattan_coffee_table',
+  name: '\u85e4\u7f16\u6237\u5916\u8336\u51e0',
+  defaultSize: { width: 42, depth: 24, height: 18 },
+  components: [
+    { id: 'top', label: '\u53f0\u9762', defaultColor: '#cfb390' },
+    { id: 'body', label: '\u85e4\u7f16\u6846', defaultColor: '#9d744b' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, rattanCoffeeTableFurniture, 'body', {
+      width: size.width, height: size.height * 0.82, depth: size.depth
+    }, { position: { x: 0, y: size.height * 0.41, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, rattanCoffeeTableFurniture, 'top', {
+      width: size.width * 0.94, height: 0.03, depth: size.depth * 0.94
+    }, { position: { x: 0, y: size.height * 0.84, z: 0 } }, { parent: node });
+  }
+};
+
+// 14. 花园边几 (Garden Side Table)
+export const gardenSideTableFurniture = {
+  type: 'garden_side_table',
+  name: '\u82b1\u56ed\u8fb9\u51e0',
+  defaultSize: { width: 18, depth: 18, height: 22 },
+  components: [
+    { id: 'top', label: '\u53f0\u9762', defaultColor: '#d8c2a3' },
+    { id: 'legs', label: '\u684c\u811a', defaultColor: '#6f5d49' }
+  ],
+  build(registry, item, node, size) {
+    const topH = 0.03;
+    boxComponent(registry, item, gardenSideTableFurniture, 'top', {
+      width: size.width, height: topH, depth: size.depth
+    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+
+    const legH = size.height - topH;
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        cylinderComponent(registry, item, gardenSideTableFurniture, 'legs', {
+          diameterTop: 0.03, diameterBottom: 0.025, height: legH, tessellation: 12
+        }, { position: { x: xSide * size.width * 0.32, y: legH / 2, z: zSide * size.depth * 0.32 } }, { parent: node });
+      });
     });
   }
 };

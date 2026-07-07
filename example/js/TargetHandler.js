@@ -138,7 +138,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
   let isWaterOn = true;
   if (target.type === 'item') {
     const item = ctx.testMap.getItem(target.id);
-    if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom'].includes(item.type)) {
+    if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom', 'birdbath', 'garden_fountain'].includes(item.type)) {
       isWaterContainer = true;
       isWaterOn = item.waterEnabled !== false;
     }
@@ -608,7 +608,7 @@ export function deleteTarget(target) {
 
 export function selectTargetDescriptor(target) {
   if (!target || !isTargetOnCurrentFloor(target)) return;
-  if (target.type === 'item') ctx.selectItem(target.id);
+  if (target.type === 'item') ctx.selectItem(target.id, true);
   if (target.type === 'wall') ctx.selectWall(target.id);
   if (target.type === 'opening') ctx.selectOpening(target.id);
   if (target.type === 'roof') ctx.selectRoof(target.id);

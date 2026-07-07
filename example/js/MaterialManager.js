@@ -53,6 +53,112 @@ export function getActiveMaterialDisplayName(mat) {
   return mat.name || '自定义材质';
 }
 
+function isTextureMaterial(material) {
+  if (!material || typeof material === 'string') return false;
+  return material.kind === 'texture' && !!(material.src || material.url);
+}
+
+function applySwatchStyle(button, material) {
+  button.style.background = '';
+  button.style.backgroundImage = '';
+  button.style.backgroundColor = '';
+  button.style.backgroundBlendMode = '';
+  button.style.backgroundPosition = '';
+  button.style.backgroundSize = '';
+  button.style.boxShadow = '';
+  button.style.border = '';
+
+  if (!material) {
+    button.style.backgroundColor = '#ffffff';
+    return;
+  }
+
+  if (typeof material === 'string') {
+    button.style.backgroundColor = material;
+    return;
+  }
+
+  const color = material.color || '#ffffff';
+  if (isTextureMaterial(material)) {
+    const src = material.src || material.url;
+    button.style.backgroundImage = `linear-gradient(${color}cc, ${color}cc), url(${src})`;
+    button.style.backgroundBlendMode = 'multiply';
+    button.style.backgroundPosition = 'center';
+    button.style.backgroundSize = 'cover';
+    button.style.backgroundColor = color;
+    return;
+  }
+
+  if (material.kind === 'mirror') {
+    button.style.background = `linear-gradient(135deg, ${color} 0%, #ffffff 45%, ${color} 55%, #ffffff 100%)`;
+    return;
+  }
+
+  if (material.kind === 'stained-glass') {
+    button.style.background = 'conic-gradient(from 18deg at 42% 55%, #f27462 0 14%, #2b2023 14% 15%, #f2c95c 15% 29%, #2b2023 29% 30%, #4238de 30% 42%, #2b2023 42% 43%, #cf4b91 43% 62%, #2b2023 62% 63%, #ef9f58 63% 82%, #2b2023 82% 83%, #7557c9 83%)';
+    button.style.backgroundSize = '38px 38px';
+    button.style.boxShadow = 'inset 0 0 8px rgba(255,255,255,0.35), 0 0 7px rgba(142,76,201,0.3)';
+    return;
+  }
+
+  if (material.kind === 'glass') {
+    button.style.background = `linear-gradient(${color}99, ${color}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
+    return;
+  }
+
+  if (material.kind === 'emissive') {
+    button.style.backgroundColor = color;
+    button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${color}88`;
+    button.style.border = '1px solid rgba(255,255,255,0.4)';
+    return;
+  }
+
+  if (material.kind === 'metal') {
+    const isMatte = material.roughness !== undefined && material.roughness > 0.4;
+    if (isMatte) {
+      button.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%), linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.15) 100%), ${color}`;
+      button.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.25)';
+    } else {
+      button.style.background = `linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0.8) 45%, rgba(0,0,0,0.3) 60%, rgba(255,255,255,0.3) 80%, rgba(0,0,0,0.1) 100%), ${color}`;
+      button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.2)';
+    }
+    return;
+  }
+
+  button.style.backgroundColor = color;
+}
+
+function upsertMaterialDescriptor(descriptor) {
+  const existingIndex = editor.materialLibrary.findIndex((material) => material.id === descriptor.id);
+  if (existingIndex >= 0) {
+    const nextLibrary = [...editor.materialLibrary];
+    nextLibrary[existingIndex] = descriptor;
+    editor.materialLibrary = nextLibrary;
+    return;
+  }
+
+  editor.materialLibrary = [descriptor, ...editor.materialLibrary];
+}
+
+function createTintedTextureDescriptor(material, color) {
+  const sourceId = String(material.id || 'texture');
+  const isCustomSource = sourceId.startsWith('custom_');
+  const derivedId = isCustomSource
+    ? sourceId
+    : `derived_texture_${sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+  return {
+    ...material,
+    id: derivedId,
+    kind: 'texture',
+    category: material.category || 'custom',
+    src: material.src || material.url,
+    color,
+    derivedFrom: material.derivedFrom || material.id || null,
+    name: isCustomSource ? (material.name || 'Custom Texture') : `${material.name || 'Texture'} (Tintable)`
+  };
+}
+
 export function renderMaterialLibrary() {
   ctx.updateDesignCursor();
   const materialCategorySelect = document.getElementById('material-category');
@@ -61,6 +167,14 @@ export function renderMaterialLibrary() {
 
   const category = materialCategorySelect.value;
   const materials = editor.materialLibrary.filter((material) => material.category === category);
+  if (!editor.activeMaterialArray?.length) {
+    const activeExistsInCategory = editor.activeMaterialDescriptor
+      ? materials.some((material) => material.id === editor.activeMaterialDescriptor.id)
+      : false;
+    if (!activeExistsInCategory) {
+      editor.activeMaterialDescriptor = materials[0] || null;
+    }
+  }
   materialLibraryPanel.innerHTML = '';
 
   const header = document.createElement('div');
@@ -151,32 +265,7 @@ export function renderMaterialLibrary() {
     button.type = 'button';
     button.className = `material-swatch ${editor.activeMaterialDescriptor?.id === material.id ? 'active' : ''}`;
     button.title = material.name;
-    if (material.kind === 'texture' && material.src) {
-      button.style.backgroundImage = `url(${material.src})`;
-    } else if (material.kind === 'mirror') {
-      const c = material.color || '#e8eef4';
-      button.style.background = `linear-gradient(135deg, ${c} 0%, #ffffff 45%, ${c} 55%, #ffffff 100%)`;
-    } else if (material.kind === 'glass') {
-      const c = material.color || '#e8f4ff';
-      button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
-    } else if (material.kind === 'emissive') {
-      const c = material.color || '#ffffff';
-      button.style.backgroundColor = c;
-      button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
-      button.style.border = '1px solid rgba(255,255,255,0.4)';
-    } else if (material.kind === 'metal') {
-      const c = material.color || '#e6e6e6';
-      const isMatte = material.roughness !== undefined && material.roughness > 0.4;
-      if (isMatte) {
-        button.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%), linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.15) 100%), ${c}`;
-        button.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.25)';
-      } else {
-        button.style.background = `linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0.8) 45%, rgba(0,0,0,0.3) 60%, rgba(255,255,255,0.3) 80%, rgba(0,0,0,0.1) 100%), ${c}`;
-        button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.2)';
-      }
-    } else {
-      button.style.backgroundColor = material.color || '#ffffff';
-    }
+    applySwatchStyle(button, material);
     button.addEventListener('click', () => {
       editor.activeMaterialDescriptor = material;
       editor.activeMaterialArray = null; // 清除全量数组
@@ -186,6 +275,45 @@ export function renderMaterialLibrary() {
     grid.appendChild(button);
   });
   materialLibraryPanel.appendChild(grid);
+
+  const activeTextureMaterial = editor.activeMaterialArray?.length
+    ? null
+    : (isTextureMaterial(editor.activeMaterialDescriptor) ? editor.activeMaterialDescriptor : null);
+
+  if (activeTextureMaterial && activeTextureMaterial.category === category) {
+    const tintPanel = document.createElement('div');
+    tintPanel.className = 'custom-emissive-container';
+    tintPanel.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
+
+    const textWrapper = document.createElement('div');
+    textWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+    const label = document.createElement('span');
+    label.textContent = '纹理颜色';
+    label.style.cssText = 'font-size: 13px; font-weight: 500; color: #172033;';
+
+    const hint = document.createElement('span');
+    hint.textContent = '保留木纹细节，颜色可自由调整';
+    hint.style.cssText = 'font-size: 11px; color: #66758f;';
+
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.value = activeTextureMaterial.color || '#ffffff';
+    picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
+
+    picker.addEventListener('change', (event) => {
+      const tintedDescriptor = createTintedTextureDescriptor(activeTextureMaterial, event.target.value);
+      upsertMaterialDescriptor(tintedDescriptor);
+      editor.activeMaterialDescriptor = tintedDescriptor;
+      editor.activeMaterialArray = null;
+      renderMaterialLibrary();
+      ctx.updateEditor();
+    });
+
+    textWrapper.append(label, hint);
+    tintPanel.append(textWrapper, picker);
+    materialLibraryPanel.appendChild(tintPanel);
+  }
 
   // 当选中了自定义材质时，在列表下方渲染编辑与删除面板
   const isCustomMaterial = editor.activeMaterialDescriptor && editor.activeMaterialDescriptor.id && String(editor.activeMaterialDescriptor.id).startsWith('custom_');

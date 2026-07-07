@@ -1,7 +1,7 @@
-import lightFineWoodUrl from '../textures/light_fine_wood.jpg';
-import marbletilesUrl from '../textures/marbletiles.jpg';
-import wallmapYellowUrl from '../textures/wallmap_yellow.png';
-import lightBrickUrl from '../textures/light_brick.jpg';
+const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
+const marbletilesUrl = new URL('../textures/marbletiles.jpg', import.meta.url).href;
+const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
+const lightBrickUrl = new URL('../textures/light_brick.jpg', import.meta.url).href;
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -15,6 +15,23 @@ export const MATERIAL_CATEGORIES = [
   { id: 'paint', label: '涂料', icon: '<path d="M12 22c5.523 0 10-2.239 10-5 0-2.761-4.477-5-10-5S2 14.239 2 17c0 2.761 4.477 5 10 5Z"/><path d="M12 12V2"/><path d="M8 2h8"/>' },
   { id: 'emissive', label: '发光', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>' }
 ];
+
+const COMMON_WOOD_MATERIALS = [
+  { id: 'wood-light-fine', name: '\u7cbe\u7ec6\u6d45\u6728', color: '#e5c4a3' },
+  { id: 'wood-light-oak', name: '\u6d45\u6a61\u6728', color: '#dcc09a' },
+  { id: 'wood-ash', name: '\u767d\u8721\u6728', color: '#d6c3a5' },
+  { id: 'wood-maple', name: '\u67ab\u6728', color: '#d8ad84' },
+  { id: 'wood-pine', name: '\u677e\u6728', color: '#d2b07a' },
+  { id: 'wood-teak', name: '\u67da\u6728', color: '#b98658' },
+  { id: 'wood-cherry', name: '\u6a31\u6843\u6728', color: '#b86f52' },
+  { id: 'wood-walnut', name: '\u80e1\u6843\u6728', color: '#8a5c3b' }
+].map((material) => ({
+  ...material,
+  category: 'wood',
+  kind: 'texture',
+  src: lightFineWoodUrl,
+  scale: 3
+}));
 
 export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' },
@@ -35,7 +52,7 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-morandi-orange', name: '莫兰迪橘', category: 'paint', color: '#cda393' },
   { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' },
 
-  { id: 'wood-honey', name: '蜂蜜木纹', category: 'wood', color: '#c58b4f' },
+  ...COMMON_WOOD_MATERIALS,
   { id: 'stone-light', name: '浅石纹', category: 'stone', color: '#d7d2c8' },
   // --- 金属材质 ---
   { id: 'metal-gold', name: '金', category: 'metal', kind: 'metal', color: '#d4af37' },
@@ -49,15 +66,6 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'metal-iron-matte', name: '磨砂铁', category: 'metal', kind: 'metal', color: '#43464b', roughness: 0.6 },
   { id: 'metal-aluminum-matte', name: '磨砂铝', category: 'metal', kind: 'metal', color: '#d9d9d9', roughness: 0.6 },
   { id: 'wallpaper-rose', name: '玫瑰墙纸', category: 'wallpaper', color: '#f7bfd2' },
-  {
-    id: 'wood-light-fine',
-    name: '精细浅木',
-    category: 'wood',
-    kind: 'texture',
-    src: lightFineWoodUrl,
-    scale: 3,
-    color: '#e5c4a3'
-  },
   {
     id: 'stone-marbletiles',
     name: '大理石瓷砖',
@@ -95,6 +103,16 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'glass-frosted', name: '磨砂玻璃', category: 'glass', kind: 'glass', color: '#f0f0f0', alpha: 0.55 },
   { id: 'glass-tea', name: '茶色玻璃', category: 'glass', kind: 'glass', color: '#c4a97d' },
   { id: 'glass-blue', name: '蓝色玻璃', category: 'glass', kind: 'glass', color: '#7fb8e0' },
+  {
+    id: 'glass-stained-cathedral',
+    name: '教堂彩色玻璃',
+    category: 'glass',
+    kind: 'stained-glass',
+    color: '#8e4cc9',
+    alpha: 0.72,
+    patternScale: 1.1,
+    emissiveStrength: 0.18
+  },
   // --- 发光材质 ---
   { id: 'emissive-white', name: '自发光-白', category: 'emissive', kind: 'emissive', color: '#ffffff' },
   { id: 'emissive-warm-white', name: '自发光-暖白', category: 'emissive', kind: 'emissive', color: '#ffebd2' },
@@ -113,13 +131,15 @@ export function createColorMaterialDescriptor(color, category = 'paint', name = 
   };
 }
 
-export function createTextureMaterialDescriptor({ name, category = 'custom', src, fileName, scale = 1 }) {
+export function createTextureMaterialDescriptor({ id, name, category = 'custom', src, fileName, scale = 1, color = '#ffffff' }) {
   return {
+    id,
     kind: 'texture',
     category,
     name,
     fileName,
     src,
-    scale
+    scale,
+    color
   };
 }

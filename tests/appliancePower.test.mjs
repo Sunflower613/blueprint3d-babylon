@@ -4,7 +4,8 @@ import * as BABYLON from '@babylonjs/core';
 import {
   APPLIANCE_POWER_EFFECTS,
   getFurnitureDefinition,
-  isPowerControllable
+  isPowerControllable,
+  isAppliancePowerOn
 } from '../src/furniture/index.js';
 
 const applianceTypes = [
@@ -14,6 +15,8 @@ const applianceTypes = [
   'projector',
   'game_console',
   'smart_speaker',
+  'vintage_record_player',
+  'stereo_speaker',
   'electric_fan',
   'aroma_diffuser',
   'hair_dryer',
@@ -76,4 +79,16 @@ test('every appliance effect targets at least one mesh that is actually built', 
     scene.dispose();
     engine.dispose();
   });
+});
+
+test('music furniture uses the healing melody and remains off by default', () => {
+  ['smart_speaker', 'vintage_record_player', 'stereo_speaker'].forEach((type) => {
+    const definition = getFurnitureDefinition(type);
+    assert.equal(definition.powerEffect.audio, 'healing');
+  });
+  assert.equal(isAppliancePowerOn({}), false);
+  assert.equal(isAppliancePowerOn({ isOn: false }), false);
+  assert.equal(isAppliancePowerOn({ isOn: true }), true);
+  assert.deepEqual(APPLIANCE_POWER_EFFECTS.vintage_record_player.spinNodes, ['turntable']);
+  assert.deepEqual(APPLIANCE_POWER_EFFECTS.stereo_speaker.pulseScaleComponents, ['woofer']);
 });

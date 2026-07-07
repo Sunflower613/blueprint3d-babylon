@@ -8,7 +8,11 @@ import {
   loveseatFurniture,
   officechairFurniture,
   beanbagFurniture,
-  deckchairFurniture
+  deckchairFurniture,
+  adirondackChairFurniture,
+  foldingCampingChairFurniture,
+  rattanLoungeChairFurniture,
+  hangingEggChairFurniture
 } from './seating.js';
 
 import {
@@ -21,7 +25,11 @@ import {
   consoleTableFurniture,
   computerDeskFurniture,
   bedsideDeskFurniture,
-  picnicTableFurniture
+  picnicTableFurniture,
+  patioDiningTableFurniture,
+  bistroTableFurniture,
+  rattanCoffeeTableFurniture,
+  gardenSideTableFurniture
 } from './tables.js';
 
 import {
@@ -144,6 +152,7 @@ import {
   gypsumBustFurniture,
   piggyBankFurniture,
   sculptureFurniture,
+  windChimeFurniture,
   ovalRugFurniture,
   roundedRugFurniture,
   tvFurniture,
@@ -155,6 +164,8 @@ import {
   smartSpeakerFurniture,
   electricFanFurniture,
   aromaDiffuserFurniture,
+  vintageRecordPlayerFurniture,
+  stereoSpeakerFurniture,
   tissueBoxFurniture,
   wallClockFurniture,
   sunflowerPotFurniture,
@@ -189,7 +200,10 @@ import {
   trackLight,
   neonSignLight,
   globePendantLight,
-  lavaLampLight
+  lavaLampLight,
+  gardenLanternPostFurniture,
+  gardenBollardLightFurniture,
+  gardenLanternFurniture
 } from './lighting.js';
 
 import {
@@ -197,6 +211,29 @@ import {
   customCylinderFurniture,
   customSphereFurniture
 } from './custom.js';
+
+import {
+  outdoorUmbrellaFurniture,
+  pergolaFurniture,
+  flowerArchFurniture,
+  gazeboFurniture,
+  patioSwingFurniture,
+  hammockStandFurniture,
+  firePitFurniture,
+  barbecueGrillFurniture,
+  patioHeaterFurniture,
+  gardenFountainFurniture,
+  birdbathFurniture,
+  planterBoxFurniture,
+  raisedGardenBedFurniture,
+  trellisScreenFurniture,
+  outdoorStorageBoxFurniture,
+  gardenBridgeFurniture,
+  canopyTentFurniture,
+  poolsideDaybedFurniture,
+  pottingBenchFurniture
+} from './outdoor.js';
+
 
 import {
   clothing_mannequin_male,
@@ -257,10 +294,18 @@ import {
 
 
 // 1. 将家具划归各大分类
-const seating = [sofaFurniture, chairFurniture, armchairFurniture, stoolFurniture, barstoolFurniture, benchFurniture, loveseatFurniture, officechairFurniture, beanbagFurniture, deckchairFurniture];
+const seating = [
+  sofaFurniture, chairFurniture, armchairFurniture, stoolFurniture, barstoolFurniture,
+  benchFurniture, loveseatFurniture, officechairFurniture, beanbagFurniture, deckchairFurniture,
+  adirondackChairFurniture, foldingCampingChairFurniture, rattanLoungeChairFurniture, hangingEggChairFurniture
+];
 seating.forEach(f => f.category = 'seating');
 
-const tables = [tableFurniture, deskFurniture, coffeeTableFurniture, sideTableFurniture, roundTableFurniture, diningTableLongFurniture, consoleTableFurniture, computerDeskFurniture, bedsideDeskFurniture, picnicTableFurniture];
+const tables = [
+  tableFurniture, deskFurniture, coffeeTableFurniture, sideTableFurniture, roundTableFurniture,
+  diningTableLongFurniture, consoleTableFurniture, computerDeskFurniture, bedsideDeskFurniture, picnicTableFurniture,
+  patioDiningTableFurniture, bistroTableFurniture, rattanCoffeeTableFurniture, gardenSideTableFurniture
+];
 tables.forEach(f => f.category = 'tables');
 
 const storage = [
@@ -276,7 +321,8 @@ const bedroom = [
 bedroom.forEach(f => f.category = 'bedroom');
 
 const appliances = [
-  washingMachineFurniture, tvFurniture, computerFurniture, projectorFurniture, gameConsoleFurniture, smartSpeakerFurniture, electricFanFurniture, aromaDiffuserFurniture, hairDryerFurniture
+  washingMachineFurniture, tvFurniture, computerFurniture, projectorFurniture, gameConsoleFurniture, smartSpeakerFurniture, electricFanFurniture, aromaDiffuserFurniture, hairDryerFurniture,
+  vintageRecordPlayerFurniture, stereoSpeakerFurniture
 ];
 appliances.forEach(f => f.category = 'appliances');
 
@@ -299,7 +345,15 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
     lightSource: { type: 'spot', offset: { x: 2.5, y: 2, z: 5 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 120, angle: Math.PI / 5 }
   },
   game_console: { label: '\u6e38\u620f\u4e3b\u673a', glowComponents: ['accent'], color: '#2979ff', pulse: true },
-  smart_speaker: { label: '\u667a\u80fd\u97f3\u7bb1', glowComponents: ['top'], color: '#7c4dff', pulse: true },
+  smart_speaker: { label: '\u667a\u80fd\u97f3\u7bb1', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },
+  vintage_record_player: {
+    label: '复古唱片机', glowComponents: ['accent'], color: '#f7c873', pulse: true,
+    spinNodes: ['turntable'], spinSpeed: 2.2, audio: 'healing'
+  },
+  stereo_speaker: {
+    label: '复古音响', glowComponents: ['accent'], color: '#77ddaa', pulse: true,
+    pulseScaleComponents: ['woofer'], audio: 'healing'
+  },
   electric_fan: { label: '\u7535\u98ce\u6247', glowComponents: ['base'], color: '#80cbc4', motion: 'oscillate' },
   aroma_diffuser: { label: '\u9999\u85b0\u673a', glowComponents: ['body'], color: '#b2ebf2', pulse: true },
   hair_dryer: { label: '\u5439\u98ce\u673a', glowComponents: ['nozzle'], color: '#ff8a65', motion: 'vibrate' },
@@ -332,6 +386,10 @@ powerControllableFurniture.forEach((definition) => {
 
 export function isPowerControllable(definition) {
   return !!definition && (definition.isSwitchable === true || !!definition.powerEffect || definition.category === 'lighting' || !!definition.lightSource);
+}
+
+export function isAppliancePowerOn(item) {
+  return item?.isOn === true;
 }
 
 const bathroom = [
@@ -370,7 +428,8 @@ const decor = [
   globeFurniture,
   gypsumBustFurniture,
   piggyBankFurniture,
-  sculptureFurniture
+  sculptureFurniture,
+  windChimeFurniture
 ];
 decor.forEach(f => f.category = 'decor');
 
@@ -410,9 +469,35 @@ const lighting = [
   globePendantLight,
   lavaLampLight,
   lampFurniture,
-  chandelierFurniture
+  chandelierFurniture,
+  gardenLanternPostFurniture,
+  gardenBollardLightFurniture,
+  gardenLanternFurniture
 ];
 lighting.forEach(f => f.category = 'lighting');
+
+const outdoor = [
+  outdoorUmbrellaFurniture,
+  pergolaFurniture,
+  flowerArchFurniture,
+  gazeboFurniture,
+  patioSwingFurniture,
+  hammockStandFurniture,
+  firePitFurniture,
+  barbecueGrillFurniture,
+  patioHeaterFurniture,
+  gardenFountainFurniture,
+  birdbathFurniture,
+  planterBoxFurniture,
+  raisedGardenBedFurniture,
+  trellisScreenFurniture,
+  outdoorStorageBoxFurniture,
+  gardenBridgeFurniture,
+  canopyTentFurniture,
+  poolsideDaybedFurniture,
+  pottingBenchFurniture
+];
+outdoor.forEach(f => f.category = 'outdoor');
 
 const custom = [customCubeFurniture, customCylinderFurniture, customSphereFurniture];
 custom.forEach(f => f.category = 'custom');
@@ -442,6 +527,7 @@ export const FURNITURE_CATEGORIES = [
   { id: 'textiles', label: '布艺', icon: '<path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="m16 8-8 8M12 6v12M6 12h12"/>' },
   { id: 'decor', label: '装饰', icon: '<path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4Z"/><path d="M12 10H8a4 4 0 0 0-4 4 4 4 0 0 0 4 4h4Z"/><path d="M12 10h4a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-4Z"/><path d="M12 10v4a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-4Z"/><path d="M12 10V6a4 4 0 0 0-4-4 4 4 0 0 0-4 6v4Z"/><path d="M12 10v12"/>' },
   { id: 'plants', label: '绿植', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
+  { id: 'outdoor', label: '室外', icon: '<path d="M12 3v18"/><path d="M5 9c0-3.5 3.1-6 7-6s7 2.5 7 6c0 0-2 1-7 1S5 9 5 9Z"/><path d="M8 21h8"/>' },
   { id: 'lighting', label: '灯具', icon: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22h8"/><path d="m16 18-2.25-2.25"/>' },
   { id: 'clothing', label: '服饰', icon: '<path d="M2 17h20a1 1 0 0 0 .7-1.7l-9.3-9.3c.4-.7.6-1.5.6-2.3a3 3 0 1 0-6 0c0 .8.2 1.6.6 2.3L1.3 15.3A1 1 0 0 0 2 17Z"/>' },
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' }
@@ -449,7 +535,7 @@ export const FURNITURE_CATEGORIES = [
 
 // 3. 构建大家具映射字典与列表
 export const FURNITURE_DEFINITIONS = {};
-const allFurniture = [...seating, ...tables, ...storage, ...bedroom, ...appliances, ...kitchen, ...bathroom, ...textiles, ...decor, ...plants, ...lighting, ...custom, ...clothing];
+const allFurniture = [...seating, ...tables, ...storage, ...bedroom, ...appliances, ...kitchen, ...bathroom, ...textiles, ...decor, ...plants, ...outdoor, ...lighting, ...custom, ...clothing];
 allFurniture.forEach(f => {
   FURNITURE_DEFINITIONS[f.type] = f;
 });
@@ -592,6 +678,7 @@ export {
   gypsumBustFurniture,
   piggyBankFurniture,
   sculptureFurniture,
+  windChimeFurniture,
   ovalRugFurniture,
   roundedRugFurniture,
   tvFurniture,
@@ -690,6 +777,40 @@ export {
   clothing_rain_boots,
   clothing_mannequin_male,
   clothing_mannequin_female,
-  clothing_mannequin_child
+  clothing_mannequin_child,
+  // 室外家具
+  outdoorUmbrellaFurniture,
+  pergolaFurniture,
+  flowerArchFurniture,
+  gazeboFurniture,
+  patioSwingFurniture,
+  hammockStandFurniture,
+  firePitFurniture,
+  barbecueGrillFurniture,
+  patioHeaterFurniture,
+  gardenFountainFurniture,
+  birdbathFurniture,
+  planterBoxFurniture,
+  raisedGardenBedFurniture,
+  trellisScreenFurniture,
+  outdoorStorageBoxFurniture,
+  gardenBridgeFurniture,
+  canopyTentFurniture,
+  poolsideDaybedFurniture,
+  pottingBenchFurniture,
+  // 室外座椅
+  adirondackChairFurniture,
+  foldingCampingChairFurniture,
+  rattanLoungeChairFurniture,
+  hangingEggChairFurniture,
+  // 室外桌子
+  patioDiningTableFurniture,
+  bistroTableFurniture,
+  rattanCoffeeTableFurniture,
+  gardenSideTableFurniture,
+  // 庭院灯具
+  gardenLanternPostFurniture,
+  gardenBollardLightFurniture,
+  gardenLanternFurniture
 };
 

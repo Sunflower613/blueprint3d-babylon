@@ -1,5 +1,6 @@
 import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
 import { boxComponent, cylinderComponent, sphereComponent } from '../src/furniture/_helpers.js';
+import { playWindChimeSound } from '../src/audio/windChimeSound.js';
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp } from './js/Dialogs.js';
@@ -556,7 +557,7 @@ let entityManager = new EntityManager({
   onSelectionChanged: (type, id) => {
     if (type === 'item') {
       if (selectedTarget?.type !== 'item' || selectedTarget?.id !== id) {
-        selectTarget(TARGET_TYPES.ITEM, id);
+        selectTarget(TARGET_TYPES.ITEM, id, true);
       }
     }
   },
@@ -2226,7 +2227,7 @@ function begin3DDrag(pointerInfo) {
   }
 
   const itemId = target.id;
-  selectItem(itemId);
+  selectItem(itemId, true);
   const item = testMap.getItem(itemId);
   if (!item || item.locked) return;
   const groundPoint = groundPointFromPointer();
@@ -2818,8 +2819,14 @@ function updateDrawWallPreview(snappedPoint) {
   }
 }
 
-function selectTarget(type, id) {
+function selectTarget(type, id, isUserInteraction = false) {
   clear3DEditHandles();
+  if (isUserInteraction && type === TARGET_TYPES.ITEM && id) {
+    const item = testMap.getItem(id);
+    if (item && item.type === 'wind_chime') {
+      playWindChimeSound();
+    }
+  }
   if (type === TARGET_TYPES.ITEM) {
     entityManager.selectedItemId = id;
   } else {
@@ -2859,7 +2866,7 @@ function clearSelection() {
 }
 function selectRoom(id) { return selectTarget(TARGET_TYPES.ROOM, id); }
 function selectWall(id) { return selectTarget(TARGET_TYPES.WALL, id); }
-function selectItem(id) { return selectTarget(TARGET_TYPES.ITEM, id); }
+function selectItem(id, isUserInteraction = false) { return selectTarget(TARGET_TYPES.ITEM, id, isUserInteraction); }
 function selectOpening(id) { return selectTarget(TARGET_TYPES.OPENING, id); }
 function selectRoof(id) { return selectTarget(TARGET_TYPES.ROOF, id); }
 function selectStairs(id) { return selectTarget(TARGET_TYPES.STAIRS, id); }

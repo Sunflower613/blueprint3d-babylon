@@ -6,6 +6,7 @@ export {
   Color4,
   CubeTexture,
   DirectionalLight,
+  DynamicTexture,
   Engine,
   HemisphericLight,
   Material,

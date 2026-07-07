@@ -1,4 +1,5 @@
 import { boxComponent, cylinderComponent, sphereComponent, getComponentMaterial, markComponent } from './_helpers.js';
+import { TransformNode } from '../core/babylon.js';
 
 
 // 1. 多层绿植盆景 (Plant)
@@ -1299,6 +1300,88 @@ export const smartSpeakerFurniture = {
   }
 };
 
+// 31.1 Vintage record player
+export const vintageRecordPlayerFurniture = {
+  type: 'vintage_record_player',
+  name: '复古唱片机',
+  defaultSize: { width: 20, depth: 16, height: 10 },
+  components: [
+    { id: 'cabinet', label: '胡桃木机箱', defaultColor: '#6d4328' },
+    { id: 'platter', label: '唱盘', defaultColor: '#252525' },
+    { id: 'record', label: '黑胶唱片', defaultColor: '#111111' },
+    { id: 'label', label: '唱片标签', defaultColor: '#d88c62' },
+    { id: 'tonearm', label: '唱臂', defaultColor: '#d8c6a1' },
+    { id: 'accent', label: '电源指示灯', defaultColor: '#f7c873' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.42;
+    boxComponent(registry, item, vintageRecordPlayerFurniture, 'cabinet', {
+      width: size.width, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, vintageRecordPlayerFurniture, 'cabinet', {
+      width: size.width * 0.96, height: size.height * 0.5, depth: 0.025
+    }, { position: { x: 0, y: baseH + size.height * 0.25, z: -size.depth * 0.46 } }, { parent: node });
+    cylinderComponent(registry, item, vintageRecordPlayerFurniture, 'platter', {
+      diameterTop: size.depth * 0.72, diameterBottom: size.depth * 0.72, height: size.height * 0.035, tessellation: 32
+    }, { position: { x: -size.width * 0.09, y: baseH + size.height * 0.025, z: 0 } }, { parent: node });
+
+    const recordGroup = new TransformNode(`${item.id}_turntable`, registry.scene);
+    recordGroup.parent = node;
+    recordGroup.position.set(-size.width * 0.09, baseH + size.height * 0.05, 0);
+    recordGroup.metadata = { powerMotionId: 'turntable' };
+    cylinderComponent(registry, item, vintageRecordPlayerFurniture, 'record', {
+      diameterTop: size.depth * 0.65, diameterBottom: size.depth * 0.65, height: size.height * 0.018, tessellation: 32
+    }, { position: { x: 0, y: 0, z: 0 } }, { parent: recordGroup });
+    cylinderComponent(registry, item, vintageRecordPlayerFurniture, 'label', {
+      diameterTop: size.depth * 0.19, diameterBottom: size.depth * 0.19, height: size.height * 0.022, tessellation: 24
+    }, { position: { x: 0, y: size.height * 0.012, z: 0 } }, { parent: recordGroup });
+    boxComponent(registry, item, vintageRecordPlayerFurniture, 'label', {
+      width: size.depth * 0.035, height: size.height * 0.01, depth: size.depth * 0.035
+    }, { position: { x: size.depth * 0.19, y: size.height * 0.024, z: 0 } }, { parent: recordGroup });
+
+    const tonearm = cylinderComponent(registry, item, vintageRecordPlayerFurniture, 'tonearm', {
+      diameterTop: 0.018, diameterBottom: 0.018, height: size.depth * 0.55, tessellation: 10
+    }, { position: { x: size.width * 0.31, y: baseH + size.height * 0.1, z: 0 } }, { parent: node });
+    tonearm.rotation.z = Math.PI * 0.38;
+    sphereComponent(registry, item, vintageRecordPlayerFurniture, 'accent', {
+      diameter: Math.max(0.018, size.width * 0.025), segments: 12
+    }, { position: { x: size.width * 0.4, y: baseH * 0.55, z: size.depth * 0.505 } }, { parent: node });
+  }
+};
+
+// 31.2 Vintage stereo speaker
+export const stereoSpeakerFurniture = {
+  type: 'stereo_speaker',
+  name: '复古音响',
+  defaultSize: { width: 14, depth: 12, height: 28 },
+  components: [
+    { id: 'cabinet', label: '木质箱体', defaultColor: '#75482e' },
+    { id: 'grille', label: '织物网罩', defaultColor: '#393735' },
+    { id: 'woofer', label: '低音单元', defaultColor: '#202326' },
+    { id: 'tweeter', label: '高音单元', defaultColor: '#d2b48c' },
+    { id: 'accent', label: '电源指示灯', defaultColor: '#77ddaa' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, stereoSpeakerFurniture, 'cabinet', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, stereoSpeakerFurniture, 'grille', {
+      width: size.width * 0.88, height: size.height * 0.88, depth: size.depth * 0.04
+    }, { position: { x: 0, y: size.height * 0.5, z: size.depth * 0.52 } }, { parent: node });
+    const woofer = cylinderComponent(registry, item, stereoSpeakerFurniture, 'woofer', {
+      diameterTop: size.width * 0.62, diameterBottom: size.width * 0.62, height: size.depth * 0.055, tessellation: 32
+    }, { position: { x: 0, y: size.height * 0.37, z: size.depth * 0.55 } }, { parent: node });
+    woofer.rotation.x = Math.PI * 0.5;
+    const tweeter = cylinderComponent(registry, item, stereoSpeakerFurniture, 'tweeter', {
+      diameterTop: size.width * 0.25, diameterBottom: size.width * 0.25, height: size.depth * 0.055, tessellation: 24
+    }, { position: { x: 0, y: size.height * 0.75, z: size.depth * 0.55 } }, { parent: node });
+    tweeter.rotation.x = Math.PI * 0.5;
+    sphereComponent(registry, item, stereoSpeakerFurniture, 'accent', {
+      diameter: Math.max(0.018, size.width * 0.035), segments: 12
+    }, { position: { x: size.width * 0.36, y: size.height * 0.12, z: size.depth * 0.57 } }, { parent: node });
+  }
+};
+
 // 32. 落地复古电风扇 (Electric Fan)
 export const electricFanFurniture = {
   type: 'electric_fan',
@@ -2478,6 +2561,60 @@ export const piggyBankFurniture = {
     sphereComponent(registry, item, piggyBankFurniture, 'ears', {
       diameter: size.width * 0.25
     }, { position: { x: size.width * 0.3, y: size.height * 0.85, z: size.depth * 0.15 } }, { parent: node });
+  }
+};
+
+// 37. 古朴风铃挂件 (Wind Chime)
+export const windChimeFurniture = {
+  type: 'wind_chime',
+  name: '古朴风铃',
+  category: 'decor',
+  defaultSize: { width: 8, depth: 8, height: 30 },
+  placeType: 'ceiling',
+  components: [
+    { id: 'cap', label: '木质顶盖', defaultColor: '#8d6e63' },
+    { id: 'tubes', label: '金属音管', defaultColor: '#cfd8dc' },
+    { id: 'pendant', label: '木质吊坠', defaultColor: '#8d6e63' },
+    { id: 'string', label: '悬挂挂线', defaultColor: '#3e2723' }
+  ],
+  build(registry, item, node, size) {
+    // 挂线高度
+    const stringH = size.height * 0.28;
+    cylinderComponent(registry, item, windChimeFurniture, 'string', {
+      diameterTop: 0.005, diameterBottom: 0.005, height: stringH, tessellation: 6
+    }, { position: { x: 0, y: size.height - stringH / 2, z: 0 } }, { parent: node });
+
+    // 顶盖高度
+    const capH = 0.015;
+    cylinderComponent(registry, item, windChimeFurniture, 'cap', {
+      diameterTop: size.width * 0.72, diameterBottom: size.width * 0.72, height: capH, tessellation: 12
+    }, { position: { x: 0, y: size.height - stringH - capH / 2, z: 0 } }, { parent: node });
+
+    // 4根金属音管 (长短不等，围绕中心圆周分布)
+    const tubesTopY = size.height - stringH - capH;
+    const r = size.width * 0.22;
+    const pipeHeights = [size.height * 0.38, size.height * 0.44, size.height * 0.50, size.height * 0.56];
+    pipeHeights.forEach((h, index) => {
+      const angle = (index * Math.PI * 2) / 4;
+      const tx = Math.cos(angle) * r;
+      const tz = Math.sin(angle) * r;
+      const ty = tubesTopY - h / 2;
+      cylinderComponent(registry, item, windChimeFurniture, 'tubes', {
+        diameterTop: size.width * 0.08, diameterBottom: size.width * 0.08, height: h, tessellation: 8
+      }, { position: { x: tx, y: ty, z: tz } }, { parent: node });
+    });
+
+    // 中间垂下来的吊坠线
+    const pendantLineH = size.height * 0.62;
+    cylinderComponent(registry, item, windChimeFurniture, 'string', {
+      diameterTop: 0.003, diameterBottom: 0.003, height: pendantLineH, tessellation: 6
+    }, { position: { x: 0, y: tubesTopY - pendantLineH / 2, z: 0 } }, { parent: node });
+
+    // 吊坠板 (挂坠)
+    const plateH = 0.015;
+    cylinderComponent(registry, item, windChimeFurniture, 'pendant', {
+      diameterTop: size.width * 0.35, diameterBottom: size.width * 0.35, height: plateH, tessellation: 8
+    }, { position: { x: 0, y: tubesTopY - pendantLineH - plateH / 2, z: 0 } }, { parent: node });
   }
 };
 

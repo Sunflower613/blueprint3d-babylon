@@ -406,14 +406,237 @@ export const deckchairFurniture = {
     }, { position: { x: 0, y: size.height * 0.18, z: 0 } }, { parent: node });
 
     // 2. 躺椅斜支架 (Back Frame)
-    boxComponent(registry, item, deckchairFurniture, 'frame', {
+    const backFrame = boxComponent(registry, item, deckchairFurniture, 'frame', {
       width: size.width, height: size.height * 0.88, depth: 0.04
     }, { position: { x: 0, y: size.height * 0.44, z: -size.depth * 0.28 } }, { parent: node });
+    backFrame.rotation.x = -Math.PI * 0.16;
 
     // 3. 倾斜帆布铺面 (Slanted Fabric)
     const cloth = boxComponent(registry, item, deckchairFurniture, 'fabric', {
       width: size.width * 0.88, height: 0.016, depth: size.depth * 1.08
     }, { position: { x: 0, y: size.height * 0.42, z: -size.depth * 0.02 } }, { parent: node });
-    cloth.rotation.x = Math.PI * 0.16; // 稍微向后躺的倾角
+    cloth.rotation.x = -Math.PI * 0.16; // 稍微向后躺的倾角
+  }
+};
+
+// 11. 庭院休闲椅 (Adirondack Chair)
+export const adirondackChairFurniture = {
+  type: 'adirondack_chair',
+  name: '\u5ead\u9662\u4f11\u95f2\u6905',
+  defaultSize: { width: 28, depth: 34, height: 36 },
+  components: [
+    { id: 'seat', label: '\u5ea7\u9762', defaultColor: '#c99662' },
+    { id: 'back', label: '\u9760\u80cc', defaultColor: '#d6ac78' },
+    { id: 'arms', label: '\u6276\u624b', defaultColor: '#bd895a' },
+    { id: 'legs', label: '\u6905\u811a', defaultColor: '#7a5a40' }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.42, z: size.depth * 0.02, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    const seat = boxComponent(registry, item, adirondackChairFurniture, 'seat', {
+      width: size.width * 0.82, height: 0.04, depth: size.depth * 0.52
+    }, { position: { x: 0, y: size.height * 0.36, z: size.depth * 0.04 } }, { parent: node });
+    seat.rotation.x = -Math.PI * 0.06;
+
+    const back = boxComponent(registry, item, adirondackChairFurniture, 'back', {
+      width: size.width * 0.82, height: size.height * 0.52, depth: 0.04
+    }, { position: { x: 0, y: size.height * 0.62, z: -size.depth * 0.3 } }, { parent: node });
+    back.rotation.x = -Math.PI * 0.16;
+
+    [-1, 1].forEach((side) => {
+      const arm = boxComponent(registry, item, adirondackChairFurniture, 'arms', {
+        width: size.width * 0.12, height: 0.04, depth: size.depth * 0.54
+      }, { position: { x: side * size.width * 0.38, y: size.height * 0.48, z: size.depth * 0.04 } }, { parent: node });
+      arm.rotation.x = -Math.PI * 0.06;
+    });
+
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, adirondackChairFurniture, 'legs', {
+          width: 0.04, height: size.height * 0.36, depth: 0.04
+        }, { position: { x: xSide * size.width * 0.28, y: size.height * 0.18, z: zSide * size.depth * 0.18 } }, { parent: node });
+      });
+    });
+  }
+};
+
+// 12. 折叠露营椅 (Folding Camping Chair)
+export const foldingCampingChairFurniture = {
+  type: 'folding_camping_chair',
+  name: '\u6298\u53e0\u9732\u8425\u6905',
+  defaultSize: { width: 22, depth: 24, height: 32 },
+  components: [
+    { id: 'fabric', label: '\u5e03\u9762', defaultColor: '#6ea4c8' },
+    { id: 'frame', label: '\u6298\u53e0\u67b6', defaultColor: '#70757d' }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.42, z: 0, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    const legH = size.height * 0.54;
+    const legY = legH / 2;
+    const legThickness = 0.03;
+
+    // 左右两对交叉折叠腿 (X 结构)
+    [-1, 1].forEach((xSide) => {
+      // 倾斜向后的腿
+      const leg1 = boxComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        width: legThickness, height: legH, depth: legThickness
+      }, { position: { x: xSide * size.width * 0.32, y: legH, z: 0 } }, { parent: node });
+      leg1.rotation.x = Math.PI * 0.25;
+
+      // 倾斜向前的腿
+      const leg2 = boxComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        width: legThickness, height: legH, depth: legThickness
+      }, { position: { x: xSide * size.width * 0.32, y: legH, z: 0 } }, { parent: node });
+      leg2.rotation.x = -Math.PI * 0.25;
+    });
+
+    const seat = boxComponent(registry, item, foldingCampingChairFurniture, 'fabric', {
+      width: size.width * 0.78, height: 0.02, depth: size.depth * 0.7
+    }, { position: { x: 0, y: size.height * 0.42, z: size.depth * 0.04 } }, { parent: node });
+    seat.rotation.x = -Math.PI * 0.08;
+
+    const back = boxComponent(registry, item, foldingCampingChairFurniture, 'fabric', {
+      width: size.width * 0.78, height: size.height * 0.46, depth: 0.02
+    }, { position: { x: 0, y: size.height * 0.68, z: -size.depth * 0.22 } }, { parent: node });
+    back.rotation.x = -Math.PI * 0.12;
+  }
+};
+
+// 13. 藤编休闲椅 (Rattan Lounge Chair)
+export const rattanLoungeChairFurniture = {
+  type: 'rattan_lounge_chair',
+  name: '\u85e4\u7f16\u4f11\u95f2\u6905',
+  defaultSize: { width: 30, depth: 30, height: 32 },
+  components: [
+    { id: 'seat', label: '\u5750\u57ab', defaultColor: '#efe2cf' },
+    { id: 'shell', label: '\u85e4\u6846', defaultColor: '#a6784d' },
+    { id: 'legs', label: '\u5e95\u5ea7', defaultColor: '#6e5542' }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.44, z: size.depth * 0.02, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    const shellW = size.width;
+    const shellH = size.height * 0.64;
+    const shellD = size.depth * 0.92;
+    const shellY = size.height * 0.44;
+    const t = 0.03;
+
+    // 底板
+    boxComponent(registry, item, rattanLoungeChairFurniture, 'shell', {
+      width: shellW, height: t, depth: shellD
+    }, { position: { x: 0, y: shellY - shellH / 2 + t / 2, z: 0 } }, { parent: node });
+
+    // 后靠背
+    boxComponent(registry, item, rattanLoungeChairFurniture, 'shell', {
+      width: shellW, height: shellH - t, depth: t
+    }, { position: { x: 0, y: shellY + t / 2, z: -shellD / 2 + t / 2 } }, { parent: node });
+
+    // 左扶手
+    boxComponent(registry, item, rattanLoungeChairFurniture, 'shell', {
+      width: t, height: shellH - t, depth: shellD - t
+    }, { position: { x: -shellW / 2 + t / 2, y: shellY + t / 2, z: t / 2 } }, { parent: node });
+
+    // 右扶手
+    boxComponent(registry, item, rattanLoungeChairFurniture, 'shell', {
+      width: t, height: shellH - t, depth: shellD - t
+    }, { position: { x: shellW / 2 - t / 2, y: shellY + t / 2, z: t / 2 } }, { parent: node });
+
+    const seat = boxComponent(registry, item, rattanLoungeChairFurniture, 'seat', {
+      width: size.width * 0.78, height: 0.05, depth: size.depth * 0.68
+    }, { position: { x: 0, y: size.height * 0.36, z: size.depth * 0.04 } }, { parent: node });
+    seat.rotation.x = -Math.PI * 0.08;
+
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        cylinderComponent(registry, item, rattanLoungeChairFurniture, 'legs', {
+          diameterTop: 0.04, diameterBottom: 0.03, height: size.height * 0.22, tessellation: 12
+        }, { position: { x: xSide * size.width * 0.28, y: size.height * 0.11, z: zSide * size.depth * 0.24 } }, { parent: node });
+      });
+    });
+  }
+};
+
+// 14. 吊篮椅 (Hanging Egg Chair)
+export const hangingEggChairFurniture = {
+  type: 'hanging_egg_chair',
+  name: '\u540a\u7bee\u6905',
+  defaultSize: { width: 32, depth: 34, height: 70 },
+  components: [
+    { id: 'frame', label: '\u540a\u67b6', defaultColor: '#55585d' },
+    { id: 'shell', label: '\u6905\u84dd', defaultColor: '#9b6f46' },
+    { id: 'cushion', label: '\u5750\u57ab', defaultColor: '#f3e4c8' }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.42, z: 0, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    cylinderComponent(registry, item, hangingEggChairFurniture, 'frame', {
+      diameterTop: size.width * 0.72,
+      diameterBottom: size.width * 0.72,
+      height: 0.03,
+      tessellation: 24
+    }, { position: { x: 0, y: 0.015, z: 0 } }, { parent: node });
+
+    const pole = boxComponent(registry, item, hangingEggChairFurniture, 'frame', {
+      width: 0.04, height: size.height * 0.92, depth: 0.04
+    }, { position: { x: 0, y: size.height * 0.46, z: -size.depth * 0.2 } }, { parent: node });
+    pole.rotation.x = -Math.PI * 0.08;
+
+    boxComponent(registry, item, hangingEggChairFurniture, 'frame', {
+      width: 0.02, height: size.height * 0.26, depth: 0.02
+    }, { position: { x: 0, y: size.height * 0.56, z: 0 } }, { parent: node });
+
+    const shellW = size.width * 0.78;
+    const shellH = size.height * 0.48;
+    const shellD = size.depth * 0.78;
+    const shellY = size.height * 0.4;
+    const shellZ = size.depth * 0.04;
+    const t = 0.03;
+
+    // 底板
+    boxComponent(registry, item, hangingEggChairFurniture, 'shell', {
+      width: shellW, height: t, depth: shellD
+    }, { position: { x: 0, y: shellY - shellH / 2 + t / 2, z: shellZ } }, { parent: node });
+
+    // 顶板
+    boxComponent(registry, item, hangingEggChairFurniture, 'shell', {
+      width: shellW, height: t, depth: shellD
+    }, { position: { x: 0, y: shellY + shellH / 2 - t / 2, z: shellZ } }, { parent: node });
+
+    // 后板
+    boxComponent(registry, item, hangingEggChairFurniture, 'shell', {
+      width: shellW, height: shellH - t * 2, depth: t
+    }, { position: { x: 0, y: shellY, z: shellZ - shellD / 2 + t / 2 } }, { parent: node });
+
+    // 左侧板
+    boxComponent(registry, item, hangingEggChairFurniture, 'shell', {
+      width: t, height: shellH - t * 2, depth: shellD - t
+    }, { position: { x: -shellW / 2 + t / 2, y: shellY, z: shellZ + t / 2 } }, { parent: node });
+
+    // 右侧板
+    boxComponent(registry, item, hangingEggChairFurniture, 'shell', {
+      width: t, height: shellH - t * 2, depth: shellD - t
+    }, { position: { x: shellW / 2 - t / 2, y: shellY, z: shellZ + t / 2 } }, { parent: node });
+
+    const cushion = boxComponent(registry, item, hangingEggChairFurniture, 'cushion', {
+      width: size.width * 0.58, height: size.height * 0.08, depth: size.depth * 0.46
+    }, { position: { x: 0, y: size.height * 0.32, z: size.depth * 0.08 } }, { parent: node });
+    cushion.rotation.x = Math.PI * 0.08;
   }
 };

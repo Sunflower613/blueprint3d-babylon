@@ -25,6 +25,7 @@ export { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js'
 export { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture.js';
 export { MirrorTexture } from '@babylonjs/core/Materials/Textures/mirrorTexture.js';
 export { RenderTargetTexture } from '@babylonjs/core/Materials/Textures/renderTargetTexture.js';
+export { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
 export { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
 export { DirectionalLight } from '@babylonjs/core/Lights/directionalLight.js';
 export { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight.js';
@@ -57,4 +58,3 @@ import '@babylonjs/core/Engines/Extensions/engine.renderTargetTexture.js';
 import '@babylonjs/core/Engines/Extensions/engine.renderTargetCube.js';
 import '@babylonjs/core/Engines/Extensions/engine.prefilteredCubeTexture.js';
 import '@babylonjs/core/Engines/Extensions/engine.uniformBuffer.js';
-

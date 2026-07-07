@@ -58,13 +58,13 @@ test('contains clothing furniture in list', () => {
   }
 });
 
-test('contains outdoor furniture category and 20 outdoor items', () => {
+test('contains outdoor furniture category and 22 outdoor items', () => {
   const outdoorCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'outdoor');
   assert.ok(outdoorCategory, 'Outdoor category should exist');
   assert.equal(outdoorCategory.label, '室外');
 
   const outdoorItems = FURNITURE_LIST.filter((item) => item.category === 'outdoor');
-  assert.equal(outdoorItems.length, 19, 'Should contain exactly 19 outdoor furniture items');
+  assert.equal(outdoorItems.length, 22, 'Should contain exactly 22 outdoor furniture items');
 
   const types = outdoorItems.map((item) => item.type);
   assert.ok(types.includes('outdoor_umbrella'));

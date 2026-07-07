@@ -41,7 +41,27 @@ export function getComponentMaterial(registry, item, definition, componentId) {
     descriptor = { kind: 'mirror', color: color };
   }
 
-  return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}_${Date.now()}`, descriptor, options);
+  const isReflective = descriptor && typeof descriptor === 'object' && (descriptor.kind === 'mirror' || descriptor.kind === 'metal');
+  if (isReflective) {
+    return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}_${Date.now()}`, descriptor, options);
+  }
+
+  const invertYVal = options.invertY !== undefined ? options.invertY : '';
+  const cacheKey = typeof descriptor === 'string'
+    ? `${descriptor}_invY_${invertYVal}`
+    : `${descriptor.id || JSON.stringify(descriptor)}_invY_${invertYVal}`;
+
+  registry.materialCache ||= new Map();
+  if (registry.materialCache.has(cacheKey)) {
+    const cachedMat = registry.materialCache.get(cacheKey);
+    if (cachedMat && !cachedMat.isDisposed) {
+      return cachedMat;
+    }
+  }
+
+  const material = createBlueprintMaterial(registry.scene, `mat_${cacheKey}`, descriptor, options);
+  registry.materialCache.set(cacheKey, material);
+  return material;
 }
 
 export function markComponent(mesh, item, componentId) {

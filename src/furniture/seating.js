@@ -422,13 +422,13 @@ export const deckchairFurniture = {
 // 11. 庭院休闲椅 (Adirondack Chair)
 export const adirondackChairFurniture = {
   type: 'adirondack_chair',
-  name: '\u5ead\u9662\u4f11\u95f2\u6905',
+  name: '庭院休闲椅',
   defaultSize: { width: 28, depth: 34, height: 36 },
   components: [
-    { id: 'seat', label: '\u5ea7\u9762', defaultColor: '#c99662' },
-    { id: 'back', label: '\u9760\u80cc', defaultColor: '#d6ac78' },
-    { id: 'arms', label: '\u6276\u624b', defaultColor: '#bd895a' },
-    { id: 'legs', label: '\u6905\u811a', defaultColor: '#7a5a40' }
+    { id: 'seat', label: '座面', defaultColor: '#c99662' },
+    { id: 'back', label: '靠背', defaultColor: '#d6ac78' },
+    { id: 'arms', label: '扶手', defaultColor: '#bd895a' },
+    { id: 'legs', label: '椅脚', defaultColor: '#7a5a40' }
   ],
   interaction: {
     type: 'sit',
@@ -467,11 +467,11 @@ export const adirondackChairFurniture = {
 // 12. 折叠露营椅 (Folding Camping Chair)
 export const foldingCampingChairFurniture = {
   type: 'folding_camping_chair',
-  name: '\u6298\u53e0\u9732\u8425\u6905',
+  name: '折叠露营椅',
   defaultSize: { width: 22, depth: 24, height: 32 },
   components: [
-    { id: 'fabric', label: '\u5e03\u9762', defaultColor: '#6ea4c8' },
-    { id: 'frame', label: '\u6298\u53e0\u67b6', defaultColor: '#70757d' }
+    { id: 'fabric', label: '布面', defaultColor: '#6ea4c8' },
+    { id: 'frame', label: '折叠架', defaultColor: '#70757d' }
   ],
   interaction: {
     type: 'sit',
@@ -514,12 +514,12 @@ export const foldingCampingChairFurniture = {
 // 13. 藤编休闲椅 (Rattan Lounge Chair)
 export const rattanLoungeChairFurniture = {
   type: 'rattan_lounge_chair',
-  name: '\u85e4\u7f16\u4f11\u95f2\u6905',
+  name: '藤编休闲椅',
   defaultSize: { width: 30, depth: 30, height: 32 },
   components: [
-    { id: 'seat', label: '\u5750\u57ab', defaultColor: '#efe2cf' },
-    { id: 'shell', label: '\u85e4\u6846', defaultColor: '#a6784d' },
-    { id: 'legs', label: '\u5e95\u5ea7', defaultColor: '#6e5542' }
+    { id: 'seat', label: '坐垫', defaultColor: '#efe2cf' },
+    { id: 'shell', label: '藤框', defaultColor: '#a6784d' },
+    { id: 'legs', label: '底座', defaultColor: '#6e5542' }
   ],
   interaction: {
     type: 'sit',
@@ -572,12 +572,12 @@ export const rattanLoungeChairFurniture = {
 // 14. 吊篮椅 (Hanging Egg Chair)
 export const hangingEggChairFurniture = {
   type: 'hanging_egg_chair',
-  name: '\u540a\u7bee\u6905',
+  name: '吊篮椅',
   defaultSize: { width: 32, depth: 34, height: 70 },
   components: [
-    { id: 'frame', label: '\u540a\u67b6', defaultColor: '#55585d' },
-    { id: 'shell', label: '\u6905\u84dd', defaultColor: '#9b6f46' },
-    { id: 'cushion', label: '\u5750\u57ab', defaultColor: '#f3e4c8' }
+    { id: 'frame', label: '吊架', defaultColor: '#55585d' },
+    { id: 'shell', label: '椅蓝', defaultColor: '#9b6f46' },
+    { id: 'cushion', label: '坐垫', defaultColor: '#f3e4c8' }
   ],
   interaction: {
     type: 'sit',

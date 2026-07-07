@@ -39,6 +39,7 @@ export { ReflectionProbe } from '@babylonjs/core/Probes/reflectionProbe.js';
 
 // 确保在运行时所需的加载器和着色器被提前打包，防止开发环境（如 Vite 依赖预构建）动态导入时出现 404 错误
 import '@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js';
+import '@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js';
 import '@babylonjs/core/Shaders/default.vertex.js';
 import '@babylonjs/core/Shaders/default.fragment.js';
 import '@babylonjs/core/Culling/ray.js';
@@ -46,6 +47,7 @@ import '@babylonjs/core/Rendering/outlineRenderer.js';
 import '@babylonjs/core/Shaders/outline.vertex.js';
 import '@babylonjs/core/Shaders/outline.fragment.js';
 import '@babylonjs/core/Misc/screenshotTools.js';
+import '@babylonjs/core/XR/features/WebXRLayers.js';
 
 // 显式导入引擎的常用扩展，以防止其在模块化打包或依赖排除时因副作用未执行导致相关 prototype 方法缺失
 import '@babylonjs/core/Engines/Extensions/engine.alpha.js';

@@ -679,7 +679,6 @@ export const gardenLanternFurniture = {
 
     const bodyY = baseH + lanternH / 2;
     const postW = 0.02;
-
     // 四角立柱支架
     [-1, 1].forEach((xSide) => {
       [-1, 1].forEach((zSide) => {
@@ -698,5 +697,106 @@ export const gardenLanternFurniture = {
     boxComponent(registry, item, gardenLanternFurniture, 'roof', {
       width: size.width * 1.15, height: roofH, depth: size.depth * 1.15
     }, { position: { x: 0, y: baseH + lanternH + roofH / 2, z: 0 } }, { parent: node });
+  }
+};
+
+export const lampFurniture = {
+  type: 'lamp',
+  name: '简约落地灯',
+  defaultSize: { width: 14, depth: 14, height: 62 },
+  components: [
+    { id: 'shade', label: '灯罩', defaultColor: '#fffae6' },
+    { id: 'pole', label: '灯杆', defaultColor: '#3d3d3d' },
+    { id: 'base', label: '底座', defaultColor: '#5c5c5c' }
+  ],
+  build(registry, item, node, size) {
+    const baseHeight = size.height * 0.04;
+    const shadeHeight = size.height * 0.20;
+    const poleHeight = size.height * 0.76;
+
+    cylinderComponent(registry, item, lampFurniture, 'base', {
+      diameterTop: size.width * 0.88, diameterBottom: size.width * 0.92, height: baseHeight, tessellation: 24
+    }, { position: { x: 0, y: baseHeight / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, lampFurniture, 'pole', {
+      diameterTop: Math.max(0.015, size.width * 0.08), diameterBottom: Math.max(0.015, size.width * 0.08), height: poleHeight, tessellation: 12
+    }, { position: { x: 0, y: baseHeight + poleHeight / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, lampFurniture, 'shade', {
+      diameterTop: size.width * 0.76, diameterBottom: size.width * 0.96, height: shadeHeight, tessellation: 24
+    }, { position: { x: 0, y: size.height - shadeHeight / 2, z: 0 } }, { parent: node });
+  }
+};
+
+export const chandelierFurniture = {
+  type: 'chandelier',
+  name: '北欧吸顶吊灯',
+  defaultSize: { width: 20, depth: 20, height: 36 },
+  placeType: 'ceiling',
+  components: [
+    { id: 'shade', label: '设计灯罩', defaultColor: '#ffffff' },
+    { id: 'light', label: '暖光灯泡', defaultColor: '#fff5d6' },
+    { id: 'cord', label: '吊线吊挂', defaultColor: '#2b2b2b' }
+  ],
+  build(registry, item, node, size) {
+    const cordH = size.height * 0.64;
+    const shadeH = size.height * 0.28;
+    const bulbH = size.height * 0.08;
+
+    // 1. 吊线
+    cylinderComponent(registry, item, chandelierFurniture, 'cord', {
+      diameterTop: 0.008, diameterBottom: 0.008, height: cordH, tessellation: 6
+    }, { position: { x: 0, y: size.height - cordH / 2, z: 0 } }, { parent: node });
+
+    // 2. 灯罩
+    cylinderComponent(registry, item, chandelierFurniture, 'shade', {
+      diameterTop: size.width * 0.16, diameterBottom: size.width, height: shadeH, tessellation: 24
+    }, { position: { x: 0, y: size.height - cordH - shadeH / 2, z: 0 } }, { parent: node });
+
+    // 3. 灯泡/光源
+    sphereComponent(registry, item, chandelierFurniture, 'light', {
+      diameter: bulbH * 1.5, segments: 12
+    }, { position: { x: 0, y: size.height - cordH - shadeH + bulbH / 2, z: 0 } }, { parent: node });
+  }
+};
+
+export const landscapeStoneLantern = {
+  type: 'landscape_stone_lantern',
+  name: '和风石灯笼',
+  defaultSize: { width: 16, depth: 16, height: 36 },
+  components: [
+    { id: 'lantern-stone', label: '花岗岩石材', defaultColor: '#b0bec5' },
+    { id: 'lantern-light', label: '火舍灯光', defaultColor: '#ffe082' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.15;
+    boxComponent(registry, item, landscapeStoneLantern, 'lantern-stone', {
+      width: size.width, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    const pillarH = size.height * 0.35;
+    cylinderComponent(registry, item, landscapeStoneLantern, 'lantern-stone', {
+      diameterTop: size.width * 0.4, diameterBottom: size.width * 0.5, height: pillarH, tessellation: 12
+    }, { position: { x: 0, y: baseH + pillarH / 2, z: 0 } }, { parent: node });
+
+    const midH = size.height * 0.1;
+    boxComponent(registry, item, landscapeStoneLantern, 'lantern-stone', {
+      width: size.width * 0.9, height: midH, depth: size.depth * 0.9
+    }, { position: { x: 0, y: baseH + pillarH + midH / 2, z: 0 } }, { parent: node });
+
+    const lightH = size.height * 0.18;
+    cylinderComponent(registry, item, landscapeStoneLantern, 'lantern-light', {
+      diameterTop: size.width * 0.5, diameterBottom: size.width * 0.5, height: lightH, tessellation: 6
+    }, { position: { x: 0, y: baseH + pillarH + midH + lightH / 2, z: 0 } }, { parent: node });
+
+    const roofH = size.height * 0.15;
+    cylinderComponent(registry, item, landscapeStoneLantern, 'lantern-stone', {
+      diameterTop: 0.01, diameterBottom: size.width * 1.1, height: roofH, tessellation: 6
+    }, { position: { x: 0, y: baseH + pillarH + midH + lightH + roofH / 2, z: 0 } }, { parent: node });
+
+    const jewelH = size.height * 0.07;
+    sphereComponent(registry, item, landscapeStoneLantern, 'lantern-stone', {
+      diameter: size.width * 0.25, segments: 8
+    }, { position: { x: 0, y: size.height - jewelH, z: 0 } }, { parent: node });
   }
 };

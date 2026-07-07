@@ -1,520 +1,55 @@
-import {
-  sofaFurniture,
-  chairFurniture,
-  armchairFurniture,
-  stoolFurniture,
-  barstoolFurniture,
-  benchFurniture,
-  loveseatFurniture,
-  officechairFurniture,
-  beanbagFurniture,
-  deckchairFurniture,
-  adirondackChairFurniture,
-  foldingCampingChairFurniture,
-  rattanLoungeChairFurniture,
-  hangingEggChairFurniture
-} from './seating.js';
+/**
+ * Furniture Configuration Index
+ * 家具配置索引模块
+ * 
+ * 此文件负责重定向导出所有的家具定义以提供向后兼容，
+ * 同时统一加载各细分子模块进行分类和通电设备特效的自动注入，
+ * 提供统一的列表、字典和辅助查询/判断方法。
+ */
 
-import {
-  tableFurniture,
-  deskFurniture,
-  coffeeTableFurniture,
-  sideTableFurniture,
-  roundTableFurniture,
-  diningTableLongFurniture,
-  consoleTableFurniture,
-  computerDeskFurniture,
-  bedsideDeskFurniture,
-  picnicTableFurniture,
-  patioDiningTableFurniture,
-  bistroTableFurniture,
-  rattanCoffeeTableFurniture,
-  gardenSideTableFurniture
-} from './tables.js';
+// ==========================================
+// 1. 重新导出子模块 (保障原有的直接家具导入引用不受影响)
+// ==========================================
+export * from './seating.js';
+export * from './tables.js';
+export * from './storage.js';
+export * from './bedroom.js';
+export * from './appliances.js';
+export * from './kitchen.js';
+export * from './bathroom.js';
+export * from './textiles.js';
+export * from './decor.js';
+export * from './plants.js';
+export * from './landscape.js';
+export * from './outdoor.js';
+export * from './lighting.js';
+export * from './custom.js';
+export * from './clothing.js';
 
-import {
-  bookshelfFurniture,
-  consoleFurniture,
-  wardrobeFurniture,
-  nightstandFurniture,
-  cabinetKitchenFurniture,
-  shoerackFurniture,
-  chestDrawersFurniture,
-  sideboardFurniture,
-  displayCabinetFurniture,
-  wallShelfFurniture,
-  gridCabinetFurniture,
-  parcelLockerFurniture,
-  cornerShelfFurniture,
-  fileCabinetFurniture,
-  wineRackFurniture,
-  coatRackFurniture,
-  umbrellaStandFurniture,
-  drawerCabinetFurniture
-} from './storage.js';
+// ==========================================
+// 2. 导入子模块 (用于内部遍历以归档分类和构建定义字典)
+// ==========================================
+import * as seatingModule from './seating.js';
+import * as tablesModule from './tables.js';
+import * as storageModule from './storage.js';
+import * as bedroomModule from './bedroom.js';
+import * as appliancesModule from './appliances.js';
+import * as kitchenModule from './kitchen.js';
+import * as bathroomModule from './bathroom.js';
+import * as textilesModule from './textiles.js';
+import * as decorModule from './decor.js';
+import * as plantsModule from './plants.js';
+import * as landscapeModule from './landscape.js';
+import * as outdoorModule from './outdoor.js';
+import * as lightingModule from './lighting.js';
+import * as customModule from './custom.js';
+import * as clothingModule from './clothing.js';
 
-import {
-  bedFurniture,
-  bedDoubleFurniture,
-  bedSingleFurniture,
-  cribFurniture,
-  bunkBedFurniture,
-  mattressFurniture,
-  canopyBedFurniture,
-  vanityFurniture,
-  hammockFurniture,
-  bedBenchFurniture,
-  cosmeticsFurniture,
-  stationeryFurniture,
-  eyeshadowCompactFurniture,
-  luxuryPerfumesFurniture,
-  skincareSetFurniture,
-  makeupBrushesFurniture,
-  lipstickNailPolishFurniture,
-  deskCalendarFurniture,
-  woodenPenStandFurniture,
-  calculatorFurniture,
-  staplerNotesFurniture,
-  premiumDeskPenFurniture
-} from './bedroom.js';
+// ==========================================
+// 3. 通用常量与特效定义
+// ==========================================
 
-import {
-  fridgeFurniture,
-  toiletFurniture,
-  bathtubFurniture,
-  sinkKitchenFurniture,
-  sinkBathroomFurniture,
-  washingMachineFurniture,
-  microwaveFurniture,
-  stoveFurniture,
-  showerCabinFurniture,
-  mirrorBathroomFurniture,
-  rangeHoodFurniture,
-  coffeeMakerFurniture,
-  toasterFurniture,
-  electricKettleFurniture,
-  dishwasherFurniture,
-  waterDispenserFurniture,
-  riceCookerFurniture,
-  airFryerFurniture,
-  blenderFurniture,
-  hairDryerFurniture,
-  bathroomShelfFurniture,
-  bathroomMirrorCabinetFurniture,
-  towelRackFurniture,
-  kitchenwareFurniture,
-  toiletriesFurniture,
-  soapDispenserFurniture,
-  knifeBlockFurniture,
-  spiceRackFurniture,
-  kitchenHooksFurniture,
-  coffeeCupSetFurniture,
-  teapotTeaCupsFurniture,
-  wineGlassesFurniture,
-  fruitPlatterFurniture,
-  pairMugsFurniture
-} from './kitchenBath.js';
-
-import {
-  plantFurniture,
-  lampFurniture,
-  rugFurniture,
-  paintingFurniture,
-  vaseFurniture,
-  mirrorWallFurniture,
-  mirrorFramedWallFurniture,
-  mirrorRoundWallFurniture,
-  mirrorRoundedWallFurniture,
-  curtainFurniture,
-  cushionFurniture,
-  clockFurniture,
-  plantPotFurniture,
-  chandelierFurniture,
-  mannequinFurniture,
-  cactusFurniture,
-  monsteraFurniture,
-  succulentFurniture,
-  bambooFurniture,
-  fernFurniture,
-  bonsaiFurniture,
-  flowerRoseFurniture,
-  snakePlantFurniture,
-  booksStackFurniture,
-  booksFullRowFurniture,
-  miniCactusFurniture,
-  photoFrameFurniture,
-  hourglassFurniture,
-  storageBasketFurniture,
-  scentedCandleFurniture,
-  crystalBallFurniture,
-  goldTrophyFurniture,
-  globeFurniture,
-  gypsumBustFurniture,
-  piggyBankFurniture,
-  sculptureFurniture,
-  windChimeFurniture,
-  ovalRugFurniture,
-  roundedRugFurniture,
-  tvFurniture,
-  computerFurniture,
-  triptychPaintingFurniture,
-  landscapePaintingFurniture,
-  projectorFurniture,
-  gameConsoleFurniture,
-  smartSpeakerFurniture,
-  electricFanFurniture,
-  aromaDiffuserFurniture,
-  vintageRecordPlayerFurniture,
-  stereoSpeakerFurniture,
-  tissueBoxFurniture,
-  wallClockFurniture,
-  sunflowerPotFurniture,
-  pachiraTreeFurniture,
-  lavenderPotFurniture,
-  tulipVaseFurniture,
-  orchidPotFurniture,
-  dwarfMonsteraFurniture,
-  largeCactusFurniture,
-  eucalyptusVaseFurniture,
-  cherryBlossomBonsaiFurniture,
-  hangingIvyFurniture,
-  singleBlackoutCurtainFurniture,
-  doubleSheerCurtainFurniture,
-  venetianBlindFurniture,
-  rollerBlindFurniture,
-  romanShadeFurniture,
-  verticalBlindFurniture,
-  chineseBambooBlindFurniture,
-  luxuryValanceCurtainFurniture,
-  cafeShortCurtainFurniture,
-  japaneseNorenCurtainFurniture
-} from './decor.js';
-
-import {
-  ceilingLight,
-  chandelierLight,
-  wallSconceLight,
-  floorLampLight,
-  deskLampLight,
-  bedsideLampLight,
-  trackLight,
-  neonSignLight,
-  globePendantLight,
-  lavaLampLight,
-  gardenLanternPostFurniture,
-  gardenBollardLightFurniture,
-  gardenLanternFurniture
-} from './lighting.js';
-
-import {
-  customCubeFurniture,
-  customCylinderFurniture,
-  customSphereFurniture
-} from './custom.js';
-
-import {
-  outdoorUmbrellaFurniture,
-  pergolaFurniture,
-  flowerArchFurniture,
-  gazeboFurniture,
-  patioSwingFurniture,
-  hammockStandFurniture,
-  firePitFurniture,
-  barbecueGrillFurniture,
-  patioHeaterFurniture,
-  gardenFountainFurniture,
-  birdbathFurniture,
-  planterBoxFurniture,
-  raisedGardenBedFurniture,
-  trellisScreenFurniture,
-  outdoorStorageBoxFurniture,
-  gardenBridgeFurniture,
-  canopyTentFurniture,
-  poolsideDaybedFurniture,
-  pottingBenchFurniture
-} from './outdoor.js';
-
-
-import {
-  clothing_mannequin_male,
-  clothing_mannequin_female,
-  clothing_mannequin_child,
-  clothing_t_shirt,
-  clothing_shirt,
-  clothing_sweater,
-  clothing_coat,
-  clothing_jacket,
-  clothing_hoodie,
-  clothing_vest,
-  clothing_polo_shirt,
-  clothing_cardigan,
-  clothing_tank_top,
-  clothing_jeans,
-  clothing_trousers,
-  clothing_sweatpants,
-  clothing_shorts,
-  clothing_cargo_pants,
-  clothing_pleated_skirt,
-  clothing_denim_skirt,
-  clothing_leather_skirt,
-  clothing_a_line_skirt,
-  clothing_pencil_skirt,
-  clothing_dress,
-  clothing_evening_gown,
-  clothing_summer_dress,
-  clothing_slip_dress,
-  clothing_cheongsam,
-  clothing_lolita_dress,
-  clothing_lace_dress,
-  clothing_floral_dress,
-  clothing_maxi_dress,
-  clothing_knit_dress,
-  clothing_baseball_cap,
-  clothing_beanie,
-  clothing_fedora,
-  clothing_straw_hat,
-  clothing_bucket_hat,
-  clothing_beret,
-  clothing_sun_hat,
-  clothing_cowboy_hat,
-  clothing_top_hat,
-  clothing_flat_cap,
-  clothing_sneakers,
-  clothing_leather_shoes,
-  clothing_boots,
-  clothing_high_heels,
-  clothing_sandals,
-  clothing_slippers,
-  clothing_running_shoes,
-  clothing_loafers,
-  clothing_canvas_shoes,
-  clothing_rain_boots
-} from './clothing.js';
-
-
-
-// 1. 将家具划归各大分类
-const seating = [
-  sofaFurniture, chairFurniture, armchairFurniture, stoolFurniture, barstoolFurniture,
-  benchFurniture, loveseatFurniture, officechairFurniture, beanbagFurniture, deckchairFurniture,
-  adirondackChairFurniture, foldingCampingChairFurniture, rattanLoungeChairFurniture, hangingEggChairFurniture
-];
-seating.forEach(f => f.category = 'seating');
-
-const tables = [
-  tableFurniture, deskFurniture, coffeeTableFurniture, sideTableFurniture, roundTableFurniture,
-  diningTableLongFurniture, consoleTableFurniture, computerDeskFurniture, bedsideDeskFurniture, picnicTableFurniture,
-  patioDiningTableFurniture, bistroTableFurniture, rattanCoffeeTableFurniture, gardenSideTableFurniture
-];
-tables.forEach(f => f.category = 'tables');
-
-const storage = [
-  bookshelfFurniture, consoleFurniture, wardrobeFurniture, nightstandFurniture, cabinetKitchenFurniture, shoerackFurniture, chestDrawersFurniture, sideboardFurniture, displayCabinetFurniture, wallShelfFurniture,
-  gridCabinetFurniture, parcelLockerFurniture, cornerShelfFurniture, fileCabinetFurniture, wineRackFurniture, coatRackFurniture, umbrellaStandFurniture, drawerCabinetFurniture
-];
-storage.forEach(f => f.category = 'storage');
-
-const bedroom = [
-  bedFurniture, bedDoubleFurniture, bedSingleFurniture, cribFurniture, bunkBedFurniture, mattressFurniture, canopyBedFurniture, vanityFurniture, hammockFurniture, bedBenchFurniture,
-  cosmeticsFurniture, stationeryFurniture, eyeshadowCompactFurniture, luxuryPerfumesFurniture, skincareSetFurniture, makeupBrushesFurniture, lipstickNailPolishFurniture, deskCalendarFurniture, woodenPenStandFurniture, calculatorFurniture, staplerNotesFurniture, premiumDeskPenFurniture
-];
-bedroom.forEach(f => f.category = 'bedroom');
-
-const appliances = [
-  washingMachineFurniture, tvFurniture, computerFurniture, projectorFurniture, gameConsoleFurniture, smartSpeakerFurniture, electricFanFurniture, aromaDiffuserFurniture, hairDryerFurniture,
-  vintageRecordPlayerFurniture, stereoSpeakerFurniture
-];
-appliances.forEach(f => f.category = 'appliances');
-
-const kitchen = [
-  sinkKitchenFurniture, kitchenwareFurniture, knifeBlockFurniture, spiceRackFurniture, kitchenHooksFurniture,
-  coffeeCupSetFurniture, teapotTeaCupsFurniture, wineGlassesFurniture, fruitPlatterFurniture, pairMugsFurniture,
-  fridgeFurniture, microwaveFurniture, stoveFurniture, rangeHoodFurniture, coffeeMakerFurniture, toasterFurniture, electricKettleFurniture, dishwasherFurniture, waterDispenserFurniture, riceCookerFurniture, airFryerFurniture, blenderFurniture
-];
-kitchen.forEach(f => f.category = 'kitchen');
-
-/** Appliance power effects shared by appliance and kitchen categories. */
-export const APPLIANCE_POWER_EFFECTS = Object.freeze({
-  washing_machine: { label: '\u6d17\u8863\u673a', glowComponents: ['panel', 'glass'], color: '#4fc3f7', pulse: true },
-  tv: { label: '\u7535\u89c6\u673a', glowComponents: ['screen'], color: '#64b5f6', pulse: true },
-  computer: { label: '\u7535\u8111', glowComponents: ['screen', 'keyboard'], color: '#81d4fa', pulse: true },
-  projector: {
-    label: '\u6295\u5f71\u4eea',
-    glowComponents: ['lens'],
-    color: '#d7eeff',
-    lightSource: { type: 'spot', offset: { x: 2.5, y: 2, z: 5 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 120, angle: Math.PI / 5 }
-  },
-  game_console: { label: '\u6e38\u620f\u4e3b\u673a', glowComponents: ['accent'], color: '#2979ff', pulse: true },
-  smart_speaker: { label: '\u667a\u80fd\u97f3\u7bb1', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },
-  vintage_record_player: {
-    label: '复古唱片机', glowComponents: ['accent'], color: '#f7c873', pulse: true,
-    spinNodes: ['turntable'], spinSpeed: 2.2, audio: 'healing'
-  },
-  stereo_speaker: {
-    label: '复古音响', glowComponents: ['accent'], color: '#77ddaa', pulse: true,
-    pulseScaleComponents: ['woofer'], audio: 'healing'
-  },
-  electric_fan: { label: '\u7535\u98ce\u6247', glowComponents: ['base'], color: '#80cbc4', motion: 'oscillate' },
-  aroma_diffuser: { label: '\u9999\u85b0\u673a', glowComponents: ['body'], color: '#b2ebf2', pulse: true },
-  hair_dryer: { label: '\u5439\u98ce\u673a', glowComponents: ['nozzle'], color: '#ff8a65', motion: 'vibrate' },
-  fridge: { label: '\u51b0\u7bb1', glowComponents: ['display'], color: '#80d8ff', pulse: true },
-  microwave: { label: '\u5fae\u6ce2\u7089', glowComponents: ['window', 'button'], color: '#ffb74d', pulse: true },
-  stove: { label: '\u7076\u5177', glowComponents: ['burners'], color: '#40c4ff', pulse: true },
-  range_hood: { label: '\u62bd\u6cb9\u70df\u673a', glowComponents: ['glass'], color: '#fff59d', pulse: true },
-  coffee_maker: { label: '\u5496\u5561\u673a', glowComponents: ['accent', 'pot'], color: '#ffcc80', pulse: true },
-  toaster: { label: '\u70e4\u9762\u5305\u673a', glowComponents: ['slots'], color: '#ff7043', pulse: true },
-  electric_kettle: { label: '\u7535\u70ed\u6c34\u58f6', glowComponents: ['base'], color: '#ef5350', pulse: true },
-  dishwasher: { label: '\u6d17\u7897\u673a', glowComponents: ['handle'], color: '#80d8ff', pulse: true },
-  water_dispenser: { label: '\u996e\u6c34\u673a', glowComponents: ['bottle', 'outlet'], color: '#4dd0e1', pulse: true },
-  rice_cooker: { label: '\u7535\u996d\u7172', glowComponents: ['panel'], color: '#69f0ae', pulse: true },
-  air_fryer: { label: '\u7a7a\u6c14\u70b8\u9505', glowComponents: ['display'], color: '#40c4ff', pulse: true },
-  blender: { label: '\u6405\u62cc\u673a', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' }
-});
-
-const powerControllableFurniture = [
-  ...appliances,
-  fridgeFurniture, microwaveFurniture, stoveFurniture, rangeHoodFurniture,
-  coffeeMakerFurniture, toasterFurniture, electricKettleFurniture,
-  dishwasherFurniture, waterDispenserFurniture, riceCookerFurniture,
-  airFryerFurniture, blenderFurniture
-];
-
-powerControllableFurniture.forEach((definition) => {
-  definition.isSwitchable = true;
-  definition.powerEffect = APPLIANCE_POWER_EFFECTS[definition.type];
-});
-
-export function isPowerControllable(definition) {
-  return !!definition && (definition.isSwitchable === true || !!definition.powerEffect || definition.category === 'lighting' || !!definition.lightSource);
-}
-
-export function isAppliancePowerOn(item) {
-  return item?.isOn === true;
-}
-
-const bathroom = [
-  toiletFurniture, bathtubFurniture, sinkBathroomFurniture, showerCabinFurniture, mirrorBathroomFurniture,
-  towelRackFurniture, toiletriesFurniture, soapDispenserFurniture, bathroomShelfFurniture, bathroomMirrorCabinetFurniture
-];
-bathroom.forEach(f => f.category = 'bathroom');
-
-const textiles = [
-  rugFurniture, ovalRugFurniture, roundedRugFurniture, curtainFurniture, cushionFurniture,
-  singleBlackoutCurtainFurniture, doubleSheerCurtainFurniture, venetianBlindFurniture, rollerBlindFurniture, romanShadeFurniture, verticalBlindFurniture, chineseBambooBlindFurniture, luxuryValanceCurtainFurniture, cafeShortCurtainFurniture, japaneseNorenCurtainFurniture
-];
-textiles.forEach(f => f.category = 'textiles');
-
-const decor = [
-  paintingFurniture,
-  triptychPaintingFurniture,
-  landscapePaintingFurniture,
-  vaseFurniture,
-  mirrorWallFurniture,
-  mirrorFramedWallFurniture,
-  mirrorRoundWallFurniture,
-  mirrorRoundedWallFurniture,
-  clockFurniture,
-  wallClockFurniture,
-  mannequinFurniture,
-  booksStackFurniture,
-  booksFullRowFurniture,
-  miniCactusFurniture,
-  photoFrameFurniture,
-  hourglassFurniture,
-  storageBasketFurniture,
-  scentedCandleFurniture,
-  crystalBallFurniture,
-  goldTrophyFurniture,
-  globeFurniture,
-  gypsumBustFurniture,
-  piggyBankFurniture,
-  sculptureFurniture,
-  windChimeFurniture
-];
-decor.forEach(f => f.category = 'decor');
-
-const plants = [
-  plantFurniture,
-  plantPotFurniture,
-  cactusFurniture,
-  monsteraFurniture,
-  succulentFurniture,
-  bambooFurniture,
-  fernFurniture,
-  bonsaiFurniture,
-  flowerRoseFurniture,
-  snakePlantFurniture,
-  sunflowerPotFurniture,
-  pachiraTreeFurniture,
-  lavenderPotFurniture,
-  tulipVaseFurniture,
-  orchidPotFurniture,
-  dwarfMonsteraFurniture,
-  largeCactusFurniture,
-  eucalyptusVaseFurniture,
-  cherryBlossomBonsaiFurniture,
-  hangingIvyFurniture
-];
-plants.forEach(f => f.category = 'plants');
-
-const lighting = [
-  ceilingLight,
-  chandelierLight,
-  wallSconceLight,
-  floorLampLight,
-  deskLampLight,
-  bedsideLampLight,
-  trackLight,
-  neonSignLight,
-  globePendantLight,
-  lavaLampLight,
-  lampFurniture,
-  chandelierFurniture,
-  gardenLanternPostFurniture,
-  gardenBollardLightFurniture,
-  gardenLanternFurniture
-];
-lighting.forEach(f => f.category = 'lighting');
-
-const outdoor = [
-  outdoorUmbrellaFurniture,
-  pergolaFurniture,
-  flowerArchFurniture,
-  gazeboFurniture,
-  patioSwingFurniture,
-  hammockStandFurniture,
-  firePitFurniture,
-  barbecueGrillFurniture,
-  patioHeaterFurniture,
-  gardenFountainFurniture,
-  birdbathFurniture,
-  planterBoxFurniture,
-  raisedGardenBedFurniture,
-  trellisScreenFurniture,
-  outdoorStorageBoxFurniture,
-  gardenBridgeFurniture,
-  canopyTentFurniture,
-  poolsideDaybedFurniture,
-  pottingBenchFurniture
-];
-outdoor.forEach(f => f.category = 'outdoor');
-
-const custom = [customCubeFurniture, customCylinderFurniture, customSphereFurniture];
-custom.forEach(f => f.category = 'custom');
-
-const clothing = [
-  clothing_mannequin_male, clothing_mannequin_female, clothing_mannequin_child,
-  clothing_t_shirt, clothing_shirt, clothing_sweater, clothing_coat, clothing_jacket, clothing_hoodie, clothing_vest, clothing_polo_shirt, clothing_cardigan, clothing_tank_top,
-  clothing_jeans, clothing_trousers, clothing_sweatpants, clothing_shorts, clothing_cargo_pants,
-  clothing_pleated_skirt, clothing_denim_skirt, clothing_leather_skirt, clothing_a_line_skirt, clothing_pencil_skirt,
-  clothing_dress, clothing_evening_gown, clothing_summer_dress, clothing_slip_dress, clothing_cheongsam, clothing_lolita_dress, clothing_lace_dress, clothing_floral_dress, clothing_maxi_dress, clothing_knit_dress,
-  clothing_baseball_cap, clothing_beanie, clothing_fedora, clothing_straw_hat, clothing_bucket_hat, clothing_beret, clothing_sun_hat, clothing_cowboy_hat, clothing_top_hat, clothing_flat_cap,
-  clothing_sneakers, clothing_leather_shoes, clothing_boots, clothing_high_heels, clothing_sandals, clothing_slippers, clothing_running_shoes, clothing_loafers, clothing_canvas_shoes, clothing_rain_boots
-];
-clothing.forEach(f => f.category = 'clothing');
-
-
-// 2. 导出分类列表映射字典
+/** 家具类别菜单列表及对应的 SVG 图标 */
 export const FURNITURE_CATEGORIES = [
   { id: 'all', label: '全部', icon: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>' },
   { id: 'seating', label: '坐具', icon: '<path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 11v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M5 11h14"/><path d="M2 9h20"/><path d="M6 18v2"/><path d="M18 18v2"/>' },
@@ -526,291 +61,135 @@ export const FURNITURE_CATEGORIES = [
   { id: 'bathroom', label: '浴室', icon: '<path d="M4 12a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3H4v3ZM2 11h20M6 18v2M18 18v2M8 5a4 4 0 0 1 8 0v2"/>' },
   { id: 'textiles', label: '布艺', icon: '<path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="m16 8-8 8M12 6v12M6 12h12"/>' },
   { id: 'decor', label: '装饰', icon: '<path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4Z"/><path d="M12 10H8a4 4 0 0 0-4 4 4 4 0 0 0 4 4h4Z"/><path d="M12 10h4a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-4Z"/><path d="M12 10v4a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-4Z"/><path d="M12 10V6a4 4 0 0 0-4-4 4 4 0 0 0-4 6v4Z"/><path d="M12 10v12"/>' },
-  { id: 'plants', label: '绿植', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
+  { id: 'plants', label: '盆栽', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
+  { id: 'landscape', label: '景观', icon: '<path d="M2 20h20M5 17l4-8 5 10M11 17l5-10 6 10"/>' },
   { id: 'outdoor', label: '室外', icon: '<path d="M12 3v18"/><path d="M5 9c0-3.5 3.1-6 7-6s7 2.5 7 6c0 0-2 1-7 1S5 9 5 9Z"/><path d="M8 21h8"/>' },
   { id: 'lighting', label: '灯具', icon: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22h8"/><path d="m16 18-2.25-2.25"/>' },
   { id: 'clothing', label: '服饰', icon: '<path d="M2 17h20a1 1 0 0 0 .7-1.7l-9.3-9.3c.4-.7.6-1.5.6-2.3a3 3 0 1 0-6 0c0 .8.2 1.6.6 2.3L1.3 15.3A1 1 0 0 0 2 17Z"/>' },
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' }
 ];
 
-// 3. 构建大家具映射字典与列表
-export const FURNITURE_DEFINITIONS = {};
-const allFurniture = [...seating, ...tables, ...storage, ...bedroom, ...appliances, ...kitchen, ...bathroom, ...textiles, ...decor, ...plants, ...outdoor, ...lighting, ...custom, ...clothing];
-allFurniture.forEach(f => {
-  FURNITURE_DEFINITIONS[f.type] = f;
+/** 家电设备可配置的通电发光/运动/声音特效字典 */
+export const APPLIANCE_POWER_EFFECTS = Object.freeze({
+  washing_machine: { label: '洗衣机', glowComponents: ['panel', 'glass'], color: '#4fc3f7', pulse: true },
+  tv: { label: '电视机', glowComponents: ['screen'], color: '#64b5f6', pulse: true },
+  computer: { label: '电脑', glowComponents: ['screen', 'keyboard'], color: '#81d4fa', pulse: true },
+  projector: {
+    label: '投影仪',
+    glowComponents: ['lens'],
+    color: '#d7eeff',
+    lightSource: { type: 'spot', offset: { x: 2.5, y: 2, z: 5 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 120, angle: Math.PI / 5 }
+  },
+  game_console: { label: '游戏主机', glowComponents: ['accent'], color: '#2979ff', pulse: true },
+  smart_speaker: { label: '智能音箱', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },
+  vintage_record_player: {
+    label: '复古唱片机', glowComponents: ['accent'], color: '#f7c873', pulse: true,
+    spinNodes: ['turntable'], spinSpeed: 2.2, audio: 'healing'
+  },
+  stereo_speaker: {
+    label: '复古音响', glowComponents: ['accent'], color: '#77ddaa', pulse: true,
+    pulseScaleComponents: ['woofer'], audio: 'healing'
+  },
+  electric_fan: { label: '电风扇', glowComponents: ['base'], color: '#80cbc4', motion: 'oscillate' },
+  aroma_diffuser: { label: '香薰机', glowComponents: ['body'], color: '#b2ebf2', pulse: true },
+  hair_dryer: { label: '吹风机', glowComponents: ['nozzle'], color: '#ff8a65', motion: 'vibrate' },
+  fridge: { label: '冰箱', glowComponents: ['display'], color: '#80d8ff', pulse: true },
+  microwave: { label: '微波炉', glowComponents: ['window', 'button'], color: '#ffb74d', pulse: true },
+  stove: { label: '炉具', glowComponents: ['burners'], color: '#40c4ff', pulse: true },
+  range_hood: { label: '抽油烟机', glowComponents: ['glass'], color: '#fff59d', pulse: true },
+  coffee_maker: { label: '咖啡机', glowComponents: ['accent', 'pot'], color: '#ffcc80', pulse: true },
+  toaster: { label: '烤面包机', glowComponents: ['slots'], color: '#ff7043', pulse: true },
+  electric_kettle: { label: '电热水壶', glowComponents: ['base'], color: '#ef5350', pulse: true },
+  dishwasher: { label: '洗碗机', glowComponents: ['handle'], color: '#80d8ff', pulse: true },
+  water_dispenser: { label: '饮水机', glowComponents: ['bottle', 'outlet'], color: '#4dd0e1', pulse: true },
+  rice_cooker: { label: '电饭煲', glowComponents: ['panel'], color: '#69f0ae', pulse: true },
+  air_fryer: { label: '空气炸锅', glowComponents: ['display'], color: '#40c4ff', pulse: true },
+  blender: { label: '搅拌机', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' }
 });
 
+// ==========================================
+// 4. 家具对象装载与自动分类处理
+// ==========================================
+
+/** 所有有效家具定义的全局查重词典 */
+export const FURNITURE_DEFINITIONS = {};
+const allFurniture = [];
+
+// 配置子文件模块与分类的关联关系，实现 100% 按文件名称自然对应
+const furnitureModules = [
+  { module: seatingModule, category: 'seating' },
+  { module: tablesModule, category: 'tables' },
+  { module: storageModule, category: 'storage' },
+  { module: bedroomModule, category: 'bedroom' },
+  { module: appliancesModule, category: 'appliances' },
+  { module: kitchenModule, category: 'kitchen' },
+  { module: bathroomModule, category: 'bathroom' },
+  { module: textilesModule, category: 'textiles' },
+  { module: decorModule, category: 'decor' },
+  { module: plantsModule, category: 'plants' },
+  { module: landscapeModule, category: 'landscape' },
+  { module: outdoorModule, category: 'outdoor' },
+  { module: lightingModule, category: 'lighting' },
+  { module: customModule, category: 'custom' },
+  { module: clothingModule, category: 'clothing' }
+];
+
+// 动态处理各个模块的导出项
+furnitureModules.forEach(({ module, category }) => {
+  Object.values(module).forEach(item => {
+    // 过滤出合法有效的家具配置对象（通常包含 type 属性）
+    if (item && typeof item === 'object' && item.type) {
+      // 1. 直接以模块映射的分类作为家具分类
+      item.category = category;
+
+      // 2. 检查是否在通电设备字典中，若存在则自动配置可通电开关选项与特效参数
+      if (APPLIANCE_POWER_EFFECTS[item.type]) {
+        item.isSwitchable = true;
+        item.powerEffect = APPLIANCE_POWER_EFFECTS[item.type];
+      }
+
+      // 3. 添加到大列表中，并存入去重查询字典中
+      allFurniture.push(item);
+      FURNITURE_DEFINITIONS[item.type] = item;
+    }
+  });
+});
+
+/** 所有家具定义的完整列表 */
 export const FURNITURE_LIST = Object.values(FURNITURE_DEFINITIONS);
 
+// ==========================================
+// 5. 辅助方法与判断接口
+// ==========================================
+
+/**
+ * 根据类型获取家具定义
+ * @param {string} type 家具类型标识
+ * @returns {object} 家具定义对象，未找到时默认返回简约木桌定义
+ */
 export function getFurnitureDefinition(type) {
-  return FURNITURE_DEFINITIONS[type] || tableFurniture;
+  return FURNITURE_DEFINITIONS[type] || tablesModule.tableFurniture;
 }
 
-// 4. 导出各个家具实例变量，兼容现有库接口与 Presets
-export {
-  sofaFurniture,
-  chairFurniture,
-  armchairFurniture,
-  stoolFurniture,
-  barstoolFurniture,
-  benchFurniture,
-  loveseatFurniture,
-  officechairFurniture,
-  beanbagFurniture,
-  deckchairFurniture,
-  tableFurniture,
-  deskFurniture,
-  coffeeTableFurniture,
-  sideTableFurniture,
-  roundTableFurniture,
-  diningTableLongFurniture,
-  consoleTableFurniture,
-  computerDeskFurniture,
-  bedsideDeskFurniture,
-  picnicTableFurniture,
-  bookshelfFurniture,
-  consoleFurniture,
-  wardrobeFurniture,
-  nightstandFurniture,
-  cabinetKitchenFurniture,
-  shoerackFurniture,
-  chestDrawersFurniture,
-  sideboardFurniture,
-  displayCabinetFurniture,
-  wallShelfFurniture,
-  gridCabinetFurniture,
-  parcelLockerFurniture,
-  cornerShelfFurniture,
-  fileCabinetFurniture,
-  wineRackFurniture,
-  coatRackFurniture,
-  umbrellaStandFurniture,
-  drawerCabinetFurniture,
-  bedFurniture,
-  bedDoubleFurniture,
-  bedSingleFurniture,
-  cribFurniture,
-  bunkBedFurniture,
-  mattressFurniture,
-  canopyBedFurniture,
-  vanityFurniture,
-  hammockFurniture,
-  bedBenchFurniture,
-  cosmeticsFurniture,
-  stationeryFurniture,
-  eyeshadowCompactFurniture,
-  luxuryPerfumesFurniture,
-  skincareSetFurniture,
-  makeupBrushesFurniture,
-  lipstickNailPolishFurniture,
-  deskCalendarFurniture,
-  woodenPenStandFurniture,
-  calculatorFurniture,
-  staplerNotesFurniture,
-  premiumDeskPenFurniture,
-  fridgeFurniture,
-  toiletFurniture,
-  bathtubFurniture,
-  sinkKitchenFurniture,
-  sinkBathroomFurniture,
-  washingMachineFurniture,
-  microwaveFurniture,
-  stoveFurniture,
-  showerCabinFurniture,
-  mirrorBathroomFurniture,
-  rangeHoodFurniture,
-  coffeeMakerFurniture,
-  toasterFurniture,
-  electricKettleFurniture,
-  dishwasherFurniture,
-  waterDispenserFurniture,
-  riceCookerFurniture,
-  airFryerFurniture,
-  blenderFurniture,
-  hairDryerFurniture,
-  bathroomShelfFurniture,
-  bathroomMirrorCabinetFurniture,
-  towelRackFurniture,
-  kitchenwareFurniture,
-  toiletriesFurniture,
-  soapDispenserFurniture,
-  knifeBlockFurniture,
-  spiceRackFurniture,
-  kitchenHooksFurniture,
-  coffeeCupSetFurniture,
-  teapotTeaCupsFurniture,
-  wineGlassesFurniture,
-  fruitPlatterFurniture,
-  pairMugsFurniture,
-  plantFurniture,
-  lampFurniture,
-  rugFurniture,
-  paintingFurniture,
-  vaseFurniture,
-  mirrorWallFurniture,
-  mirrorFramedWallFurniture,
-  mirrorRoundWallFurniture,
-  mirrorRoundedWallFurniture,
-  curtainFurniture,
-  cushionFurniture,
-  clockFurniture,
-  plantPotFurniture,
-  chandelierFurniture,
-  mannequinFurniture,
-  cactusFurniture,
-  monsteraFurniture,
-  succulentFurniture,
-  bambooFurniture,
-  fernFurniture,
-  bonsaiFurniture,
-  flowerRoseFurniture,
-  snakePlantFurniture,
-  booksStackFurniture,
-  booksFullRowFurniture,
-  miniCactusFurniture,
-  photoFrameFurniture,
-  hourglassFurniture,
-  storageBasketFurniture,
-  scentedCandleFurniture,
-  crystalBallFurniture,
-  goldTrophyFurniture,
-  globeFurniture,
-  gypsumBustFurniture,
-  piggyBankFurniture,
-  sculptureFurniture,
-  windChimeFurniture,
-  ovalRugFurniture,
-  roundedRugFurniture,
-  tvFurniture,
-  computerFurniture,
-  triptychPaintingFurniture,
-  landscapePaintingFurniture,
-  projectorFurniture,
-  gameConsoleFurniture,
-  smartSpeakerFurniture,
-  electricFanFurniture,
-  aromaDiffuserFurniture,
-  tissueBoxFurniture,
-  wallClockFurniture,
-  sunflowerPotFurniture,
-  pachiraTreeFurniture,
-  lavenderPotFurniture,
-  tulipVaseFurniture,
-  orchidPotFurniture,
-  dwarfMonsteraFurniture,
-  largeCactusFurniture,
-  eucalyptusVaseFurniture,
-  cherryBlossomBonsaiFurniture,
-  hangingIvyFurniture,
-  singleBlackoutCurtainFurniture,
-  doubleSheerCurtainFurniture,
-  venetianBlindFurniture,
-  rollerBlindFurniture,
-  romanShadeFurniture,
-  verticalBlindFurniture,
-  chineseBambooBlindFurniture,
-  luxuryValanceCurtainFurniture,
-  cafeShortCurtainFurniture,
-  japaneseNorenCurtainFurniture,
-  ceilingLight,
-  chandelierLight,
-  wallSconceLight,
-  floorLampLight,
-  deskLampLight,
-  bedsideLampLight,
-  trackLight,
-  neonSignLight,
-  globePendantLight,
-  lavaLampLight,
-  customCubeFurniture,
-  customCylinderFurniture,
-  customSphereFurniture,
-  clothing_t_shirt,
-  clothing_shirt,
-  clothing_sweater,
-  clothing_coat,
-  clothing_jacket,
-  clothing_hoodie,
-  clothing_vest,
-  clothing_polo_shirt,
-  clothing_cardigan,
-  clothing_tank_top,
-  clothing_jeans,
-  clothing_trousers,
-  clothing_sweatpants,
-  clothing_shorts,
-  clothing_cargo_pants,
-  clothing_pleated_skirt,
-  clothing_denim_skirt,
-  clothing_leather_skirt,
-  clothing_a_line_skirt,
-  clothing_pencil_skirt,
-  clothing_dress,
-  clothing_evening_gown,
-  clothing_summer_dress,
-  clothing_slip_dress,
-  clothing_cheongsam,
-  clothing_lolita_dress,
-  clothing_lace_dress,
-  clothing_floral_dress,
-  clothing_maxi_dress,
-  clothing_knit_dress,
-  clothing_baseball_cap,
-  clothing_beanie,
-  clothing_fedora,
-  clothing_straw_hat,
-  clothing_bucket_hat,
-  clothing_beret,
-  clothing_sun_hat,
-  clothing_cowboy_hat,
-  clothing_top_hat,
-  clothing_flat_cap,
-  clothing_sneakers,
-  clothing_leather_shoes,
-  clothing_boots,
-  clothing_high_heels,
-  clothing_sandals,
-  clothing_slippers,
-  clothing_running_shoes,
-  clothing_loafers,
-  clothing_canvas_shoes,
-  clothing_rain_boots,
-  clothing_mannequin_male,
-  clothing_mannequin_female,
-  clothing_mannequin_child,
-  // 室外家具
-  outdoorUmbrellaFurniture,
-  pergolaFurniture,
-  flowerArchFurniture,
-  gazeboFurniture,
-  patioSwingFurniture,
-  hammockStandFurniture,
-  firePitFurniture,
-  barbecueGrillFurniture,
-  patioHeaterFurniture,
-  gardenFountainFurniture,
-  birdbathFurniture,
-  planterBoxFurniture,
-  raisedGardenBedFurniture,
-  trellisScreenFurniture,
-  outdoorStorageBoxFurniture,
-  gardenBridgeFurniture,
-  canopyTentFurniture,
-  poolsideDaybedFurniture,
-  pottingBenchFurniture,
-  // 室外座椅
-  adirondackChairFurniture,
-  foldingCampingChairFurniture,
-  rattanLoungeChairFurniture,
-  hangingEggChairFurniture,
-  // 室外桌子
-  patioDiningTableFurniture,
-  bistroTableFurniture,
-  rattanCoffeeTableFurniture,
-  gardenSideTableFurniture,
-  // 庭院灯具
-  gardenLanternPostFurniture,
-  gardenBollardLightFurniture,
-  gardenLanternFurniture
-};
+/**
+ * 判断家具是否为可通电/可发光控制状态
+ * @param {object} definition 家具定义
+ * @returns {boolean} 是否可被控制
+ */
+export function isPowerControllable(definition) {
+  return !!definition && (
+    definition.isSwitchable === true ||
+    !!definition.powerEffect ||
+    definition.category === 'lighting' ||
+    !!definition.lightSource
+  );
+}
 
+/**
+ * 判断家电设备是否处于开启通电状态
+ * @param {object} item 场景中的放置项实例
+ * @returns {boolean} 是否开启
+ */
+export function isAppliancePowerOn(item) {
+  return item?.isOn === true;
+}

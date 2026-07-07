@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: light;
   font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
   background: #edf2f7;
@@ -437,50 +437,7 @@ button:disabled {
   color: #94a3b8;
 }
 
-/* 移动端/窄屏响应式隐藏快捷键，防止换行 */
-@media (max-width: 768px) {
-  .dropdown-content button .shortcut,
-  .submenu-wrapper .has-submenu .shortcut {
-    display: none !important;
-  }
-  .right-panel-content,
-  .left-panel-content {
-    height: 30vh !important;
-  }
-  .view-card {
-  max-height: 100vh !important;
-}
 
-  .left-panel .toggle-side-btn {
-    top: auto;
-    bottom: -20px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) rotate(0deg);
-    width: 48px;
-    height: 20px;
-    min-height: 20px;
-    border-radius: 0 0 8px 8px;
-    border-top: 0;
-    border-left: 1px solid rgba(42, 65, 92, 0.12);
-    border-right: 1px solid rgba(42, 65, 92, 0.12);
-  }
-
-  .right-panel .toggle-side-btn {
-    top: -20px;
-    bottom: auto;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) rotate(0deg);
-    width: 48px;
-    height: 20px;
-    min-height: 20px;
-    border-radius: 8px 8px 0 0;
-    border-bottom: 0;
-    border-left: 1px solid rgba(42, 65, 92, 0.12);
-    border-right: 1px solid rgba(42, 65, 92, 0.12);
-  }
-}
 
 .view-card {
   min-height: 0;
@@ -865,6 +822,8 @@ body.is-dragging-3d * {
     margin-left: 0;
     margin-top: 12px;
   }
+
+
 
 }
 
@@ -2280,4 +2239,47 @@ kbd {
   vertical-align: middle;
 }
 
+/* 移动端/窄屏响应式隐藏快捷键，防止换行 */
+@media (max-width: 768px) {
+  .dropdown-content button .shortcut,
+  .submenu-wrapper .has-submenu .shortcut {
+    display: none !important;
+  }
+  .right-panel-content,
+  .left-panel-content {
+    height: 30vh !important;
+  }
+  .view-card {
+  max-height: 100vh !important;
+}
+  /* 移动端/窄屏响应式折叠与展开收起按钮样式 */
+  .left-panel .toggle-side-btn {
+    top: auto;
+    bottom: -34px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) rotate(90deg);
+    width: 20px;
+    height: 48px;
+    min-height: 20px;
+    border-radius: 0 8px 8px 0;
+    border-top: 0;
+    border-left: 1px solid rgba(42, 65, 92, 0.12);
+    border-right: 1px solid rgba(42, 65, 92, 0.12);
+  }
 
+  .right-panel .toggle-side-btn {
+    top: -34px;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) rotate(90deg);
+    width: 20px;
+    height: 48px;
+    min-height: 20px;
+    border-radius: 8px 0 0 8px;
+    border-bottom: 0;
+    border-left: 1px solid rgba(42, 65, 92, 0.12);
+    border-right: 1px solid rgba(42, 65, 92, 0.12);
+  }
+}

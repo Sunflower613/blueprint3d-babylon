@@ -317,12 +317,12 @@ export const picnicTableFurniture = {
 // 11. 露台餐桌 (Patio Dining Table)
 export const patioDiningTableFurniture = {
   type: 'patio_dining_table',
-  name: '\u9732\u53f0\u9910\u684c',
+  name: '露台餐桌',
   defaultSize: { width: 66, depth: 36, height: 30 },
   components: [
-    { id: 'top', label: '\u684c\u9762', defaultColor: '#d4b08a' },
-    { id: 'legs', label: '\u684c\u817f', defaultColor: '#6b6f75' },
-    { id: 'frame', label: '\u8fde\u63a5\u67b6', defaultColor: '#52565d' }
+    { id: 'top', label: '桌面', defaultColor: '#d4b08a' },
+    { id: 'legs', label: '桌腿', defaultColor: '#6b6f75' },
+    { id: 'frame', label: '连接架', defaultColor: '#52565d' }
   ],
   build(registry, item, node, size) {
     const topH = 0.05;
@@ -356,16 +356,16 @@ export const patioDiningTableFurniture = {
 // 12. 庭院小圆桌 (Bistro Table)
 export const bistroTableFurniture = {
   type: 'bistro_table',
-  name: '\u5ead\u9662\u5c0f\u5706\u684c',
+  name: '庭院小圆桌',
   defaultSize: { width: 26, depth: 26, height: 28 },
   components: [
-    { id: 'glass', label: '\u73bb\u7483\u53f0\u9762', defaultColor: '#e0f2f1' },
-    { id: 'frame', label: '\u91d1\u5c5e\u6846\u67b6', defaultColor: '#37474f' }
+    { id: 'glass', label: '玻璃台面', defaultColor: '#e0f2f1' },
+    { id: 'frame', label: '金属框架', defaultColor: '#37474f' }
   ],
   build(registry, item, node, size) {
     // 1. 四角金属桌腿
     const legRadius = 0.03;
-    const legH = size.height;
+    const legH = size.height*0.95;
     [-1, 1].forEach((xSide) => {
       [-1, 1].forEach((zSide) => {
         cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
@@ -375,9 +375,9 @@ export const bistroTableFurniture = {
           tessellation: 16
         }, {
           position: {
-            x: xSide * size.width * 0.35,
+            x: xSide * size.width * 0.30,
             y: legH / 2,
-            z: zSide * size.depth * 0.35
+            z: zSide * size.depth * 0.30
           }
         }, { parent: node });
       });
@@ -433,11 +433,11 @@ export const bistroTableFurniture = {
 // 13. 藤编户外茶几 (Rattan Coffee Table)
 export const rattanCoffeeTableFurniture = {
   type: 'rattan_coffee_table',
-  name: '\u85e4\u7f16\u6237\u5916\u8336\u51e0',
+  name: '藤编户外茶几',
   defaultSize: { width: 42, depth: 24, height: 18 },
   components: [
-    { id: 'top', label: '\u53f0\u9762', defaultColor: '#cfb390' },
-    { id: 'body', label: '\u85e4\u7f16\u6846', defaultColor: '#9d744b' }
+    { id: 'top', label: '台面', defaultColor: '#cfb390' },
+    { id: 'body', label: '藤编框', defaultColor: '#9d744b' }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, rattanCoffeeTableFurniture, 'body', {
@@ -453,11 +453,11 @@ export const rattanCoffeeTableFurniture = {
 // 14. 花园边几 (Garden Side Table)
 export const gardenSideTableFurniture = {
   type: 'garden_side_table',
-  name: '\u82b1\u56ed\u8fb9\u51e0',
+  name: '花园边几',
   defaultSize: { width: 18, depth: 18, height: 22 },
   components: [
-    { id: 'top', label: '\u53f0\u9762', defaultColor: '#d8c2a3' },
-    { id: 'legs', label: '\u684c\u811a', defaultColor: '#6f5d49' }
+    { id: 'top', label: '台面', defaultColor: '#d8c2a3' },
+    { id: 'legs', label: '桌脚', defaultColor: '#6f5d49' }
   ],
   build(registry, item, node, size) {
     const topH = 0.03;

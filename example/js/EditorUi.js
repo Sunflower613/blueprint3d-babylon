@@ -61,7 +61,7 @@ import {
   getSelectedStructure
 } from './EditorUiContext.js';
 
-
+let lastActiveRoomId = null;
 
 export function ensure3DGridControls() {
   if (document.getElementById('show-3d-grid')) return;
@@ -291,6 +291,12 @@ export function updateEditor() {
   const stairs = selection.selectedStairsId ? testMap.getStairs?.(selection.selectedStairsId) : null;
   const structure = roof || stairs;
   const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
+
+  if (room) {
+    lastActiveRoomId = room.id;
+  } else if (item && item.roomId) {
+    lastActiveRoomId = item.roomId;
+  }
 
   const hasSelection = !!room || !!wall || !!fence || !!fenceGate || !!item || !!opening || !!structure;
   floorEditor?.classList.toggle('hidden', hasSelection);
@@ -931,7 +937,29 @@ export function initUiEventListeners() {
     if (!button) return;
     const type = button.dataset.addItem;
     const definition = testMap.getFurnitureDefinition(type);
-    const room = selection.selectedRoomId ? testMap.getRoom(selection.selectedRoomId) : currentRooms()[0];
+    
+    let room = null;
+    if (selection.selectedRoomId) {
+      room = testMap.getRoom(selection.selectedRoomId);
+    } else if (selection.selectedItemId) {
+      const selectedItem = testMap.getItem(selection.selectedItemId);
+      if (selectedItem && selectedItem.roomId) {
+        room = testMap.getRoom(selectedItem.roomId);
+      }
+    }
+    
+    if (!room && lastActiveRoomId) {
+      room = testMap.getRoom(lastActiveRoomId);
+    }
+    
+    if (!room) {
+      room = currentRooms()[0];
+    }
+    
+    if (room) {
+      lastActiveRoomId = room.id;
+    }
+
     let x = room ? room.x : 0;
     let z = room ? room.z : 0;
     let elevation = undefined;

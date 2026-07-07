@@ -1,5 +1,5 @@
-import { Color3, Material, StandardMaterial, TransformNode } from '../core/babylon.js';
-const BABYLON = { Color3, Material, StandardMaterial, TransformNode };
+import { Color3, Material, StandardMaterial, TransformNode, Mesh, MeshBuilder } from '../core/babylon.js';
+const BABYLON = { Color3, Material, StandardMaterial, TransformNode, Mesh, MeshBuilder };
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 import { createBlueprintMaterial } from '../core/materials.js';
 
@@ -156,38 +156,40 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const picketXOffset = (activeStartPostWidth - activeEndPostWidth) / 4;
     const startX = picketXOffset - (count - 1) * picketSpacing / 2;
     
+    const picketsToMerge = [];
     for (let i = 0; i < count; i++) {
       const curX = startX + i * picketSpacing;
       // 木板主身
-      const picket = createBox(registry, `picket_${fence.id}_${i}`, {
+      const picket = BABYLON.MeshBuilder.CreateBox(`picket_${fence.id}_${i}`, {
         width: 0.08,
         height: height * 0.9,
         depth: 0.02
-      }, {
-        position: { x: curX, y: (height * 0.9) / 2, z: railThickness / 2 + 0.01 }
-      }, {
-        material: panelMaterial,
-        parent: group,
-        receiveShadows: true,
-        shadowCaster: true
-      });
-      picket.metadata = { blueprintFenceComponentId: 'panel' };
+      }, scene);
+      picket.position.set(curX, (height * 0.9) / 2, railThickness / 2 + 0.01);
+      picketsToMerge.push(picket);
 
       // 尖顶部分 (旋转 45 度的正方体拼接)
-      const picketTop = createBox(registry, `picket_top_${fence.id}_${i}`, {
+      const picketTop = BABYLON.MeshBuilder.CreateBox(`picket_top_${fence.id}_${i}`, {
         width: 0.057,
         height: 0.057,
         depth: 0.02
-      }, {
-        position: { x: curX, y: height * 0.9 + 0.02, z: railThickness / 2 + 0.01 },
-        rotation: { z: Math.PI / 4 }
-      }, {
-        material: panelMaterial,
-        parent: group,
-        receiveShadows: true,
-        shadowCaster: true
-      });
-      picketTop.metadata = { blueprintFenceComponentId: 'panel' };
+      }, scene);
+      picketTop.position.set(curX, height * 0.9 + 0.02, railThickness / 2 + 0.01);
+      picketTop.rotation.z = Math.PI / 4;
+      picketsToMerge.push(picketTop);
+    }
+
+    if (picketsToMerge.length > 0) {
+      const merged = BABYLON.Mesh.MergeMeshes(picketsToMerge, true, true, undefined, false, true);
+      if (merged) {
+        registry.add(merged, {
+          material: panelMaterial,
+          parent: group,
+          receiveShadows: true,
+          shadowCaster: true
+        });
+        merged.metadata = { blueprintFenceComponentId: 'panel' };
+      }
     }
 
   } else if (subtype === 'iron_ornamental') {
@@ -264,52 +266,62 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const count = Math.max(1, Math.floor((length - postWidth * 2) / spacing));
     const startX = -(count - 1) * spacing / 2;
 
+    const barsToMerge = [];
+    const goldsToMerge = [];
     for (let i = 0; i < count; i++) {
       const curX = startX + i * spacing;
       // 竖细圆柱
-      const bar = createCylinder(registry, `bar_${fence.id}_${i}`, {
+      const bar = BABYLON.MeshBuilder.CreateCylinder(`bar_${fence.id}_${i}`, {
         diameterTop: 0.016,
         diameterBottom: 0.016,
         height: height * 0.95
-      }, {
-        position: { x: curX, y: (height * 0.95) / 2, z: 0 }
-      }, {
-        material: panelMaterial,
-        parent: group,
-        receiveShadows: true,
-        shadowCaster: true
-      });
-      bar.metadata = { blueprintFenceComponentId: 'panel' };
+      }, scene);
+      bar.position.set(curX, (height * 0.95) / 2, 0);
+      barsToMerge.push(bar);
 
       // 金色枪尖球
-      const spearBall = createSphere(registry, `spear_ball_${fence.id}_${i}`, {
+      const spearBall = BABYLON.MeshBuilder.CreateSphere(`spear_ball_${fence.id}_${i}`, {
         diameter: 0.03,
         segments: 8
-      }, {
-        position: { x: curX, y: height * 0.95, z: 0 }
-      }, {
-        material: goldMaterial,
-        parent: group,
-        receiveShadows: true,
-        shadowCaster: true
-      });
-      spearBall.metadata = { blueprintFenceComponentId: 'panel' };
+      }, scene);
+      spearBall.position.set(curX, height * 0.95, 0);
+      goldsToMerge.push(spearBall);
 
       // 金色尖锥
-      const spearPoint = createCylinder(registry, `spear_point_${fence.id}_${i}`, {
+      const spearPoint = BABYLON.MeshBuilder.CreateCylinder(`spear_point_${fence.id}_${i}`, {
         diameterTop: 0.001,
         diameterBottom: 0.016,
         height: 0.06,
         tessellation: 4
-      }, {
-        position: { x: curX, y: height * 0.95 + 0.03, z: 0 }
-      }, {
-        material: goldMaterial,
-        parent: group,
-        receiveShadows: true,
-        shadowCaster: true
-      });
-      spearPoint.metadata = { blueprintFenceComponentId: 'panel' };
+      }, scene);
+      spearPoint.position.set(curX, height * 0.95 + 0.03, 0);
+      goldsToMerge.push(spearPoint);
+    }
+
+    if (barsToMerge.length > 0) {
+      const mergedBars = BABYLON.Mesh.MergeMeshes(barsToMerge, true, true, undefined, false, true);
+      if (mergedBars) {
+        registry.add(mergedBars, {
+          material: panelMaterial,
+          parent: group,
+          receiveShadows: true,
+          shadowCaster: true
+        });
+        mergedBars.metadata = { blueprintFenceComponentId: 'panel' };
+      }
+    }
+
+    if (goldsToMerge.length > 0) {
+      const mergedGolds = BABYLON.Mesh.MergeMeshes(goldsToMerge, true, true, undefined, false, true);
+      if (mergedGolds) {
+        registry.add(mergedGolds, {
+          material: goldMaterial,
+          parent: group,
+          receiveShadows: true,
+          shadowCaster: true
+        });
+        mergedGolds.metadata = { blueprintFenceComponentId: 'panel' };
+      }
     }
 
   } else if (subtype === 'wire_mesh') {

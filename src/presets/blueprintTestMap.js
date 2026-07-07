@@ -647,6 +647,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       : 256;
     const cleanTarget = node || mirrorMesh;
 
+    if (mat.reflectionTexture && !(mat.reflectionTexture instanceof BABYLON.MirrorTexture) && !mat.customReflectionProbe) {
+      try {
+        mat.reflectionTexture.dispose();
+      } catch (_) {}
+      mat.reflectionTexture = null;
+    }
+
     if (mat.reflectionTexture && mat.reflectionTexture instanceof BABYLON.MirrorTexture) {
       const currentSize = mat.reflectionTexture.getSize();
       if (currentSize && currentSize.width === textureSize) {
@@ -903,6 +910,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (!mat) return;
     const bpMaterial = mat.metadata?.blueprintMaterial;
     if (!bpMaterial) return;
+
+    const currentFloorId = this.floorplan.currentFloorId;
+    const meshFloorId = node?.metadata?.floorId || mesh.metadata?.floorId;
+    if (meshFloorId && currentFloorId && meshFloorId !== currentFloorId) {
+      this.restoreStaticReflectionTextureForMesh(mesh, node);
+      return;
+    }
 
     if (bpMaterial.kind === 'mirror') {
       const isMainMirror = !!mesh.metadata?.isMainMirror;
@@ -1371,6 +1385,14 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
 
   clearBuiltMeshes() {
+    if (this.materialCache) {
+      this.materialCache.forEach((mat) => {
+        if (mat && !mat.isDisposed) {
+          mat.dispose(true, true);
+        }
+      });
+      this.materialCache.clear();
+    }
     this.openingDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.fenceGateDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.itemNodes.forEach((node) => node.dispose(false, true));
@@ -2395,7 +2417,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const effect = definition.powerEffect;
     if (!effect) return;
 
-    const isOn = isAppliancePowerOn(item);
+    const isOn = isAppliancePowerOn(item) && (item.floorId === this.floorplan.currentFloorId);
     const glowComponents = Array.isArray(effect.glowComponents) ? effect.glowComponents : [];
     const glowColor = BABYLON.Color3.FromHexString(effect.color || '#66ccff');
     const glowMeshes = node.getChildMeshes().filter((mesh) => {
@@ -2413,6 +2435,9 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     const initialScalings = new Map(pulseScaleMeshes.map((mesh) => [mesh, mesh.scaling.clone()]));
 
     glowMeshes.forEach((mesh) => {
+      if (isOn && !mesh.material.name.endsWith('_cloned')) {
+        mesh.material = mesh.material.clone(`${mesh.material.name}_cloned`);
+      }
       mesh.material.emissiveColor = isOn ? glowColor.clone() : new BABYLON.Color3(0, 0, 0);
     });
 
@@ -2533,7 +2558,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.applyPowerEffect(definition, item, node);
 
     // --- 开关灯自发光与光源联动效果 ---
-    const isLightOn = item.lightOn !== false;
+    const isLightOn = item.lightOn !== false && (item.floorId === this.floorplan.currentFloorId);
     const emissiveComponents = definition.emissiveComponents || ['bulb', 'glow', 'light', 'flame', 'lava', 'shade'];
 
     node.getChildMeshes().forEach((mesh) => {

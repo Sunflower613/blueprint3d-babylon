@@ -159,7 +159,7 @@ function createTintedTextureDescriptor(material, color) {
   };
 }
 
-export function renderMaterialLibrary() {
+export function renderMaterialLibrary(isSwitchingCategory = false) {
   ctx.updateDesignCursor();
   const materialCategorySelect = document.getElementById('material-category');
   const materialLibraryPanel = document.getElementById('material-library');
@@ -167,7 +167,7 @@ export function renderMaterialLibrary() {
 
   const category = materialCategorySelect.value;
   const materials = editor.materialLibrary.filter((material) => material.category === category);
-  if (!editor.activeMaterialArray?.length) {
+  if (isSwitchingCategory && !editor.activeMaterialArray?.length) {
     const activeExistsInCategory = editor.activeMaterialDescriptor
       ? materials.some((material) => material.id === editor.activeMaterialDescriptor.id)
       : false;
@@ -756,7 +756,18 @@ export function extractMaterial(target, precise = true) {
       editor.activeMaterialArray = null; // 清除全量数组
       const displayName = getActiveMaterialDisplayName(editor.activeMaterialDescriptor);
       ctx.showToast(`已吸取材质: ${displayName}`);
-      renderMaterialLibrary();
+
+      // 自动同步材质分类下拉框的值并避免被重置为默认值
+      const catSelect = document.getElementById('material-category');
+      if (catSelect && editor.activeMaterialDescriptor.category && catSelect.value !== editor.activeMaterialDescriptor.category) {
+        window.isProgrammaticMaterialCategoryChange = true;
+        catSelect.value = editor.activeMaterialDescriptor.category;
+        catSelect.dispatchEvent(new Event('change'));
+        window.isProgrammaticMaterialCategoryChange = false;
+      } else {
+        renderMaterialLibrary();
+      }
+
       ctx.updateEditor();
       ctx.setDesignMode('brush', false);
     } else {

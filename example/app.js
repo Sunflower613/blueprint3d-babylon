@@ -3682,7 +3682,10 @@ function restoreFloorplanMaterials(obj) {
   }
 }
 
-materialCategorySelect.addEventListener('change', renderMaterialLibrary);
+materialCategorySelect.addEventListener('change', () => {
+  const shouldReset = !window.isProgrammaticMaterialCategoryChange;
+  renderMaterialLibrary(shouldReset);
+});
 
 materialUploadInput.addEventListener('change', async (event) => {
   const file = event.target.files?.[0];

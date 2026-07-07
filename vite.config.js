@@ -10,9 +10,11 @@ export default defineConfig({
   root: 'example',
   base: '/blueprint3d-babylon/example/',
   optimizeDeps: {
-    exclude: [
+    include: [
       '@babylonjs/core',
-      '@babylonjs/gui',
+      '@babylonjs/gui'
+    ],
+    exclude: [
       'blueprint3d-babylon/babylon-runtime'
     ]
   },

@@ -29,6 +29,7 @@ export class BlueprintRegistry {
     this.shadowCasters = [];
     this.updaters = [];
     this.metadata = {};
+    this.materialCache = new Map();
   }
 
   add(node, options = {}) {
@@ -70,6 +71,14 @@ export class BlueprintRegistry {
   }
 
   dispose() {
+    if (this.materialCache) {
+      this.materialCache.forEach((mat) => {
+        if (mat && !mat.isDisposed) {
+          mat.dispose(true, true);
+        }
+      });
+      this.materialCache.clear();
+    }
     this.root.dispose(false, true);
     this.colliders.length = 0;
     this.interactables.length = 0;

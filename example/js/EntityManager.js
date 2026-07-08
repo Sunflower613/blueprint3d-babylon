@@ -777,6 +777,35 @@ export class EntityManager {
   /**
    * 属性面板：更新发光状态
    */
+  setItemSeason(itemId, season) {
+    const item = this.opts.testMap.getItem(itemId);
+    if (!item || item.locked) return;
+    const def = this.opts.testMap.getFurnitureDefinition(item.type);
+    const seasonOptions = def?.seasonOptions || [];
+    if (!seasonOptions.length) return;
+
+    const nextSeason = seasonOptions.find((option) => option.value === season)?.value;
+    if (!nextSeason || item.season === nextSeason) return;
+
+    this.opts.pushHistory();
+    this.opts.testMap.updateItem(itemId, { season: nextSeason });
+    this.opts.refreshShadows();
+    this.opts.updateEditor();
+    this.opts.renderPlan();
+  }
+
+  cycleItemSeason(itemId) {
+    const item = this.opts.testMap.getItem(itemId);
+    if (!item || item.locked) return;
+    const def = this.opts.testMap.getFurnitureDefinition(item.type);
+    const seasonOptions = def?.seasonOptions || [];
+    if (!seasonOptions.length) return;
+
+    const currentIndex = seasonOptions.findIndex((option) => option.value === item.season);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % seasonOptions.length : 0;
+    this.setItemSeason(itemId, seasonOptions[nextIndex].value);
+  }
+
   updateItemLight(itemId, lightOn) {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;

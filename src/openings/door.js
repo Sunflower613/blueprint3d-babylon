@@ -10,12 +10,13 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
   const height = options.height || opening.height || 2.05;
   const frameT = options.frameT || 0.2;
   const frameW = options.frameW || 0.04;
+  const materialOptions = { surfaceWidth: width, surfaceHeight: height };
   // 支持 per-opening 自定义材质（优先使用自定义，否则使用全局默认）
   const frameMat = opening.frameMaterial
-    ? createBlueprintMaterial(registry.scene, `door_frame_${opening.id}`, opening.frameMaterial)
+    ? createBlueprintMaterial(registry.scene, `door_frame_${opening.id}`, opening.frameMaterial, materialOptions)
     : (registry.materials.trim || registry.materials.door);
   const panelMat = opening.panelMaterial
-    ? createBlueprintMaterial(registry.scene, `door_panel_${opening.id}`, opening.panelMaterial)
+    ? createBlueprintMaterial(registry.scene, `door_panel_${opening.id}`, opening.panelMaterial, materialOptions)
     : registry.materials.door;
 
   buildOpeningFrame(registry, opening, parent, {

@@ -1,4 +1,5 @@
 import { getRoomVertices } from '../../src/rooms/roomShapes.js';
+import { isItemSnappedToBookshelfOrMannequin } from '../../src/core/exporterUtils.js';
 
 import { createStoreProxy } from '../store/proxyHelper.js';
 
@@ -121,7 +122,17 @@ export function renderPlan() {
     ctx.svg.appendChild(createSvgElement('circle', { class: 'draw-anchor', cx: a.x, cy: a.y, r: 6 }));
   }
 
-  ctx.currentItems().forEach((item) => renderPlanItem(item));
+  const sortedItems = [...ctx.currentItems()].sort((a, b) => {
+    const aName = (a.name || a.type || '').toLowerCase();
+    const bName = (b.name || b.type || '').toLowerCase();
+    const aIsRug = aName.includes('地毯') || aName.includes('垫') || aName.includes('rug') || aName.includes('carpet') || aName.includes('mat');
+    const bIsRug = bName.includes('地毯') || bName.includes('垫') || bName.includes('rug') || bName.includes('carpet') || bName.includes('mat');
+    
+    if (aIsRug && !bIsRug) return -1;
+    if (!aIsRug && bIsRug) return 1;
+    return 0;
+  });
+  sortedItems.forEach((item) => renderPlanItem(item));
   const selectedRoom = ctx.selectedRoomId ? ctx.testMap.getRoom(ctx.selectedRoomId) : null;
   if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
   const selectedRoof = ctx.selectedRoofId ? ctx.testMap.getRoof?.(ctx.selectedRoofId) : null;
@@ -721,6 +732,9 @@ export function renderStairs(stairs) {
 }
 
 export function renderPlanItem(item) {
+  if (isItemSnappedToBookshelfOrMannequin(item, ctx.testMap.floorplan.items, (type) => ctx.testMap.getFurnitureDefinition(type))) {
+    return;
+  }
   const center = worldToSvg(item.x, item.z);
   const itemScale = Number(item.scale || 1);
   const w = inchesToWorld(item.width) * itemScale;

@@ -3,7 +3,7 @@ import { boxComponent, cylinderComponent } from './_helpers.js';
 // 1. 实用书架 (Bookshelf)
 export const bookshelfFurniture = {
   type: 'bookshelf',
-  name: '实用书架',
+  name: '书架',
   defaultSize: { width: 32, depth: 12, height: 72 },
   components: [
     { id: 'frame', label: '外框', defaultColor: '#8a6b51' },
@@ -54,7 +54,7 @@ export const bookshelfFurniture = {
 // 2. 北欧电视柜 (Console)
 export const consoleFurniture = {
   type: 'console',
-  name: '北欧电视柜',
+  name: '电视柜',
   defaultSize: { width: 60, depth: 16, height: 20 },
   components: [
     { id: 'cabinet', label: '柜身', defaultColor: '#e9e6e0' },
@@ -91,7 +91,7 @@ export const consoleFurniture = {
 // 3. 卧室大衣柜 (Wardrobe)
 export const wardrobeFurniture = {
   type: 'wardrobe',
-  name: '卧室大衣柜',
+  name: '衣柜',
   defaultSize: { width: 42, depth: 24, height: 80 },
   components: [
     { id: 'cabinet', label: '柜身', defaultColor: '#e9e3d5' },
@@ -133,7 +133,7 @@ export const wardrobeFurniture = {
 // 4. 现代床头柜 (Nightstand)
 export const nightstandFurniture = {
   type: 'nightstand',
-  name: '现代床头柜',
+  name: '床头柜',
   defaultSize: { width: 20, depth: 18, height: 24 },
   components: [
     { id: 'cabinet', label: '柜体', defaultColor: '#e3dfd8' },
@@ -304,7 +304,7 @@ export const sideboardFurniture = {
 // 9. 玻璃展示柜 (Display Cabinet)
 export const displayCabinetFurniture = {
   type: 'display_cabinet',
-  name: '玻璃展示柜',
+  name: '展示柜',
   defaultSize: { width: 28, depth: 14, height: 68 },
   components: [
     { id: 'cabinet', label: '柜体框架', defaultColor: '#403c39' },
@@ -356,7 +356,7 @@ export const displayCabinetFurniture = {
   }
 };
 
-// 10. 墙壁置物架 (Wall Shelf)
+// 10. 墙壁搁板 (Wall Shelf)
 export const wallShelfFurniture = {
   type: 'wall_shelf',
   name: '墙壁搁板',
@@ -442,7 +442,7 @@ export const gridCabinetFurniture = {
 // 12. 智能快递柜 (Parcel Locker)
 export const parcelLockerFurniture = {
   type: 'parcel_locker',
-  name: '智能快递柜',
+  name: '快递柜',
   defaultSize: { width: 48, depth: 18, height: 76 },
   components: [
     { id: 'body', label: '柜体', defaultColor: '#ff8800' },
@@ -512,7 +512,7 @@ export const cornerShelfFurniture = {
 // 14. 钢制文件柜 (File Cabinet)
 export const fileCabinetFurniture = {
   type: 'file_cabinet',
-  name: '钢制文件柜',
+  name: '文件柜',
   defaultSize: { width: 18, depth: 24, height: 50 },
   components: [
     { id: 'cabinet', label: '柜体', defaultColor: '#78909c' },
@@ -539,7 +539,7 @@ export const fileCabinetFurniture = {
 // 15. 木质红酒架 (Wine Rack)
 export const wineRackFurniture = {
   type: 'wine_rack',
-  name: '木质红酒架',
+  name: '红酒架',
   defaultSize: { width: 13, depth: 12, height: 13 },
   components: [
     { id: 'frame', label: '红酒外架', defaultColor: '#5c4033' },
@@ -601,7 +601,7 @@ export const wineRackFurniture = {
 // 16. 落地衣帽架 (Coat Rack)
 export const coatRackFurniture = {
   type: 'coat_rack',
-  name: '落地衣帽架',
+  name: '衣帽架',
   defaultSize: { width: 14, depth: 14, height: 68 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#3e2723' },
@@ -631,7 +631,7 @@ export const coatRackFurniture = {
 // 17. 玄关雨伞架 (Umbrella Stand)
 export const umbrellaStandFurniture = {
   type: 'umbrella_stand',
-  name: '玄关雨伞架',
+  name: '雨伞架',
   defaultSize: { width: 10, depth: 10, height: 22 },
   components: [
     { id: 'body', label: '架身', defaultColor: '#263238' },
@@ -651,7 +651,7 @@ export const umbrellaStandFurniture = {
 // 18. 多层抽屉柜 (Drawer Cabinet)
 export const drawerCabinetFurniture = {
   type: 'drawer_cabinet',
-  name: '多层抽屉柜',
+  name: '抽屉柜',
   defaultSize: { width: 24, depth: 18, height: 32 },
   components: [
     { id: 'body', label: '柜身', defaultColor: '#efebe9' },

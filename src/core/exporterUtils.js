@@ -115,3 +115,102 @@ export function getItemRoomElevationOffset(floorplan, item) {
     || rooms.find((candidate) => entityFloorId(floorplan, candidate) === entityFloorId(floorplan, item) && pointInRoom(candidate, item.x, item.z));
   return room ? Number(room.elevation || 0) : 0;
 }
+
+/**
+ * 判定一个物品是否吸附在任何书架/柜子或模特人台上
+ * @param {Object} item 待判定物品
+ * @param {Array<Object>} items 场景中所有物品列表
+ * @param {Function} [getFurnitureDefinition] 可选，获取家具定义的函数
+ * @returns {boolean} 是否属于吸附子级
+ */
+export function isItemSnappedToBookshelfOrMannequin(item, items, getFurnitureDefinition) {
+  if (!items || !item) return false;
+  
+  const INCHES_PER_UNIT = 39.37;
+  
+  for (const other of items) {
+    if (other.id === item.id) continue;
+    
+    let isBookshelf = false;
+    let isMannequin = false;
+    let otherWidth = Number(other.width || 0) / INCHES_PER_UNIT;
+    let otherDepth = Number(other.depth || 0) / INCHES_PER_UNIT;
+    let otherHeight = Number(other.height || 0) / INCHES_PER_UNIT;
+    
+    if (getFurnitureDefinition) {
+      const otherDef = getFurnitureDefinition(other.type);
+      if (otherDef) {
+        const type = otherDef.type || '';
+        isBookshelf = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'].includes(type);
+        isMannequin = type.includes('mannequin') || type.includes('clothing_mannequin');
+        
+        if (!other.width && otherDef.defaultSize?.width) otherWidth = otherDef.defaultSize.width / INCHES_PER_UNIT;
+        if (!other.depth && otherDef.defaultSize?.depth) otherDepth = otherDef.defaultSize.depth / INCHES_PER_UNIT;
+        if (!other.height && otherDef.defaultSize?.height) otherHeight = otherDef.defaultSize.height / INCHES_PER_UNIT;
+      }
+    }
+    
+    // 备用简易名称/类型关键字匹配（用于 CAD 导出或无定义环境）
+    if (!isBookshelf && !isMannequin) {
+      const typeLower = (other.type || '').toLowerCase();
+      const nameLower = (other.name || '').toLowerCase();
+      
+      isBookshelf = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'].some(t => typeLower.includes(t)) ||
+                    ['书架', '鞋架', '展示柜', '收纳柜', '置物架', '储物架', '格柜'].some(k => nameLower.includes(k));
+      isMannequin = typeLower.includes('mannequin') || ['模特', '人台'].some(k => nameLower.includes(k));
+      
+      if (otherWidth <= 0) otherWidth = 1.0;
+      if (otherDepth <= 0) otherDepth = 0.4;
+      if (otherHeight <= 0) otherHeight = 1.8;
+    }
+    
+    if (!isBookshelf && !isMannequin) continue;
+    
+    const scale = Number(other.scale || 1);
+    const itemElev = Number(item.elevation || 0);
+    const otherElev = Number(other.elevation || 0);
+    const otherHInches = otherHeight * INCHES_PER_UNIT * scale;
+    
+    if (isBookshelf) {
+      // 1. 书架高程判定：物品处于书架高度区间内
+      if (itemElev < otherElev + 0.1 || itemElev > otherElev + otherHInches + 5.0) {
+        continue;
+      }
+      // 2. 书架投影范围判定
+      const dx = item.x - other.x;
+      const dz = item.z - other.z;
+      const angle = other.rotation || 0;
+      const cos = Math.cos(-angle);
+      const sin = Math.sin(-angle);
+      const localX = dx * cos - dz * sin;
+      const localZ = dx * sin + dz * cos;
+      
+      const halfW = (otherWidth * scale) / 2;
+      const halfD = (otherDepth * scale) / 2;
+      const snapMargin = 0.05; // 允许微小偏差容差
+      
+      if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
+        return true;
+      }
+    } else if (isMannequin) {
+      // 1. 衣服挂件判定：必须以 clothing_ 开头，且排除模特本身
+      const itemType = (item.type || '').toLowerCase();
+      if (!itemType.startsWith('clothing_') || itemType.includes('mannequin')) {
+        continue;
+      }
+      // 2. 模特高度判定：在模特高度区间内
+      if (itemElev < otherElev - 2.0 || itemElev > otherElev + otherHInches + 5.0) {
+        continue;
+      }
+      // 3. 模特距离判定：水平投影距离极近
+      const dx = item.x - other.x;
+      const dz = item.z - other.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq <= 0.05 * 0.05) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}

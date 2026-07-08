@@ -50,7 +50,7 @@ export const sofaFurniture = {
 // 2. 简约木椅 (Chair)
 export const chairFurniture = {
   type: 'chair',
-  name: '简约木椅',
+  name: '椅子',
   defaultSize: { width: 18, depth: 18, height: 32 },
   components: [
     { id: 'seat', label: '座垫', defaultColor: '#d6c5b3' },
@@ -99,7 +99,7 @@ export const chairFurniture = {
 // 3. 单人休闲沙发 (Armchair)
 export const armchairFurniture = {
   type: 'armchair',
-  name: '休闲单人沙发',
+  name: '沙发',
   defaultSize: { width: 36, depth: 32, height: 30 },
   components: [
     { id: 'seat', label: '座垫', defaultColor: '#ebd9c8' },
@@ -149,7 +149,7 @@ export const armchairFurniture = {
 // 4. 圆形木凳 (Stool)
 export const stoolFurniture = {
   type: 'stool',
-  name: '圆形木凳',
+  name: '木凳',
   defaultSize: { width: 14, depth: 14, height: 18 },
   components: [
     { id: 'seat', label: '凳面', defaultColor: '#d9ab7e' },
@@ -184,7 +184,7 @@ export const stoolFurniture = {
 // 5. 高脚吧台凳 (Barstool)
 export const barstoolFurniture = {
   type: 'barstool',
-  name: '高脚吧台凳',
+  name: '吧台凳',
   defaultSize: { width: 15, depth: 15, height: 30 },
   components: [
     { id: 'seat', label: '凳面', defaultColor: '#474747' },
@@ -318,7 +318,7 @@ export const loveseatFurniture = {
 // 8. 办公升降椅 (Officechair)
 export const officechairFurniture = {
   type: 'officechair',
-  name: '办公升降椅',
+  name: '办公椅',
   defaultSize: { width: 24, depth: 24, height: 40 },
   components: [
     { id: 'seat', label: '座面', defaultColor: '#33373d' },
@@ -385,7 +385,7 @@ export const beanbagFurniture = {
 // 10. 折叠躺椅 (Deckchair)
 export const deckchairFurniture = {
   type: 'deckchair',
-  name: '折叠躺椅',
+  name: '躺椅',
   defaultSize: { width: 24, depth: 40, height: 28 },
   components: [
     { id: 'fabric', label: '帆布面', defaultColor: '#ff9a6c' },
@@ -422,7 +422,7 @@ export const deckchairFurniture = {
 // 11. 庭院休闲椅 (Adirondack Chair)
 export const adirondackChairFurniture = {
   type: 'adirondack_chair',
-  name: '庭院休闲椅',
+  name: '休闲椅',
   defaultSize: { width: 28, depth: 34, height: 36 },
   components: [
     { id: 'seat', label: '座面', defaultColor: '#c99662' },
@@ -467,7 +467,7 @@ export const adirondackChairFurniture = {
 // 12. 折叠露营椅 (Folding Camping Chair)
 export const foldingCampingChairFurniture = {
   type: 'folding_camping_chair',
-  name: '折叠露营椅',
+  name: '露营椅',
   defaultSize: { width: 22, depth: 24, height: 32 },
   components: [
     { id: 'fabric', label: '布面', defaultColor: '#6ea4c8' },
@@ -514,7 +514,7 @@ export const foldingCampingChairFurniture = {
 // 13. 藤编休闲椅 (Rattan Lounge Chair)
 export const rattanLoungeChairFurniture = {
   type: 'rattan_lounge_chair',
-  name: '藤编休闲椅',
+  name: '藤椅',
   defaultSize: { width: 30, depth: 30, height: 32 },
   components: [
     { id: 'seat', label: '坐垫', defaultColor: '#efe2cf' },

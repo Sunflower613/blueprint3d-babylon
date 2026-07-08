@@ -396,6 +396,7 @@ export function updateEditor() {
     document.getElementById('item-scale').value = Number((item.scale || 1).toFixed(2));
     document.getElementById('item-scale-range').value = item.scale || 1;
     document.getElementById('item-locked').checked = !!item.locked;
+    const def = testMap.getFurnitureDefinition(item.type);
 
     const poseField = document.getElementById('item-pose-field');
     if (item.type === 'mannequin') {
@@ -413,9 +414,25 @@ export function updateEditor() {
       poseField.classList.add('hidden');
     }
 
+    const seasonField = document.getElementById('item-season-field');
+    const seasonSelect = document.getElementById('item-season');
+    const seasonOptions = def?.seasonOptions || [];
+    if (seasonField && seasonSelect) {
+      const hasSeasonOptions = seasonOptions.length > 0;
+      seasonField.classList.toggle('hidden', !hasSeasonOptions);
+      if (hasSeasonOptions) {
+        const optionMarkup = seasonOptions
+          .map((option) => `<option value="${option.value}">${option.label}</option>`)
+          .join('');
+        if (seasonSelect.innerHTML !== optionMarkup) {
+          seasonSelect.innerHTML = optionMarkup;
+        }
+        seasonSelect.value = item.season || def.defaultSeason || seasonOptions[0].value;
+      }
+    }
+
     const lightField = document.getElementById('item-light-field');
     if (lightField) {
-      const def = testMap.getFurnitureDefinition(item.type);
       const powerInput = document.getElementById('item-light-on');
       const powerLabel = document.getElementById('item-power-label');
       if (def.category === 'lighting' || def.lightSource) {
@@ -1140,6 +1157,9 @@ export function initUiEventListeners() {
   });
   document.getElementById('item-pose').addEventListener('change', (event) => {
     if (selection.selectedItemId) entityManager.updateItemPose(selection.selectedItemId, event.target.value);
+  });
+  document.getElementById('item-season').addEventListener('change', (event) => {
+    if (selection.selectedItemId) entityManager.setItemSeason(selection.selectedItemId, event.target.value);
   });
 
   document.getElementById('wall-length').addEventListener('change', (event) => {

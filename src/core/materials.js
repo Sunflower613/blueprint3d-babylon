@@ -3,8 +3,21 @@ const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.
 const marbletilesUrl = new URL('../textures/marbletiles.jpg', import.meta.url).href;
 const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
 const lightBrickUrl = new URL('../textures/light_brick.jpg', import.meta.url).href;
+const stoneMarbleWarmUrl = new URL('../textures/stone_marble_warm.jpg', import.meta.url).href;
+const stoneMarbleGreyGlossUrl = new URL('../textures/stone_marble_grey_gloss.jpg', import.meta.url).href;
+const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
+const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
+const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
+const wallpaperStripeTealPinkUrl = new URL('../textures/wallpaper_stripe_teal_pink.jpg', import.meta.url).href;
+const wallpaperDamaskOliveUrl = new URL('../textures/wallpaper_damask_olive.jpg', import.meta.url).href;
+const wallpaperInkBambooMistUrl = new URL('../textures/wallpaper_ink_bamboo_mist.jpg', import.meta.url).href;
+const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href;
+const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
+const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
+const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
 
 const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
+const DEFAULT_PATTERN_MAX_ASPECT_RATIO = 1.8;
 
 const STAINED_GLASS_WARM_COLORS = [
   '#f27462', '#e88972', '#ef5b5b', '#f28a48', '#e36f35', '#ef9f58',
@@ -136,6 +149,55 @@ function createStainedGlassTexture(scene, name, patternScale) {
   return texture;
 }
 
+function shouldLimitPatternStretch(normalized, options = {}) {
+  if (options.limitPatternStretch === false) return false;
+  if (options.limitPatternStretch === true) return true;
+  return normalized.kind === 'stained-glass' || normalized.category === 'wallpaper';
+}
+
+export function resolvePatternTextureScale(normalized, options = {}, baseScale = 1) {
+  const scale = Number(baseScale || 1);
+  let uScale = scale;
+  let vScale = scale;
+
+  if (!shouldLimitPatternStretch(normalized, options)) {
+    return { uScale, vScale };
+  }
+
+  const surfaceWidth = Number(options.surfaceWidth || options.width || 0);
+  const surfaceHeight = Number(options.surfaceHeight || options.height || 0);
+  if (!(surfaceWidth > 0) || !(surfaceHeight > 0)) {
+    return { uScale, vScale };
+  }
+
+  const minSide = Math.max(0.001, Math.min(surfaceWidth, surfaceHeight));
+  const maxSide = Math.max(surfaceWidth, surfaceHeight);
+  if (maxSide <= minSide) {
+    return { uScale, vScale };
+  }
+
+  const maxAspectRatio = Number(
+    options.maxPatternStretchRatio || normalized.maxPatternStretchRatio || DEFAULT_PATTERN_MAX_ASPECT_RATIO
+  );
+  if (!Number.isFinite(maxAspectRatio) || maxAspectRatio <= 1) {
+    return { uScale, vScale };
+  }
+
+  const surfaceAspectRatio = maxSide / minSide;
+  if (surfaceAspectRatio <= maxAspectRatio) {
+    return { uScale, vScale };
+  }
+
+  const axisRepeatBoost = surfaceAspectRatio / maxAspectRatio;
+  if (surfaceWidth >= surfaceHeight) {
+    uScale *= axisRepeatBoost;
+  } else {
+    vScale *= axisRepeatBoost;
+  }
+
+  return { uScale, vScale };
+}
+
 export function createFlatMaterial(scene, name, colorHex, options = {}) {
   const material = new BABYLON.StandardMaterial(name, scene);
   const color = BABYLON.Color3.FromHexString(colorHex || '#ffffff');
@@ -242,6 +304,30 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
         src = wallmapYellowUrl;
       } else if (src.includes('light_brick.jpg')) {
         src = lightBrickUrl;
+      } else if (src.includes('stone_marble_warm.jpg')) {
+        src = stoneMarbleWarmUrl;
+      } else if (src.includes('stone_marble_grey_gloss.jpg')) {
+        src = stoneMarbleGreyGlossUrl;
+      } else if (src.includes('wallpaper_leaf_bluegrey.jpg')) {
+        src = wallpaperLeafBluegreyUrl;
+      } else if (src.includes('wallpaper_paisley_orange.jpg')) {
+        src = wallpaperPaisleyOrangeUrl;
+      } else if (src.includes('wallpaper_fan_gold.jpg')) {
+        src = wallpaperFanGoldUrl;
+      } else if (src.includes('wallpaper_stripe_teal_pink.jpg')) {
+        src = wallpaperStripeTealPinkUrl;
+      } else if (src.includes('wallpaper_damask_olive.jpg')) {
+        src = wallpaperDamaskOliveUrl;
+      } else if (src.includes('wallpaper_ink_bamboo_mist.jpg')) {
+        src = wallpaperInkBambooMistUrl;
+      } else if (src.includes('wallpaper_cloud_navy_gold.jpg')) {
+        src = wallpaperCloudNavyGoldUrl;
+      } else if (src.includes('wallpaper_ruyi_swirl_yellow.jpg')) {
+        src = wallpaperRuyiSwirlYellowUrl;
+      } else if (src.includes('wallpaper_floral_blue_white.jpg')) {
+        src = wallpaperFloralBlueWhiteUrl;
+      } else if (src.includes('wallpaper_seigaiha_blush.jpg')) {
+        src = wallpaperSeigaihaBlushUrl;
       }
     }
 
@@ -253,7 +339,11 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
       fileName: value.fileName,
       src: src,
       scale: Number(value.scale || 1),
-      color: value.color || fallbackColor
+      color: value.color || fallbackColor,
+      reflective: !!value.reflective,
+      reflectionLevel: value.reflectionLevel !== undefined ? Number(value.reflectionLevel) : undefined,
+      specularStrength: value.specularStrength !== undefined ? Number(value.specularStrength) : undefined,
+      specularPower: value.specularPower !== undefined ? Number(value.specularPower) : undefined
     };
   }
 
@@ -379,6 +469,9 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   if (normalized.kind === 'stained-glass') {
     const material = new BABYLON.StandardMaterial(name, scene);
     const pattern = createStainedGlassTexture(scene, name, normalized.patternScale);
+    const patternScale = resolvePatternTextureScale(normalized, options, normalized.patternScale);
+    pattern.uScale = patternScale.uScale;
+    pattern.vScale = patternScale.vScale;
     material.diffuseColor = BABYLON.Color3.White();
     material.diffuseTexture = pattern;
     material.emissiveTexture = pattern;
@@ -421,6 +514,21 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   };
 
   if (normalized.kind === 'texture' && normalized.src) {
+    if (normalized.reflective) {
+      const reflectionLevel = normalized.reflectionLevel !== undefined ? normalized.reflectionLevel : 0.55;
+      const specularStrength = normalized.specularStrength !== undefined ? normalized.specularStrength : 0.72;
+      material.reflectionTexture = createEnvironmentReflectionTexture(scene, name, reflectionLevel);
+      if (material.reflectionTexture) {
+        material.reflectionTexture.uScale = 2.0;
+        material.reflectionTexture.vScale = 2.0;
+      }
+      material.specularColor = new BABYLON.Color3(specularStrength, specularStrength, specularStrength);
+      material.specularPower = normalized.specularPower !== undefined ? normalized.specularPower : 96;
+      material.flatShading = false;
+      material.backFaceCulling = false;
+      material.twoSidedLighting = true;
+    }
+
     const invertY = normalized.invertY !== undefined ? normalized.invertY : (options.invertY !== undefined ? options.invertY : true);
     const texture = new BABYLON.Texture(
       normalized.src,
@@ -448,8 +556,11 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
         }
       }
     );
-    texture.uScale = normalized.scale || 1;
-    texture.vScale = normalized.scale || 1;
+    const textureScale = resolvePatternTextureScale(normalized, options, normalized.scale || 1);
+    texture.uScale = textureScale.uScale;
+    texture.vScale = textureScale.vScale;
+    texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
 
     if (options.isFloor) {
       // 地板材质在开始加载时，先不赋给 diffuseTexture，避免加载完成前的白色或红色格子闪烁，直接渲染底色淡棕色
@@ -458,7 +569,9 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
       material.diffuseTexture = texture;
     }
 
-    material.specularColor = options.specularColor || new BABYLON.Color3(0.08, 0.08, 0.08);
+    if (!normalized.reflective) {
+      material.specularColor = options.specularColor || new BABYLON.Color3(0.08, 0.08, 0.08);
+    }
   }
 
   return material;

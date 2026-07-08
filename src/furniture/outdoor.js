@@ -194,7 +194,7 @@ export const gazeboFurniture = {
 
 export const patioSwingFurniture = {
   type: 'patio_swing',
-  name: '庭院秋千',
+  name: '秋千',
   defaultSize: { width: 78, depth: 52, height: 78 },
   components: [
     { id: 'frame', label: '支架', defaultColor: '#5f554d' },
@@ -304,7 +304,7 @@ export const hammockStandFurniture = {
 
 export const firePitFurniture = {
   type: 'fire_pit',
-  name: '庭院火盆',
+  name: '火盆',
   defaultSize: { width: 30, depth: 30, height: 16 },
   components: [
     { id: 'bowl', label: '火盆', defaultColor: '#5f5d61' },
@@ -379,7 +379,7 @@ export const barbecueGrillFurniture = {
 
 export const patioHeaterFurniture = {
   type: 'patio_heater',
-  name: '庭院取暖器',
+  name: '取暖器',
   defaultSize: { width: 18, depth: 18, height: 84 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#7e8085' },
@@ -412,7 +412,7 @@ export const patioHeaterFurniture = {
 
 export const gardenFountainFurniture = {
   type: 'garden_fountain',
-  name: '花园喷泉',
+  name: '喷泉',
   defaultSize: { width: 32, depth: 32, height: 52 },
   components: [
     { id: 'base', label: '底盆', defaultColor: '#bcb7ae' },
@@ -603,7 +603,7 @@ export const birdbathFurniture = {
 
 export const planterBoxFurniture = {
   type: 'planter_box',
-  name: '庭院花箱',
+  name: '花箱',
   defaultSize: { width: 30, depth: 14, height: 16 },
   components: [
     { id: 'box', label: '花槽', defaultColor: '#a4734c' },
@@ -657,7 +657,7 @@ export const planterBoxFurniture = {
 
 export const raisedGardenBedFurniture = {
   type: 'raised_garden_bed',
-  name: '高架种植箱',
+  name: '种植箱',
   defaultSize: { width: 54, depth: 26, height: 22 },
   components: [
     { id: 'box', label: '种植槽', defaultColor: '#9f764f' },
@@ -691,7 +691,7 @@ export const raisedGardenBedFurniture = {
 
 export const trellisScreenFurniture = {
   type: 'trellis_screen',
-  name: '爬藤花架',
+  name: '花架',
   defaultSize: { width: 40, depth: 6, height: 78 },
   components: [
     { id: 'frame', label: '外框', defaultColor: '#826448' },
@@ -754,7 +754,7 @@ export const trellisScreenFurniture = {
 
 export const outdoorStorageBoxFurniture = {
   type: 'outdoor_storage_box',
-  name: '户外收纳箱',
+  name: '收纳箱',
   defaultSize: { width: 42, depth: 22, height: 24 },
   components: [
     { id: 'box', label: '箱体', defaultColor: '#8d775f' },
@@ -878,7 +878,7 @@ export const gardenBridgeFurniture = {
 
 export const canopyTentFurniture = {
   type: 'canopy_tent',
-  name: '折叠天幕',
+  name: '天幕',
   defaultSize: { width: 96, depth: 96, height: 96 },
   components: [
     { id: 'canopy', label: '天幕', defaultColor: '#f6f1e8' },
@@ -930,7 +930,7 @@ export const canopyTentFurniture = {
 
 export const poolsideDaybedFurniture = {
   type: 'poolside_daybed',
-  name: '泳池躺床',
+  name: '躺床',
   defaultSize: { width: 78, depth: 34, height: 34 },
   components: [
     { id: 'bed', label: '躺面', defaultColor: '#d9d2c7' },
@@ -973,7 +973,7 @@ export const poolsideDaybedFurniture = {
 
 export const pottingBenchFurniture = {
   type: 'potting_bench',
-  name: '园艺操作台',
+  name: '操作台',
   defaultSize: { width: 48, depth: 20, height: 60 },
   components: [
     { id: 'counter', label: '操作台', defaultColor: '#caa57d' },
@@ -1014,7 +1014,7 @@ export const pottingBenchFurniture = {
 
 export const landscapeMarbleFountain = {
   type: 'landscape_marble_fountain',
-  name: '石雕跌水喷泉',
+  name: '跌水喷泉',
   defaultSize: { width: 56, depth: 56, height: 60 },
   components: [
     { id: 'fountain-marble', label: '汉白玉雕座', defaultColor: '#fafafa' },
@@ -1088,7 +1088,7 @@ export const landscapeMarbleFountain = {
 
 export const landscapeEuroPondSculpture = {
   type: 'landscape_euro_pond_sculpture',
-  name: '古典水池雕塑',
+  name: '水池雕塑',
   defaultSize: { width: 64, depth: 64, height: 72 },
   components: [
     { id: 'pond-basin', label: '雕花大石盆', defaultColor: '#d7ccc8' },
@@ -1143,7 +1143,7 @@ export const landscapeEuroPondSculpture = {
 
 export const landscapeMarbleBridge = {
   type: 'landscape_marble_bridge',
-  name: '石雕小拱桥',
+  name: '石拱桥',
   defaultSize: { width: 72, depth: 30, height: 28 },
   components: [
     { id: 'bridge-marble', label: '汉白玉石桥', defaultColor: '#eceff1' },

@@ -3,7 +3,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 
 export const washingMachineFurniture = {
   type: 'washing_machine',
-  name: '滚筒洗衣机',
+  name: '洗衣机',
   defaultSize: { width: 26, depth: 26, height: 34 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#e9ecf0' },
@@ -36,7 +36,7 @@ export const washingMachineFurniture = {
 
 export const hairDryerFurniture = {
   type: 'hair_dryer',
-  name: '手持吹风机',
+  name: '吹风机',
   defaultSize: { width: 10, depth: 4, height: 10 },
   components: [
     { id: 'body', label: '风筒', defaultColor: '#d81b60' },
@@ -68,7 +68,7 @@ export const hairDryerFurniture = {
 
 export const tvFurniture = {
   type: 'tv',
-  name: '超薄电视机',
+  name: '电视机',
   defaultSize: { width: 48, depth: 10, height: 30 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#1c1d1f' },
@@ -96,7 +96,7 @@ export const tvFurniture = {
 
 export const computerFurniture = {
   type: 'computer',
-  name: '一体电脑',
+  name: '电脑',
   defaultSize: { width: 24, depth: 8, height: 18 },
   components: [
     { id: 'body', label: '机身支架', defaultColor: '#e3e8eb' },
@@ -129,7 +129,7 @@ export const computerFurniture = {
 
 export const projectorFurniture = {
   type: 'projector',
-  name: '家用投影仪',
+  name: '投影仪',
   defaultSize: { width: 10, depth: 10, height: 4 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#f5f5f5' },
@@ -198,7 +198,7 @@ export const smartSpeakerFurniture = {
 
 export const electricFanFurniture = {
   type: 'electric_fan',
-  name: '复古电风扇',
+  name: '电风扇',
   defaultSize: { width: 16, depth: 16, height: 42 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#004d40' },
@@ -248,7 +248,7 @@ export const aromaDiffuserFurniture = {
 
 export const vintageRecordPlayerFurniture = {
   type: 'vintage_record_player',
-  name: '复古唱片机',
+  name: '唱片机',
   defaultSize: { width: 20, depth: 16, height: 10 },
   components: [
     { id: 'cabinet', label: '胡桃木机箱', defaultColor: '#6d4328' },
@@ -296,7 +296,7 @@ export const vintageRecordPlayerFurniture = {
 
 export const stereoSpeakerFurniture = {
   type: 'stereo_speaker',
-  name: '复古音响',
+  name: '音响',
   defaultSize: { width: 14, depth: 12, height: 28 },
   components: [
     { id: 'cabinet', label: '木质箱体', defaultColor: '#75482e' },

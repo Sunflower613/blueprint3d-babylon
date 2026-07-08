@@ -9,7 +9,8 @@ import {
   safeName,
   wallBasis,
   wallOpeningSpans,
-  DEFAULT_WALL_THICKNESS
+  DEFAULT_WALL_THICKNESS,
+  isItemSnappedToBookshelfOrMannequin
 } from './exporterUtils.js';
 
 const PRECISION = 5;
@@ -463,6 +464,9 @@ export function stringifyDXF(floorplan) {
     }
     for (const wall of floorEntities(floorplan, 'walls', floor.id)) entities += drawWall(floorplan, wall, layers, centerX, centerZ);
     for (const item of floorEntities(floorplan, 'items', floor.id)) {
+      if (isItemSnappedToBookshelfOrMannequin(item, floorplan.items)) {
+        continue;
+      }
       const size = itemSize(item);
       const corners = itemCorners(item);
       const nameLower = (item.name || item.type || '').toLowerCase();

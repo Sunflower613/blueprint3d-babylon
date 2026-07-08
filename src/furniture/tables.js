@@ -3,7 +3,7 @@ import { boxComponent, cylinderComponent } from './_helpers.js';
 // 1. 简约餐桌 (Table)
 export const tableFurniture = {
   type: 'table',
-  name: '简约餐桌',
+  name: '餐桌',
   defaultSize: { width: 48, depth: 30, height: 30 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#ffffff' },
@@ -33,7 +33,7 @@ export const tableFurniture = {
 // 2. 原木书桌 (Desk)
 export const deskFurniture = {
   type: 'desk',
-  name: '原木书桌',
+  name: '书桌',
   defaultSize: { width: 55, depth: 24, height: 30 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#d6ab7b' },
@@ -65,7 +65,7 @@ export const deskFurniture = {
 // 3. 实木茶几 (Coffee Table)
 export const coffeeTableFurniture = {
   type: 'coffee_table',
-  name: '实木茶几',
+  name: '茶几',
   defaultSize: { width: 42, depth: 22, height: 18 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#8f7058' },
@@ -95,7 +95,7 @@ export const coffeeTableFurniture = {
 // 4. 小边几 (Side Table)
 export const sideTableFurniture = {
   type: 'side_table',
-  name: '小边几',
+  name: '边几',
   defaultSize: { width: 16, depth: 16, height: 22 },
   components: [
     { id: 'top', label: '几面', defaultColor: '#cfa170' },
@@ -125,7 +125,7 @@ export const sideTableFurniture = {
 // 5. 大圆餐桌 (Round Table)
 export const roundTableFurniture = {
   type: 'round_table',
-  name: '大圆餐桌',
+  name: '圆餐桌',
   defaultSize: { width: 54, depth: 54, height: 30 },
   components: [
     { id: 'top', label: '圆桌面', defaultColor: '#f3eedf' },
@@ -147,7 +147,7 @@ export const roundTableFurniture = {
 // 6. 多人家长餐桌 (Dining Table Long)
 export const diningTableLongFurniture = {
   type: 'dining_table_long',
-  name: '八人长餐桌',
+  name: '长餐桌',
   defaultSize: { width: 72, depth: 36, height: 30 },
   components: [
     { id: 'top', label: '长桌面', defaultColor: '#b07443' },
@@ -198,7 +198,7 @@ export const diningTableLongFurniture = {
 // 7. 玄关长条几 (Console Table)
 export const consoleTableFurniture = {
   type: 'console_table',
-  name: '玄关长条几',
+  name: '长条几',
   defaultSize: { width: 48, depth: 12, height: 32 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#ffffff' },
@@ -233,7 +233,7 @@ export const consoleTableFurniture = {
 // 8. 电竞电脑桌 (Computer Desk)
 export const computerDeskFurniture = {
   type: 'computer_desk',
-  name: '电竞电脑桌',
+  name: '电脑桌',
   defaultSize: { width: 55, depth: 26, height: 30 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#2b2d30' },
@@ -280,7 +280,7 @@ export const bedsideDeskFurniture = {
 // 10. 连体野餐桌椅 (Picnic Table)
 export const picnicTableFurniture = {
   type: 'picnic_table',
-  name: '连体野餐桌',
+  name: '野餐桌',
   defaultSize: { width: 60, depth: 60, height: 29 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#cc966c' },
@@ -356,7 +356,7 @@ export const patioDiningTableFurniture = {
 // 12. 庭院小圆桌 (Bistro Table)
 export const bistroTableFurniture = {
   type: 'bistro_table',
-  name: '庭院小圆桌',
+  name: '圆桌',
   defaultSize: { width: 26, depth: 26, height: 28 },
   components: [
     { id: 'glass', label: '玻璃台面', defaultColor: '#e0f2f1' },
@@ -433,7 +433,7 @@ export const bistroTableFurniture = {
 // 13. 藤编户外茶几 (Rattan Coffee Table)
 export const rattanCoffeeTableFurniture = {
   type: 'rattan_coffee_table',
-  name: '藤编户外茶几',
+  name: '藤编茶几',
   defaultSize: { width: 42, depth: 24, height: 18 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#cfb390' },

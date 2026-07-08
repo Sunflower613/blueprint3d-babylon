@@ -1,15 +1,3 @@
-/**
- * Furniture Configuration Index
- * 家具配置索引模块
- * 
- * 此文件负责重定向导出所有的家具定义以提供向后兼容，
- * 同时统一加载各细分子模块进行分类和通电设备特效的自动注入，
- * 提供统一的列表、字典和辅助查询/判断方法。
- */
-
-// ==========================================
-// 1. 重新导出子模块 (保障原有的直接家具导入引用不受影响)
-// ==========================================
 export * from './seating.js';
 export * from './tables.js';
 export * from './storage.js';
@@ -20,15 +8,13 @@ export * from './bathroom.js';
 export * from './textiles.js';
 export * from './decor.js';
 export * from './plants.js';
+export * from './flora.js';
 export * from './landscape.js';
 export * from './outdoor.js';
 export * from './lighting.js';
 export * from './custom.js';
 export * from './clothing.js';
 
-// ==========================================
-// 2. 导入子模块 (用于内部遍历以归档分类和构建定义字典)
-// ==========================================
 import * as seatingModule from './seating.js';
 import * as tablesModule from './tables.js';
 import * as storageModule from './storage.js';
@@ -39,20 +25,16 @@ import * as bathroomModule from './bathroom.js';
 import * as textilesModule from './textiles.js';
 import * as decorModule from './decor.js';
 import * as plantsModule from './plants.js';
+import * as floraModule from './flora.js';
 import * as landscapeModule from './landscape.js';
 import * as outdoorModule from './outdoor.js';
 import * as lightingModule from './lighting.js';
 import * as customModule from './custom.js';
 import * as clothingModule from './clothing.js';
 
-// ==========================================
-// 3. 通用常量与特效定义
-// ==========================================
-
-/** 家具类别菜单列表及对应的 SVG 图标 */
 export const FURNITURE_CATEGORIES = [
   { id: 'all', label: '全部', icon: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>' },
-  { id: 'seating', label: '坐具', icon: '<path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 11v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M5 11h14"/><path d="M2 9h20"/><path d="M6 18v2"/><path d="M18 18v2"/>' },
+  { id: 'seating', label: '座具', icon: '<path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 11v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M5 11h14"/><path d="M2 9h20"/><path d="M6 18v2"/><path d="M18 18v2"/>' },
   { id: 'tables', label: '桌台', icon: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>' },
   { id: 'storage', label: '储物', icon: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" x2="14" y1="12" y2="12"/>' },
   { id: 'bedroom', label: '卧室', icon: '<path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/>' },
@@ -62,14 +44,14 @@ export const FURNITURE_CATEGORIES = [
   { id: 'textiles', label: '布艺', icon: '<path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="m16 8-8 8M12 6v12M6 12h12"/>' },
   { id: 'decor', label: '装饰', icon: '<path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4Z"/><path d="M12 10H8a4 4 0 0 0-4 4 4 4 0 0 0 4 4h4Z"/><path d="M12 10h4a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-4Z"/><path d="M12 10v4a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-4Z"/><path d="M12 10V6a4 4 0 0 0-4-4 4 4 0 0 0-4 6v4Z"/><path d="M12 10v12"/>' },
   { id: 'plants', label: '盆栽', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
+  { id: 'flora', label: '草木', icon: '<path d="M12 21V11"/><path d="M7 14c0-3 2-5 5-6"/><path d="M17 14c0-3-2-5-5-6"/><path d="M8 19c0-2 1.5-3.5 4-4"/><path d="M16 19c0-2-1.5-3.5-4-4"/>' },
   { id: 'landscape', label: '景观', icon: '<path d="M2 20h20M5 17l4-8 5 10M11 17l5-10 6 10"/>' },
-  { id: 'outdoor', label: '室外', icon: '<path d="M12 3v18"/><path d="M5 9c0-3.5 3.1-6 7-6s7 2.5 7 6c0 0-2 1-7 1S5 9 5 9Z"/><path d="M8 21h8"/>' },
+  { id: 'outdoor', label: '户外', icon: '<path d="M12 3v18"/><path d="M5 9c0-3.5 3.1-6 7-6s7 2.5 7 6c0 0-2 1-7 1S5 9 5 9Z"/><path d="M8 21h8"/>' },
   { id: 'lighting', label: '灯具', icon: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22h8"/><path d="m16 18-2.25-2.25"/>' },
   { id: 'clothing', label: '服饰', icon: '<path d="M2 17h20a1 1 0 0 0 .7-1.7l-9.3-9.3c.4-.7.6-1.5.6-2.3a3 3 0 1 0-6 0c0 .8.2 1.6.6 2.3L1.3 15.3A1 1 0 0 0 2 17Z"/>' },
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' }
 ];
 
-/** 家电设备可配置的通电发光/运动/声音特效字典 */
 export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   washing_machine: { label: '洗衣机', glowComponents: ['panel', 'glass'], color: '#4fc3f7', pulse: true },
   tv: { label: '电视机', glowComponents: ['screen'], color: '#64b5f6', pulse: true },
@@ -83,12 +65,21 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   game_console: { label: '游戏主机', glowComponents: ['accent'], color: '#2979ff', pulse: true },
   smart_speaker: { label: '智能音箱', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },
   vintage_record_player: {
-    label: '复古唱片机', glowComponents: ['accent'], color: '#f7c873', pulse: true,
-    spinNodes: ['turntable'], spinSpeed: 2.2, audio: 'healing'
+    label: '复古唱片机',
+    glowComponents: ['accent'],
+    color: '#f7c873',
+    pulse: true,
+    spinNodes: ['turntable'],
+    spinSpeed: 2.2,
+    audio: 'healing'
   },
   stereo_speaker: {
-    label: '复古音响', glowComponents: ['accent'], color: '#77ddaa', pulse: true,
-    pulseScaleComponents: ['woofer'], audio: 'healing'
+    label: '复古音响',
+    glowComponents: ['accent'],
+    color: '#77ddaa',
+    pulse: true,
+    pulseScaleComponents: ['woofer'],
+    audio: 'healing'
   },
   electric_fan: { label: '电风扇', glowComponents: ['base'], color: '#80cbc4', motion: 'oscillate' },
   aroma_diffuser: { label: '香薰机', glowComponents: ['body'], color: '#b2ebf2', pulse: true },
@@ -107,15 +98,8 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   blender: { label: '搅拌机', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' }
 });
 
-// ==========================================
-// 4. 家具对象装载与自动分类处理
-// ==========================================
-
-/** 所有有效家具定义的全局查重词典 */
 export const FURNITURE_DEFINITIONS = {};
-const allFurniture = [];
 
-// 配置子文件模块与分类的关联关系，实现 100% 按文件名称自然对应
 const furnitureModules = [
   { module: seatingModule, category: 'seating' },
   { module: tablesModule, category: 'tables' },
@@ -127,6 +111,7 @@ const furnitureModules = [
   { module: textilesModule, category: 'textiles' },
   { module: decorModule, category: 'decor' },
   { module: plantsModule, category: 'plants' },
+  { module: floraModule, category: 'flora' },
   { module: landscapeModule, category: 'landscape' },
   { module: outdoorModule, category: 'outdoor' },
   { module: lightingModule, category: 'lighting' },
@@ -134,48 +119,27 @@ const furnitureModules = [
   { module: clothingModule, category: 'clothing' }
 ];
 
-// 动态处理各个模块的导出项
-furnitureModules.forEach(({ module, category }) => {
-  Object.values(module).forEach(item => {
-    // 过滤出合法有效的家具配置对象（通常包含 type 属性）
-    if (item && typeof item === 'object' && item.type) {
-      // 1. 直接以模块映射的分类作为家具分类
-      item.category = category;
+for (const { module, category } of furnitureModules) {
+  for (const item of Object.values(module)) {
+    if (!item || typeof item !== 'object' || !item.type) continue;
 
-      // 2. 检查是否在通电设备字典中，若存在则自动配置可通电开关选项与特效参数
-      if (APPLIANCE_POWER_EFFECTS[item.type]) {
-        item.isSwitchable = true;
-        item.powerEffect = APPLIANCE_POWER_EFFECTS[item.type];
-      }
+    item.category = category;
 
-      // 3. 添加到大列表中，并存入去重查询字典中
-      allFurniture.push(item);
-      FURNITURE_DEFINITIONS[item.type] = item;
+    if (APPLIANCE_POWER_EFFECTS[item.type]) {
+      item.isSwitchable = true;
+      item.powerEffect = APPLIANCE_POWER_EFFECTS[item.type];
     }
-  });
-});
 
-/** 所有家具定义的完整列表 */
+    FURNITURE_DEFINITIONS[item.type] = item;
+  }
+}
+
 export const FURNITURE_LIST = Object.values(FURNITURE_DEFINITIONS);
 
-// ==========================================
-// 5. 辅助方法与判断接口
-// ==========================================
-
-/**
- * 根据类型获取家具定义
- * @param {string} type 家具类型标识
- * @returns {object} 家具定义对象，未找到时默认返回简约木桌定义
- */
 export function getFurnitureDefinition(type) {
   return FURNITURE_DEFINITIONS[type] || tablesModule.tableFurniture;
 }
 
-/**
- * 判断家具是否为可通电/可发光控制状态
- * @param {object} definition 家具定义
- * @returns {boolean} 是否可被控制
- */
 export function isPowerControllable(definition) {
   return !!definition && (
     definition.isSwitchable === true ||
@@ -185,11 +149,6 @@ export function isPowerControllable(definition) {
   );
 }
 
-/**
- * 判断家电设备是否处于开启通电状态
- * @param {object} item 场景中的放置项实例
- * @returns {boolean} 是否开启
- */
 export function isAppliancePowerOn(item) {
   return item?.isOn === true;
 }

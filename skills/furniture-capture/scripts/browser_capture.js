@@ -12,6 +12,9 @@
   // 是否使用默认内置的最佳 3D 视角（免刷新、免手动调，直接一键截图落盘）
   const USE_DEFAULT_CAMERA = true;
 
+  // 过滤截图的分类，如果要截图所有设为 'all'，如果只截草木设为 'flora'
+  const CAPTURE_CATEGORY = 'all';
+
   // 内置的默认最佳 3D 视角数据（旋转 180 度以纠正视角至对面正面）
   const DEFAULT_CAMERA = {
     alpha: -1.0471975511965976 + Math.PI,
@@ -47,6 +50,9 @@
   }
 
   const { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, editHandleNodes, entityManager, BABYLON } = await import('./app.js');
+
+  // 强行挂载全局变量以防止任何可能隐藏在模型 build 里的隐式 scene 引用报错
+  window.scene = scene;
 
   console.log("已恢复用户最新调好的视角，开始重新高清晰微距截图（含 150ms 延迟防白屏）...");
 
@@ -114,8 +120,12 @@
     }
   }
 
-  // 5. 遍历并拍照
-  for (const def of FURNITURE_LIST) {
+  // 5. 遍历并拍照 (过滤指定的家具分类)
+  const itemsToCapture = CAPTURE_CATEGORY === 'all'
+    ? FURNITURE_LIST
+    : FURNITURE_LIST.filter(def => def.category === CAPTURE_CATEGORY);
+
+  for (const def of itemsToCapture) {
     console.log(`正在截图: ${def.name} (${def.type})`);
     
     testMap.loadJSON(emptyScene);

@@ -2,7 +2,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 
 export const rugFurniture = {
   type: 'rug',
-  name: '亲肤地毯',
+  name: '方形地毯',
   defaultSize: { width: 60, depth: 84, height: 0.4 },
   components: [
     { id: 'fabric', label: '地毯织面', defaultColor: '#8fa6cc' }
@@ -17,7 +17,7 @@ export const rugFurniture = {
 
 export const ovalRugFurniture = {
   type: 'oval_rug',
-  name: '椭圆地毯',
+  name: '圆形地毯',
   defaultSize: { width: 60, depth: 84, height: 0.4 },
   components: [
     { id: 'fabric', label: '地毯织面', defaultColor: '#8fa6cc' }
@@ -73,7 +73,7 @@ export const roundedRugFurniture = {
 
 export const curtainFurniture = {
   type: 'curtain',
-  name: '垂地窗帘',
+  name: '窗帘',
   defaultSize: { width: 48, depth: 2, height: 80 },
   placeType: 'wall',
   isSwitchable: true,
@@ -121,7 +121,7 @@ export const curtainFurniture = {
 
 export const cushionFurniture = {
   type: 'cushion',
-  name: '羽绒靠枕',
+  name: '靠枕',
   defaultSize: { width: 16, depth: 16, height: 6 },
   components: [
     { id: 'fabric', label: '棉麻枕套', defaultColor: '#ffbe73' }
@@ -136,7 +136,7 @@ export const cushionFurniture = {
 
 export const singleBlackoutCurtainFurniture = {
   type: 'single_blackout_curtain',
-  name: '简约单开帘',
+  name: '单开帘',
   defaultSize: { width: 48, depth: 3, height: 80 },
   placeType: 'wall',
   isSwitchable: true,
@@ -178,7 +178,7 @@ export const singleBlackoutCurtainFurniture = {
 
 export const doubleSheerCurtainFurniture = {
   type: 'double_sheer_curtain',
-  name: '轻奢双开纱帘',
+  name: '双开帘',
   defaultSize: { width: 48, depth: 2, height: 80 },
   placeType: 'wall',
   isSwitchable: true,
@@ -231,7 +231,7 @@ export const doubleSheerCurtainFurniture = {
 
 export const venetianBlindFurniture = {
   type: 'venetian_blind',
-  name: '百叶折帘',
+  name: '百叶帘',
   defaultSize: { width: 36, depth: 2, height: 48 },
   placeType: 'wall',
   isSwitchable: true,
@@ -281,7 +281,7 @@ export const venetianBlindFurniture = {
 
 export const rollerBlindFurniture = {
   type: 'roller_blind',
-  name: '防晒卷帘',
+  name: '卷帘',
   defaultSize: { width: 36, depth: 2, height: 48 },
   placeType: 'wall',
   isSwitchable: true,
@@ -322,7 +322,7 @@ export const rollerBlindFurniture = {
 
 export const romanShadeFurniture = {
   type: 'roman_shade',
-  name: '罗马折叠帘',
+  name: '罗马帘',
   defaultSize: { width: 36, depth: 2, height: 48 },
   placeType: 'wall',
   isSwitchable: true,
@@ -387,7 +387,7 @@ export const verticalBlindFurniture = {
 
 export const chineseBambooBlindFurniture = {
   type: 'chinese_bamboo_blind',
-  name: '中式竹挂帘',
+  name: '竹帘',
   defaultSize: { width: 36, depth: 1.5, height: 48 },
   placeType: 'wall',
   isSwitchable: true,
@@ -432,7 +432,7 @@ export const chineseBambooBlindFurniture = {
 
 export const luxuryValanceCurtainFurniture = {
   type: 'luxury_valance_curtain',
-  name: '豪帘头欧式帘',
+  name: '欧式帘',
   defaultSize: { width: 54, depth: 4, height: 80 },
   placeType: 'wall',
   isSwitchable: true,
@@ -474,7 +474,7 @@ export const luxuryValanceCurtainFurniture = {
 
 export const cafeShortCurtainFurniture = {
   type: 'cafe_short_curtain',
-  name: '半腰咖啡帘',
+  name: '咖啡帘',
   defaultSize: { width: 36, depth: 1.5, height: 24 },
   placeType: 'wall',
   isSwitchable: true,
@@ -514,7 +514,7 @@ export const cafeShortCurtainFurniture = {
 
 export const japaneseNorenCurtainFurniture = {
   type: 'japanese_noren_curtain',
-  name: '日式门暖帘',
+  name: '日式暖帘',
   defaultSize: { width: 32, depth: 1.5, height: 40 },
   placeType: 'wall',
   isSwitchable: true,

@@ -116,6 +116,20 @@ export function isLightingTarget(target) {
   return !!(def && (def.category === 'lighting' || def.lightSource));
 }
 
+function getSeasonalItemMeta(target) {
+  if (!target || target.type !== 'item') return null;
+  const item = ctx.testMap.getItem(target.id);
+  if (!item) return null;
+  const def = ctx.testMap.getFurnitureDefinition(item.type);
+  const seasonOptions = def?.seasonOptions || [];
+  if (!seasonOptions.length) return null;
+
+  const fallbackSeason = def.defaultSeason || seasonOptions[0].value;
+  const currentSeason = seasonOptions.find((option) => option.value === item.season)?.value || fallbackSeason;
+  const currentLabel = seasonOptions.find((option) => option.value === currentSeason)?.label || currentSeason;
+  return { currentSeason, currentLabel };
+}
+
 export function pickColorFromContextMenu(target) {
   extractMaterial(target, false);
 }
@@ -126,6 +140,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
   const isMirrorable = ['item', 'roof', 'stairs', 'opening', 'fence_gate', 'fence'].includes(target.type);
   const isSwitchable = isSwitchableTarget(target);
   const isLighting = isLightingTarget(target);
+  const seasonalMeta = getSeasonalItemMeta(target);
   const isLocked = isTargetLocked(target);
 
   const isDoorLike = (target.type === 'fence_gate') || (target.type === 'opening' && ctx.testMap.getOpening(target.id)?.type === 'door');
@@ -215,6 +230,12 @@ export function showObjectContextMenu(target, clientX, clientY) {
       title: '开关', 
       disabled: isLocked,
       onClick: () => toggleTarget(target) 
+    },
+    seasonalMeta && {
+      icon: { name: 'season', active: seasonalMeta.currentSeason },
+      title: `季节：${seasonalMeta.currentLabel}`,
+      disabled: isLocked,
+      onClick: () => ctx.entityManager.cycleItemSeason(target.id)
     },
     isDoor && {
       icon: isPanelHidden ? 'eye' : 'eye_off',

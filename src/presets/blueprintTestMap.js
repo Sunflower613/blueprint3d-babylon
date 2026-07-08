@@ -2839,7 +2839,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (!item || item.locked) return item;
     Object.assign(item, patch);
     const oldNode = this.itemNodes.get(itemId);
-    if (oldNode) oldNode.dispose(false, true);
+    if (oldNode) oldNode.dispose(false, false);
     this.itemNodes.delete(itemId);
     this.buildItem(item);
     this.setSelectedItem(this.selectedItemId);
@@ -2876,7 +2876,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (!item || item.locked) return false;
     this.floorplan.items = this.floorplan.items.filter((candidate) => candidate.id !== itemId);
     const oldNode = this.itemNodes.get(itemId);
-    if (oldNode) oldNode.dispose(false, true);
+    if (oldNode) oldNode.dispose(false, false);
     this.itemNodes.delete(itemId);
     return true;
   }

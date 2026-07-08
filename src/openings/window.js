@@ -6,12 +6,13 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
   const height = options.height || opening.height || 0.85;
   const frameT = options.frameT || 0.2;
   const frameW = options.frameW || 0.04;
+  const materialOptions = { surfaceWidth: width, surfaceHeight: height };
   // 支持 per-opening 自定义材质
   const frameMat = opening.frameMaterial
-    ? createBlueprintMaterial(registry.scene, `win_frame_${opening.id}`, opening.frameMaterial)
+    ? createBlueprintMaterial(registry.scene, `win_frame_${opening.id}`, opening.frameMaterial, materialOptions)
     : registry.materials.trim;
   const glassMat = opening.glassMaterial
-    ? createBlueprintMaterial(registry.scene, `win_glass_mat_${opening.id}`, opening.glassMaterial)
+    ? createBlueprintMaterial(registry.scene, `win_glass_mat_${opening.id}`, opening.glassMaterial, materialOptions)
     : registry.materials.window;
 
   buildOpeningFrame(registry, opening, parent, {

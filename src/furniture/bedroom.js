@@ -42,7 +42,7 @@ export const bedFurniture = {
 // 2. 现代双人床 (Bed Double)
 export const bedDoubleFurniture = {
   type: 'bed_double',
-  name: '现代双人床',
+  name: '双人床',
   defaultSize: { width: 80, depth: 88, height: 46 },
   components: [
     { id: 'frame', label: '床底框', defaultColor: '#6e5948' },
@@ -94,7 +94,7 @@ export const bedDoubleFurniture = {
 // 3. 简约单人床 (Bed Single)
 export const bedSingleFurniture = {
   type: 'bed_single',
-  name: '简约单人床',
+  name: '单人床',
   defaultSize: { width: 44, depth: 80, height: 36 },
   components: [
     { id: 'frame', label: '床架', defaultColor: '#cccccc' },
@@ -137,7 +137,7 @@ export const bedSingleFurniture = {
 // 4. 婴儿护栏床 (Crib)
 export const cribFurniture = {
   type: 'crib',
-  name: '婴儿护栏床',
+  name: '婴儿床',
   defaultSize: { width: 30, depth: 48, height: 36 },
   components: [
     { id: 'frame', label: '护栏外框', defaultColor: '#ebdcc5' },
@@ -180,7 +180,7 @@ export const cribFurniture = {
 // 5. 上下铺双层床 (Bunk Bed)
 export const bunkBedFurniture = {
   type: 'bunk_bed',
-  name: '上下铺双层床',
+  name: '双层床',
   defaultSize: { width: 42, depth: 80, height: 68 },
   components: [
     { id: 'frame', label: '木质梯架', defaultColor: '#aa7f55' },
@@ -249,7 +249,7 @@ export const bunkBedFurniture = {
 // 6. 榻榻米床垫 (Mattress)
 export const mattressFurniture = {
   type: 'mattress',
-  name: '榻榻米床垫',
+  name: '床垫',
   defaultSize: { width: 60, depth: 80, height: 6 },
   components: [
     { id: 'body', label: '床垫布面', defaultColor: '#f0e8dc' },
@@ -270,7 +270,7 @@ export const mattressFurniture = {
 // 7. 四柱幔帐床 (Canopy Bed)
 export const canopyBedFurniture = {
   type: 'canopy_bed',
-  name: '四柱幔帐床',
+  name: '幔帐床',
   defaultSize: { width: 80, depth: 88, height: 84 },
   components: [
     { id: 'frame', label: '四柱高架', defaultColor: '#2e2b29' },
@@ -313,7 +313,7 @@ export const canopyBedFurniture = {
 // 8. 梳妆台 (Vanity)
 export const vanityFurniture = {
   type: 'vanity',
-  name: '多功能梳妆台',
+  name: '梳妆台',
   defaultSize: { width: 36, depth: 18, height: 52 },
   isMirror: true,
   components: [
@@ -352,7 +352,7 @@ export const vanityFurniture = {
 // 9. 卧室吊椅 (Hammock)
 export const hammockFurniture = {
   type: 'hammock',
-  name: '室内吊椅',
+  name: '吊椅',
   defaultSize: { width: 24, depth: 60, height: 32 },
   components: [
     { id: 'stand', label: '悬挂支脚', defaultColor: '#404040' },
@@ -379,7 +379,7 @@ export const hammockFurniture = {
 // 10. 床尾长凳 (Bed Bench)
 export const bedBenchFurniture = {
   type: 'bed_bench',
-  name: '床尾收纳凳',
+  name: '收纳凳',
   defaultSize: { width: 54, depth: 16, height: 18 },
   components: [
     { id: 'seat', label: '皮革软包', defaultColor: '#e2decb' },
@@ -406,7 +406,7 @@ export const bedBenchFurniture = {
 // 11. 梳妆化妆品组 (Cosmetics)
 export const cosmeticsFurniture = {
   type: 'cosmetics',
-  name: '化妆品组合',
+  name: '化妆品',
   defaultSize: { width: 10, depth: 8, height: 8 },
   components: [
     { id: 'tray', label: '收纳托盘', defaultColor: '#d4af37' },
@@ -435,7 +435,7 @@ export const cosmeticsFurniture = {
 // 12. 桌面文具盒 (Stationery)
 export const stationeryFurniture = {
   type: 'stationery',
-  name: '桌面文具盒',
+  name: '文具盒',
   defaultSize: { width: 12, depth: 10, height: 6 },
   components: [
     { id: 'book', label: '笔记本笔记本电脑', defaultColor: '#fd7e14' },
@@ -467,7 +467,7 @@ export const stationeryFurniture = {
 // 13. 眼影盘与散粉 (eyeshadowCompact)
 export const eyeshadowCompactFurniture = {
   type: 'eyeshadow_compact',
-  name: '眼影盘与散粉',
+  name: '眼影盘',
   defaultSize: { width: 6, depth: 6, height: 3 },
   components: [
     { id: 'eyeshadow', label: '眼影盘', defaultColor: '#3e2723' },
@@ -492,7 +492,7 @@ export const eyeshadowCompactFurniture = {
 // 14. 高端香水瓶 (luxuryPerfumes)
 export const luxuryPerfumesFurniture = {
   type: 'luxury_perfumes',
-  name: '高端香水瓶',
+  name: '香水瓶',
   defaultSize: { width: 8, depth: 6, height: 6 },
   components: [
     { id: 'bottleA', label: '玫瑰粉香水', defaultColor: '#f48fb1' },
@@ -521,7 +521,7 @@ export const luxuryPerfumesFurniture = {
 // 15. 保湿护肤套装 (skincareSet)
 export const skincareSetFurniture = {
   type: 'skincare_set',
-  name: '保湿护肤套装',
+  name: '护肤套装',
   defaultSize: { width: 8, depth: 8, height: 8 },
   components: [
     { id: 'holder', label: '收纳架', defaultColor: '#cfd8dc' },
@@ -583,7 +583,7 @@ export const makeupBrushesFurniture = {
 // 17. 口红与指甲油 (lipstickNailPolish)
 export const lipstickNailPolishFurniture = {
   type: 'lipstick_nail_polish',
-  name: '口红与指甲油',
+  name: '口红',
   defaultSize: { width: 6, depth: 4, height: 6 },
   components: [
     { id: 'lipstick', label: '口红', defaultColor: '#d81b60' },
@@ -612,7 +612,7 @@ export const lipstickNailPolishFurniture = {
 // 18. 桌面台历 (deskCalendar)
 export const deskCalendarFurniture = {
   type: 'desk_calendar',
-  name: '桌面台历',
+  name: '台历',
   defaultSize: { width: 8, depth: 4, height: 6 },
   components: [
     { id: 'stand', label: '折叠支架', defaultColor: '#795548' },
@@ -639,7 +639,7 @@ export const deskCalendarFurniture = {
 // 19. 多层木纹笔架 (woodenPenStand)
 export const woodenPenStandFurniture = {
   type: 'wooden_pen_stand',
-  name: '木纹笔架',
+  name: '笔架',
   defaultSize: { width: 8, depth: 6, height: 8 },
   components: [
     { id: 'body', label: '木架身', defaultColor: '#a1887f' },
@@ -660,13 +660,13 @@ export const woodenPenStandFurniture = {
   }
 };
 
-// 20. 科学计算器 (calculator)
+// 20. 计算器 (calculator)
 export const calculatorFurniture = {
   type: 'calculator',
-  name: '科学计算器',
+  name: '计算器',
   defaultSize: { width: 6, depth: 8, height: 2 },
   components: [
-    { id: 'body', label: '计算器身', defaultColor: '#455a64' },
+    { id: 'body', label: '外壳', defaultColor: '#455a64' },
     { id: 'screen', label: '绿背光屏幕', defaultColor: '#9ccc65' },
     { id: 'buttons', label: '按键', defaultColor: '#eceff1' }
   ],
@@ -717,7 +717,7 @@ export const staplerNotesFurniture = {
 // 22. 签字笔底座 (premiumDeskPen)
 export const premiumDeskPenFurniture = {
   type: 'premium_desk_pen',
-  name: '签字笔底座',
+  name: '签字笔',
   defaultSize: { width: 6, depth: 6, height: 10 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#37474f' },

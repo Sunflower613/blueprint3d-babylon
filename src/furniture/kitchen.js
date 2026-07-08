@@ -2,7 +2,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 
 export const fridgeFurniture = {
   type: 'fridge',
-  name: '双门冰箱',
+  name: '冰箱',
   defaultSize: { width: 32, depth: 30, height: 70 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#c7cfd6' },
@@ -144,7 +144,7 @@ export const microwaveFurniture = {
 
 export const stoveFurniture = {
   type: 'stove',
-  name: '燃气灶橱柜',
+  name: '燃气灶',
   defaultSize: { width: 36, depth: 24, height: 36 },
   components: [
     { id: 'cabinet', label: '底柜', defaultColor: '#ebe7db' },
@@ -290,7 +290,7 @@ export const electricKettleFurniture = {
 
 export const dishwasherFurniture = {
   type: 'dishwasher',
-  name: '台式洗碗机',
+  name: '洗碗机',
   defaultSize: { width: 22, depth: 20, height: 18 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#eceff1' },
@@ -314,7 +314,7 @@ export const dishwasherFurniture = {
 
 export const waterDispenserFurniture = {
   type: 'water_dispenser',
-  name: '立式饮水机',
+  name: '饮水机',
   defaultSize: { width: 12, depth: 12, height: 42 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#ffffff' },
@@ -342,7 +342,7 @@ export const waterDispenserFurniture = {
 
 export const riceCookerFurniture = {
   type: 'rice_cooker',
-  name: '智能电饭煲',
+  name: '电饭煲',
   defaultSize: { width: 11, depth: 13, height: 10 },
   components: [
     { id: 'body', label: '外壳', defaultColor: '#f5f5f5' },
@@ -390,7 +390,7 @@ export const airFryerFurniture = {
 
 export const blenderFurniture = {
   type: 'blender',
-  name: '破壁搅拌机',
+  name: '搅拌机',
   defaultSize: { width: 8, depth: 8, height: 16 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#263238' },
@@ -414,7 +414,7 @@ export const blenderFurniture = {
 
 export const kitchenwareFurniture = {
   type: 'kitchenware',
-  name: '沥水餐具架',
+  name: '餐具架',
   defaultSize: { width: 14, depth: 10, height: 8 },
   components: [
     { id: 'rack', label: '沥水架', defaultColor: '#78909c' },
@@ -447,7 +447,7 @@ export const kitchenwareFurniture = {
 
 export const knifeBlockFurniture = {
   type: 'knife_block',
-  name: '木质刀架',
+  name: '刀架',
   defaultSize: { width: 6, depth: 8, height: 10 },
   components: [
     { id: 'block', label: '刀架木座', defaultColor: '#a1887f' },
@@ -473,7 +473,7 @@ export const knifeBlockFurniture = {
 
 export const spiceRackFurniture = {
   type: 'spice_rack',
-  name: '多层调料架',
+  name: '调料架',
   defaultSize: { width: 12, depth: 6, height: 12 },
   components: [
     { id: 'frame', label: '架体', defaultColor: '#607d8b' },
@@ -504,7 +504,7 @@ export const spiceRackFurniture = {
 
 export const kitchenHooksFurniture = {
   type: 'kitchen_hooks',
-  name: '挂钩排架',
+  name: '挂钩架',
   defaultSize: { width: 18, depth: 2, height: 4 },
   placeType: 'wall',
   components: [

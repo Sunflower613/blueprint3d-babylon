@@ -1,4 +1,4 @@
-import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js';
+import { boxComponent, cylinderComponent, sphereComponent, getComponentMaterial, markComponent } from './_helpers.js';
 import { MeshBuilder } from '../core/babylon.js';
 
 const BABYLON = { MeshBuilder };
@@ -27,12 +27,12 @@ export const paintingFurniture = {
 
 export const circularPaintingFurniture = {
   type: 'circular_painting',
-  name: '雅致圆形挂画',
+  name: '圆形挂画',
   placeType: 'wall',
   defaultSize: { width: 24, depth: 1.2, height: 24 },
   components: [
-    { id: 'frame', label: '新中式画框', defaultColor: '#3e2723' },
-    { id: 'canvas', label: '写意画芯', defaultColor: '#f7f4eb' }
+    { id: 'frame', label: '画框', defaultColor: '#3e2723' },
+    { id: 'canvas', label: '画布', defaultColor: '#f7f4eb' }
   ],
   build(registry, item, node, size) {
     // 1. 画框（圆环）
@@ -138,7 +138,7 @@ export const mirrorWallFurniture = {
 
 export const mirrorFramedWallFurniture = {
   type: 'mirror_framed_wall',
-  name: '装饰墙镜',
+  name: '墙镜',
   defaultSize: { width: 24, depth: 1.2, height: 32 },
   placeType: 'wall',
   isMirror: true,
@@ -185,7 +185,7 @@ export const mirrorFramedWallFurniture = {
 
 export const mirrorRoundWallFurniture = {
   type: 'mirror_round_wall',
-  name: '圆形装饰镜',
+  name: '圆形墙镜',
   defaultSize: { width: 24, depth: 1.2, height: 24 },
   placeType: 'wall',
   isMirror: true,
@@ -222,7 +222,7 @@ export const mirrorRoundWallFurniture = {
 
 export const mirrorRoundedWallFurniture = {
   type: 'mirror_rounded_wall',
-  name: '圆角装饰镜',
+  name: '圆角墙镜',
   defaultSize: { width: 24, depth: 1.2, height: 32 },
   placeType: 'wall',
   isMirror: true,
@@ -334,7 +334,7 @@ export const mirrorRoundedWallFurniture = {
 
 export const clockFurniture = {
   type: 'clock',
-  name: '挂壁圆钟',
+  name: '壁钟',
   defaultSize: { width: 12, depth: 1, height: 12 },
   components: [
     { id: 'face', label: '钟白表盘', defaultColor: '#ffffff' },
@@ -365,7 +365,7 @@ export const clockFurniture = {
 
 export const mannequinFurniture = {
   type: 'mannequin',
-  name: '艺术木偶',
+  name: '木偶',
   defaultSize: { width: 14, depth: 14, height: 68 }, // 约 1.70 米
   components: [
     { id: 'wood', label: '木质构件', defaultColor: '#f2f2f2' }
@@ -508,7 +508,7 @@ export const mannequinFurniture = {
 
 export const booksStackFurniture = {
   type: 'books_stack',
-  name: '叠放书籍摆件',
+  name: '书堆',
   defaultSize: { width: 22, depth: 18, height: 10 },
   components: [
     { id: 'book-bottom', label: '底册经典红', defaultColor: '#c62828' },
@@ -538,7 +538,7 @@ export const booksStackFurniture = {
 
 export const sculptureFurniture = {
   type: 'sculpture',
-  name: '现代抽象雕塑',
+  name: '抽象雕塑',
   defaultSize: { width: 16, depth: 16, height: 32 },
   components: [
     { id: 'sculpture-base', label: '爵士黑底座', defaultColor: '#212121' },
@@ -566,7 +566,7 @@ export const sculptureFurniture = {
 
 export const triptychPaintingFurniture = {
   type: 'triptych_painting',
-  name: '现代三联画',
+  name: '三联画',
   defaultSize: { width: 60, depth: 1.5, height: 30 },
   placeType: 'wall',
   components: [
@@ -604,7 +604,7 @@ export const triptychPaintingFurniture = {
 
 export const landscapePaintingFurniture = {
   type: 'landscape_painting',
-  name: '横版山水画',
+  name: '山水画',
   defaultSize: { width: 72, depth: 1.5, height: 24 },
   placeType: 'wall',
   components: [
@@ -648,7 +648,7 @@ export const tissueBoxFurniture = {
 
 export const wallClockFurniture = {
   type: 'wall_clock',
-  name: '静音挂钟',
+  name: '挂钟',
   defaultSize: { width: 12, depth: 1.5, height: 12 },
   placeType: 'wall',
   components: [
@@ -673,7 +673,7 @@ export const wallClockFurniture = {
 
 export const booksFullRowFurniture = {
   type: 'books_full_row',
-  name: '满层书籍摆件',
+  name: '图书',
   category: 'decor',
   defaultSize: { width: 30, depth: 10, height: 10 },
   components: [
@@ -712,7 +712,7 @@ export const booksFullRowFurniture = {
 
 export const miniCactusFurniture = {
   type: 'mini_cactus',
-  name: '迷你仙人球盆栽',
+  name: '小仙人球',
   category: 'decor',
   defaultSize: { width: 6, depth: 6, height: 8 },
   components: [
@@ -740,12 +740,12 @@ export const miniCactusFurniture = {
 
 export const photoFrameFurniture = {
   type: 'photo_frame',
-  name: '木质艺术相框',
+  name: '相框',
   category: 'decor',
   defaultSize: { width: 8, depth: 3, height: 10 },
   components: [
-    { id: 'frame', label: '胡桃木框体', defaultColor: '#8d6e63' },
-    { id: 'photo', label: '框内相纸', defaultColor: '#eceff1' }
+    { id: 'frame', label: '外框', defaultColor: '#8d6e63' },
+    { id: 'photo', label: '相纸', defaultColor: '#eceff1' }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, photoFrameFurniture, 'frame', {
@@ -762,7 +762,7 @@ export const photoFrameFurniture = {
 
 export const hourglassFurniture = {
   type: 'hourglass',
-  name: '复古沙漏摆件',
+  name: '沙漏',
   category: 'decor',
   defaultSize: { width: 6, depth: 6, height: 10 },
   components: [
@@ -803,7 +803,7 @@ export const hourglassFurniture = {
 
 export const storageBasketFurniture = {
   type: 'storage_basket',
-  name: '藤编收纳筐',
+  name: '收纳筐',
   category: 'decor',
   defaultSize: { width: 12, depth: 10, height: 8 },
   components: [
@@ -847,7 +847,7 @@ export const storageBasketFurniture = {
 
 export const scentedCandleFurniture = {
   type: 'scented_candle',
-  name: '香薰蜡烛摆件',
+  name: '香薰蜡烛',
   category: 'decor',
   defaultSize: { width: 5, depth: 5, height: 6 },
   components: [
@@ -873,7 +873,7 @@ export const scentedCandleFurniture = {
 
 export const crystalBallFurniture = {
   type: 'crystal_ball',
-  name: '水晶球音乐盒',
+  name: '音乐盒',
   category: 'decor',
   defaultSize: { width: 6, depth: 6, height: 8 },
   components: [
@@ -895,7 +895,7 @@ export const crystalBallFurniture = {
 
 export const goldTrophyFurniture = {
   type: 'gold_trophy',
-  name: '金色奖杯摆件',
+  name: '奖杯',
   category: 'decor',
   defaultSize: { width: 8, depth: 6, height: 12 },
   components: [
@@ -922,7 +922,7 @@ export const goldTrophyFurniture = {
 
 export const globeFurniture = {
   type: 'globe',
-  name: '复古地球仪摆件',
+  name: '地球仪',
   category: 'decor',
   defaultSize: { width: 10, depth: 10, height: 14 },
   components: [
@@ -954,7 +954,7 @@ export const globeFurniture = {
 
 export const gypsumBustFurniture = {
   type: 'gypsum_bust',
-  name: '艺术石膏人像',
+  name: '石膏像',
   category: 'decor',
   defaultSize: { width: 8, depth: 8, height: 12 },
   components: [
@@ -975,7 +975,7 @@ export const gypsumBustFurniture = {
 
 export const piggyBankFurniture = {
   type: 'piggy_bank',
-  name: '卡通小猪存钱罐',
+  name: '存钱罐',
   category: 'decor',
   defaultSize: { width: 8, depth: 8, height: 8 },
   components: [
@@ -999,7 +999,7 @@ export const piggyBankFurniture = {
 
 export const windChimeFurniture = {
   type: 'wind_chime',
-  name: '古朴风铃',
+  name: '风铃',
   category: 'decor',
   defaultSize: { width: 8, depth: 8, height: 30 },
   placeType: 'ceiling',
@@ -1041,7 +1041,7 @@ export const windChimeFurniture = {
 };
 export const landscapeRockeryAquarium = {
   type: 'landscape_rockery_aquarium',
-  name: '假山生态水族箱',
+  name: '水族箱',
   defaultSize: { width: 40, depth: 24, height: 48 },
   components: [
     { id: 'aquarium-stand', label: '实木底柜', defaultColor: '#2d1d16' },

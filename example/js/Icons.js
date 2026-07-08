@@ -23,11 +23,57 @@ const icons = {
   eye_off: `<svg ${attrs}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`
 };
 
+function seasonIconSvg(activeSeason = 'spring') {
+  // 经典心形（四叶草叶片）路径，朝上，底尖位于 (12, 10.8)
+  const leafPath = 'M 12,10.8 C 12,10.8 7.5,7.3 7.5,4.8 C 7.5,2.3 9.5,1.3 12,3.8 C 14.5,1.3 16.5,2.3 16.5,4.8 C 16.5,7.3 12,10.8 12,10.8 Z';
+
+  const petals = [
+    { season: 'spring', angle: 315, fill: '#e55b8e' }, // 加深的饱满粉红
+    { season: 'summer', angle: 45, fill: '#32a842' },  // 加深的有生机中绿
+    { season: 'autumn', angle: 135, fill: '#d49a17' }, // 加深的暖金色
+    { season: 'winter', angle: 225, fill: '#2a8ee0' }  // 加深的蔚蓝色
+  ];
+
+  const petalMarkup = petals.map(({ season, angle, fill }) => {
+    const active = season === activeSeason;
+    
+    // 激活状态下为完全实心填充，非激活状态下完全空心，完美契合整体线条画风
+    const fillMarkup = active ? `fill="${fill}" fill-opacity="1.0"` : 'fill="none"';
+    
+    // 激活状态下描边完全不透明，非激活状态下不透明度提升至 0.55，确保线条色彩清晰醒目
+    const strokeOpacity = active ? 1.0 : 0.55;
+    
+    // 线条粗细完全统一为 2，无论实心还是空心都保持一致
+    const strokeWidth = 2;
+    
+    // dy = -1.2 使得叶片整体向外移动，中心留出约 5.4px 的十字空隙，更加透气简约
+    // scale = 1.12 使得整体图标放大一圈，更加显眼饱满
+    const dy = -1.2;
+    const scale = 1.12;
+    
+    const transform = `translate(12 12) rotate(${angle}) translate(0 ${dy}) scale(${scale}) translate(-12 -12)`;
+    
+    return `<path d="${leafPath}" ${fillMarkup} stroke="${fill}" stroke-opacity="${strokeOpacity}" stroke-width="${strokeWidth}" transform="${transform}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+
+  return `
+    <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      ${petalMarkup}
+    </svg>
+  `;
+}
+
 /**
  * 获取对应操作种类的 SVG 图标字符串
  * @param {string} name 图标名称（如 copy, rotate, trash 等）
  * @returns {string} 图标的完整 SVG HTML 字符串，如果未找到则返回空字符串
  */
 export function iconSvg(name) {
+  if (name && typeof name === 'object' && name.name === 'season') {
+    return seasonIconSvg(name.active);
+  }
+  if (name === 'season') {
+    return seasonIconSvg();
+  }
   return icons[name] || '';
 }

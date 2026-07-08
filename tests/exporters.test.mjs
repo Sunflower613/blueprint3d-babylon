@@ -65,6 +65,53 @@ test('DXF draws architectural wall faces, door swing, windows and dimensions', (
   assert.match(dxf, /1\n16\.00 \\U\+33A1\n/);
 });
 
+test('DXF filters out items snapped to bookshelves or clothing mannequins', () => {
+  const customFloorplan = {
+    name: 'Snapped items test',
+    wallHeight: 3,
+    wallThickness: 0.2,
+    floorHeight: 0.1,
+    currentFloorId: 'ground',
+    floors: [
+      { id: 'ground', name: 'Ground', level: 0, wallHeight: 3, floorHeight: 0.1 }
+    ],
+    floor: {
+      rooms: [
+        { id: 'r1', name: 'Living', floorId: 'ground', x: 2, z: 2, width: 4, depth: 4 }
+      ]
+    },
+    walls: [],
+    openings: [],
+    items: [
+      // 1. 书架和在其上方的书籍 (应吸附)
+      { id: 'bookshelf_1', type: 'bookshelf', name: 'Bookshelf', floorId: 'ground', x: 2, z: 2, width: 39.37, depth: 15.74, height: 78.74, elevation: 0, scale: 1 },
+      { id: 'book_1', type: 'book', name: 'Book', floorId: 'ground', x: 2.0, z: 2.0, width: 30.0, depth: 30.0, height: 7.87, elevation: 30.0 }, // 处于高度区间内，X/Z 在范围中，且大于0.6m
+      { id: 'book_outside', type: 'book', name: 'Book Outside', floorId: 'ground', x: 4.0, z: 4.0, width: 30.0, depth: 30.0, height: 7.87, elevation: 30.0 }, // 不在 X/Z 投影内，不应吸附，且大于0.6m
+      
+      // 2. 模特人台和在其上的衣服 (应吸附)
+      { id: 'mannequin_1', type: 'clothing_mannequin', name: 'Mannequin', floorId: 'ground', x: 1, z: 1, width: 30.0, depth: 30.0, height: 70.86, elevation: 0, scale: 1 },
+      { id: 'clothing_tshirt_1', type: 'clothing_tshirt', name: 'T-Shirt', floorId: 'ground', x: 1.01, z: 1.01, width: 30.0, depth: 30.0, height: 19.68, elevation: 40.0 }, // 距离近，高度合规，前缀是 clothing_，且大于0.6m
+      { id: 'clothing_shoes_far', type: 'clothing_shoes', name: 'Shoes Far', floorId: 'ground', x: 3.0, z: 3.0, width: 30.0, depth: 30.0, height: 19.68, elevation: 40.0 } // 距离太远，不应吸附，且大于0.6m
+    ],
+    stairs: [],
+    roofs: [],
+    fences: []
+  };
+  
+  const dxf = stringifyDXF(customFloorplan);
+  
+  // 书架、不吸附的书籍、模特、不吸附的衣服应当在 DXF 中被导出（存在其名称标签或线段）
+  assert.match(dxf, /1\nBookshelf\n/);
+  assert.match(dxf, /1\nBook Out\n/);
+  assert.match(dxf, /1\nMannequin\n/);
+  assert.match(dxf, /1\nShoes Far\n/);
+  
+  // 被吸附的书籍 "Book" 和被吸附的衣服 "T-Shirt" 应当被跳过，不出现在 DXF 中
+  assert.doesNotMatch(dxf, /1\nBook\n/);
+  assert.doesNotMatch(dxf, /1\nT-Shirt\n/);
+});
+
+
 test('3MF keeps each floor building and each furniture item as named objects', () => {
   const xml = create3MFModelXml(floorplan);
   assert.match(xml, /name="Building - Ground" partnumber="F01-BUILDING"/);

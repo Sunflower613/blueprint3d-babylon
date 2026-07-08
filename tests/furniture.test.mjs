@@ -61,7 +61,7 @@ test('contains clothing furniture in list', () => {
 test('contains outdoor furniture category and 22 outdoor items', () => {
   const outdoorCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'outdoor');
   assert.ok(outdoorCategory, 'Outdoor category should exist');
-  assert.equal(outdoorCategory.label, '室外');
+  assert.equal(outdoorCategory.label, '户外');
 
   const outdoorItems = FURNITURE_LIST.filter((item) => item.category === 'outdoor');
   assert.equal(outdoorItems.length, 22, 'Should contain exactly 22 outdoor furniture items');
@@ -70,6 +70,44 @@ test('contains outdoor furniture category and 22 outdoor items', () => {
   assert.ok(types.includes('outdoor_umbrella'));
   assert.ok(types.includes('pergola'));
   assert.ok(types.includes('flower_arch'));
+});
+
+test('separates landscape plants into flora category', () => {
+  const floraCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'flora');
+  assert.ok(floraCategory, 'Flora category should exist');
+  assert.equal(floraCategory.label, '草木');
+
+  const floraItems = FURNITURE_LIST.filter((item) => item.category === 'flora');
+  assert.equal(floraItems.length, 26, 'Should contain exactly 26 flora items');
+
+  const floraTypes = new Set(floraItems.map((item) => item.type));
+  assert.ok(floraTypes.has('landscape_bamboo_grove'));
+  assert.ok(floraTypes.has('landscape_grass_lawn'));
+  assert.ok(floraTypes.has('landscape_cherry_tree'));
+  assert.ok(floraTypes.has('landscape_rose_bush'));
+  assert.ok(floraTypes.has('landscape_ivy_wall'));
+  assert.ok(floraTypes.has('apple_tree'));
+
+  const landscapeItems = FURNITURE_LIST.filter((item) => item.category === 'landscape');
+  assert.equal(landscapeItems.length, 22, 'Should keep exactly 22 non-plant landscape items');
+
+  const landscapeTypes = new Set(landscapeItems.map((item) => item.type));
+  assert.ok(!landscapeTypes.has('landscape_bamboo_grove'));
+  assert.ok(!landscapeTypes.has('landscape_grass_lawn'));
+  assert.ok(landscapeTypes.has('landscape_koi_pond'));
+  assert.ok(landscapeTypes.has('landscape_taihu_stone'));
+  assert.ok(landscapeTypes.has('landscape_winding_stream'));
+});
+
+test('apple tree exposes four seasonal variants', () => {
+  const appleTree = FURNITURE_LIST.find((item) => item.type === 'apple_tree');
+  assert.ok(appleTree, 'Apple tree should exist');
+  assert.equal(appleTree.category, 'flora');
+  assert.equal(appleTree.defaultSeason, 'spring');
+  assert.deepEqual(
+    appleTree.seasonOptions.map((option) => option.value),
+    ['spring', 'summer', 'autumn', 'winter']
+  );
 });
 
 test('adds outdoor-friendly seating and tables into existing categories', () => {

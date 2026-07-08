@@ -1,7 +1,24 @@
 const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
 const marbletilesUrl = new URL('../textures/marbletiles.jpg', import.meta.url).href;
-const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
 const lightBrickUrl = new URL('../textures/light_brick.jpg', import.meta.url).href;
+const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
+const stoneMarbleWarmUrl = new URL('../textures/stone_marble_warm.jpg', import.meta.url).href;
+const stoneMarbleGreyGlossUrl = new URL('../textures/stone_marble_grey_gloss.jpg', import.meta.url).href;
+const fabricRopeCableBeigeUrl = new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href;
+const fabricKnitCableGreyUrl = new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href;
+const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href;
+const fabricKnitChevronCreamUrl = new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href;
+const fabricWeaveDarkUrl = new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href;
+const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
+const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
+const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
+const wallpaperStripeTealPinkUrl = new URL('../textures/wallpaper_stripe_teal_pink.jpg', import.meta.url).href;
+const wallpaperDamaskOliveUrl = new URL('../textures/wallpaper_damask_olive.jpg', import.meta.url).href;
+const wallpaperInkBambooMistUrl = new URL('../textures/wallpaper_ink_bamboo_mist.jpg', import.meta.url).href;
+const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href;
+const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
+const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
+const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -33,6 +50,61 @@ const COMMON_WOOD_MATERIALS = [
   scale: 3
 }));
 
+const COMMON_FABRIC_MATERIALS = [
+  { id: 'fabric-rope-cable-beige', name: '绳纹针织', src: fabricRopeCableBeigeUrl, scale: 2.2, color: '#d9aa73' },
+  { id: 'fabric-knit-cable-grey', name: '交织麻花针织', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#6d7184' },
+  { id: 'fabric-knit-cable-white', name: '竖纹麻花针织', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#f1ede4' },
+  { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#efe4cf' },
+  { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#3b3d42' }
+].map((material) => ({
+  ...material,
+  category: 'fabric',
+  kind: 'texture'
+}));
+
+const COMMON_WALLPAPER_MATERIALS = [
+  { id: 'wallpaper-leaf-bluegrey', name: '叶影墙纸', src: wallpaperLeafBluegreyUrl, scale: 1, color: '#9aa0b1' },
+  { id: 'wallpaper-paisley-orange', name: '佩斯利墙纸', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#f1c598' },
+  { id: 'wallpaper-fan-gold', name: '扇纹几何墙纸', src: wallpaperFanGoldUrl, scale: 1, color: '#c6a47d' },
+  { id: 'wallpaper-stripe-teal-pink', name: '条纹墙纸', src: wallpaperStripeTealPinkUrl, scale: 1, color: '#7ca8a7' },
+  { id: 'wallpaper-damask-olive', name: '达玛斯墙纸', src: wallpaperDamaskOliveUrl, scale: 1, color: '#b8af71' },
+  { id: 'wallpaper-ink-bamboo-mist', name: '水墨竹韵墙纸', src: wallpaperInkBambooMistUrl, scale: 1, color: '#d8dde1' },
+  { id: 'wallpaper-cloud-navy-gold', name: '祥云墙纸', src: wallpaperCloudNavyGoldUrl, scale: 1, color: '#d7be8a' },
+  { id: 'wallpaper-ruyi-swirl-yellow', name: '回纹墙纸', src: wallpaperRuyiSwirlYellowUrl, scale: 1, color: '#f0dc75' },
+  { id: 'wallpaper-floral-blue-white', name: '青花团纹墙纸', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#62789a' },
+  { id: 'wallpaper-seigaiha-blush', name: '青海波墙纸', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' }
+].map((material) => ({
+  ...material,
+  category: 'wallpaper',
+  kind: 'texture'
+}));
+
+const COMMON_STONE_MATERIALS = [
+  { id: 'stone-light', name: '暖白大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#f1ece5' },
+  { id: 'stone-ivory-marble', name: '象牙纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#e9dfd3' },
+  { id: 'stone-mist-marble', name: '淡金纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#e3d6ca' },
+  { id: 'stone-sand-marble', name: '暖粉纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#d9c8bb' },
+
+  { id: 'stone-marbletiles', name: '经典大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#e2dfd9' },
+  { id: 'stone-marble-ivory', name: '象牙大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#ebe5dc' },
+  { id: 'stone-marble-ash', name: '灰米大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#d4cdc4' },
+  { id: 'stone-marble-sand', name: '砂金大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#d8c7b0' },
+
+  { id: 'stone-light-brick', name: '浅色红砖', src: lightBrickUrl, scale: 1, color: '#e9d7c3' },
+  { id: 'stone-cream-brick', name: '奶油砖', src: lightBrickUrl, scale: 1, color: '#f1dfcc' },
+  { id: 'stone-rustic-brick', name: '暖陶砖', src: lightBrickUrl, scale: 1, color: '#d4b198' },
+  { id: 'stone-clay-brick', name: '浅棕砖', src: lightBrickUrl, scale: 1, color: '#c49c7d' },
+
+  { id: 'stone-grey-gloss', name: '银灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#d7dbe0', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'stone-cloud-gloss', name: '云灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#cdd2d8', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'stone-mist-gloss', name: '冷雾亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#bcc2c9', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'stone-slate-gloss', name: '深灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#a7adb5', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 }
+].map((material) => ({
+  ...material,
+  category: 'stone',
+  kind: 'texture'
+}));
+
 export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' },
   { id: 'paint-pink', name: '城堡粉', category: 'paint', color: '#ffd1e3' },
@@ -53,8 +125,9 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' },
 
   ...COMMON_WOOD_MATERIALS,
-  { id: 'stone-light', name: '浅石纹', category: 'stone', color: '#d7d2c8' },
-  // --- 金属材质 ---
+  ...COMMON_STONE_MATERIALS,
+  ...COMMON_FABRIC_MATERIALS,
+
   { id: 'metal-gold', name: '金', category: 'metal', kind: 'metal', color: '#d4af37' },
   { id: 'metal-silver', name: '银', category: 'metal', kind: 'metal', color: '#e6e6e6' },
   { id: 'metal-copper', name: '铜', category: 'metal', kind: 'metal', color: '#b87333' },
@@ -65,40 +138,24 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'metal-copper-matte', name: '磨砂铜', category: 'metal', kind: 'metal', color: '#b87333', roughness: 0.6 },
   { id: 'metal-iron-matte', name: '磨砂铁', category: 'metal', kind: 'metal', color: '#43464b', roughness: 0.6 },
   { id: 'metal-aluminum-matte', name: '磨砂铝', category: 'metal', kind: 'metal', color: '#d9d9d9', roughness: 0.6 },
+
   { id: 'wallpaper-rose', name: '玫瑰墙纸', category: 'wallpaper', color: '#f7bfd2' },
   {
-    id: 'stone-marbletiles',
-    name: '大理石瓷砖',
-    category: 'stone',
-    kind: 'texture',
-    src: marbletilesUrl,
-    scale: 3,
-    color: '#e2dfd9'
-  },
-  {
     id: 'wallpaper-yellow-flower',
-    name: '黄花墙纸',
+    name: '花卉墙纸',
     category: 'wallpaper',
     kind: 'texture',
     src: wallmapYellowUrl,
     scale: 1,
     color: '#f6ecbe'
   },
-  {
-    id: 'stone-light-brick',
-    name: '浅色红砖',
-    category: 'stone',
-    kind: 'texture',
-    src: lightBrickUrl,
-    scale: 1,
-    color: '#e9d7c3'
-  },
-  // --- 镜面材质 ---
+  ...COMMON_WALLPAPER_MATERIALS,
+
   { id: 'mirror-silver', name: '银镜', category: 'mirror', kind: 'mirror', color: '#e8eef4' },
   { id: 'mirror-gold', name: '金镜', category: 'mirror', kind: 'mirror', color: '#f0e6c8' },
   { id: 'mirror-bronze', name: '青铜镜', category: 'mirror', kind: 'mirror', color: '#c5b8a0' },
   { id: 'mirror-dark', name: '墨镜', category: 'mirror', kind: 'mirror', color: '#3a3d42' },
-  // --- 玻璃材质 ---
+
   { id: 'glass-clear', name: '透明玻璃', category: 'glass', kind: 'glass', color: '#e8f4ff' },
   { id: 'glass-frosted', name: '磨砂玻璃', category: 'glass', kind: 'glass', color: '#f0f0f0', alpha: 0.55 },
   { id: 'glass-tea', name: '茶色玻璃', category: 'glass', kind: 'glass', color: '#c4a97d' },
@@ -113,7 +170,7 @@ export const DEFAULT_MATERIAL_PACKS = [
     patternScale: 1.1,
     emissiveStrength: 0.18
   },
-  // --- 发光材质 ---
+
   { id: 'emissive-white', name: '自发光-白', category: 'emissive', kind: 'emissive', color: '#ffffff' },
   { id: 'emissive-warm-white', name: '自发光-暖白', category: 'emissive', kind: 'emissive', color: '#ffebd2' },
   { id: 'emissive-yellow', name: '自发光-黄', category: 'emissive', kind: 'emissive', color: '#ffeb3b' },
@@ -131,7 +188,19 @@ export function createColorMaterialDescriptor(color, category = 'paint', name = 
   };
 }
 
-export function createTextureMaterialDescriptor({ id, name, category = 'custom', src, fileName, scale = 1, color = '#ffffff' }) {
+export function createTextureMaterialDescriptor({
+  id,
+  name,
+  category = 'custom',
+  src,
+  fileName,
+  scale = 1,
+  color = '#ffffff',
+  reflective = false,
+  reflectionLevel,
+  specularStrength,
+  specularPower
+}) {
   return {
     id,
     kind: 'texture',
@@ -140,6 +209,10 @@ export function createTextureMaterialDescriptor({ id, name, category = 'custom',
     fileName,
     src,
     scale,
-    color
+    color,
+    reflective,
+    reflectionLevel,
+    specularStrength,
+    specularPower
   };
 }

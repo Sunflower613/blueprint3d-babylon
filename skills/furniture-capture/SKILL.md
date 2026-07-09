@@ -36,14 +36,19 @@ description: 3D 建筑编辑器家具 3D 渲染图批量全自动截图落盘及
 
 ## 详细步骤指南
 
-### 步骤一：启动图片落盘接收后台
-在终端的工作区根目录下执行以下命令，启动用于接收并自动写入 `src/furniture/image/` 目录的临时 Node 服务（运行在 3001 端口）：
-```bash
-node skills/furniture-capture/scripts/image_saver.js
-```
+### 步骤一：启动服务
+在终端的不同窗口中，分别启动图片落盘接收后台和截图专用开发服务器：
+1. **启动图片接收后台**（运行在 3001 端口）：
+   ```bash
+   node skills/furniture-capture/scripts/image_saver.js
+   ```
+2. **启动截图专用开发服务器**（指定 3002 端口，强制不抢占）：
+   ```bash
+   npx vite --port 3002 --strictPort
+   ```
 
 ### 步骤二：调整 3D 编辑器视角（可选）
-1. 若想为所有图片自定义一套全新的展示偏角：访问编辑器页面（如 `http://localhost:3000/`）。
+1. 若想为所有图片自定义一套全新的展示偏角：访问截图专用编辑器页面（如 `http://localhost:3002/blueprint3d-babylon/example/`）。
 2. 在 3D 模式下，使用鼠标与键盘拖拽、旋转相机，调出一个最满意的倾角。
 3. 确保 [browser_capture.js](file:///d:/code/3d-babylon/blueprint3d-babylon/skills/furniture-capture/scripts/browser_capture.js) 顶部的 `USE_DEFAULT_CAMERA` 设为 `false`。
 
@@ -56,7 +61,7 @@ node skills/furniture-capture/scripts/image_saver.js
 4. 截图流程结束后，场景数据、编辑视角和相机参数均会自动复原。
 
 ### 步骤四：关闭后台服务与重新编译打包
-1. 截图任务全部结束后，按 `Ctrl + C` 关闭跑在 3001 端口的 `image_saver.js` 后台服务。
+1. 截图任务全部结束后，按 `Ctrl + C` 关闭跑在 3001 端口的 `image_saver.js` 后台服务以及跑在 3002 端口的 Vite 服务器。
 2. 在终端执行项目打包命令，以更新静态资源并分发最新落盘的家具图片：
    ```bash
    npm run build

@@ -104,6 +104,85 @@ const INCHES_PER_UNIT = 39.37;
 const DEFAULT_WALL_COLOR = '#f9fbff';
 const DEFAULT_FLOOR_COLOR = '#d2b48c';
 const DEFAULT_FLOOR_ID = 'floor_1';
+const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
+const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
+
+const WALL_SURFACE_FIELD_MAP = {
+  front: {
+    main: { materialField: 'materialFront', colorField: 'colorFront' },
+    baseboard: { materialField: 'baseboardMaterialFront', colorField: 'baseboardColorFront' },
+    wainscot: { materialField: 'wainscotMaterialFront', colorField: 'wainscotColorFront' }
+  },
+  back: {
+    main: { materialField: 'materialBack', colorField: 'colorBack' },
+    baseboard: { materialField: 'baseboardMaterialBack', colorField: 'baseboardColorBack' },
+    wainscot: { materialField: 'wainscotMaterialBack', colorField: 'wainscotColorBack' }
+  }
+};
+
+function normalizeWallDecorSettings(wall) {
+  wall.floorId ||= DEFAULT_FLOOR_ID;
+  wall.color ||= DEFAULT_WALL_COLOR;
+  wall.material ||= wall.color;
+  wall.color = materialPreviewColor(wall.material, wall.color || DEFAULT_WALL_COLOR);
+  wall.baseboardEnabled = !!wall.baseboardEnabled;
+  wall.baseboardHeight = Math.max(0, Number(wall.baseboardHeight ?? DEFAULT_WALL_BASEBOARD_HEIGHT));
+  wall.wainscotEnabled = !!wall.wainscotEnabled;
+  wall.wainscotHeight = Math.max(0, Number(wall.wainscotHeight ?? DEFAULT_WALL_WAINSCOT_HEIGHT));
+
+  Object.values(WALL_SURFACE_FIELD_MAP).forEach((sideMap) => {
+    Object.values(sideMap).forEach(({ materialField, colorField }) => {
+      if (wall[materialField] !== undefined && wall[materialField] !== null) {
+        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
+      } else if (wall[colorField] !== undefined && wall[colorField] !== null) {
+        wall[materialField] = wall[colorField];
+        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
+      }
+    });
+  });
+  return wall;
+}
+
+function getWallSurfaceFields(side, component = 'main') {
+  return WALL_SURFACE_FIELD_MAP[side]?.[component] || WALL_SURFACE_FIELD_MAP[side]?.main || WALL_SURFACE_FIELD_MAP.front.main;
+}
+
+function resolveWallSurfaceDescriptor(wall, side, component = 'main') {
+  const { materialField, colorField } = getWallSurfaceFields(side, component);
+  const sideMaterial = side === 'front' ? wall.materialFront : wall.materialBack;
+  const sideColor = side === 'front' ? wall.colorFront : wall.colorBack;
+  const descriptor = wall[materialField] ?? sideMaterial ?? wall.material ?? sideColor ?? wall.color ?? DEFAULT_WALL_COLOR;
+  const color = wall[colorField] ?? sideColor ?? wall.color ?? DEFAULT_WALL_COLOR;
+  return { descriptor, color };
+}
+
+function getWallFaceBands(wall, wallHeight, floorHeight) {
+  const bands = [];
+  let cursor = -floorHeight;
+
+  if (wall.baseboardEnabled) {
+    const baseboardEnd = Math.min(wallHeight, Math.max(0, Number(wall.baseboardHeight) || 0));
+    if (baseboardEnd > cursor + 0.001) {
+      bands.push({ component: 'baseboard', yStart: cursor, yEnd: baseboardEnd });
+      cursor = baseboardEnd;
+    }
+  }
+
+  if (wall.wainscotEnabled) {
+    const minWainscotStart = wall.baseboardEnabled ? Math.max(0, Number(wall.baseboardHeight) || 0) : 0;
+    const wainscotEnd = Math.min(wallHeight, Math.max(minWainscotStart, Number(wall.wainscotHeight) || 0));
+    if (wainscotEnd > cursor + 0.001) {
+      bands.push({ component: 'wainscot', yStart: cursor, yEnd: wainscotEnd });
+      cursor = wainscotEnd;
+    }
+  }
+
+  if (wallHeight > cursor + 0.001) {
+    bands.push({ component: 'main', yStart: cursor, yEnd: wallHeight });
+  }
+
+  return bands;
+}
 
 export const FENCE_SUBTYPE_DEFAULTS = {
   picket_wood: {
@@ -223,9 +302,7 @@ function normalizeFloorplan(floorplan) {
   normalized.fenceGates ||= [];
 
   normalized.walls.forEach((wall) => {
-    wall.floorId ||= DEFAULT_FLOOR_ID;
-    wall.color ||= DEFAULT_WALL_COLOR;
-    wall.material ||= wall.color;
+    normalizeWallDecorSettings(wall);
   });
 
   normalized.openings.forEach((opening) => {
@@ -1719,12 +1796,6 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const length = Math.sqrt(dx * dx + dz * dz);
       if (length <= 0.01) return;
 
-      const descFront = wall.materialFront || wall.material || wall.color || DEFAULT_WALL_COLOR;
-      const descBack = wall.materialBack || wall.material || wall.color || DEFAULT_WALL_COLOR;
-      const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
-      const matFront = createBlueprintMaterial(this.scene, `wall_${wall.id}_front`, descFront, wallMaterialOptions);
-      const matBack = createBlueprintMaterial(this.scene, `wall_${wall.id}_back`, descBack, wallMaterialOptions);
-
       // 2. 墙角 L 形拓扑判定与延伸长度计算
       const adj1 = getAdjacentWalls({ x: x1, z: z1 }, wall.id);
       const adj2 = getAdjacentWalls({ x: x2, z: z2 }, wall.id);
@@ -1741,6 +1812,20 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       const floorY = this.getFloorElevation(wall.floorId);
       const wallBaseY = floorY + this.getWallElevationOffset(wall.id);
       const FH = wallFloor ? (wallFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
+      const wallFaceBands = getWallFaceBands(wall, H, FH);
+      const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
+      const materialCache = new Map();
+      const getWallFaceMaterial = (side, component) => {
+        const cacheKey = `${side}:${component}`;
+        if (materialCache.has(cacheKey)) return materialCache.get(cacheKey);
+        const { descriptor, color } = resolveWallSurfaceDescriptor(wall, side, component);
+        const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}`, descriptor, {
+          ...wallMaterialOptions,
+          fallbackColor: color || wall.color || DEFAULT_WALL_COLOR
+        });
+        materialCache.set(cacheKey, material);
+        return material;
+      };
 
       // 归一化墙体方向向量 (从 p1 指向 p2)
       const ux = dx / length;
@@ -1926,15 +2011,16 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
       };
 
       // 4. 生成正面/背面子 Box 网格
-      const buildProfiledWallSide = (side, material, normalSign) => {
+      const buildProfiledWallBand = (side, band, normalSign) => {
         const angle = -Math.atan2(dz, dx);
         const nx = Math.sin(angle);
         const nz = Math.cos(angle);
         const fullWidth = X_max - X_min;
-        const fullHeight = H + FH;
+        const fullHeight = band.yEnd - band.yStart;
         const localX = (X_min + X_max) / 2;
-        const localY = (H - FH) / 2;
-        const baseMesh = BABYLON.MeshBuilder.CreateBox(`wall_profiled_${wall.id}_${side}`, {
+        const localY = (band.yStart + band.yEnd) / 2;
+        const material = getWallFaceMaterial(side, band.component);
+        const baseMesh = BABYLON.MeshBuilder.CreateBox(`wall_profiled_${wall.id}_${side}_${band.component}`, {
           width: fullWidth,
           height: fullHeight,
           depth: T / 2
@@ -1969,86 +2055,92 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
         if (hasMiter1) wallCSG = applyMiterCutterToCSG(wallCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
         if (hasMiter2) wallCSG = applyMiterCutterToCSG(wallCSG, { x: x2, z: z2 }, { x: x1, z: z1 }, adj2[0].wall);
-        const result = wallCSG.toMesh(`wall_profiled_result_${wall.id}_${side}`, material, this.scene);
+        const result = wallCSG.toMesh(`wall_profiled_result_${wall.id}_${side}_${band.component}`, material, this.scene);
         baseMesh.dispose();
         normalizeWallSegmentMesh(result);
         result.setParent(wallGroup);
-        result.metadata = { blueprintWallId: wall.id, side };
+        result.metadata = { blueprintWallId: wall.id, side, wallComponent: band.component };
         this.shadowCasters.push(result);
       };
 
       if (hasProfiledOpenings) {
-        buildProfiledWallSide('front', matFront, 1);
-        buildProfiledWallSide('back', matBack, -1);
+        wallFaceBands.forEach((band) => buildProfiledWallBand('front', band, 1));
+        wallFaceBands.forEach((band) => buildProfiledWallBand('back', band, -1));
       } else subBoxes.forEach((box, idx) => {
-        const width = box.xEnd - box.xStart;
-        const height = box.yEnd - box.yStart;
-        if (width <= 0.001 || height <= 0.001) return;
-
-        const localX = (box.xStart + box.xEnd) / 2;
-        const localY = (box.yStart + box.yEnd) / 2;
-        const isFirst = (idx === 0);
-        const isLast = (idx === subBoxes.length - 1);
-        
         const angle = -Math.atan2(dz, dx);
         const nx = Math.sin(angle);
         const nz = Math.cos(angle);
+        const touchesStart = Math.abs(box.xStart - X_min) < 0.001;
+        const touchesEnd = Math.abs(box.xEnd - X_max) < 0.001;
 
         // 正面 Box
-        let subMeshFront = BABYLON.MeshBuilder.CreateBox(`wall_sub_${wall.id}_${idx}_f`, {
-          width: width,
-          height: height,
-          depth: T / 2
-        }, this.scene);
-        subMeshFront.position.set(x1 + localX * ux + (T / 4) * nx, wallBaseY + localY, z1 + localX * uz + (T / 4) * nz);
-        subMeshFront.rotation.y = angle;
-        subMeshFront.material = matFront;
+        wallFaceBands.forEach((band) => {
+          const yStart = Math.max(box.yStart, band.yStart);
+          const yEnd = Math.min(box.yEnd, band.yEnd);
+          const width = box.xEnd - box.xStart;
+          const height = yEnd - yStart;
+          if (width <= 0.001 || height <= 0.001) return;
 
-        let finalSubMeshFront = subMeshFront;
-        if ((isFirst && hasMiter1) || (isLast && hasMiter2)) {
-          subMeshFront.computeWorldMatrix(true);
-          let subCSG = BABYLON.CSG.FromMesh(subMeshFront);
-          if (isFirst && hasMiter1) {
-            subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
+          const localX = (box.xStart + box.xEnd) / 2;
+          const localY = (yStart + yEnd) / 2;
+          const matFront = getWallFaceMaterial('front', band.component);
+          const matBack = getWallFaceMaterial('back', band.component);
+
+          let subMeshFront = BABYLON.MeshBuilder.CreateBox(`wall_sub_${wall.id}_${idx}_${band.component}_f`, {
+            width: width,
+            height: height,
+            depth: T / 2
+          }, this.scene);
+          subMeshFront.position.set(x1 + localX * ux + (T / 4) * nx, wallBaseY + localY, z1 + localX * uz + (T / 4) * nz);
+          subMeshFront.rotation.y = angle;
+          subMeshFront.material = matFront;
+
+          let finalSubMeshFront = subMeshFront;
+          if ((touchesStart && hasMiter1) || (touchesEnd && hasMiter2)) {
+            subMeshFront.computeWorldMatrix(true);
+            let subCSG = BABYLON.CSG.FromMesh(subMeshFront);
+            if (touchesStart && hasMiter1) {
+              subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
+            }
+            if (touchesEnd && hasMiter2) {
+              subCSG = applyMiterCutterToCSG(subCSG, { x: x2, z: z2 }, { x: x1, z: z1 }, adj2[0].wall);
+            }
+            finalSubMeshFront = subCSG.toMesh(`wall_sub_mitered_${wall.id}_${idx}_${band.component}_f`, matFront, this.scene);
+            subMeshFront.dispose();
           }
-          if (isLast && hasMiter2) {
-            subCSG = applyMiterCutterToCSG(subCSG, { x: x2, z: z2 }, { x: x1, z: z1 }, adj2[0].wall);
-          }
-          finalSubMeshFront = subCSG.toMesh(`wall_sub_mitered_${wall.id}_${idx}_f`, matFront, this.scene);
-          subMeshFront.dispose();
-        }
-        normalizeWallSegmentMesh(finalSubMeshFront);
-        finalSubMeshFront.setParent(wallGroup);
-        finalSubMeshFront.metadata = { blueprintWallId: wall.id, side: 'front' };
-        this.shadowCasters.push(finalSubMeshFront);
+          normalizeWallSegmentMesh(finalSubMeshFront);
+          finalSubMeshFront.setParent(wallGroup);
+          finalSubMeshFront.metadata = { blueprintWallId: wall.id, side: 'front', wallComponent: band.component };
+          this.shadowCasters.push(finalSubMeshFront);
 
         // 背面 Box
-        let subMeshBack = BABYLON.MeshBuilder.CreateBox(`wall_sub_${wall.id}_${idx}_b`, {
-          width: width,
-          height: height,
-          depth: T / 2
-        }, this.scene);
-        subMeshBack.position.set(x1 + localX * ux - (T / 4) * nx, wallBaseY + localY, z1 + localX * uz - (T / 4) * nz);
-        subMeshBack.rotation.y = angle;
-        subMeshBack.material = matBack;
+          let subMeshBack = BABYLON.MeshBuilder.CreateBox(`wall_sub_${wall.id}_${idx}_${band.component}_b`, {
+            width: width,
+            height: height,
+            depth: T / 2
+          }, this.scene);
+          subMeshBack.position.set(x1 + localX * ux - (T / 4) * nx, wallBaseY + localY, z1 + localX * uz - (T / 4) * nz);
+          subMeshBack.rotation.y = angle;
+          subMeshBack.material = matBack;
 
-        let finalSubMeshBack = subMeshBack;
-        if ((isFirst && hasMiter1) || (isLast && hasMiter2)) {
-          subMeshBack.computeWorldMatrix(true);
-          let subCSG = BABYLON.CSG.FromMesh(subMeshBack);
-          if (isFirst && hasMiter1) {
-            subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
+          let finalSubMeshBack = subMeshBack;
+          if ((touchesStart && hasMiter1) || (touchesEnd && hasMiter2)) {
+            subMeshBack.computeWorldMatrix(true);
+            let subCSG = BABYLON.CSG.FromMesh(subMeshBack);
+            if (touchesStart && hasMiter1) {
+              subCSG = applyMiterCutterToCSG(subCSG, { x: x1, z: z1 }, { x: x2, z: z2 }, adj1[0].wall);
+            }
+            if (touchesEnd && hasMiter2) {
+              subCSG = applyMiterCutterToCSG(subCSG, { x: x2, z: z2 }, { x: x1, z: z1 }, adj2[0].wall);
+            }
+            finalSubMeshBack = subCSG.toMesh(`wall_sub_mitered_${wall.id}_${idx}_${band.component}_b`, matBack, this.scene);
+            subMeshBack.dispose();
           }
-          if (isLast && hasMiter2) {
-            subCSG = applyMiterCutterToCSG(subCSG, { x: x2, z: z2 }, { x: x1, z: z1 }, adj2[0].wall);
-          }
-          finalSubMeshBack = subCSG.toMesh(`wall_sub_mitered_${wall.id}_${idx}_b`, matBack, this.scene);
-          subMeshBack.dispose();
-        }
-        normalizeWallSegmentMesh(finalSubMeshBack);
-        finalSubMeshBack.setParent(wallGroup);
-        finalSubMeshBack.metadata = { blueprintWallId: wall.id, side: 'back' };
-        this.shadowCasters.push(finalSubMeshBack);
+          normalizeWallSegmentMesh(finalSubMeshBack);
+          finalSubMeshBack.setParent(wallGroup);
+          finalSubMeshBack.metadata = { blueprintWallId: wall.id, side: 'back', wallComponent: band.component };
+          this.shadowCasters.push(finalSubMeshBack);
+        });
       });
 
       // 设置高亮
@@ -2882,7 +2974,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   addWall(from, to) {
-    const wall = { id: `wall_${Date.now()}`, from, to, color: DEFAULT_WALL_COLOR, floorId: this.floorplan.currentFloorId };
+    const wall = normalizeWallDecorSettings({
+      id: `wall_${Date.now()}`,
+      from,
+      to,
+      color: DEFAULT_WALL_COLOR,
+      floorId: this.floorplan.currentFloorId
+    });
     this.floorplan.walls.push(wall);
     this.build();
     return wall;
@@ -2910,10 +3008,15 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return wall;
   }
 
+  setWallLength(wallId, length) {
+    return this.updateWallLength(wallId, length);
+  }
+
   updateWall(wallId, patch, options = {}) {
     const wall = this.getWall(wallId);
     if (!wall) return null;
     Object.assign(wall, patch);
+    normalizeWallDecorSettings(wall);
     if (options.rebuild !== false) {
       this.build();
     }
@@ -2953,9 +3056,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
           floorId: room.floorId,
           roomId: room.id
         };
+        normalizeWallDecorSettings(wall);
         this.floorplan.walls.push(wall);
       }
       if (wall) {
+        normalizeWallDecorSettings(wall);
         const from = vertices[index];
         const to = vertices[(index + 1) % vertices.length];
         setWallEndpoints(wall, [from.x, from.z], [to.x, to.z]);

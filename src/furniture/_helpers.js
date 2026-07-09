@@ -1,5 +1,5 @@
 import { createBlueprintMaterial, materialPreviewColor } from '../core/materials.js';
-import { createBox, createCylinder, createSphere } from '../core/primitives.js';
+import { createBox, createCylinder, createSphere, createLathe } from '../core/primitives.js';
 
 export function getComponentColor(item, definition, componentId) {
   const component = definition.components.find((candidate) => candidate.id === componentId);
@@ -97,3 +97,12 @@ export function sphereComponent(registry, item, definition, componentId, dimensi
   });
   return markComponent(mesh, item, componentId);
 }
+
+export function latheComponent(registry, item, definition, componentId, options, transform, registryOptions = {}) {
+  const mesh = createLathe(registry, `${item.id}_${componentId}`, options, transform, {
+    ...registryOptions,
+    material: getComponentMaterial(registry, item, definition, componentId)
+  });
+  return markComponent(mesh, item, componentId);
+}
+

@@ -501,6 +501,18 @@ export function copyTarget(target) {
           colorFront: wall.colorFront,
           materialBack: wall.materialBack,
           colorBack: wall.colorBack,
+          baseboardEnabled: wall.baseboardEnabled,
+          baseboardHeight: wall.baseboardHeight,
+          baseboardMaterialFront: wall.baseboardMaterialFront,
+          baseboardColorFront: wall.baseboardColorFront,
+          baseboardMaterialBack: wall.baseboardMaterialBack,
+          baseboardColorBack: wall.baseboardColorBack,
+          wainscotEnabled: wall.wainscotEnabled,
+          wainscotHeight: wall.wainscotHeight,
+          wainscotMaterialFront: wall.wainscotMaterialFront,
+          wainscotColorFront: wall.wainscotColorFront,
+          wainscotMaterialBack: wall.wainscotMaterialBack,
+          wainscotColorBack: wall.wainscotColorBack,
           floorId: ctx.testMap.floorplan.currentFloorId,
           locked: false
         });

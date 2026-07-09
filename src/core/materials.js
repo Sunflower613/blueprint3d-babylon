@@ -1,10 +1,14 @@
 import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
 const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
-const marbletilesUrl = new URL('../textures/marbletiles.jpg', import.meta.url).href;
+const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
 const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
-const lightBrickUrl = new URL('../textures/light_brick.jpg', import.meta.url).href;
-const stoneMarbleWarmUrl = new URL('../textures/stone_marble_warm.jpg', import.meta.url).href;
-const stoneMarbleGreyGlossUrl = new URL('../textures/stone_marble_grey_gloss.jpg', import.meta.url).href;
+const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
+const brickMarbleWarmUrl = new URL('../textures/brick_marble_warm.jpg', import.meta.url).href;
+const brickMarbleGreyGlossUrl = new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href;
+const stoneFineSandUrl = new URL('../textures/stone_fine_sand.jpg', import.meta.url).href;
+const stoneRockUrl = new URL('../textures/stone_rock.jpg', import.meta.url).href;
+const stoneTerrazzoUrl = new URL('../textures/stone_terrazzo.jpg', import.meta.url).href;
+const stoneWhiteSandUrl = new URL('../textures/stone_white_sand.jpg', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
 const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
@@ -296,18 +300,28 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   if (value.kind === 'texture' || value.src) {
     let src = value.src;
     if (src && typeof src === 'string') {
-      if (src.includes('marbletiles.jpg')) {
-        src = marbletilesUrl;
+      if (src.includes('brick_marble_tiles.jpg') || src.includes('marbletiles.jpg')) {
+        src = brickMarbleTilesUrl;
       } else if (src.includes('light_fine_wood.jpg')) {
         src = lightFineWoodUrl;
       } else if (src.includes('wallmap_yellow.png')) {
         src = wallmapYellowUrl;
-      } else if (src.includes('light_brick.jpg')) {
-        src = lightBrickUrl;
-      } else if (src.includes('stone_marble_warm.jpg')) {
-        src = stoneMarbleWarmUrl;
-      } else if (src.includes('stone_marble_grey_gloss.jpg')) {
-        src = stoneMarbleGreyGlossUrl;
+      } else if (src.includes('brick_red.jpg') || src.includes('light_brick.jpg')) {
+        src = brickRedUrl;
+      } else if (src.includes('brick_light.jpg')) {
+        src = brickLightUrl;
+      } else if (src.includes('brick_marble_warm.jpg') || src.includes('stone_marble_warm.jpg')) {
+        src = brickMarbleWarmUrl;
+      } else if (src.includes('brick_marble_grey_gloss.jpg') || src.includes('stone_marble_grey_gloss.jpg')) {
+        src = brickMarbleGreyGlossUrl;
+      } else if (src.includes('stone_fine_sand.jpg')) {
+        src = stoneFineSandUrl;
+      } else if (src.includes('stone_rock.jpg')) {
+        src = stoneRockUrl;
+      } else if (src.includes('stone_terrazzo.jpg')) {
+        src = stoneTerrazzoUrl;
+      } else if (src.includes('stone_white_sand.jpg')) {
+        src = stoneWhiteSandUrl;
       } else if (src.includes('wallpaper_leaf_bluegrey.jpg')) {
         src = wallpaperLeafBluegreyUrl;
       } else if (src.includes('wallpaper_paisley_orange.jpg')) {

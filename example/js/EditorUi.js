@@ -354,6 +354,22 @@ export function updateEditor() {
     const angleDeg = Math.round(((angleRad * 180 / Math.PI) + 360) % 360);
     document.getElementById('wall-rotation').value = angleDeg;
     document.getElementById('wall-rotation-range').value = angleDeg;
+    const baseboardEnabledInput = document.getElementById('wall-baseboard-enabled');
+    const baseboardHeightInput = document.getElementById('wall-baseboard-height');
+    const wainscotEnabledInput = document.getElementById('wall-wainscot-enabled');
+    const wainscotHeightInput = document.getElementById('wall-wainscot-height');
+    if (baseboardEnabledInput) baseboardEnabledInput.checked = !!wall.baseboardEnabled;
+    if (baseboardHeightInput) {
+      baseboardHeightInput.value = Number((wall.baseboardHeight ?? 0.1).toFixed(2));
+      baseboardHeightInput.disabled = !wall.baseboardEnabled;
+      baseboardHeightInput.parentElement.classList.toggle('hidden', !wall.baseboardEnabled);
+    }
+    if (wainscotEnabledInput) wainscotEnabledInput.checked = !!wall.wainscotEnabled;
+    if (wainscotHeightInput) {
+      wainscotHeightInput.value = Number((wall.wainscotHeight ?? 1).toFixed(2));
+      wainscotHeightInput.disabled = !wall.wainscotEnabled;
+      wainscotHeightInput.parentElement.classList.toggle('hidden', !wall.wainscotEnabled);
+    }
   }
   if (fence) {
     document.getElementById('selected-fence-name').textContent = '栅栏';
@@ -682,6 +698,29 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
   }
 
   if (wall) {
+    const appendWallRow = (label, colorValue, part, materialName) => {
+      const group = document.createElement('div');
+      group.className = 'component-material-row';
+      group.appendChild(createColorField(label, colorValue || '#f9fbff', (color) => {
+        updateComponentMaterial('wall', wall.id, part, color);
+      }, materialName));
+      group.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, part, activeMaterialDescriptor)));
+      designSelectionPanel.appendChild(group);
+    };
+
+    appendWallRow('墙正面材质', wall.colorFront || wall.color || '#f9fbff', 'front', getMaterialFriendlyName(wall.materialFront));
+    appendWallRow('墙背面材质', wall.colorBack || wall.color || '#f9fbff', 'back', getMaterialFriendlyName(wall.materialBack));
+
+    if (wall.baseboardEnabled) {
+      appendWallRow('正面踢脚线', wall.baseboardColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-baseboard', getMaterialFriendlyName(wall.baseboardMaterialFront || wall.materialFront));
+      appendWallRow('背面踢脚线', wall.baseboardColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-baseboard', getMaterialFriendlyName(wall.baseboardMaterialBack || wall.materialBack));
+    }
+
+    if (wall.wainscotEnabled) {
+      appendWallRow('正面护墙板', wall.wainscotColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-wainscot', getMaterialFriendlyName(wall.wainscotMaterialFront || wall.materialFront));
+      appendWallRow('背面护墙板', wall.wainscotColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-wainscot', getMaterialFriendlyName(wall.wainscotMaterialBack || wall.materialBack));
+    }
+    return;
     const groupFront = document.createElement('div');
     groupFront.className = 'component-material-row';
     groupFront.appendChild(createColorField('墙正面材质', wall.colorFront || wall.color || '#f9fbff', (color) => {
@@ -1182,6 +1221,31 @@ export function initUiEventListeners() {
 
   document.getElementById('wall-rotation-range').addEventListener('change', (event) => {
     updateSelectedWallRotation(event.target.value);
+  });
+
+  const updateSelectedWallDecor = (patch) => {
+    if (!selection.selectedWallId) return;
+    pushHistory();
+    testMap.updateWall(selection.selectedWallId, patch);
+    refreshShadows();
+    updateEditor();
+    renderPlan();
+  };
+
+  document.getElementById('wall-baseboard-enabled')?.addEventListener('change', (event) => {
+    updateSelectedWallDecor({ baseboardEnabled: event.target.checked });
+  });
+
+  document.getElementById('wall-baseboard-height')?.addEventListener('change', (event) => {
+    updateSelectedWallDecor({ baseboardHeight: Number(event.target.value) || 0.1 });
+  });
+
+  document.getElementById('wall-wainscot-enabled')?.addEventListener('change', (event) => {
+    updateSelectedWallDecor({ wainscotEnabled: event.target.checked });
+  });
+
+  document.getElementById('wall-wainscot-height')?.addEventListener('change', (event) => {
+    updateSelectedWallDecor({ wainscotHeight: Number(event.target.value) || 1 });
   });
 
   document.getElementById('btn-delete-wall').addEventListener('click', () => {

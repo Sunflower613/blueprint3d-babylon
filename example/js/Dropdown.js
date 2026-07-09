@@ -42,18 +42,18 @@ export function createCustomDropdown(selectId) {
   // 渲染菜单选项列表
   function syncOptions() {
     menu.innerHTML = '';
-    const options = Array.from(select.options);
+    const children = Array.from(select.children);
     
-    if (options.length === 0) {
+    if (children.length === 0) {
       trigger.querySelector('.custom-dropdown-text').textContent = '无选项';
       return;
     }
 
     // 选中值
-    const selectedOption = select.options[select.selectedIndex] || options[0];
+    const selectedOption = select.options[select.selectedIndex] || select.querySelector('option') || children[0];
     updateTriggerDisplay(selectedOption);
 
-    options.forEach((opt) => {
+    function createItem(opt) {
       const item = document.createElement('div');
       item.className = 'custom-dropdown-item';
       if (opt.value === select.value) {
@@ -76,13 +76,33 @@ export function createCustomDropdown(selectId) {
         
         // 更新 UI
         updateTriggerDisplay(opt);
-        Array.from(menu.children).forEach(child => child.classList.remove('selected'));
+        Array.from(menu.children).forEach(child => {
+          if (child.classList.contains('custom-dropdown-item')) {
+            child.classList.remove('selected');
+          }
+        });
         item.classList.add('selected');
         
         closeMenu();
       });
       
       menu.appendChild(item);
+    }
+
+    children.forEach((childNode) => {
+      if (childNode.tagName === 'OPTGROUP') {
+        const groupTitle = document.createElement('div');
+        groupTitle.className = 'custom-dropdown-group-title';
+        groupTitle.textContent = childNode.label;
+        menu.appendChild(groupTitle);
+
+        const opts = Array.from(childNode.querySelectorAll('option'));
+        opts.forEach((opt) => {
+          createItem(opt);
+        });
+      } else if (childNode.tagName === 'OPTION') {
+        createItem(childNode);
+      }
     });
   }
 

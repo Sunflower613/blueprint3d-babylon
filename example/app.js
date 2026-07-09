@@ -953,7 +953,22 @@ function resetCurrentMaterial() {
     }
     pushHistory();
     if (wall) {
-      testMap.updateWall(selectedWallId, { material: '#f9fbff', color: '#f9fbff' });
+      testMap.updateWall(selectedWallId, {
+        material: '#f9fbff',
+        color: '#f9fbff',
+        materialFront: null,
+        colorFront: null,
+        materialBack: null,
+        colorBack: null,
+        baseboardMaterialFront: null,
+        baseboardColorFront: null,
+        baseboardMaterialBack: null,
+        baseboardColorBack: null,
+        wainscotMaterialFront: null,
+        wainscotColorFront: null,
+        wainscotMaterialBack: null,
+        wainscotColorBack: null
+      });
       refreshShadows();
       updateEditor();
       renderPlan();
@@ -3499,12 +3514,42 @@ function initFurnitureButtons() {
   const clearSearchBtn = document.getElementById('btn-clear-furniture-search');
   
   if (categorySelect && categorySelect.children.length === 0) {
-    FURNITURE_CATEGORIES.forEach((cat) => {
-      const opt = document.createElement('option');
-      opt.value = cat.id;
-      opt.textContent = cat.label;
-      if (cat.icon) opt.setAttribute('data-icon', cat.icon);
-      categorySelect.appendChild(opt);
+    const groups = [
+      {
+        label: '',
+        items: ['all', 'custom']
+      },
+      {
+        label: '室内家具',
+        items: ['tables', 'seating', 'storage', 'bedroom', 'kitchen', 'bathroom']
+      },
+      {
+        label: '生活家电',
+        items: ['appliances', 'lighting', 'decor', 'textiles', 'clothing', 'plants']
+      },
+      {
+        label: '庭院户外',
+        items: ['outdoor', 'landscape', 'flora']
+      }
+    ];
+
+    groups.forEach((group) => {
+      let parent = categorySelect;
+      if (group.label) {
+        parent = document.createElement('optgroup');
+        parent.label = group.label;
+        categorySelect.appendChild(parent);
+      }
+      group.items.forEach((catId) => {
+        const cat = FURNITURE_CATEGORIES.find(c => c.id === catId);
+        if (cat) {
+          const opt = document.createElement('option');
+          opt.value = cat.id;
+          opt.textContent = cat.label;
+          if (cat.icon) opt.setAttribute('data-icon', cat.icon);
+          parent.appendChild(opt);
+        }
+      });
     });
     
     categorySelect.addEventListener('change', () => {

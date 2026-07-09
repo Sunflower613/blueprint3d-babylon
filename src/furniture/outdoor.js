@@ -1,4 +1,4 @@
-import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js';
+import { boxComponent, cylinderComponent, sphereComponent, latheComponent } from './_helpers.js';
 
 const lieInteraction = (yRatio = 0.42, zRatio = 0) => ({
   type: 'lie',
@@ -6,6 +6,96 @@ const lieInteraction = (yRatio = 0.42, zRatio = 0) => ({
     return [{ x: 0, y: size.height * yRatio, z: size.depth * zRatio, rot: 0 }];
   }
 });
+
+const addBikeTube = (registry, item, definition, componentId, start, end, thickness, parent, depth = thickness) => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const startZ = start.z ?? 0;
+  const endZ = end.z ?? 0;
+  const length = Math.max(thickness, Math.hypot(dx, dy));
+
+  return boxComponent(registry, item, definition, componentId, {
+    width: length,
+    height: thickness,
+    depth
+  }, {
+    position: {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2,
+      z: (startZ + endZ) / 2
+    },
+    rotation: {
+      z: Math.atan2(dy, dx)
+    }
+  }, { parent });
+};
+
+const addBikeWheelSpokes = (registry, item, definition, componentId, center, radius, depth, parent) => {
+  const spokeLength = radius * 1.72;
+  const spokeThickness = Math.max(0.006, radius * 0.04);
+
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (Math.PI / 6) + (index * Math.PI / 3);
+    boxComponent(registry, item, definition, componentId, {
+      width: spokeLength,
+      height: spokeThickness,
+      depth
+    }, {
+      position: center,
+      rotation: { z: angle }
+    }, { parent });
+  }
+};
+
+const addBikeWheel = (registry, item, definition, center, wheelRadius, wheelThickness, parent) => {
+  const tireOuterR = wheelRadius;
+  const tireInnerR = wheelRadius * 0.86;
+  const tireHalfH = wheelThickness / 2;
+
+  latheComponent(registry, item, definition, 'tires', {
+    shape: [
+      { x: tireInnerR, y: -tireHalfH },
+      { x: tireOuterR, y: -tireHalfH },
+      { x: tireOuterR, y: tireHalfH },
+      { x: tireInnerR, y: tireHalfH },
+      { x: tireInnerR, y: -tireHalfH }
+    ],
+    tessellation: 32
+  }, {
+    position: center,
+    rotation: { x: Math.PI / 2 }
+  }, { parent });
+
+  const rimOuterR = tireInnerR;
+  const rimInnerR = wheelRadius * 0.82;
+  const rimHalfH = (wheelThickness * 0.68) / 2;
+
+  latheComponent(registry, item, definition, 'frame', {
+    shape: [
+      { x: rimInnerR, y: -rimHalfH },
+      { x: rimOuterR, y: -rimHalfH },
+      { x: rimOuterR, y: rimHalfH },
+      { x: rimInnerR, y: rimHalfH },
+      { x: rimInnerR, y: -rimHalfH }
+    ],
+    tessellation: 32
+  }, {
+    position: center,
+    rotation: { x: Math.PI / 2 }
+  }, { parent });
+
+  addBikeWheelSpokes(registry, item, definition, 'metal', center, rimInnerR, wheelThickness * 0.34, parent);
+
+  cylinderComponent(registry, item, definition, 'metal', {
+    diameterTop: wheelRadius * 0.12,
+    diameterBottom: wheelRadius * 0.12,
+    height: wheelThickness * 1.15,
+    tessellation: 20
+  }, {
+    position: center,
+    rotation: { x: Math.PI / 2 }
+  }, { parent });
+};
 
 export const outdoorUmbrellaFurniture = {
   type: 'outdoor_umbrella',
@@ -421,39 +511,23 @@ export const gardenFountainFurniture = {
     { id: 'water', label: '水体', defaultColor: '#b2ebf2' }
   ],
   build(registry, item, node, size) {
-    // 1. 中空八角底盆底板
+    // 1. 中空圆形底盆车削结构 (优化替代底板和拼接围板)
     const baseBottomH = 0.03;
     const baseH = size.height * 0.22;
-    cylinderComponent(registry, item, gardenFountainFurniture, 'base', {
-      diameterTop: size.width - 0.04,
-      diameterBottom: size.width - 0.04,
-      height: baseBottomH,
-      tessellation: 20
-    }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
-
-    // 2. 八角底盆围板 (拼出中空凹槽)
     const baseWallT = 0.04;
-    const baseWallR = size.width / 2 - baseWallT / 2;
-    const baseBoardW = size.width * 0.414;
-    const segments = 8;
+    latheComponent(registry, item, gardenFountainFurniture, 'base', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: size.width / 2, y: 0 },
+        { x: size.width / 2, y: baseH },
+        { x: size.width / 2 - baseWallT, y: baseH },
+        { x: size.width / 2 - baseWallT, y: baseBottomH },
+        { x: 0, y: baseBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * baseWallR;
-      const z = Math.sin(angle) * baseWallR;
-
-      const wall = boxComponent(registry, item, gardenFountainFurniture, 'base', {
-        width: baseWallT,
-        height: baseH,
-        depth: baseBoardW
-      }, {
-        position: { x: x, y: baseH / 2, z: z }
-      }, { parent: node });
-
-      wall.rotation.y = -angle;
-    }
-
-    // 3. 喷泉中央泉柱
+    // 2. 喷泉中央泉柱
     cylinderComponent(registry, item, gardenFountainFurniture, 'column', {
       diameterTop: size.width * 0.16,
       diameterBottom: size.width * 0.22,
@@ -461,41 +535,25 @@ export const gardenFountainFurniture = {
       tessellation: 18
     }, { position: { x: 0, y: size.height * 0.44, z: 0 } }, { parent: node });
 
-    // 4. 中空八角顶盆底板
+    // 3. 中空圆形顶盆车削结构 (优化替代底板和拼接围板)
     const topBottomH = 0.025;
     const topH = size.height * 0.16;
     const topY = size.height * 0.66;
     const topDiameter = size.width * 0.58;
-
-    cylinderComponent(registry, item, gardenFountainFurniture, 'top', {
-      diameterTop: topDiameter - 0.03,
-      diameterBottom: topDiameter - 0.03,
-      height: topBottomH,
-      tessellation: 16
-    }, { position: { x: 0, y: topY + topBottomH / 2, z: 0 } }, { parent: node });
-
-    // 5. 八角顶盆围板 (拼出中空顶盆)
     const topWallT = 0.03;
-    const topWallR = topDiameter / 2 - topWallT / 2;
-    const topBoardW = topDiameter * 0.414;
+    latheComponent(registry, item, gardenFountainFurniture, 'top', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: topDiameter / 2, y: 0 },
+        { x: topDiameter / 2, y: topH },
+        { x: topDiameter / 2 - topWallT, y: topH },
+        { x: topDiameter / 2 - topWallT, topBottomH },
+        { x: 0, y: topBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
 
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * topWallR;
-      const z = Math.sin(angle) * topWallR;
-
-      const wall = boxComponent(registry, item, gardenFountainFurniture, 'top', {
-        width: topWallT,
-        height: topH,
-        depth: topBoardW
-      }, {
-        position: { x: x, y: topY + topH / 2, z: z }
-      }, { parent: node });
-
-      wall.rotation.y = -angle;
-    }
-
-    // 6. 喷泉双层凹槽蓄水面 (蓄在盆内部)
+    // 4. 喷泉双层凹槽蓄水面 (蓄在盆内部)
     if (item.waterEnabled !== false) {
       // 底盆水面 (比底盆边缘矮 0.03米)
       cylinderComponent(registry, item, gardenFountainFurniture, 'water', {
@@ -555,48 +613,38 @@ export const birdbathFurniture = {
       tessellation: 16
     }, { position: { x: 0, y: size.height * 0.36, z: 0 } }, { parent: node });
 
-    // 2. 中空八角浴盆底板
+    // 2. 中空圆形平底锅状浴盆车削结构
     const basinBottomH = 0.03;
     const basinH = size.height * 0.16;
     const basinY = size.height * 0.72;
-    
-    cylinderComponent(registry, item, birdbathFurniture, 'basin', {
-      diameterTop: size.width - 0.04,
-      diameterBottom: size.width - 0.04,
-      height: basinBottomH,
-      tessellation: 16
-    }, { position: { x: 0, y: basinY + basinBottomH / 2, z: 0 } }, { parent: node });
-
-    // 3. 八角浴盆围板 (拼出中空凹槽)
     const wallThickness = 0.04;
-    const wallRadius = size.width / 2 - wallThickness / 2;
-    const boardWidth = size.width * 0.414;
-    const segments = 8;
-    
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * wallRadius;
-      const z = Math.sin(angle) * wallRadius;
-      
-      const wall = boxComponent(registry, item, birdbathFurniture, 'basin', {
-        width: wallThickness,
-        height: basinH,
-        depth: boardWidth
-      }, {
-        position: { x: x, y: basinY + basinH / 2, z: z }
-      }, { parent: node });
-      
-      wall.rotation.y = -angle;
-    }
+    const rBottom = size.width * 0.18; // 台柱顶部对接盆底的半径
+    const rInnerBottom = size.width * 0.22; // 内部平底锅凹槽内底的半径 (不再收缩为尖角)
 
-    // 4. 鸟浴台凹槽蓄水面 (蓄在凹槽内)
+    latheComponent(registry, item, birdbathFurniture, 'basin', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: rBottom, y: 0 },
+        { x: size.width / 2, y: basinH },
+        { x: size.width / 2 - wallThickness, y: basinH },
+        { x: rInnerBottom, y: basinBottomH },
+        { x: 0, y: basinBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: basinY, z: 0 } }, { parent: node });
+
+    // 3. 鸟浴台蓄水面 (精确计算水面在斜面上的半径，确保完美贴合平底锅斜内壁)
     if (item.waterEnabled !== false) {
+      const waterLocalY = basinH - 0.03;
+      const slopeRatio = (waterLocalY - basinBottomH) / (basinH - basinBottomH);
+      const waterR = rInnerBottom + slopeRatio * (size.width / 2 - wallThickness - rInnerBottom);
+
       cylinderComponent(registry, item, birdbathFurniture, 'water', {
-        diameterTop: size.width - wallThickness * 2 - 0.01,
-        diameterBottom: size.width - wallThickness * 2 - 0.01,
+        diameterTop: waterR * 2,
+        diameterBottom: waterR * 2,
         height: 0.005,
         tessellation: 20
-      }, { position: { x: 0, y: basinY + basinH - 0.03, z: 0 } }, { parent: node });
+      }, { position: { x: 0, y: basinY + waterLocalY, z: 0 } }, { parent: node });
     }
   }
 };
@@ -1012,6 +1060,237 @@ export const pottingBenchFurniture = {
   }
 };
 
+export const sharedBicycleFurniture = {
+  type: 'shared_bicycle',
+  name: '共享单车',
+  defaultSize: { width: 68, depth: 18, height: 44 },
+  components: [
+    { id: 'frame', label: '车架', defaultColor: '#18a0fb' },
+    { id: 'tires', label: '轮胎', defaultColor: '#20252b' },
+    { id: 'metal', label: '金属件', defaultColor: '#cfd8dc' }
+  ],
+  build(registry, item, node, size) {
+    // === 1. 自行车基础几何尺寸与关键控制点计算 ===
+    const wheelRadius = Math.min(size.height * 0.34, size.width * 0.19); // 车轮半径
+    const wheelThickness = Math.max(0.015, size.depth * 0.08); // 轮胎厚度 (经优化后纤细美观)
+    const rearWheelCenter = { x: -size.width * 0.32, y: wheelRadius, z: 0 }; // 后轮轮轴中心坐标
+    const frontWheelCenter = { x: size.width * 0.32, y: wheelRadius, z: 0 }; // 前轮轮轴中心坐标
+    const bottomBracket = { x: -size.width * 0.04, y: wheelRadius * 0.74, z: 0 }; // 中轴 (底托五通管) 坐标
+    const seatCluster = { x: -size.width * 0.17, y: size.height * 0.58, z: 0 }; // 座椅立管与后斜梁交汇点
+    const headBottom = { x: size.width * 0.21, y: size.height * 0.46, z: 0 }; // 车头管底部坐标
+    const headTop = { x: size.width * 0.25, y: size.height * 0.73, z: 0 }; // 车头管顶部坐标
+    const seatTop = { x: -size.width * 0.16, y: size.height * 0.72, z: 0 }; // 座椅支架顶端坐标
+    const tubeThickness = Math.max(0.04, size.width * 0.026); // 车架主管管径
+    const metalThickness = Math.max(0.018, size.width * 0.012); // 金属辅件管径
+
+    // === 2. 绘制前轮和后轮 ===
+    // 绘制后轮 (包含中空外胎、中空轮圈、轮辐、金属轴承轴)
+    addBikeWheel(registry, item, sharedBicycleFurniture, rearWheelCenter, wheelRadius, wheelThickness, node);
+    // 绘制前轮 (包含中空外胎、中空轮圈、轮辐、金属轴承轴)
+    addBikeWheel(registry, item, sharedBicycleFurniture, frontWheelCenter, wheelRadius, wheelThickness, node);
+
+    // === 3. 绘制车架主要钢管连杆 (均使用 'frame' 材质) ===
+    // 后上叉斜梁 (后轮轴 -> 座椅交汇点)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', rearWheelCenter, seatCluster, tubeThickness * 0.72, node);
+    // 后下叉斜梁 (后轮轴 -> 中轴)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', rearWheelCenter, bottomBracket, tubeThickness * 0.68, node);
+    // 立管 (中轴 -> 座椅顶端)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', bottomBracket, seatTop, tubeThickness * 0.72, node);
+    // 主梁/斜撑梁 (座椅交汇点 -> 车头管底部)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', seatCluster, headBottom, tubeThickness * 0.92, node, tubeThickness * 1.24);
+    // 车头前管 (车头管底部 -> 车头管顶部)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', headBottom, headTop, tubeThickness * 0.78, node);
+    // 前叉上部主杆 (前轮轴 -> 车头管底部)
+    addBikeTube(registry, item, sharedBicycleFurniture, 'frame', frontWheelCenter, headBottom, tubeThickness * 0.62, node);
+
+    // === 4. 绘制座椅及其金属座杆 ===
+    // 座椅升降管 (金属件材质 'metal')
+    cylinderComponent(registry, item, sharedBicycleFurniture, 'metal', {
+      diameterTop: metalThickness,
+      diameterBottom: metalThickness,
+      height: size.height * 0.16,
+      tessellation: 16
+    }, {
+      position: { x: seatTop.x, y: seatTop.y - size.height * 0.03, z: 0 }
+    }, { parent: node });
+
+    // 座鞍/座包 (防雨皮质共享单车座，合并入轮胎材质 'tires')
+    boxComponent(registry, item, sharedBicycleFurniture, 'tires', {
+      width: size.width * 0.18,
+      height: size.height * 0.045,
+      depth: size.depth * 0.42
+    }, {
+      position: { x: seatTop.x - size.width * 0.015, y: seatTop.y + size.height * 0.05, z: 0 }
+    }, { parent: node });
+
+    // === 5. 绘制把手及其金属立管 ===
+    // 车把连接立柱管 (金属件材质 'metal')
+    cylinderComponent(registry, item, sharedBicycleFurniture, 'metal', {
+      diameterTop: metalThickness,
+      diameterBottom: metalThickness,
+      height: size.height * 0.16,
+      tessellation: 16
+    }, {
+      position: { x: headTop.x, y: headTop.y + size.height * 0.02, z: 0 },
+      rotation: { z: Math.PI * 0.08 }
+    }, { parent: node });
+
+    // 左右横向车把手 (横杆及抓握手柄套，合并入轮胎材质 'tires')
+    boxComponent(registry, item, sharedBicycleFurniture, 'tires', {
+      width: metalThickness * 1.5,
+      height: metalThickness * 0.95,
+      depth: size.depth * 0.85
+    }, {
+      position: { x: headTop.x - size.width * 0.015, y: headTop.y + size.height * 0.11, z: 0 },
+      rotation: { z: Math.PI * 0.06 }
+    }, { parent: node });
+
+    // === 6. 绘制链条罩与中轴脚踏传动系统 ===
+    // 传动链条防尘罩 (车身中下部蓝色饰件，合并入车架材质 'frame')
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: size.width * 0.30,
+      height: size.height * 0.11,
+      depth: size.depth * 0.26
+    }, {
+      position: { x: -size.width * 0.2, y: wheelRadius * 0.85, z: 0 }
+    }, { parent: node });
+
+    // 五通中轴管承 (金属件材质 'metal')
+    cylinderComponent(registry, item, sharedBicycleFurniture, 'metal', {
+      diameterTop: wheelRadius * 0.13,
+      diameterBottom: wheelRadius * 0.13,
+      height: size.depth * 0.46,
+      tessellation: 16
+    }, {
+      position: bottomBracket,
+      rotation: { x: Math.PI / 2 }
+    }, { parent: node });
+
+    // 踏板金属曲柄连接块 (金属件材质 'metal')
+    boxComponent(registry, item, sharedBicycleFurniture, 'metal', {
+      width: size.width * 0.1,
+      height: metalThickness * 0.65,
+      depth: metalThickness * 0.65
+    }, {
+      position: { x: bottomBracket.x, y: bottomBracket.y, z: 0 },
+      rotation: { z: Math.PI * 0.2 }
+    }, { parent: node });
+
+    // 左右脚踏板 (合并入轮胎材质 'tires')
+    [-1, 1].forEach((side) => {
+      boxComponent(registry, item, sharedBicycleFurniture, 'tires', {
+        width: size.width * 0.04,
+        height: metalThickness * 0.72,
+        depth: size.depth * 0.2
+      }, {
+        position: {
+          x: bottomBracket.x + side * size.width * 0.052,
+          y: bottomBracket.y - wheelRadius * 0.03,
+          z: side * size.depth * 0.28
+        }
+      }, { parent: node });
+    });
+
+    // === 7. 绘制前车篮 (合并入车架材质 'frame') ===
+    const basketBaseY = headBottom.y + size.height * 0.12; // 车篮底部起点 Y (已上移避免与前叉穿模)
+    const basketWidth = size.width * 0.2; // 车篮前后方向宽度
+    const basketDepth = size.depth * 0.8; // 车篮左右方向深度
+    const basketHeight = size.height * 0.16; // 车篮高度
+    const basketCenterX = frontWheelCenter.x + size.width * 0.05; // 车篮中心 X (已前移避免与把手立柱穿模)
+    const basketCenterY = basketBaseY + basketHeight * 0.5; // 车篮高度中心坐标
+    const basketWall = Math.max(0.016, size.width * 0.012); // 车篮壁板厚度
+
+    // 车篮底板
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: basketWidth,
+      height: basketWall,
+      depth: basketDepth
+    }, {
+      position: { x: basketCenterX, y: basketBaseY, z: 0 }
+    }, { parent: node });
+
+    // 车篮前壁板
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: basketWidth,
+      height: basketHeight,
+      depth: basketWall
+    }, {
+      position: { x: basketCenterX, y: basketCenterY, z: basketDepth / 2 - basketWall / 2 }
+    }, { parent: node });
+
+    // 车篮后壁板
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: basketWidth * 0.92,
+      height: basketHeight,
+      depth: basketWall
+    }, {
+      position: { x: basketCenterX, y: basketCenterY, z: -basketDepth / 2 + basketWall / 2 }
+    }, { parent: node });
+
+    // 车篮左侧壁板
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: basketWall,
+      height: basketHeight,
+      depth: basketDepth
+    }, {
+      position: { x: basketCenterX - basketWidth / 2 + basketWall / 2, y: basketCenterY, z: 0 }
+    }, { parent: node });
+
+    // 车篮右侧壁板
+    boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+      width: basketWall,
+      height: basketHeight * 0.92,
+      depth: basketDepth * 0.92
+    }, {
+      position: { x: basketCenterX + basketWidth / 2 - basketWall / 2, y: basketCenterY, z: 0 }
+    }, { parent: node });
+
+    // 车篮底部金属斜支撑架 (车身前管 -> 车篮底部，金属材质 'metal')
+    addBikeTube(
+      registry,
+      item,
+      sharedBicycleFurniture,
+      'metal',
+      { x: headBottom.x - size.width * 0.03, y: headBottom.y + size.height * 0.03, z: 0 },
+      { x: basketCenterX - basketWidth * 0.18, y: basketBaseY + basketWall * 0.5, z: 0 },
+      metalThickness * 0.7,
+      node,
+      metalThickness * 0.7
+    );
+
+    // === 8. 绘制双侧前叉与后叉叉杆 (合并入车架材质 'frame') ===
+    [-1, 1].forEach((side) => {
+      // 后叉叉管 (后轮轴 -> 座椅立管顶部，左右分布，形成稳固三角形，能刚好夹住后轮胎)
+      boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+        width: wheelRadius * 0.88,
+        height: metalThickness * 0.8,
+        depth: metalThickness * 1.2
+      }, {
+        position: {
+          x: rearWheelCenter.x,
+          y: rearWheelCenter.y + wheelRadius * 0.88,
+          z: side * size.depth * 0.06
+        },
+        rotation: { z: Math.PI * 0.07 }
+      }, { parent: node });
+
+      // 前叉叉管 (前轮轴 -> 车头管底部，左右分布，能刚好夹住前轮胎)
+      boxComponent(registry, item, sharedBicycleFurniture, 'frame', {
+        width: wheelRadius * 0.78,
+        height: metalThickness * 0.76,
+        depth: metalThickness
+      }, {
+        position: {
+          x: frontWheelCenter.x,
+          y: frontWheelCenter.y + wheelRadius * 0.86,
+          z: side * size.depth * 0.04
+        },
+        rotation: { z: Math.PI * 0.11 }
+      }, { parent: node });
+    });
+  }
+};
+
 export const landscapeMarbleFountain = {
   type: 'landscape_marble_fountain',
   name: '跌水喷泉',
@@ -1023,59 +1302,50 @@ export const landscapeMarbleFountain = {
   build(registry, item, node, size) {
     const baseH = size.height * 0.18;
     const baseBottomH = 0.02;
-
-    // 底盘底板
-    cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
-      diameterTop: size.width - 0.04, diameterBottom: size.width - 0.04, height: baseBottomH, tessellation: 16
-    }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
-
-    // 8段环状拼成底盘壁
     const wallT = 0.04;
-    const wallR = size.width / 2 - wallT / 2;
-    const boardW = size.width * 0.414;
-    const segments = 8;
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * wallR;
-      const z = Math.sin(angle) * wallR;
-      const wall = boxComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
-        width: wallT, height: baseH, depth: boardW
-      }, { position: { x: x, y: baseH / 2, z: z } }, { parent: node });
-      wall.rotation.y = -angle;
-    }
 
-    // 底盆水面
+    // 1. 底盆车削结构 (优化替代底板和拼接围板)
+    latheComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: size.width / 2, y: 0 },
+        { x: size.width / 2, y: baseH },
+        { x: size.width / 2 - wallT, y: baseH },
+        { x: size.width / 2 - wallT, baseBottomH },
+        { x: 0, y: baseBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
+
+    // 2. 底盆水面
     cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
       diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
     }, { position: { x: 0, y: baseH - 0.02, z: 0 } }, { parent: node });
 
+    // 3. 中央立柱
     const pillarH = size.height * 0.55;
     cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
       diameterTop: size.width * 0.18, diameterBottom: size.width * 0.28, height: pillarH, tessellation: 12
     }, { position: { x: 0, y: baseH + pillarH / 2, z: 0 } }, { parent: node });
 
-    // 顶盆 (中空盆)
+    // 4. 顶盆车削结构 (优化替代底板和拼接围板)
     const bowlH = size.height * 0.08;
     const bowlY = baseH + pillarH * 0.75;
     const bowlD = size.width * 0.65;
-    cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
-      diameterTop: bowlD - 0.03, diameterBottom: bowlD - 0.03, height: baseBottomH, tessellation: 16
-    }, { position: { x: 0, y: bowlY + baseBottomH / 2, z: 0 } }, { parent: node });
-
     const bowlWallT = 0.03;
-    const bowlWallR = bowlD / 2 - bowlWallT / 2;
-    const bowlBoardW = bowlD * 0.414;
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * bowlWallR;
-      const z = Math.sin(angle) * bowlWallR;
-      const wall = boxComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
-        width: bowlWallT, height: bowlH, depth: bowlBoardW
-      }, { position: { x: x, y: bowlY + bowlH / 2, z: z } }, { parent: node });
-      wall.rotation.y = -angle;
-    }
+    latheComponent(registry, item, landscapeMarbleFountain, 'fountain-marble', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: bowlD / 2, y: 0 },
+        { x: bowlD / 2, y: bowlH },
+        { x: bowlD / 2 - bowlWallT, y: bowlH },
+        { x: bowlD / 2 - bowlWallT, baseBottomH },
+        { x: 0, y: baseBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: bowlY, z: 0 } }, { parent: node });
 
-    // 顶盆水面与涌出水球
+    // 5. 顶盆水面与涌出水球
     cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
       diameterTop: bowlD - bowlWallT * 2, diameterBottom: bowlD - bowlWallT * 2, height: 0.02, tessellation: 12
     }, { position: { x: 0, y: bowlY + bowlH - 0.015, z: 0 } }, { parent: node });
@@ -1098,28 +1368,22 @@ export const landscapeEuroPondSculpture = {
   build(registry, item, node, size) {
     const basinH = size.height * 0.2;
     const baseBottomH = 0.02;
-
-    // 底板
-    cylinderComponent(registry, item, landscapeEuroPondSculpture, 'pond-basin', {
-      diameterTop: size.width - 0.04, diameterBottom: size.width - 0.04, height: baseBottomH, tessellation: 16
-    }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
-
-    // 8段环状拼成底盆壁
     const wallT = 0.04;
-    const wallR = size.width / 2 - wallT / 2;
-    const boardW = size.width * 0.414;
-    const segments = 8;
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      const x = Math.cos(angle) * wallR;
-      const z = Math.sin(angle) * wallR;
-      const wall = boxComponent(registry, item, landscapeEuroPondSculpture, 'pond-basin', {
-        width: wallT, height: basinH, depth: boardW
-      }, { position: { x: x, y: basinH / 2, z: z } }, { parent: node });
-      wall.rotation.y = -angle;
-    }
 
-    // 内嵌水面
+    // 1. 大石盆车削结构 (优化替代底板和拼接围板)
+    latheComponent(registry, item, landscapeEuroPondSculpture, 'pond-basin', {
+      shape: [
+        { x: 0, y: 0 },
+        { x: size.width / 2, y: 0 },
+        { x: size.width / 2, y: basinH },
+        { x: size.width / 2 - wallT, y: basinH },
+        { x: size.width / 2 - wallT, baseBottomH },
+        { x: 0, y: baseBottomH }
+      ],
+      tessellation: 24
+    }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
+
+    // 2. 内嵌水面
     cylinderComponent(registry, item, landscapeEuroPondSculpture, 'pond-water', {
       diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 16
     }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
@@ -1179,4 +1443,3 @@ export const landscapeMarbleBridge = {
     });
   }
 };
-

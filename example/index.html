@@ -529,7 +529,23 @@
                 <input id="wall-rotation" type="number" min="0" max="359" step="90" />
                 <input id="wall-rotation-range" type="range" min="0" max="360" step="1" />
               </label>
-              <p class="hint">墙面颜色 and 材质请在左侧“设计”面板调整。</p>
+              <label class="check-field">
+                <input id="wall-baseboard-enabled" type="checkbox" />
+                <span>启用踢脚线</span>
+              </label>
+              <label class="field">
+                <span>踢脚线高度 (m)</span>
+                <input id="wall-baseboard-height" type="number" min="0.01" step="0.01" value="0.1" />
+              </label>
+              <label class="check-field">
+                <input id="wall-wainscot-enabled" type="checkbox" />
+                <span>启用护墙板</span>
+              </label>
+              <label class="field">
+                <span>护墙板高度 (m)</span>
+                <input id="wall-wainscot-height" type="number" min="0.1" step="0.05" value="1" />
+              </label>
+              <p class="hint">墙面颜色&材质请在左侧“设计”面板调整。</p>
               <button id="btn-delete-wall" type="button" class="danger">删除墙体</button>
             </div>
 

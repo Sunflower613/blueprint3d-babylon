@@ -1,5 +1,5 @@
-import { MeshBuilder, TransformNode } from './babylon.js';
-const BABYLON = { MeshBuilder, TransformNode };
+import { MeshBuilder, TransformNode, Mesh, Vector3 } from './babylon.js';
+const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3 };
 import { setTransform } from './BlueprintRegistry.js';
 
 export function createBox(registry, name, size, transform = {}, options = {}) {
@@ -25,6 +25,30 @@ export function createDisc(registry, name, size, transform = {}, options = {}) {
   setTransform(mesh, transform);
   return registry.add(mesh, options);
 }
+
+export function createLathe(registry, name, options = {}, transform = {}, registryOptions = {}) {
+  const latheOptions = {
+    sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+    ...options
+  };
+
+  if (Array.isArray(latheOptions.shape)) {
+    latheOptions.shape = latheOptions.shape.map(pt => {
+      if (pt instanceof BABYLON.Vector3) {
+        return pt;
+      }
+      if (Array.isArray(pt)) {
+        return new BABYLON.Vector3(pt[0], pt[1], 0);
+      }
+      return new BABYLON.Vector3(pt.x ?? 0, pt.y ?? 0, 0);
+    });
+  }
+
+  const mesh = BABYLON.MeshBuilder.CreateLathe(name, latheOptions, registry.scene);
+  setTransform(mesh, transform);
+  return registry.add(mesh, registryOptions);
+}
+
 
 export function createFenceLine(registry, points, options = {}) {
   const [start, end] = points;

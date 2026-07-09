@@ -283,7 +283,7 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
   if (activeTextureMaterial && activeTextureMaterial.category === category) {
     const tintPanel = document.createElement('div');
     tintPanel.className = 'custom-emissive-container';
-    tintPanel.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
+    tintPanel.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 0; padding: 4px 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
 
     const textWrapper = document.createElement('div');
     textWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
@@ -293,13 +293,14 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
     label.style.cssText = 'font-size: 13px; font-weight: 500; color: #172033;';
 
     const hint = document.createElement('span');
-    hint.textContent = '保留木纹细节，颜色可自由调整';
-    hint.style.cssText = 'font-size: 11px; color: #66758f;';
+    // hint.textContent = '保留纹理细节，颜色可自由调整';
+    // hint.style.cssText = 'font-size: 11px; color: #66758f;';
 
     const picker = document.createElement('input');
     picker.type = 'color';
     picker.value = activeTextureMaterial.color || '#ffffff';
-    picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
+    picker.style.cssText = 'border: none;background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; overflow: hidden;';
+    // picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
 
     picker.addEventListener('change', (event) => {
       const tintedDescriptor = createTintedTextureDescriptor(activeTextureMaterial, event.target.value);
@@ -421,9 +422,17 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
   let patch = {};
   if (type === 'wall') {
     if (part === 'front') {
-      patch = { materialFront: matVal, colorFront: color };
+      patch = buildWallSurfacePatch('front', 'main', matVal, color);
     } else if (part === 'back') {
-      patch = { materialBack: matVal, colorBack: color };
+      patch = buildWallSurfacePatch('back', 'main', matVal, color);
+    } else if (part === 'front-baseboard') {
+      patch = buildWallSurfacePatch('front', 'baseboard', matVal, color);
+    } else if (part === 'back-baseboard') {
+      patch = buildWallSurfacePatch('back', 'baseboard', matVal, color);
+    } else if (part === 'front-wainscot') {
+      patch = buildWallSurfacePatch('front', 'wainscot', matVal, color);
+    } else if (part === 'back-wainscot') {
+      patch = buildWallSurfacePatch('back', 'wainscot', matVal, color);
     } else {
       patch = { material: matVal, color: color };
     }
@@ -528,6 +537,49 @@ function findWallSideFromNode(node) {
     current = current.parent;
   }
   return null;
+}
+
+function findWallComponentFromNode(node) {
+  let current = node;
+  while (current) {
+    if (current.metadata?.wallComponent) return current.metadata.wallComponent;
+    current = current.parent;
+  }
+  return 'main';
+}
+
+function getWallSurfaceFields(side, component = 'main') {
+  const fieldMap = {
+    front: {
+      main: { materialField: 'materialFront', colorField: 'colorFront' },
+      baseboard: { materialField: 'baseboardMaterialFront', colorField: 'baseboardColorFront' },
+      wainscot: { materialField: 'wainscotMaterialFront', colorField: 'wainscotColorFront' }
+    },
+    back: {
+      main: { materialField: 'materialBack', colorField: 'colorBack' },
+      baseboard: { materialField: 'baseboardMaterialBack', colorField: 'baseboardColorBack' },
+      wainscot: { materialField: 'wainscotMaterialBack', colorField: 'wainscotColorBack' }
+    }
+  };
+  return fieldMap[side]?.[component] || fieldMap[side]?.main || fieldMap.front.main;
+}
+
+function getWallSurfaceValue(wall, side, component = 'main') {
+  const { materialField, colorField } = getWallSurfaceFields(side, component);
+  const sideMaterial = side === 'front' ? wall.materialFront : wall.materialBack;
+  const sideColor = side === 'front' ? wall.colorFront : wall.colorBack;
+  return {
+    material: wall[materialField] ?? sideMaterial ?? wall.material ?? null,
+    color: wall[colorField] ?? sideColor ?? wall.color ?? '#f9fbff'
+  };
+}
+
+function buildWallSurfacePatch(side, component, material, color) {
+  const { materialField, colorField } = getWallSurfaceFields(side, component);
+  return {
+    [materialField]: material,
+    [colorField]: color
+  };
 }
 
 function get2DWallSideFromPoint(wall, point) {
@@ -639,12 +691,11 @@ export function extractMaterial(target, precise = true) {
       const wall = ctx.testMap.getWall(target.id);
       if (wall) {
         const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
-        if (side === 'front') {
-          pickedMaterial = wall.materialFront || wall.material;
-          pickedColor = wall.colorFront || wall.color;
-        } else if (side === 'back') {
-          pickedMaterial = wall.materialBack || wall.material;
-          pickedColor = wall.colorBack || wall.color;
+        const component = target.pick ? findWallComponentFromNode(target.pick.pickedMesh) : 'main';
+        if (side === 'front' || side === 'back') {
+          const surface = getWallSurfaceValue(wall, side, component);
+          pickedMaterial = surface.material;
+          pickedColor = surface.color;
         } else {
           pickedMaterial = wall.material;
           pickedColor = wall.color;
@@ -793,20 +844,46 @@ export function extractMaterial(target, precise = true) {
     } else if (target.type === 'wall') {
       const wall = ctx.testMap.getWall(target.id);
       if (wall) {
-        const rawMatFront = wall.materialFront || wall.material || null;
-        const rawColFront = wall.colorFront || wall.color || '#ffffff';
-        const rawMatBack = wall.materialBack || wall.material || null;
-        const rawColBack = wall.colorBack || wall.color || '#ffffff';
+        const frontMain = getWallSurfaceValue(wall, 'front', 'main');
+        const backMain = getWallSurfaceValue(wall, 'back', 'main');
         materialsArray.push({
           componentId: 'front',
-          material: tryUpdateToFullMaterial(rawMatFront || rawColFront),
-          color: rawColFront
+          material: tryUpdateToFullMaterial(frontMain.material || frontMain.color),
+          color: frontMain.color
         });
         materialsArray.push({
           componentId: 'back',
-          material: tryUpdateToFullMaterial(rawMatBack || rawColBack),
-          color: rawColBack
+          material: tryUpdateToFullMaterial(backMain.material || backMain.color),
+          color: backMain.color
         });
+        if (wall.baseboardEnabled) {
+          const frontBaseboard = getWallSurfaceValue(wall, 'front', 'baseboard');
+          const backBaseboard = getWallSurfaceValue(wall, 'back', 'baseboard');
+          materialsArray.push({
+            componentId: 'front-baseboard',
+            material: tryUpdateToFullMaterial(frontBaseboard.material || frontBaseboard.color),
+            color: frontBaseboard.color
+          });
+          materialsArray.push({
+            componentId: 'back-baseboard',
+            material: tryUpdateToFullMaterial(backBaseboard.material || backBaseboard.color),
+            color: backBaseboard.color
+          });
+        }
+        if (wall.wainscotEnabled) {
+          const frontWainscot = getWallSurfaceValue(wall, 'front', 'wainscot');
+          const backWainscot = getWallSurfaceValue(wall, 'back', 'wainscot');
+          materialsArray.push({
+            componentId: 'front-wainscot',
+            material: tryUpdateToFullMaterial(frontWainscot.material || frontWainscot.color),
+            color: frontWainscot.color
+          });
+          materialsArray.push({
+            componentId: 'back-wainscot',
+            material: tryUpdateToFullMaterial(backWainscot.material || backWainscot.color),
+            color: backWainscot.color
+          });
+        }
       }
     } else if (target.type === 'item') {
       const item = ctx.testMap.getItem(target.id);
@@ -1027,14 +1104,44 @@ export function applyMaterial(target, designMode) {
       } else if (target.type === 'wall') {
         // 墙全量粉刷
         const frontEntry = activeMaterialArray.find(e => e.componentId === 'front') || activeMaterialArray[0];
-        const backEntry = activeMaterialArray.find(e => e.componentId === 'back') || activeMaterialArray[1] || frontEntry;
-        
-        ctx.testMap.updateWall(target.id, {
-          materialFront: frontEntry.material,
-          colorFront: frontEntry.color,
-          materialBack: backEntry.material,
-          colorBack: backEntry.color
-        });
+        const wall = ctx.testMap.getWall(target.id);
+        if (wall) {
+          const backEntry = activeMaterialArray.find(e => e.componentId === 'back') || activeMaterialArray[1] || frontEntry;
+          const patch = {
+            ...buildWallSurfacePatch('front', 'main', frontEntry.material, frontEntry.color),
+            ...buildWallSurfacePatch('back', 'main', backEntry.material, backEntry.color)
+          };
+
+          const hasBaseboardEntry = activeMaterialArray.some(e => e.componentId === 'front-baseboard' || e.componentId === 'back-baseboard');
+          if (wall.baseboardEnabled || hasBaseboardEntry) {
+            if (hasBaseboardEntry) {
+              patch.baseboardEnabled = true;
+            }
+            const frontBaseboard = activeMaterialArray.find(e => e.componentId === 'front-baseboard') || frontEntry;
+            const backBaseboard = activeMaterialArray.find(e => e.componentId === 'back-baseboard') || backEntry;
+            Object.assign(
+              patch,
+              buildWallSurfacePatch('front', 'baseboard', frontBaseboard.material, frontBaseboard.color),
+              buildWallSurfacePatch('back', 'baseboard', backBaseboard.material, backBaseboard.color)
+            );
+          }
+
+          const hasWainscotEntry = activeMaterialArray.some(e => e.componentId === 'front-wainscot' || e.componentId === 'back-wainscot');
+          if (wall.wainscotEnabled || hasWainscotEntry) {
+            if (hasWainscotEntry) {
+              patch.wainscotEnabled = true;
+            }
+            const frontWainscot = activeMaterialArray.find(e => e.componentId === 'front-wainscot') || frontEntry;
+            const backWainscot = activeMaterialArray.find(e => e.componentId === 'back-wainscot') || backEntry;
+            Object.assign(
+              patch,
+              buildWallSurfacePatch('front', 'wainscot', frontWainscot.material, frontWainscot.color),
+              buildWallSurfacePatch('back', 'wainscot', backWainscot.material, backWainscot.color)
+            );
+          }
+
+          ctx.testMap.updateWall(target.id, patch);
+        }
       } else if (target.type === 'fence') {
         const frameEntry = activeMaterialArray.find(e => e.componentId === 'frame') || activeMaterialArray[0];
         const panelEntry = activeMaterialArray.find(e => e.componentId === 'panel') || activeMaterialArray[1] || frameEntry;
@@ -1109,10 +1216,11 @@ export function applyMaterial(target, designMode) {
         const wall = ctx.testMap.getWall(target.id);
         if (wall) {
           const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
+          const component = target.pick ? findWallComponentFromNode(target.pick.pickedMesh) : 'main';
           if (side === 'front') {
-            updateComponentMaterial('wall', target.id, 'front', activeMaterialDescriptor);
+            updateComponentMaterial('wall', target.id, component === 'main' ? 'front' : `front-${component}`, activeMaterialDescriptor);
           } else if (side === 'back') {
-            updateComponentMaterial('wall', target.id, 'back', activeMaterialDescriptor);
+            updateComponentMaterial('wall', target.id, component === 'main' ? 'back' : `back-${component}`, activeMaterialDescriptor);
           } else {
             updateComponentMaterial('wall', target.id, 'all', activeMaterialDescriptor);
           }
@@ -1203,6 +1311,7 @@ export function applyMaterial(target, designMode) {
       if (!wall) return;
       const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
       if (!side) return;
+      const component = target.pick ? findWallComponentFromNode(target.pick.pickedMesh) : 'main';
 
       // 提取当前墙面这一侧的现有材质和颜色
       const srcMaterial = side === 'front' 
@@ -1211,6 +1320,9 @@ export function applyMaterial(target, designMode) {
       const srcColor = side === 'front'
         ? (wall.colorFront !== undefined && wall.colorFront !== null ? wall.colorFront : wall.color)
         : (wall.colorBack !== undefined && wall.colorBack !== null ? wall.colorBack : wall.color);
+      const wallSurface = getWallSurfaceValue(wall, side, component);
+      const srcWallMaterial = wallSurface.material;
+      const srcWallColor = wallSurface.color;
 
       // 定位当前点击所朝向的房间
       const [x1, z1] = wall.from;
@@ -1233,11 +1345,7 @@ export function applyMaterial(target, designMode) {
       if (!room) {
         // 如果点击的朝向没有房间（属于室外侧），仅涂当前这堵墙的这一侧
         ctx.pushHistory();
-        if (side === 'front') {
-          ctx.testMap.updateWall(wall.id, { materialFront: srcMaterial, colorFront: srcColor });
-        } else {
-          ctx.testMap.updateWall(wall.id, { materialBack: srcMaterial, colorBack: srcColor });
-        }
+        ctx.testMap.updateWall(wall.id, buildWallSurfacePatch(side, component, srcWallMaterial, srcWallColor));
         ctx.showToast('已更新当前墙面（室外侧不进行批量同步）');
         ctx.refreshShadows();
         ctx.updateEditor();
@@ -1277,12 +1385,12 @@ export function applyMaterial(target, designMode) {
         const isB = roomB && roomB.id === room.id;
 
         if (isF) {
-          ctx.testMap.updateWall(w.id, { materialFront: srcMaterial, colorFront: srcColor });
+          ctx.testMap.updateWall(w.id, buildWallSurfacePatch('front', component, srcWallMaterial, srcWallColor));
           count++;
         } else if (isB) {
-          ctx.testMap.updateWall(w.id, { materialBack: srcMaterial, colorBack: srcColor });
+          ctx.testMap.updateWall(w.id, buildWallSurfacePatch('back', component, srcWallMaterial, srcWallColor));
           count++;
-        } else {
+        } else if (component === 'main') {
           ctx.testMap.updateWall(w.id, { material: srcMaterial, color: srcColor });
           count++;
         }

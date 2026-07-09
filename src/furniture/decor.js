@@ -1,7 +1,7 @@
 import { boxComponent, cylinderComponent, sphereComponent, getComponentMaterial, markComponent } from './_helpers.js';
-import { MeshBuilder } from '../core/babylon.js';
+import { MeshBuilder, TransformNode } from '../core/babylon.js';
 
-const BABYLON = { MeshBuilder };
+const BABYLON = { MeshBuilder, TransformNode };
 
 export const paintingFurniture = {
   type: 'painting',
@@ -1128,5 +1128,341 @@ export const landscapeRockeryAquarium = {
       diameterX: size.width * 0.08, diameterY: size.height * 0.04, diameterZ: size.depth * 0.04, segments: 8
     }, { position: { x: size.width * 0.02, y: standH + glassH * 0.25, z: size.depth * 0.05 } }, { parent: node });
     if (fish3) fish3.rotation.y = 2.0;
+  }
+};
+
+export const traditionalChineseScreenFurniture = {
+  type: 'traditional_chinese_screen',
+  name: '中式雕花折屏',
+  defaultSize: { width: 72, depth: 8, height: 68 },
+  components: [
+    { id: 'frame', label: '红木框架', defaultColor: '#3e2723' },
+    { id: 'panel', label: '宣纸屏芯', defaultColor: '#fcf8f2' }
+  ],
+  build(registry, item, node, size) {
+    const wMid = size.width * 0.44;
+    const wSide = size.width * 0.28;
+    const theta = Math.PI / 12; // 15度
+    const borderW = 0.045; // 4.5 厘米
+    const frameD = 0.03;   // 3 厘米
+    const panelD = 0.01;   // 1 厘米
+
+    // 1. 中屏 (居中)
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: -wMid / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: wMid / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wMid - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: 0, y: size.height - borderW / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wMid - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: 0, y: borderW / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'panel', {
+      width: wMid - 2 * borderW, height: size.height - 2 * borderW, depth: panelD
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 2. 左屏
+    const leftParent = new BABYLON.TransformNode(`left_panel_${item.id}`, registry.scene);
+    leftParent.parent = node;
+    leftParent.position.set(-wMid / 2, 0, 0);
+    leftParent.rotation.y = theta;
+
+    const lx = -wSide / 2;
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: lx - wSide / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: lx + wSide / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wSide - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: lx, y: size.height - borderW / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wSide - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: lx, y: borderW / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'panel', {
+      width: wSide - 2 * borderW, height: size.height - 2 * borderW, depth: panelD
+    }, { position: { x: lx, y: size.height / 2, z: 0 } }, { parent: leftParent });
+
+    // 3. 右屏
+    const rightParent = new BABYLON.TransformNode(`right_panel_${item.id}`, registry.scene);
+    rightParent.parent = node;
+    rightParent.position.set(wMid / 2, 0, 0);
+    rightParent.rotation.y = -theta;
+
+    const rx = wSide / 2;
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: rx - wSide / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: rx + wSide / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wSide - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: rx, y: size.height - borderW / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'frame', {
+      width: wSide - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: rx, y: borderW / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, traditionalChineseScreenFurniture, 'panel', {
+      width: wSide - 2 * borderW, height: size.height - 2 * borderW, depth: panelD
+    }, { position: { x: rx, y: size.height / 2, z: 0 } }, { parent: rightParent });
+  }
+};
+
+export const modernSlatScreenFurniture = {
+  type: 'modern_slat_screen',
+  name: '北欧木格栅屏风',
+  defaultSize: { width: 48, depth: 6, height: 72 },
+  components: [
+    { id: 'base', label: '水磨石底座', defaultColor: '#37474f' },
+    { id: 'slats', label: '橡木格栅条', defaultColor: '#d2b48c' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.08;
+    const slatH = size.height - baseH;
+    const N = 11;
+    const slatW = 0.015; // 1.5 厘米
+    const slatD = size.depth * 0.4;
+
+    // 1. 底座 (Base)
+    boxComponent(registry, item, modernSlatScreenFurniture, 'base', {
+      width: size.width, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    // 2. 格栅条 (Slats)
+    const startX = -size.width / 2 + 0.03; // 两侧留 3 厘米
+    const endX = size.width / 2 - 0.03;
+    const stepX = (endX - startX) / (N - 1);
+
+    for (let i = 0; i < N; i++) {
+      const sx = startX + i * stepX;
+      boxComponent(registry, item, modernSlatScreenFurniture, 'slats', {
+        width: slatW, height: slatH, depth: slatD
+      }, { position: { x: sx, y: baseH + slatH / 2, z: 0 } }, { parent: node });
+    }
+  }
+};
+
+export const rattanWaveScreenFurniture = {
+  type: 'rattan_wave_screen',
+  name: '日式藤编波浪屏风',
+  defaultSize: { width: 54, depth: 10, height: 60 },
+  components: [
+    { id: 'frame', label: '白蜡木框', defaultColor: '#d7ccc8' },
+    { id: 'weave', label: '八角藤编网', defaultColor: '#e0c097' }
+  ],
+  build(registry, item, node, size) {
+    const wPart = size.width / 3;
+    const theta = Math.PI / 9; // 20度
+    const borderW = 0.035; // 3.5 厘米
+    const frameD = 0.025; // 2.5 厘米
+    const weaveD = 0.008; // 0.8 厘米
+
+    // 1. 中屏 (居中)
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: -wPart / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: wPart / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: 0, y: size.height - borderW / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: 0, y: borderW / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'weave', {
+      width: wPart - 2 * borderW, height: size.height - 2 * borderW, depth: weaveD
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+
+    // 2. 左屏
+    const leftParent = new BABYLON.TransformNode(`rattan_left_${item.id}`, registry.scene);
+    leftParent.parent = node;
+    leftParent.position.set(-wPart / 2, 0, 0);
+    leftParent.rotation.y = theta;
+
+    const lx = -wPart / 2;
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: lx - wPart / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: lx + wPart / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: lx, y: size.height - borderW / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: lx, y: borderW / 2, z: 0 } }, { parent: leftParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'weave', {
+      width: wPart - 2 * borderW, height: size.height - 2 * borderW, depth: weaveD
+    }, { position: { x: lx, y: size.height / 2, z: 0 } }, { parent: leftParent });
+
+    // 3. 右屏
+    const rightParent = new BABYLON.TransformNode(`rattan_right_${item.id}`, registry.scene);
+    rightParent.parent = node;
+    rightParent.position.set(wPart / 2, 0, 0);
+    rightParent.rotation.y = -theta;
+
+    const rx = wPart / 2;
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: rx - wPart / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: borderW, height: size.height, depth: frameD
+    }, { position: { x: rx + wPart / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: rx, y: size.height - borderW / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'frame', {
+      width: wPart - 2 * borderW, height: borderW, depth: frameD
+    }, { position: { x: rx, y: borderW / 2, z: 0 } }, { parent: rightParent });
+    boxComponent(registry, item, rattanWaveScreenFurniture, 'weave', {
+      width: wPart - 2 * borderW, height: size.height - 2 * borderW, depth: weaveD
+    }, { position: { x: rx, y: size.height / 2, z: 0 } }, { parent: rightParent });
+  }
+};
+
+export const luxuryMetalGlassScreenFurniture = {
+  type: 'luxury_metal_glass_screen',
+  name: '轻奢金属长虹玻璃屏风',
+  defaultSize: { width: 44, depth: 8, height: 70 },
+  components: [
+    { id: 'frame', label: '拉丝黄铜框', defaultColor: '#cfb53b' },
+    { id: 'glass', label: '磨砂长虹玻璃', defaultColor: '#e0f7fa' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.06;
+    const frameD = 0.02; // 2 厘米
+    const glassD = 0.008; // 8 毫米
+
+    // 1. 底座
+    boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'frame', {
+      width: size.width * 0.9, height: baseH, depth: size.depth
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    // 2. 两个立柱
+    boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'frame', {
+      width: 0.02, height: size.height - baseH, depth: frameD
+    }, { position: { x: -size.width * 0.45, y: baseH + (size.height - baseH) / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'frame', {
+      width: 0.02, height: size.height - baseH, depth: frameD
+    }, { position: { x: size.width * 0.45, y: baseH + (size.height - baseH) / 2, z: 0 } }, { parent: node });
+
+    // 3. 顶部横梁
+    boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'frame', {
+      width: size.width * 0.9, height: 0.02, depth: frameD
+    }, { position: { x: 0, y: size.height - 0.01, z: 0 } }, { parent: node });
+
+    // 4. 三块磨砂玻璃及垂直分隔条
+    const availW = size.width * 0.9 - 0.04;
+    const sepW = 0.01; // 分隔条宽 1 厘米
+    const glassW = (availW - 2 * sepW) / 3;
+    const glassH = size.height - baseH - 0.02;
+    const glassY = baseH + glassH / 2;
+
+    const startX = -availW / 2 + glassW / 2;
+    const stepX = glassW + sepW;
+
+    for (let i = 0; i < 3; i++) {
+      const gx = startX + i * stepX;
+      boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'glass', {
+        width: glassW, height: glassH, depth: glassD
+      }, { position: { x: gx, y: glassY, z: 0 } }, { parent: node });
+
+      if (i < 2) {
+        boxComponent(registry, item, luxuryMetalGlassScreenFurniture, 'frame', {
+          width: sepW, height: glassH, depth: frameD + 0.005
+        }, { position: { x: gx + stepX / 2, y: glassY, z: 0 } }, { parent: node });
+      }
+    }
+  }
+};
+
+export const japaneseShojiScreenFurniture = {
+  type: 'japanese_shoji_screen',
+  name: '日式障子木格屏风',
+  defaultSize: { width: 64, depth: 6, height: 64 },
+  components: [
+    { id: 'frame', label: '黑胡桃木框', defaultColor: '#2b221a' },
+    { id: 'paper', label: '障子透光纸', defaultColor: '#f7f6f2' },
+    { id: 'grille', label: '细木格栅', defaultColor: '#2b221a' }
+  ],
+  build(registry, item, node, size) {
+    const wPart = size.width / 4;
+    const theta = Math.PI * 12 / 180; // 12度
+    const borderW = 0.03; // 3 厘米
+    const frameD = 0.02; // 2 厘米
+    const paperD = 0.005; // 5 毫米
+    const grilleD = 0.003; // 3 毫米
+    const grilleW = 0.008; // 8 毫米
+
+    const wProj = wPart * Math.cos(theta);
+    const zProj = wPart * Math.sin(theta);
+
+    const folds = [
+      { cx: -1.5 * wProj, cz: 0.5 * zProj, rot: theta },
+      { cx: -0.5 * wProj, cz: -0.5 * zProj, rot: -theta },
+      { cx: 0.5 * wProj, cz: 0.5 * zProj, rot: theta },
+      { cx: 1.5 * wProj, cz: -0.5 * zProj, rot: -theta }
+    ];
+
+    folds.forEach((fold, index) => {
+      const foldNode = new BABYLON.TransformNode(`shoji_fold_${index}_${item.id}`, registry.scene);
+      foldNode.parent = node;
+      foldNode.position.set(fold.cx, 0, fold.cz);
+      foldNode.rotation.y = fold.rot;
+
+      // 1. 外框架 (Frame)
+      // 左
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'frame', {
+        width: borderW, height: size.height, depth: frameD
+      }, { position: { x: -wPart / 2 + borderW / 2, y: size.height / 2, z: 0 } }, { parent: foldNode });
+      // 右
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'frame', {
+        width: borderW, height: size.height, depth: frameD
+      }, { position: { x: wPart / 2 - borderW / 2, y: size.height / 2, z: 0 } }, { parent: foldNode });
+      // 上
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'frame', {
+        width: wPart - 2 * borderW, height: borderW, depth: frameD
+      }, { position: { x: 0, y: size.height - borderW / 2, z: 0 } }, { parent: foldNode });
+      // 下
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'frame', {
+        width: wPart - 2 * borderW, height: borderW, depth: frameD
+      }, { position: { x: 0, y: borderW / 2, z: 0 } }, { parent: foldNode });
+
+      // 2. 障子纸 (Paper)
+      const pW = wPart - 2 * borderW;
+      const pH = size.height - 2 * borderW;
+      const pY = size.height / 2;
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'paper', {
+        width: pW, height: pH, depth: paperD
+      }, { position: { x: 0, y: pY, z: 0 } }, { parent: foldNode });
+
+      // 3. 障子格栅 (Grille)
+      const gZ = paperD / 2 + grilleD / 2;
+
+      // 2根纵向
+      const gX1 = -pW / 6;
+      const gX2 = pW / 6;
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'grille', {
+        width: grilleW, height: pH, depth: grilleD
+      }, { position: { x: gX1, y: pY, z: gZ } }, { parent: foldNode });
+      boxComponent(registry, item, japaneseShojiScreenFurniture, 'grille', {
+        width: grilleW, height: pH, depth: grilleD
+      }, { position: { x: gX2, y: pY, z: gZ } }, { parent: foldNode });
+
+      // 4根横向
+      for (let i = 1; i <= 4; i++) {
+        const gy = borderW + (pH / 5) * i;
+        boxComponent(registry, item, japaneseShojiScreenFurniture, 'grille', {
+          width: pW, height: grilleW, depth: grilleD
+        }, { position: { x: 0, y: gy, z: gZ } }, { parent: foldNode });
+      }
+    });
   }
 };

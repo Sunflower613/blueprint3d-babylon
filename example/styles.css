@@ -1610,6 +1610,31 @@ select {
   flex-shrink: 0;
 }
 
+.custom-dropdown-group-title {
+  grid-column: span 3;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a5d78;
+  background: rgba(42, 65, 92, 0.04);
+  border-radius: 6px;
+  text-align: center;
+  padding: 5px 12px;
+  margin: 6px 0 2px 0;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.custom-dropdown-group-title::before,
+.custom-dropdown-group-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(42, 65, 92, 0.08);
+}
+
 
 .building-tool-group {
   display: grid;

@@ -59,49 +59,73 @@ test('catalog exposes eight common wood textures and no flat wood color', () => 
 test('catalog exposes tintable stone textures and no flat stone color', () => {
   const stoneMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'stone');
 
-  assert.equal(stoneMaterials.length, 16);
+  assert.equal(stoneMaterials.length, 10);
   assert.deepEqual(
     stoneMaterials.map((entry) => entry.id),
     [
-      'stone-light',
-      'stone-ivory-marble',
-      'stone-mist-marble',
-      'stone-sand-marble',
-      'stone-marbletiles',
-      'stone-marble-ivory',
-      'stone-marble-ash',
-      'stone-marble-sand',
-      'stone-light-brick',
-      'stone-cream-brick',
-      'stone-rustic-brick',
-      'stone-clay-brick',
-      'stone-grey-gloss',
-      'stone-cloud-gloss',
-      'stone-mist-gloss',
-      'stone-slate-gloss'
+      'stone-earth',
+      'stone-sand',
+      'stone-sand-stone',
+      'stone-fine-sand',
+      'stone-natural',
+      'stone-joint',
+      'stone-road',
+      'stone-rock',
+      'stone-terrazzo',
+      'stone-white-sand'
     ]
   );
 
   stoneMaterials.forEach((material) => {
     assert.equal(material.kind, 'texture');
     assert.ok(
-      String(material.src).includes('marbletiles.jpg') ||
-      String(material.src).includes('light_brick.jpg') ||
-      String(material.src).includes('stone_marble_warm.jpg') ||
-      String(material.src).includes('stone_marble_grey_gloss.jpg')
+      String(material.src).includes('stone_earth') ||
+      String(material.src).includes('stone_sand') ||
+      String(material.src).includes('stone_sand_stone') ||
+      String(material.src).includes('stone_fine_sand') ||
+      String(material.src).includes('stone.jpg') ||
+      String(material.src).includes('stone_joint') ||
+      String(material.src).includes('stone_road') ||
+      String(material.src).includes('stone_rock') ||
+      String(material.src).includes('stone_terrazzo') ||
+      String(material.src).includes('stone_white_sand')
     );
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
   });
+});
 
-  assert.equal(stoneMaterials.filter((material) => String(material.src).includes('stone_marble_warm.jpg')).length, 4);
-  assert.equal(stoneMaterials.filter((material) => String(material.src).includes('marbletiles.jpg')).length, 4);
-  assert.equal(stoneMaterials.filter((material) => String(material.src).includes('light_brick.jpg')).length, 4);
-  assert.equal(stoneMaterials.filter((material) => String(material.src).includes('stone_marble_grey_gloss.jpg')).length, 4);
+test('catalog exposes brick textures', () => {
+  const brickMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'brick');
 
-  const reflectiveStoneMaterials = stoneMaterials.filter((material) => material.reflective);
-  assert.equal(reflectiveStoneMaterials.length, 4);
-  reflectiveStoneMaterials.forEach((material) => {
-    assert.ok(String(material.src).includes('stone_marble_grey_gloss.jpg'));
+  assert.equal(brickMaterials.length, 12);
+  assert.deepEqual(
+    brickMaterials.map((entry) => entry.id),
+    [
+      'brick-marble-warm',
+      'brick-grey-gloss-marble',
+      'brick-marble-tiles',
+      'brick-light',
+      'brick-red',
+      'brick-cube',
+      'brick-diamond',
+      'brick-square',
+      'brick-stone',
+      'brick-mosaic',
+      'brick-black-white',
+      'brick-small-black'
+    ]
+  );
+
+  brickMaterials.forEach((material) => {
+    assert.equal(material.kind, 'texture');
+    assert.ok(String(material.src).includes('brick_'));
+    assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
+  });
+
+  const reflectiveBrickMaterials = brickMaterials.filter((material) => material.reflective);
+  assert.equal(reflectiveBrickMaterials.length, 1);
+  reflectiveBrickMaterials.forEach((material) => {
+    assert.ok(String(material.src).includes('brick_marble_grey_gloss.jpg'));
     assert.ok(material.reflectionLevel > 0.5);
     assert.ok(material.specularStrength > 0.7);
     assert.ok(material.specularPower >= 96);
@@ -207,7 +231,7 @@ test('reflective texture descriptors keep reflection controls', () => {
   const normalized = normalizeMaterialDescriptor({
     id: 'stone-glossy-test',
     kind: 'texture',
-    src: 'stone_marble_grey_gloss.jpg',
+    src: 'brick_marble_grey_gloss.jpg',
     color: '#cfd5dc',
     reflective: true,
     reflectionLevel: 0.58,
@@ -220,7 +244,7 @@ test('reflective texture descriptors keep reflection controls', () => {
   assert.equal(normalized.reflectionLevel, 0.58);
   assert.equal(normalized.specularStrength, 0.74);
   assert.equal(normalized.specularPower, 120);
-  assert.ok(String(normalized.src).includes('stone_marble_grey_gloss.jpg'));
+  assert.ok(String(normalized.src).includes('brick_marble_grey_gloss.jpg'));
 });
 
 test('texture material descriptors preserve id and tint color', () => {

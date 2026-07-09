@@ -58,18 +58,19 @@ test('contains clothing furniture in list', () => {
   }
 });
 
-test('contains outdoor furniture category and 22 outdoor items', () => {
+test('contains outdoor furniture category and 23 outdoor items', () => {
   const outdoorCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'outdoor');
   assert.ok(outdoorCategory, 'Outdoor category should exist');
   assert.equal(outdoorCategory.label, '户外');
 
   const outdoorItems = FURNITURE_LIST.filter((item) => item.category === 'outdoor');
-  assert.equal(outdoorItems.length, 22, 'Should contain exactly 22 outdoor furniture items');
+  assert.equal(outdoorItems.length, 23, 'Should contain exactly 23 outdoor furniture items');
 
   const types = outdoorItems.map((item) => item.type);
   assert.ok(types.includes('outdoor_umbrella'));
   assert.ok(types.includes('pergola'));
   assert.ok(types.includes('flower_arch'));
+  assert.ok(types.includes('shared_bicycle'));
 });
 
 test('separates landscape plants into flora category', () => {
@@ -123,3 +124,25 @@ test('adds outdoor-friendly seating and tables into existing categories', () => 
   assert.ok(tableTypes.has('rattan_coffee_table'));
   assert.ok(tableTypes.has('garden_side_table'));
 });
+
+test('contains 5 new screen furniture items in decor category', () => {
+  const decorItems = FURNITURE_LIST.filter((item) => item.category === 'decor');
+  const screenTypes = [
+    'traditional_chinese_screen',
+    'modern_slat_screen',
+    'rattan_wave_screen',
+    'luxury_metal_glass_screen',
+    'japanese_shoji_screen'
+  ];
+
+  const decorTypes = new Set(decorItems.map((item) => item.type));
+  for (const type of screenTypes) {
+    assert.ok(decorTypes.has(type), `${type} should be registered in decor category`);
+    const screenItem = FURNITURE_LIST.find((item) => item.type === type);
+    assert.ok(screenItem, `${type} definition should exist`);
+    assert.ok(screenItem.defaultSize, `${type} should have defaultSize`);
+    assert.ok(screenItem.components, `${type} should have components`);
+    assert.ok(typeof screenItem.build === 'function', `${type} should have build function`);
+  }
+});
+

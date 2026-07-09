@@ -1,9 +1,31 @@
 const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
-const marbletilesUrl = new URL('../textures/marbletiles.jpg', import.meta.url).href;
-const lightBrickUrl = new URL('../textures/light_brick.jpg', import.meta.url).href;
+const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
+const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
 const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
-const stoneMarbleWarmUrl = new URL('../textures/stone_marble_warm.jpg', import.meta.url).href;
-const stoneMarbleGreyGlossUrl = new URL('../textures/stone_marble_grey_gloss.jpg', import.meta.url).href;
+const brickMarbleWarmUrl = new URL('../textures/brick_marble_warm.jpg', import.meta.url).href;
+const brickMarbleGreyGlossUrl = new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href;
+
+// 新加沙石 (分类: stone)
+const stoneEarthUrl = new URL('../textures/stone_earth.jpg', import.meta.url).href;
+const stoneSandUrl = new URL('../textures/stone_sand.jpg', import.meta.url).href;
+const stoneSandStoneUrl = new URL('../textures/stone_sand_stone.jpg', import.meta.url).href;
+const stoneFineSandUrl = new URL('../textures/stone_fine_sand.jpg', import.meta.url).href;
+const stoneNaturalUrl = new URL('../textures/stone.jpg', import.meta.url).href;
+const stoneJointUrl = new URL('../textures/stone_joint.jpg', import.meta.url).href;
+const stoneRoadUrl = new URL('../textures/stone_road.jpg', import.meta.url).href;
+const stoneRockUrl = new URL('../textures/stone_rock.jpg', import.meta.url).href;
+const stoneTerrazzoUrl = new URL('../textures/stone_terrazzo.jpg', import.meta.url).href;
+const stoneWhiteSandUrl = new URL('../textures/stone_white_sand.jpg', import.meta.url).href;
+
+// 新加砖块 (分类: brick)
+const brickBlackWhiteUrl = new URL('../textures/brick_black_white.jpg', import.meta.url).href;
+const brickSmallBlackUrl = new URL('../textures/brick_small_black.png', import.meta.url).href;
+const brickMosaicUrl = new URL('../textures/brick_mosaic.jpg', import.meta.url).href;
+const brickRedUrl = new URL('../textures/brick_red.jpg', import.meta.url).href;
+const brickCubeUrl = new URL('../textures/brick_cube.jpg', import.meta.url).href;
+const brickDiamondUrl = new URL('../textures/brick_diamond.jpg', import.meta.url).href;
+const brickSquareUrl = new URL('../textures/brick_square.jpg', import.meta.url).href;
+const brickStoneUrl = new URL('../textures/brick_stone.jpg', import.meta.url).href;
 const fabricRopeCableBeigeUrl = new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href;
 const fabricKnitCableGreyUrl = new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href;
 const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href;
@@ -22,8 +44,9 @@ const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
-  { id: 'wood', label: '木纹', icon: '<path d="m10 10-1.5-1.5"/><path d="M16 14a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1Z"/><path d="M12 14v3"/><path d="M12 2v2"/><path d="m18 8-2 2"/><path d="M2 18h20"/><path d="M19 14v4"/>' },
-  { id: 'stone', label: '石理', icon: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 9v6"/><path d="M16 15v6"/><path d="M16 3v6"/><path d="M3 15h18"/><path d="M3 9h18"/><path d="M8 15v6"/><path d="M8 3v6"/>' },
+  { id: 'wood', label: '木纹', icon: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M14 3v9"/><path d="M8 12v9"/>' },
+  { id: 'stone', label: '沙石', icon: '<path d="M11.264 2.205A4 4 0 0 0 6.42 4.211l-4 8a4 4 0 0 0 1.359 5.117l6 4a4 4 0 0 0 4.438 0l6-4a4 4 0 0 0 1.576-4.592l-2-6a4 4 0 0 0-2.53-2.53z"/><path d="M11.99 22 14 12l7.822 3.184"/><path d="M14 12 8.47 2.302"/>' },
+  { id: 'brick', label: '砖块', icon: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v6"/><path d="M15 3v6"/><path d="M6 9v6"/><path d="M12 9v6"/><path d="M18 9v6"/><path d="M9 15v6"/><path d="M15 15v6"/>' },
   { id: 'metal', label: '金属', icon: '<path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .76-.97l8-2a1 1 0 0 1 .48 0l8 2A1 1 0 0 1 20 6Z"/>' },
   { id: 'mirror', label: '镜面', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m7 7 10 10"/><path d="M7 12h4"/><path d="M12 7v4"/>' },
   { id: 'glass', label: '玻璃', icon: '<path d="M15.2 22H8.8a2 2 0 0 1-2-1.79L5 3h14l-1.81 17.21A2 2 0 0 1 15.2 22Z"/><path d="M6 12a5 5 0 0 1 6 0 5 5 0 0 0 6 0"/>' },
@@ -51,11 +74,11 @@ const COMMON_WOOD_MATERIALS = [
 }));
 
 const COMMON_FABRIC_MATERIALS = [
-  { id: 'fabric-rope-cable-beige', name: '绳纹针织', src: fabricRopeCableBeigeUrl, scale: 2.2, color: '#d9aa73' },
-  { id: 'fabric-knit-cable-grey', name: '交织麻花针织', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#6d7184' },
-  { id: 'fabric-knit-cable-white', name: '竖纹麻花针织', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#f1ede4' },
-  { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#efe4cf' },
-  { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#3b3d42' }
+  { id: 'fabric-rope-cable-beige', name: '绳纹针织', src: fabricRopeCableBeigeUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-knit-cable-grey', name: '交织麻花针织', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-knit-cable-white', name: '竖纹麻花针织', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'fabric',
@@ -80,28 +103,40 @@ const COMMON_WALLPAPER_MATERIALS = [
 }));
 
 const COMMON_STONE_MATERIALS = [
-  { id: 'stone-light', name: '暖白大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#f1ece5' },
-  { id: 'stone-ivory-marble', name: '象牙纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#e9dfd3' },
-  { id: 'stone-mist-marble', name: '淡金纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#e3d6ca' },
-  { id: 'stone-sand-marble', name: '暖粉纹大理石', src: stoneMarbleWarmUrl, scale: 2.2, color: '#d9c8bb' },
-
-  { id: 'stone-marbletiles', name: '经典大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#e2dfd9' },
-  { id: 'stone-marble-ivory', name: '象牙大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#ebe5dc' },
-  { id: 'stone-marble-ash', name: '灰米大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#d4cdc4' },
-  { id: 'stone-marble-sand', name: '砂金大理石瓷砖', src: marbletilesUrl, scale: 3, color: '#d8c7b0' },
-
-  { id: 'stone-light-brick', name: '浅色红砖', src: lightBrickUrl, scale: 1, color: '#e9d7c3' },
-  { id: 'stone-cream-brick', name: '奶油砖', src: lightBrickUrl, scale: 1, color: '#f1dfcc' },
-  { id: 'stone-rustic-brick', name: '暖陶砖', src: lightBrickUrl, scale: 1, color: '#d4b198' },
-  { id: 'stone-clay-brick', name: '浅棕砖', src: lightBrickUrl, scale: 1, color: '#c49c7d' },
-
-  { id: 'stone-grey-gloss', name: '银灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#d7dbe0', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
-  { id: 'stone-cloud-gloss', name: '云灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#cdd2d8', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
-  { id: 'stone-mist-gloss', name: '冷雾亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#bcc2c9', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
-  { id: 'stone-slate-gloss', name: '深灰亮面大理石', src: stoneMarbleGreyGlossUrl, scale: 2.4, color: '#a7adb5', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 }
+  { id: 'stone-earth', name: '泥土', src: stoneEarthUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'stone-sand', name: '黄沙', src: stoneSandUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-sand-stone', name: '沙石', src: stoneSandStoneUrl, scale: 1.8, color: '#ffffff' },
+  { id: 'stone-fine-sand', name: '细沙', src: stoneFineSandUrl, scale: 2.8, color: '#ffffff' },
+  { id: 'stone-natural', name: '天然石面', src: stoneNaturalUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-joint', name: '接缝石板', src: stoneJointUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-road', name: '碎石路', src: stoneRoadUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'stone-rock', name: '岩石', src: stoneRockUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-terrazzo', name: '水磨石', src: stoneTerrazzoUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'stone-white-sand', name: '白砂', src: stoneWhiteSandUrl, scale: 1.2, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'stone',
+  kind: 'texture'
+}));
+
+const COMMON_BRICK_MATERIALS = [
+  { id: 'brick-marble-warm', name: '大理石', src: brickMarbleWarmUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'brick-grey-gloss-marble', name: '亮面大理石', src: brickMarbleGreyGlossUrl, scale: 2.4, color: '#ffffff', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'brick-marble-tiles', name: '大理石砖', src: brickMarbleTilesUrl, scale: 3.0, color: '#ffffff' },
+  { id: 'brick-light', name: '石砖', src: brickLightUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-red', name: '红砖', src: brickRedUrl, scale: 1.5, color: '#ffffff' },
+
+  // 新加砖块/瓷砖
+  { id: 'brick-cube', name: '立体魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
+  { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-black-white', name: '棋盘砖', src: brickBlackWhiteUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff' }
+].map((material) => ({
+  ...material,
+  category: 'brick',
   kind: 'texture'
 }));
 
@@ -126,6 +161,7 @@ export const DEFAULT_MATERIAL_PACKS = [
 
   ...COMMON_WOOD_MATERIALS,
   ...COMMON_STONE_MATERIALS,
+  ...COMMON_BRICK_MATERIALS,
   ...COMMON_FABRIC_MATERIALS,
 
   { id: 'metal-gold', name: '金', category: 'metal', kind: 'metal', color: '#d4af37' },

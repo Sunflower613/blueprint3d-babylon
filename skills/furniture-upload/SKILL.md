@@ -15,10 +15,11 @@ export default function createFurniture({ boxComponent, cylinderComponent, spher
 
 ## 核心约定结构
 
-- 返回的对象必须包含唯一的 `type`、非空 `name`、默认尺寸 `defaultSize`、可编辑组件列表 `components`、`build` 建模函数，以及可选的 `thumbnail`。
+- 返回的对象必须包含唯一的 `type`、非空 `name`、默认尺寸 `defaultSize`、可编辑组件列表 `components`、`build` 建模函数，以及可选的 `thumbnail` 和 `unit`。
 - `type`: 必须以小写字母开头，只能包含小写字母、数字和下划线。建议使用 `custom_` 前缀（例如：`custom_sofa`）。
 - `thumbnail` (可选): 字符串类型。可以是一个网络图片 URL，或者一个 Base64 Data URL（例如 `data:image/png;base64,...`），作为家具的缩略图预览。
-- `defaultSize`: 必须包含大于零的 `width` (宽度)、`depth` (深度)、`height` (高度)，其单位是**英寸 (inches)**。
+- `unit` (可选): 字符串类型。可选为 `'m'`。如果设置为 `'m'`，表示家具定义的 `defaultSize` 和 `lightSource` 已经是以**米 (meters)**为单位定义的。如果不设置此字段，默认以英制（英寸）解析。
+- `defaultSize`: 必须包含大于零的 `width` (宽度)、`depth` (深度)、`height` (高度)，默认单位是**英寸 (inches)**（若指定了 `unit: 'm'` 则单位为**米 (meters)**）。
 - `components`: 必须包含至少一个元素。每个组件都需要有唯一的 `id` (字符串)、显示的 `label` 标签以及十六进制的默认颜色 `defaultColor`。
 - `build(registry, item, node, size)`: 必须将构建出来的每一个三维 Mesh 的 `parent` 挂载到传入的 `node` 上。
 - 优先使用注入的 `boxComponent`、`cylinderComponent` 和 `sphereComponent`；这能确保生成的家具完美支持编辑器中的组件单独选中、修改颜色和编辑材质功能。
@@ -28,10 +29,10 @@ export default function createFurniture({ boxComponent, cylinderComponent, spher
 ## 尺寸与坐标单位规范
 
 > [!IMPORTANT]
-> **单位换算陷阱**: 
-> 注册字段 `defaultSize` 里的数值单位是 **英寸 (inches)**。
-> 但是在运行期，传入 `build(registry, item, node, size)` 里的 `size` 对象数值单位会被系统自动转换为 **米 (meters)** （1 英寸 = 0.0254 米）。
-> 因此，在 `build` 逻辑中所有硬编码的局部尺寸（如椅腿的厚度 `0.08`，脚架高 `0.16` 等）和位置坐标，其数值的单位都必须是 **米 (meters)**。
+> **尺寸与单位说明 (支持英寸或米)**: 
+> 默认情况下，注册字段 `defaultSize` 里的数值单位是 **英寸 (inches)**，而在运行期传入 `build(registry, item, node, size)` 里的 `size` 对象的单位会被系统自动换算为 **米 (meters)**。
+> **【新特性推荐】**: 如果您希望直接以米为单位定义家具以消除心算负担，可在家具定义中显式指定 **`unit: 'm'`**。在此模式下，注册字段 `defaultSize` 以及 `lightSource` 配置的 `offset` 和 `range` 将直接被视为 **米 (meters)**，系统不再执行英寸转换。
+> 无论使用哪种定义单位，传入 `build` 函数的 `size` 参数数值单位及所有 Babylon 网格尺寸和位置坐标必须是 **米 (meters)**。
 
 - **Babylon 坐标轴**: 采用 Y-up（Y 轴向上）坐标系。确保家具的底部在 `y = 0` 平面上。例如：一个高度为 `H` 的方块组件，其中心点 Y 坐标应该设置为 `H / 2`。
 - **拉伸缩放**: 所有的主结构尺寸和坐标位置都应当根据传入的 `size` (米) 动态计算得出，以确保用户在编辑器中拉伸修改家具大小时，模型能正确等比缩放。
@@ -66,10 +67,10 @@ export default function createFurniture({ boxComponent, cylinderComponent, spher
 ### 2. 灯具与发光体配置 (Lighting)
 - **`lightSource`**: 结构化光源定义。如果家具需要发光，可指定光源属性（引擎会自动在 3D 空间创建对应光源）：
   - `type`: `'point'` (点光源，如普通灯泡) 或 `'spot'` (聚光灯)
-  - `offset`: `{ x, y, z }` (相对于家具中心点偏移，单位是**英寸**)
+  - `offset`: `{ x, y, z }` (相对于家具中心点偏移，若 `unit: 'm'` 则单位是**米**，否则单位是**英寸**)
   - `color`: 灯光颜色 HEX 字符串（如 `"#fffbe6"`）
   - `intensity`: 光源强度（默认 0.8）
-  - `range`: 光照范围半径（单位是**英寸**，默认 150）
+  - `range`: 光照范围半径（若 `unit: 'm'` 则单位是**米**且默认为 3.8，否则单位是**英寸**且默认为 150）
   - *(若为 spot 聚光灯)*: 支持配置 `direction` (朝向，默认 `{ x: 0, y: -1, z: 0 }` 向下)、`angle` (张角弧度，默认 `Math.PI / 3`)、`exponent` (衰减指数，默认 2)。
 - **`emissiveComponents`**: 发光组件 ID 列表（如 `['bulb', 'glow']`），指定开灯状态下哪些组件在 3D 渲染里呈自发光状态（不受暗处阴影遮蔽）。
 - **`lightColorComponent`**: 关联发光体组件 ID（如 `'glow'`），当用户更改该组件颜色时，光源本身的颜色 `color` 会自动保持同步更改。

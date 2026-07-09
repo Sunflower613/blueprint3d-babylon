@@ -1,5 +1,4 @@
-import { getRoomVertices } from '../../src/rooms/roomShapes.js';
-import { isItemSnappedToBookshelfOrMannequin } from '../../src/core/exporterUtils.js';
+import { getRoomVertices, isItemSnappedToBookshelfOrMannequin } from '../../src/index.js';
 
 import { createStoreProxy } from '../store/proxyHelper.js';
 
@@ -30,7 +29,7 @@ export function svgToWorld(x, y) {
 }
 
 export function inchesToWorld(value) {
-  return Number(value || 0) / ctx.INCHES_PER_UNIT;
+  return Number(value || 0);
 }
 
 export function createSvgElement(name, attrs = {}) {

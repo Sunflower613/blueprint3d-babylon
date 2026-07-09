@@ -11,9 +11,9 @@ export function escXml(value) {
 export function itemSize(item) {
   const scale = Number(item.scale || 1);
   return {
-    width: Number(item.width || 0) / INCHES_PER_UNIT * scale,
-    depth: Number(item.depth || 0) / INCHES_PER_UNIT * scale,
-    height: Number(item.height || 24) / INCHES_PER_UNIT * scale
+    width: Number(item.width || 0) * scale,
+    depth: Number(item.depth || 0) * scale,
+    height: Number(item.height || 0.6) * scale
   };
 }
 
@@ -133,9 +133,9 @@ export function isItemSnappedToBookshelfOrMannequin(item, items, getFurnitureDef
     
     let isBookshelf = false;
     let isMannequin = false;
-    let otherWidth = Number(other.width || 0) / INCHES_PER_UNIT;
-    let otherDepth = Number(other.depth || 0) / INCHES_PER_UNIT;
-    let otherHeight = Number(other.height || 0) / INCHES_PER_UNIT;
+    let otherWidth = Number(other.width || 0);
+    let otherDepth = Number(other.depth || 0);
+    let otherHeight = Number(other.height || 0);
     
     if (getFurnitureDefinition) {
       const otherDef = getFurnitureDefinition(other.type);
@@ -144,9 +144,9 @@ export function isItemSnappedToBookshelfOrMannequin(item, items, getFurnitureDef
         isBookshelf = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'].includes(type);
         isMannequin = type.includes('mannequin') || type.includes('clothing_mannequin');
         
-        if (!other.width && otherDef.defaultSize?.width) otherWidth = otherDef.defaultSize.width / INCHES_PER_UNIT;
-        if (!other.depth && otherDef.defaultSize?.depth) otherDepth = otherDef.defaultSize.depth / INCHES_PER_UNIT;
-        if (!other.height && otherDef.defaultSize?.height) otherHeight = otherDef.defaultSize.height / INCHES_PER_UNIT;
+        if (!other.width && otherDef.defaultSize?.width) otherWidth = otherDef.unit === 'm' ? otherDef.defaultSize.width : otherDef.defaultSize.width / INCHES_PER_UNIT;
+        if (!other.depth && otherDef.defaultSize?.depth) otherDepth = otherDef.unit === 'm' ? otherDef.defaultSize.depth : otherDef.defaultSize.depth / INCHES_PER_UNIT;
+        if (!other.height && otherDef.defaultSize?.height) otherHeight = otherDef.unit === 'm' ? otherDef.defaultSize.height : otherDef.defaultSize.height / INCHES_PER_UNIT;
       }
     }
     
@@ -169,11 +169,11 @@ export function isItemSnappedToBookshelfOrMannequin(item, items, getFurnitureDef
     const scale = Number(other.scale || 1);
     const itemElev = Number(item.elevation || 0);
     const otherElev = Number(other.elevation || 0);
-    const otherHInches = otherHeight * INCHES_PER_UNIT * scale;
+    const otherH = otherHeight * scale;
     
     if (isBookshelf) {
       // 1. 书架高程判定：物品处于书架高度区间内
-      if (itemElev < otherElev + 0.1 || itemElev > otherElev + otherHInches + 5.0) {
+      if (itemElev < otherElev + 0.05 || itemElev > otherElev + otherH + (5.0 / INCHES_PER_UNIT)) {
         continue;
       }
       // 2. 书架投影范围判定
@@ -199,7 +199,7 @@ export function isItemSnappedToBookshelfOrMannequin(item, items, getFurnitureDef
         continue;
       }
       // 2. 模特高度判定：在模特高度区间内
-      if (itemElev < otherElev - 2.0 || itemElev > otherElev + otherHInches + 5.0) {
+      if (itemElev < otherElev - (2.0 / INCHES_PER_UNIT) || itemElev > otherElev + otherH + (5.0 / INCHES_PER_UNIT)) {
         continue;
       }
       // 3. 模特距离判定：水平投影距离极近

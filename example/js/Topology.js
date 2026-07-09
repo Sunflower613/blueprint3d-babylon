@@ -1,4 +1,4 @@
-import { getRoomVertices } from '../../src/rooms/roomShapes.js';
+import { getRoomVertices } from '../../src/index.js';
 
 /**
  * 空间拓扑与网格对齐相关算法

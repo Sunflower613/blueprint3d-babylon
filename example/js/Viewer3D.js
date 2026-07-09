@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 } from '../../src/core/babylon.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 };
 
 /**

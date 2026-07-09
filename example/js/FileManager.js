@@ -1,10 +1,14 @@
 import JSZip from 'jszip';
-import { Tools } from '../../src/core/babylon.js';
-const BABYLON = { Tools };
 import { getEditHandleNodes } from './Viewer3DHandles.js';
-import { createBuildingFileName } from '../../src/core/buildingFile.js';
-import { createDXFFileName, stringifyDXF } from '../../src/core/dxfExporter.js';
-import { create3MFFileName, create3MFPackage } from '../../src/core/threeMfExporter.js';
+import {
+  Tools,
+  createBuildingFileName,
+  createDXFFileName,
+  stringifyDXF,
+  create3MFFileName,
+  create3MFPackage
+} from '../../src/index.js';
+const BABYLON = { Tools };
 import { createStoreProxy } from '../store/proxyHelper.js';
 
 let rawCtx = null;

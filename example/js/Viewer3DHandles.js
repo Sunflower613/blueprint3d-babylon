@@ -1,4 +1,4 @@
-import { Color3, Engine, Mesh, MeshBuilder, StandardMaterial, Vector3 } from '../../src/core/babylon.js';
+import { Color3, Engine, Mesh, MeshBuilder, StandardMaterial, Vector3 } from '../../src/index.js';
 const BABYLON = { Color3, Engine, Mesh, MeshBuilder, StandardMaterial, Vector3 };
 import { createStoreProxy } from '../store/proxyHelper.js';
 

@@ -8,9 +8,15 @@ import {
   createZipStore,
   stringifyDXF
 } from '../src/core/exporters.js';
+import { FloorplanDocument } from '../src/domain/FloorplanDocument.js';
+
+function getNorm(data) {
+  return new FloorplanDocument(data).floorplan;
+}
 
 const floorplan = {
   name: 'Layered export test',
+  unit: 'in',
   wallHeight: 3,
   wallThickness: 0.2,
   floorHeight: 0.1,
@@ -43,7 +49,7 @@ const floorplan = {
 };
 
 test('DXF separates floors into architectural layer sets', () => {
-  const dxf = stringifyDXF(floorplan);
+  const dxf = stringifyDXF(getNorm(floorplan));
   for (const layer of [
     'F01-A-WALL', 'F01-A-DOOR', 'F01-A-DIMS', 'F01-A-FURN',
     'F01-A-ROOM-ANNO', 'F01-A-FURN-ANNO', 'F01-A-FLOR-PLNT',
@@ -57,7 +63,7 @@ test('DXF separates floors into architectural layer sets', () => {
 });
 
 test('DXF draws architectural wall faces, door swing, windows and dimensions', () => {
-  const dxf = stringifyDXF(floorplan);
+  const dxf = stringifyDXF(getNorm(floorplan));
   assert.match(dxf, /0\nARC\n8\nF01-A-DOOR\n/);
   assert.match(dxf, /8\nF02-A-WIND\n/);
   assert.match(dxf, /8\nF01-A-WALL\n10\n0\n20\n-0\.1\n/);
@@ -68,6 +74,7 @@ test('DXF draws architectural wall faces, door swing, windows and dimensions', (
 test('DXF filters out items snapped to bookshelves or clothing mannequins', () => {
   const customFloorplan = {
     name: 'Snapped items test',
+    unit: 'in',
     wallHeight: 3,
     wallThickness: 0.2,
     floorHeight: 0.1,
@@ -98,7 +105,7 @@ test('DXF filters out items snapped to bookshelves or clothing mannequins', () =
     fences: []
   };
   
-  const dxf = stringifyDXF(customFloorplan);
+  const dxf = stringifyDXF(getNorm(customFloorplan));
   
   // 书架、不吸附的书籍、模特、不吸附的衣服应当在 DXF 中被导出（存在其名称标签或线段）
   assert.match(dxf, /1\nBookshelf\n/);
@@ -113,7 +120,7 @@ test('DXF filters out items snapped to bookshelves or clothing mannequins', () =
 
 
 test('3MF keeps each floor building and each furniture item as named objects', () => {
-  const xml = create3MFModelXml(floorplan);
+  const xml = create3MFModelXml(getNorm(floorplan));
   assert.match(xml, /name="Building - Ground" partnumber="F01-BUILDING"/);
   assert.match(xml, /name="Building - Upper" partnumber="F02-BUILDING"/);
   assert.match(xml, /name="Furniture - Chair" partnumber="FURNITURE-chair1"/);
@@ -124,7 +131,7 @@ test('3MF keeps each floor building and each furniture item as named objects', (
 
 test('3MF respects category filter in options', () => {
   // 仅导出建筑
-  const xmlBuilding = create3MFModelXml(floorplan, { category: 'building' });
+  const xmlBuilding = create3MFModelXml(getNorm(floorplan), { category: 'building' });
   assert.match(xmlBuilding, /name="Building - Ground"/);
   assert.match(xmlBuilding, /name="Building - Upper"/);
   assert.doesNotMatch(xmlBuilding, /name="Furniture - Chair"/);
@@ -132,7 +139,7 @@ test('3MF respects category filter in options', () => {
   assert.equal((xmlBuilding.match(/<item objectid=/g) || []).length, 2);
 
   // 仅导出家具
-  const xmlFurniture = create3MFModelXml(floorplan, { category: 'furniture' });
+  const xmlFurniture = create3MFModelXml(getNorm(floorplan), { category: 'furniture' });
   assert.doesNotMatch(xmlFurniture, /name="Building - Ground"/);
   assert.match(xmlFurniture, /name="Furniture - Chair"/);
   assert.match(xmlFurniture, /name="Furniture - Desk"/);
@@ -166,7 +173,7 @@ test('3MF exports custom base materials for colored meshes', () => {
     openings: []
   };
 
-  const xml = create3MFModelXml(coloredFloorplan, {
+  const xml = create3MFModelXml(getNorm(coloredFloorplan), {
     category: 'furniture',
     testMap: { scene: fakeScene }
   });
@@ -178,7 +185,7 @@ test('3MF exports custom base materials for colored meshes', () => {
 });
 
 test('3MF walls have physical thickness and door/window void geometry', () => {
-  const xml = create3MFModelXml(floorplan);
+  const xml = create3MFModelXml(getNorm(floorplan));
   const groundBuilding = xml.match(/<object id="1"[\s\S]*?<\/object>/)?.[0] || '';
   const upperBuilding = xml.match(/<object id="2"[\s\S]*?<\/object>/)?.[0] || '';
   assert.match(groundBuilding, /z="-0\.10000"/);
@@ -191,6 +198,7 @@ test('3MF walls have physical thickness and door/window void geometry', () => {
 test('3MF exports tenon and mortise joints between floors', () => {
   const multiFloorplan = {
     name: 'Multi floor test',
+    unit: 'in',
     wallHeight: 3,
     wallThickness: 0.2,
     floorHeight: 0.1,
@@ -216,7 +224,7 @@ test('3MF exports tenon and mortise joints between floors', () => {
     fences: []
   };
 
-  const xml = create3MFModelXml(multiFloorplan, { enableTenon: true });
+  const xml = create3MFModelXml(getNorm(multiFloorplan), { enableTenon: true });
   
   const groundBuilding = xml.match(/<object id="1"[\s\S]*?<\/object>/)?.[0] || '';
   const upperBuilding = xml.match(/<object id="2"[\s\S]*?<\/object>/)?.[0] || '';
@@ -280,7 +288,7 @@ test('3MF exports detailed stairs and fences when testMap is provided', () => {
     }
   };
 
-  const xml = create3MFModelXml(testMapPlan, {
+  const xml = create3MFModelXml(getNorm(testMapPlan), {
     category: 'building',
     testMap: { scene: fakeScene }
   });
@@ -292,7 +300,7 @@ test('3MF exports detailed stairs and fences when testMap is provided', () => {
 });
 
 test('3MF package contains a valid model part', async () => {
-  const bytes = create3MFPackage(floorplan);
+  const bytes = create3MFPackage(getNorm(floorplan));
   assert.deepEqual(Array.from(bytes.slice(0, 2)), [0x50, 0x4b]);
   const zip = await JSZip.loadAsync(bytes);
   const model = await zip.file('3D/3dmodel.model').async('string');

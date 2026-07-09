@@ -394,10 +394,10 @@ export function updateEditor() {
 
   if (item) {
     document.getElementById('selected-name').textContent = item.name;
-    document.getElementById('item-width').value = Number((item.width / INCHES_PER_UNIT).toFixed(2));
-    document.getElementById('item-depth').value = Number((item.depth / INCHES_PER_UNIT).toFixed(2));
-    document.getElementById('item-height').value = Number((item.height / INCHES_PER_UNIT).toFixed(2));
-    const elevationVal = Number(((item.elevation || 0) / INCHES_PER_UNIT).toFixed(2));
+    document.getElementById('item-width').value = Number((item.width || 0).toFixed(2));
+    document.getElementById('item-depth').value = Number((item.depth || 0).toFixed(2));
+    document.getElementById('item-height').value = Number((item.height || 0).toFixed(2));
+    const elevationVal = Number((item.elevation || 0).toFixed(2));
     document.getElementById('item-elevation').value = elevationVal;
     const itemFloor = testMap.floorplan.floors.find((f) => f.id === item.floorId);
     const floorWallHeight = itemFloor ? (itemFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);

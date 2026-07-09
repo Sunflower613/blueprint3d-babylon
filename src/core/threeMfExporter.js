@@ -3,7 +3,6 @@ const BABYLON = { Color3, Vector3, VertexBuffer };
 import { triangulateRoom } from '../rooms/index.js';
 import {
   DEFAULT_WALL_THICKNESS,
-  INCHES_PER_UNIT,
   entityFloorId,
   escXml,
   floorEntities,
@@ -458,7 +457,7 @@ function createObjects(floorplan, options = {}) {
         const size = itemSize(item);
         const floorY = getFloorElevation(floorplan, entityFloorId(floorplan, item));
         const roomOffset = getItemRoomElevationOffset(floorplan, item);
-        const centerY = floorY + roomOffset + Number(item.elevation || 0) / INCHES_PER_UNIT + size.height / 2;
+        const centerY = floorY + roomOffset + Number(item.elevation || 0) + size.height / 2;
         addRotatedBox(mesh, Number(item.x || 0), centerY, Number(item.z || 0), size.width, size.height, size.depth, Number(item.rotation || 0));
       }
 

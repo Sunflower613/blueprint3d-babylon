@@ -1,6 +1,4 @@
-import { buildFenceGeometry } from '../src/geometry/fenceGeometry.js';
-import { boxComponent, cylinderComponent, sphereComponent } from '../src/furniture/_helpers.js';
-import { playWindChimeSound } from '../src/audio/windChimeSound.js';
+
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp } from './js/Dialogs.js';
@@ -79,54 +77,79 @@ import {
   syncFenceMovePreview,
   updateHandleHoverState
 } from './js/Viewer3DHandles.js';
-import { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools } from '../src/core/babylon.js';
-const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools };
-const furnitureImageLoaders = import.meta.glob('../src/furniture/image/*.png', {
-  query: '?url',
-  import: 'default'
-});
 import {
+  buildFenceGeometry,
+  boxComponent,
+  cylinderComponent,
+  sphereComponent,
+  playWindChimeSound,
+  Color3,
+  MeshBuilder,
+  PointerEventTypes,
+  StandardMaterial,
+  TransformNode,
+  Vector3,
+  Tools,
   Blueprint3DTestMap,
   BLUEPRINT3D_TEST_FLOORPLAN,
-  FENCE_SUBTYPE_DEFAULTS
-} from '../src/presets/blueprintTestMap.js';
-import {
+  FENCE_SUBTYPE_DEFAULTS,
   FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
-  FURNITURE_CATEGORIES
-} from '../src/furniture/index.js';
-import {
+  FURNITURE_CATEGORIES,
   MATERIAL_CATEGORIES,
   DEFAULT_MATERIAL_PACKS,
-  createTextureMaterialDescriptor
-} from '../src/core/materialCatalog.js';
-import {
+  createTextureMaterialDescriptor,
   getRoomVertices,
-  pointInRoom
-} from '../src/rooms/roomShapes.js';
-import { isSymmetricShape } from '../src/openings/openingShapes.js';
+  pointInRoom,
+  isSymmetricShape
+} from '../src/index.js';
+
+const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const INCHES_PER_UNIT = 39.37;
 const view = { width: 720, height: 520, pad: 42, minX: -6.4, maxX: 6.8, minZ: -9.2, maxZ: 4.2 };
-// groundPlane 已移至 Viewer3D
+// groundPlane 宸茬Щ鑷?Viewer3D
 
+const FURNITURE_IMAGE_PROXY_PREFIX = '/__furniture-images__/';
 const fallbackFurnitureImagePath = '../src/furniture/image/custom_cube.png';
 const transparentGIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+let furnitureImageLoadersPromise = null;
+
+function getFurnitureImageProxyUrl(path) {
+  const fileName = path.split('/').pop() || 'custom_cube.png';
+  return `${FURNITURE_IMAGE_PROXY_PREFIX}${encodeURIComponent(fileName)}`;
+}
+
+async function getFurnitureImageLoaders() {
+  if (import.meta.env.DEV) return null;
+  furnitureImageLoadersPromise ||= import('./js/furnitureThumbnailLoaders.js').then((module) => module.furnitureImageLoaders);
+  return furnitureImageLoadersPromise;
+}
+
+async function resolveFurnitureThumbnailUrl(path) {
+  if (import.meta.env.DEV) {
+    return getFurnitureImageProxyUrl(path);
+  }
+
+  const loaders = await getFurnitureImageLoaders();
+  const loader = loaders?.[path] || loaders?.[fallbackFurnitureImagePath];
+  return loader ? await loader() : null;
+}
 
 const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
   entries.forEach(async (entry) => {
     if (!entry.isIntersecting) return;
     const img = entry.target;
     furnitureThumbnailObserver.unobserve(img);
-    const loader = furnitureImageLoaders[img.dataset.thumbnailPath] || furnitureImageLoaders[fallbackFurnitureImagePath];
-    if (loader) {
-      try {
-        img.src = await loader();
-      } catch (e) {
+        try {
+      const thumbnailUrl = await resolveFurnitureThumbnailUrl(img.dataset.thumbnailPath || fallbackFurnitureImagePath);
+      if (!thumbnailUrl) {
         img.dispatchEvent(new Event('error'));
+        return;
       }
-    } else {
+      img.src = thumbnailUrl;
+    } catch (e) {
       img.dispatchEvent(new Event('error'));
     }
   });
@@ -154,7 +177,7 @@ function isAddOpeningMode(value = mode) {
 function handleModeChange(newMode) {
   if (newMode === 'delete-wall') {
     document.body.classList.add('mode-delete-wall');
-    showToast('删墙模式');
+    showToast('鍒犲妯″紡');
   } else {
     document.body.classList.remove('mode-delete-wall');
   }
@@ -189,7 +212,7 @@ function setDesignMode(newMode, fromDblClick = false) {
 
   designMode = newMode;
 
-  // 更新 UI 按钮激活状态
+  // 更新设计工具按钮状态
   document.querySelectorAll('.design-tools .design-mode').forEach((button) => {
     const btnMode = button.dataset.designMode;
     const isActive = btnMode === designMode;
@@ -201,9 +224,9 @@ function setDesignMode(newMode, fromDblClick = false) {
       if (shortcutText) {
         if (isActive) {
           if (designModeBrushLocked) {
-            shortcutText.textContent = 'B · 已锁定';
+            shortcutText.textContent = 'B / Locked';
           } else {
-            shortcutText.textContent = 'B · 点击锁定';
+            shortcutText.textContent = 'B 路 鐐瑰嚮閿佸畾';
           }
         } else {
           shortcutText.textContent = 'B';
@@ -212,7 +235,7 @@ function setDesignMode(newMode, fromDblClick = false) {
     }
   });
 
-  // 移除所有的 design-mode-* body classes
+  // 绉婚櫎鎵€鏈夌殑 design-mode-* body classes
   document.body.classList.remove(
     'design-mode-select',
     'design-mode-picker',
@@ -222,7 +245,7 @@ function setDesignMode(newMode, fromDblClick = false) {
     'design-mode-eraser'
   );
 
-  // 添加对应的 body class
+  // 娣诲姞瀵瑰簲鐨?body class
   if (designMode === 'select') {
     document.body.classList.add('design-mode-select');
   } else if (designMode === 'picker') {
@@ -239,7 +262,7 @@ function setDesignMode(newMode, fromDblClick = false) {
     document.body.classList.add('design-mode-eraser');
   }
 
-  // 动态更新设计模式指针颜色为当前材质颜色
+  // 鍔ㄦ€佹洿鏂拌璁℃ā寮忔寚閽堥鑹蹭负褰撳墠鏉愯川棰滆壊
   syncLocalToStore();
   updateDesignCursor();
 }
@@ -404,7 +427,7 @@ let currentPreviewFloorEdgeIndex = null;
 let contextMenuElement = null;
 let longPressState = null;
 let snapEnabled = true;
-// show3DGrid / grid3DNodes 已移至 viewer3d 实例
+// show3DGrid / grid3DNodes 已经移至 viewer3d 实例
 let active3DEditTarget = null;
 let snapSize = 1;
 let activeMaterialDescriptor = null;
@@ -414,7 +437,7 @@ let materialLibrary = [...DEFAULT_MATERIAL_PACKS];
 const activePointers = new Map();
 let hasUserZoomedOrPanned = false;
 let roomCounter = 1;
-// 撤销/重做栈已迁移到 Store.js 管理
+// 鎾ら攢/閲嶅仛鏍堝凡杩佺Щ鍒?Store.js 绠＄悊
 let floorPanelCollapsed = false;
 
 let selectedTarget = { type: null, id: null };
@@ -458,19 +481,19 @@ const stateSyncMap = [
 ];
 
 function syncLocalToStore() {
-  // 1. 将 app.js 的最新局部变量值自动流向对应的 Store 属性
+  // 1. 将 app.js 的最新局部变量值同步到对应 Store 字段
   for (const [getLocal, setLocal, store, key] of stateSyncMap) {
     store[key] = getLocal();
   }
 
-  // 2. 针对材质描述符进行防御性双向对齐
+  // 2. 同步当前激活材质描述
   if (editor.activeMaterialDescriptor) {
     activeMaterialDescriptor = editor.activeMaterialDescriptor;
   } else if (activeMaterialDescriptor) {
     editor.activeMaterialDescriptor = activeMaterialDescriptor;
   }
 
-  // 3. 针对材质库数据进行防御性双向对齐
+  // 3. 同步材质库快照
   if (editor.materialLibrary && editor.materialLibrary.length > 0) {
     materialLibrary = editor.materialLibrary;
   } else {
@@ -512,11 +535,11 @@ const materialCategorySelect = document.getElementById('material-category');
 const materialUploadInput = document.getElementById('material-upload');
 const materialLibraryPanel = document.getElementById('material-library');
 
-// ========== 3D 渲染引擎（Viewer3D 封装） ==========
+// ========== 3D 娓叉煋寮曟搸锛圴iewer3D 灏佽锛?==========
 const viewer3d = new Viewer3D(canvas);
 const { engine, scene, camera, shadowGenerator } = viewer3d;
 
-// 3D 轴/手柄在相机移动时动态调节 scaling，保持在屏幕上的物理大小固定，使缩放太小时也能轻松选中
+// 3D 杞?鎵嬫焺鍦ㄧ浉鏈虹Щ鍔ㄦ椂鍔ㄦ€佽皟鑺?scaling锛屼繚鎸佸湪灞忓箷涓婄殑鐗╃悊澶у皬鍥哄畾锛屼娇缂╂斁澶皬鏃朵篃鑳借交鏉鹃€変腑
 scene.onBeforeRenderObservable.add(() => {
   const handles = getEditHandleNodes();
   if (currentView !== '3d' || handles.length === 0) return;
@@ -524,7 +547,7 @@ scene.onBeforeRenderObservable.add(() => {
   handles.forEach((node) => {
     if (node && !node.isDisposed()) {
       const distance = BABYLON.Vector3.Distance(cameraPosition, node.position);
-      // 增大把手的缩放因子（由 0.08 提高到 0.13，最小限制由 0.1 提高到 0.16），使把手更加醒目和易于选中
+      // 增大把手的缩放因子（由 0.08 提高至 0.13，最小限制由 0.1 提高至 0.16），使把手更加醒目和易于选中
       const factor = Math.max(0.16, distance * 0.13);
       node.scaling.set(factor, factor, factor);
     }
@@ -538,7 +561,7 @@ let testMap = new Blueprint3DTestMap(scene, {
   renderingEnabled: false
 });
 
-// 初始化物体管理器 EntityManager
+// 鍒濆鍖栫墿浣撶鐞嗗櫒 EntityManager
 let entityManager = new EntityManager({
   testMap,
   getSnapEnabled: () => snapEnabled,
@@ -667,7 +690,7 @@ Object.assign(appState, {
   renderMaterialLibrary,
   getFurnitureDefinitions: () => FURNITURE_DEFINITIONS,
   
-  // 拖拽相关方法直接挂载
+  // 鎷栨嫿鐩稿叧鏂规硶鐩存帴鎸傝浇
   beginRoomResize: DragHandler.beginRoomResize,
   beginRoomDrag: DragHandler.beginRoomDrag,
   beginWallDrag: DragHandler.beginWallDrag,
@@ -686,7 +709,7 @@ Object.assign(appState, {
   finishFenceDrag: DragHandler.finishFenceDrag,
   finishFenceGateDrag: DragHandler.finishFenceGateDrag,
   
-  // Topology 代理方法
+  // Topology 浠ｇ悊鏂规硶
   canPlaceOnTable: Topology.canPlaceOnTable,
   findTableBelow: (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
   findNearestSeat: (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type)),
@@ -702,12 +725,11 @@ Object.assign(appState, {
   snapNumber,
   isTargetLocked,
 
-  // 历史与操作管理
-  undo,
+  // 鍘嗗彶涓庢搷浣滅鐞?  undo,
   redo,
   setHasUserZoomedOrPanned: (val) => { hasUserZoomedOrPanned = val; },
 
-  // 画图状态与计数
+  // 鐢诲浘鐘舵€佷笌璁℃暟
   getDrawStart: () => drawStart,
   setDrawStart: (val) => { drawStart = val; },
   getRoofResizeState: () => roofResizeState,
@@ -715,7 +737,7 @@ Object.assign(appState, {
   getRoomCounter: () => roomCounter,
   incrementRoomCounter: () => { roomCounter += 1; return roomCounter; },
 
-  // 上下文菜单与选择管理
+  // 涓婁笅鏂囪彍鍗曚笌閫夋嫨绠＄悊
   attachContextMenuTrigger,
   getSelectedTarget,
   isAllowedTarget,
@@ -728,13 +750,13 @@ Object.assign(appState, {
   getSelectedStructure,
   getCanvasPickFromEvent,
 
-  // 栏杆相关
+  // 鏍忔潌鐩稿叧
   clear2DFloorEdgeRailingPreview,
   update2DFloorEdgeRailingPreview,
   clear2DStairsRailingPreview,
   update2DStairsRailingPreview,
 
-  // 辅助
+  // 杈呭姪
   beginRoofResize,
   get2DTargetFromElement,
   BABYLON,
@@ -784,7 +806,7 @@ initRender2D(appState);
 initViewer3DHandles(appState);
 
 // ==========================================
-// 初始化数据中心 Store
+// 鍒濆鍖栨暟鎹腑蹇?Store
 // ==========================================
 const store = new Store({
   getSnapshot: () => {
@@ -805,6 +827,11 @@ const store = new Store({
     selectedFenceId = selectedFenceId && testMap.getFence?.(selectedFenceId) ? selectedFenceId : null;
     testMap.setSelectedItem(selectedItemId);
     testMap.setSelectedWall(selectedWallId);
+    testMap.setSelectedFence?.(selectedFenceId);
+    testMap.setSelectedFenceGate?.(selectedFenceGateId);
+    testMap.setSelectedRoom?.(selectedRoomId);
+    testMap.setSelectedRoof?.(selectedRoofId);
+    testMap.setSelectedStairs?.(selectedStairsId);
     refreshShadows();
     updateEditor();
     renderPlan();
@@ -828,7 +855,7 @@ store.on('saved', () => {
 
 // 监听自动保存完成，显示 toast 提示并更新反射探针
 store.on('autoSaved', () => {
-  showToast('✓ 已自动保存');
+  showToast('已自动保存');
   if (window.testMap && typeof window.testMap.requestReflectionProbesUpdate === 'function') {
     window.testMap.requestReflectionProbesUpdate();
   } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionProbesUpdate === 'function') {
@@ -836,12 +863,12 @@ store.on('autoSaved', () => {
   }
 });
 
-// 监听保存失败
+// 鐩戝惉淇濆瓨澶辫触
 store.on('saveError', () => {
-  showToast('⚠ 自动保存失败，localStorage 空间可能不足');
+  showToast('鈿?鑷姩淇濆瓨澶辫触锛宭ocalStorage 绌洪棿鍙兘涓嶈冻');
 });
 
-// 启动 10 分钟自动保存
+// 鍚姩 10 鍒嗛挓鑷姩淇濆瓨
 store.startAutoSave(() => ({
   materialLibrary: cleanMaterialLibraryForStorage(materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))),
   uiState: {
@@ -885,7 +912,7 @@ if (snapToggleBtn) {
       const sourcesMap = storedStr ? JSON.parse(storedStr) : {};
       saved.materialLibrary.forEach((m) => {
         if (m.id && String(m.id).startsWith('custom_')) {
-          m.src = sourcesMap[m.id] || m.src; // 从本地集中存储拼回大文件 Base64
+          m.src = sourcesMap[m.id] || m.src; // 浠庢湰鍦伴泦涓瓨鍌ㄦ嫾鍥炲ぇ鏂囦欢 Base64
         }
         if (!materialLibrary.some((existing) => existing.id === m.id)) {
           materialLibrary.push(m);
@@ -899,7 +926,7 @@ renderMaterialLibrary();
 
 
 // ==========================================
-// 历史管理代理与基础3D代理函数
+// 鍘嗗彶绠＄悊浠ｇ悊涓庡熀纭€3D浠ｇ悊鍑芥暟
 // ==========================================
 
 function updateHistoryButtons() {
@@ -941,14 +968,14 @@ function refresh3DGrid() {
 function resetCurrentMaterial() {
   if (selectedItemId) {
     if (isTargetLocked({ type: 'item', id: selectedItemId })) {
-      showToast('该物体已锁定');
+      showToast('璇ョ墿浣撳凡閿佸畾');
       return;
     }
     entityManager.resetItemMaterial(selectedItemId);
   } else if (selectedWallId) {
     const wall = testMap.getWall(selectedWallId);
     if (wall && wall.locked) {
-      showToast('该物体已锁定');
+      showToast('璇ョ墿浣撳凡閿佸畾');
       return;
     }
     pushHistory();
@@ -975,7 +1002,7 @@ function resetCurrentMaterial() {
     }
   } else if (selectedRoomId) {
     if (isTargetLocked({ type: 'room', id: selectedRoomId })) {
-      showToast('该物体已锁定');
+      showToast('璇ョ墿浣撳凡閿佸畾');
       return;
     }
     pushHistory();
@@ -986,7 +1013,7 @@ function resetCurrentMaterial() {
     renderPlan();
   } else if (selectedFenceId) {
     if (isTargetLocked({ type: 'fence', id: selectedFenceId })) {
-      showToast('该物体已锁定');
+      showToast('璇ョ墿浣撳凡閿佸畾');
       return;
     }
     pushHistory();
@@ -996,7 +1023,7 @@ function resetCurrentMaterial() {
     renderPlan();
   } else if (selectedOpeningId) {
     if (isTargetLocked({ type: 'opening', id: selectedOpeningId })) {
-      showToast('该物体已锁定');
+      showToast('璇ョ墿浣撳凡閿佸畾');
       return;
     }
     pushHistory();
@@ -1235,7 +1262,7 @@ async function renameCurrentFloor(floorId) {
   const floor = testMap.floorplan.floors.find((f) => f.id === floorId);
   if (!floor) return;
   const currentName = floor.name || `${Number(floor.level || 0) + 1}F`;
-  const newName = await showCustomPrompt('楼层命名', '请输入新的楼层名称：', currentName);
+  const newName = await showCustomPrompt('妤煎眰鍛藉悕', '璇疯緭鍏ユ柊鐨勬ゼ灞傚悕绉帮細', currentName);
   if (newName !== null) {
     const trimmed = newName.trim();
     if (trimmed && trimmed !== currentName) {
@@ -1291,18 +1318,18 @@ function syncFloorControls() {
   container.innerHTML = '';
 
   if (floorPanelCollapsed) {
-    // 折叠状态下，只渲染一个用来展开的图层图标按钮
+    // 折叠状态下，只渲染一个展开按钮
     const toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
     toggleBtn.className = 'btn-icon btn-floor-toggle-expanded';
-    toggleBtn.title = '展开楼层面板';
-    toggleBtn.setAttribute('aria-label', '展开楼层面板');
+    toggleBtn.title = '灞曞紑妤煎眰闈㈡澘';
+    toggleBtn.setAttribute('aria-label', '灞曞紑妤煎眰闈㈡澘');
     toggleBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-10 4 10 4 10-4Z"/><path d="m2 12 10 4 10-4"/><path d="m2 17 10 4 10-4"/></svg>';
     container.appendChild(toggleBtn);
     return;
   }
 
-  // 展开状态下正常渲染楼层列表
+  // 灞曞紑鐘舵€佷笅姝ｅ父娓叉煋妤煎眰鍒楄〃
   const sortedFloors = [...testMap.floorplan.floors].sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
 
   sortedFloors.forEach((floor) => {
@@ -1312,8 +1339,8 @@ function syncFloorControls() {
     btn.className = 'btn-icon btn-floor-item';
     btn.dataset.floorId = floor.id;
     btn.textContent = formatFloorDisplayName(floorName);
-    btn.title = `切换到 ${floorName}`;
-    btn.setAttribute('aria-label', `切换到 ${floorName}`);
+    btn.title = `鍒囨崲鍒?${floorName}`;
+    btn.setAttribute('aria-label', `鍒囨崲鍒?${floorName}`);
 
     if (floor.id === testMap.floorplan.currentFloorId) {
       btn.classList.add('active');
@@ -1323,22 +1350,22 @@ function syncFloorControls() {
     container.appendChild(btn);
   });
 
-  // 添加新建楼层按钮
+  // 娣诲姞鏂板缓妤煎眰鎸夐挳
   const addBtn = document.createElement('button');
   addBtn.id = 'btn-add-floor';
   addBtn.type = 'button';
   addBtn.className = 'btn-icon btn-floor-add';
-  addBtn.title = '新建楼层';
-  addBtn.setAttribute('aria-label', '新建楼层');
+  addBtn.title = '鏂板缓妤煎眰';
+  addBtn.setAttribute('aria-label', '鏂板缓妤煎眰');
   addBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>';
   container.appendChild(addBtn);
 
-  // 添加收起整个楼层面板的按钮 (向上折叠箭头)
+  // 娣诲姞鏀惰捣鏁翠釜妤煎眰闈㈡澘鐨勬寜閽?(鍚戜笂鎶樺彔绠ご)
   const foldBtn = document.createElement('button');
   foldBtn.type = 'button';
   foldBtn.className = 'btn-icon btn-floor-fold';
-  foldBtn.title = '收起楼层面板';
-  foldBtn.setAttribute('aria-label', '收起楼层面板');
+  foldBtn.title = '鏀惰捣妤煎眰闈㈡澘';
+  foldBtn.setAttribute('aria-label', '鏀惰捣妤煎眰闈㈡澘');
   foldBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
   container.appendChild(foldBtn);
 }
@@ -1419,7 +1446,7 @@ function updateViewBounds() {
   }
 }
 
-// 2D 户型图平面渲染逻辑已抽离至 Render2D.js
+// 2D 鎴峰瀷鍥惧钩闈㈡覆鏌撻€昏緫宸叉娊绂昏嚦 Render2D.js
 
 
 function getStructure(type, id) {
@@ -1633,8 +1660,7 @@ function getItemsCountOnBookshelf(bookshelf, items) {
   return Topology.getItemsCountOnBookshelf(bookshelf, items, (type) => testMap.getFurnitureDefinition(type));
 }
 const moveItemTo = (itemId, x, z) => entityManager.moveItemTo(itemId, x, z);
-// SVG 事件绑定已迁移至 SvgEvents.js 中管理
-
+// SVG 浜嬩欢缁戝畾宸茶縼绉昏嚦 SvgEvents.js 涓鐞?
 function findMetadataFromNode(node, key) {
   let current = node;
   while (current) {
@@ -1743,16 +1769,16 @@ function get2DWallSideFromPoint(wall, point) {
 function executeDesignTool(target) {
   const isArrayMode = !!(editor.activeMaterialArray && editor.activeMaterialArray.length > 0);
   if (!editor.activeMaterialDescriptor && !isArrayMode && designMode === 'brush') {
-    showToast('请先选择一个材质或吸取材质');
+    showToast('璇峰厛閫夋嫨涓€涓潗璐ㄦ垨鍚稿彇鏉愯川');
     return;
   }
 
-  // 1. 吸色器 (picker)
+  // 1. 鍚歌壊鍣?(picker)
   if (designMode === 'picker') {
     extractMaterial(target, true);
   }
 
-  // 2. 粉刷 (brush)
+  // 2. 绮夊埛 (brush)
   else if (designMode === 'brush') {
     applyMaterial(target, 'brush');
     if (!designModeBrushLocked) {
@@ -1760,17 +1786,17 @@ function executeDesignTool(target) {
     }
   }
 
-  // 3. 油漆桶 (bucket)
+  // 3. 娌规紗妗?(bucket)
   else if (designMode === 'bucket') {
     applyMaterial(target, 'bucket');
     setDesignMode('select');
   }
 
-  // 4. 清除器 (eraser)
+  // 4. 娓呴櫎鍣?(eraser)
   else if (designMode === 'eraser') {
     if (target.type === 'room') {
       if (isTargetLocked({ type: 'room', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1782,7 +1808,7 @@ function executeDesignTool(target) {
     } else if (target.type === 'wall') {
       const wall = testMap.getWall(target.id);
       if (wall && wall.locked) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1799,7 +1825,7 @@ function executeDesignTool(target) {
       renderPlan();
     } else if (target.type === 'item') {
       if (isTargetLocked({ type: 'item', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       const item = testMap.getItem(target.id);
@@ -1823,7 +1849,7 @@ function executeDesignTool(target) {
       }
     } else if (target.type === 'fence') {
       if (isTargetLocked({ type: 'fence', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1840,7 +1866,7 @@ function executeDesignTool(target) {
       renderPlan();
     } else if (target.type === 'fence_gate') {
       if (isTargetLocked({ type: 'fence_gate', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1857,7 +1883,7 @@ function executeDesignTool(target) {
       renderPlan();
     } else if (target.type === 'opening') {
       if (isTargetLocked({ type: 'opening', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1867,7 +1893,7 @@ function executeDesignTool(target) {
       renderPlan();
     } else if (target.type === 'roof') {
       if (isTargetLocked({ type: 'roof', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1877,7 +1903,7 @@ function executeDesignTool(target) {
       renderPlan();
     } else if (target.type === 'stairs') {
       if (isTargetLocked({ type: 'stairs', id: target.id })) {
-        showToast('该物体已锁定');
+        showToast('璇ョ墿浣撳凡閿佸畾');
         return;
       }
       pushHistory();
@@ -1904,7 +1930,7 @@ function begin3DDrag(pointerInfo) {
     }
   }
   if (mode === 'view') {
-    // 查看模式下不进行任何3D物体的选中或拖拽
+    // 查看模式下不处理 3D 物体选中或拖拽
     if (event.button === 0) {
       const target = pickNearest3DTarget();
       if (!target) {
@@ -2350,7 +2376,7 @@ function getCanvasPickFromEvent(event) {
 }
 
 
-// 阻止鼠标中键(1)在 canvas 上触发浏览器的自动滚动行为，确保中键平移流畅
+// 闃绘榧犳爣涓敭(1)鍦?canvas 涓婅Е鍙戞祻瑙堝櫒鐨勮嚜鍔ㄦ粴鍔ㄨ涓猴紝纭繚涓敭骞崇Щ娴佺晠
 canvas.addEventListener('mousedown', (event) => {
   if (event.button === 1) {
     event.preventDefault();
@@ -2430,7 +2456,7 @@ scene.onPointerObservable.add((pointerInfo) => {
       if (target && target.type === 'stairs') {
         update3DStairsRailingPreview(target.id, mode.replace('draw-fence-', '') || 'picket_wood');
         clear3DFloorEdgeRailingPreview();
-        // 只清空普通画墙体/栅栏指示圆柱，保留楼梯预览
+        // 只清理普通墙体或围栏预览圆柱，保留楼梯预览
         if (drawWallPreviewCylinder) {
           drawWallPreviewCylinder.dispose();
           drawWallPreviewCylinder = null;
@@ -2508,7 +2534,7 @@ canvas.addEventListener('pointercancel', end3DDrag);
 window.addEventListener('pointerup', end3DDrag);
 
 // ==========================================
-// 没有墙体的地板边缘自动识别与悬浮预览 (NEW)
+// 娌℃湁澧欎綋鐨勫湴鏉胯竟缂樿嚜鍔ㄨ瘑鍒笌鎮诞棰勮 (NEW)
 // ==========================================
 
 function getFreeFloorEdges() {
@@ -2569,8 +2595,7 @@ function update3DFloorEdgeRailingPreview(edgeIndex, edge, fenceSubtype) {
   const fenceNode = new BABYLON.TransformNode("floor_edge_rail_preview", scene);
   fenceNode.parent = floorEdgeRailingPreview3DGroup;
   
-  // 设置位置在中点
-  fenceNode.position.set((p1.x + p2.x) / 2, floorY, (p1.z + p2.z) / 2);
+  // 璁剧疆浣嶇疆鍦ㄤ腑鐐?  fenceNode.position.set((p1.x + p2.x) / 2, floorY, (p1.z + p2.z) / 2);
   fenceNode.rotation.y = -angle;
 
   const previewMaterial = new BABYLON.StandardMaterial("floor_edge_preview_mat", scene);
@@ -2594,7 +2619,7 @@ function update3DFloorEdgeRailingPreview(edgeIndex, edge, fenceSubtype) {
 }
 
 // ==========================================
-// 楼梯自动扶手识别与添加 & 悬浮预览逻辑 (NEW)
+// 妤兼鑷姩鎵舵墜璇嗗埆涓庢坊鍔?& 鎮诞棰勮閫昏緫 (NEW)
 // ==========================================
 
 function clear2DStairsRailingPreview() {
@@ -2747,12 +2772,12 @@ function updateDrawWallPreview(snappedPoint) {
   const H = isFence ? 1.1 : (testMap.floorplan.wallHeight || 2.8);
   const T = isFence ? 0.1 : (testMap.floorplan.wallThickness || 0.18);
 
-  // 如果预览类型（墙体还是栅栏）改变了，先销毁以便重建
+  // 如果预览类型变化，先销毁再重建
   if (drawWallPreviewCylinder && drawWallPreviewCylinder.metadata?.isFence !== isFence) {
     clearDrawWallPreview();
   }
 
-  // 1. 更新当前悬浮处的立柱
+  // 1. 鏇存柊褰撳墠鎮诞澶勭殑绔嬫煴
   if (!drawWallPreviewCylinder) {
     drawWallPreviewCylinder = BABYLON.MeshBuilder.CreateCylinder("draw_wall_preview_cyl", {
       height: H,
@@ -2769,9 +2794,9 @@ function updateDrawWallPreview(snappedPoint) {
   }
   drawWallPreviewCylinder.position.set(snappedPoint.x, floorY + H / 2, snappedPoint.z);
 
-  // 2. 如果存在 drawStart，更新起点立柱和预览墙体
+  // 2. 濡傛灉瀛樺湪 drawStart锛屾洿鏂拌捣鐐圭珛鏌卞拰棰勮澧欎綋
   if (drawStart) {
-    // 起点立柱
+    // 璧风偣绔嬫煴
     if (!drawWallPreviewStartCylinder) {
       drawWallPreviewStartCylinder = BABYLON.MeshBuilder.CreateCylinder("draw_wall_preview_start_cyl", {
         height: H,
@@ -2788,7 +2813,7 @@ function updateDrawWallPreview(snappedPoint) {
     }
     drawWallPreviewStartCylinder.position.set(drawStart[0], floorY + H / 2, drawStart[1]);
 
-    // 预览墙面 Box
+    // 棰勮澧欓潰 Box
     const dx = snappedPoint.x - drawStart[0];
     const dz = snappedPoint.z - drawStart[1];
     const distance = Math.hypot(dx, dz);
@@ -2850,7 +2875,7 @@ function selectTarget(type, id, isUserInteraction = false) {
 
   selectedTarget = id ? { type, id } : { type: null, id: null };
 
-  // 同步更新兼容老逻辑的 let 变量（以便 ES 模块导出继续有效）
+  // 同步更新兼容旧逻辑的 let 变量
   selectedRoomId = type === TARGET_TYPES.ROOM ? id : null;
   selectedWallId = type === TARGET_TYPES.WALL ? id : null;
   selectedItemId = type === TARGET_TYPES.ITEM ? id : null;
@@ -2865,6 +2890,8 @@ function selectTarget(type, id, isUserInteraction = false) {
   testMap.setSelectedFence(type === TARGET_TYPES.FENCE ? id : null);
   testMap.setSelectedFenceGate(type === TARGET_TYPES.FENCE_GATE ? id : null);
   testMap.setSelectedRoom(type === TARGET_TYPES.ROOM ? id : null);
+  testMap.setSelectedRoof?.(type === TARGET_TYPES.ROOF ? id : null);
+  testMap.setSelectedStairs?.(type === TARGET_TYPES.STAIRS ? id : null);
 
   if (type === TARGET_TYPES.FENCE && id) {
     set3DEditTarget('fence', id);
@@ -2935,14 +2962,14 @@ function revealRightPanelIfNeeded(hasSelection) {
   if (rightPanel && rightPanel.classList.contains('collapsed')) {
     rightPanel.classList.remove('collapsed');
     const btnToggleRight = document.getElementById('btn-toggle-right');
-    if (btnToggleRight) btnToggleRight.textContent = '›';
+    if (btnToggleRight) btnToggleRight.textContent = '>';
     changed = true;
   }
   const leftPanel = document.querySelector('.left-panel');
   if (leftPanel && leftPanel.classList.contains('collapsed')) {
     leftPanel.classList.remove('collapsed');
     const btnToggleLeft = document.getElementById('btn-toggle-left');
-    if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    if (btnToggleLeft) btnToggleLeft.textContent = '<';
     changed = true;
   }
   if (changed) {
@@ -3326,10 +3353,10 @@ function updateSelectedScale(value) {
 
 function updateSelectedSize() {
   if (!selectedItemId) return;
-  const widthVal = Number(document.getElementById('item-width').value) * INCHES_PER_UNIT;
-  const depthVal = Number(document.getElementById('item-depth').value) * INCHES_PER_UNIT;
-  const heightVal = Number(document.getElementById('item-height').value) * INCHES_PER_UNIT;
-  const elevationVal = Number(document.getElementById('item-elevation').value || 0) * INCHES_PER_UNIT;
+  const widthVal = Number(document.getElementById('item-width').value);
+  const depthVal = Number(document.getElementById('item-depth').value);
+  const heightVal = Number(document.getElementById('item-height').value);
+  const elevationVal = Number(document.getElementById('item-elevation').value || 0);
   entityManager.updateItemSize(selectedItemId, widthVal, depthVal, heightVal, elevationVal);
 }
 
@@ -3582,8 +3609,8 @@ function initFurnitureButtons() {
   renderFurnitureGrid();
 }
 async function loadFurnitureThumbnail(img, path) {
-  const loader = furnitureImageLoaders[path] || furnitureImageLoaders[fallbackFurnitureImagePath];
-  if (loader) img.src = await loader();
+  const thumbnailUrl = await resolveFurnitureThumbnailUrl(path);
+  if (thumbnailUrl) img.src = thumbnailUrl;
 }
 
 function renderFurnitureGrid() {
@@ -3620,7 +3647,7 @@ function renderFurnitureGrid() {
     img.decoding = 'async';
     img.fetchPriority = 'low';
 
-    // 默认设置为透明像素，并开启占位图与加载中动画
+    // 榛樿璁剧疆涓洪€忔槑鍍忕礌锛屽苟寮€鍚崰浣嶅浘涓庡姞杞戒腑鍔ㄧ敾
     img.src = transparentGIF;
     img.classList.add('placeholder-active', 'loading');
 
@@ -3635,10 +3662,9 @@ function renderFurnitureGrid() {
     img.onerror = async () => {
       img.onerror = null;
       try {
-        const loader = furnitureImageLoaders[fallbackFurnitureImagePath];
-        if (loader) {
-          const fallbackUrl = await loader();
-          // 为 fallback 设置再次失败时的 onerror
+        const fallbackUrl = await resolveFurnitureThumbnailUrl(fallbackFurnitureImagePath);
+        if (fallbackUrl) {
+          // 涓?fallback 璁剧疆鍐嶆澶辫触鏃剁殑 onerror
           img.onerror = () => {
             img.onerror = null;
             img.src = transparentGIF;
@@ -3681,7 +3707,7 @@ function cleanFloorplanMaterials(obj) {
   if (!obj || typeof obj !== 'object') return;
   
   if (obj.src && typeof obj.src === 'string' && obj.src.startsWith('data:image/')) {
-    delete obj.src; // 剥离大体积 Base64
+    delete obj.src; // 鍓ョ澶т綋绉?Base64
   }
   
   for (const key of Object.keys(obj)) {
@@ -3696,7 +3722,7 @@ function cleanMaterialLibraryForStorage(lib) {
   return lib.map(m => {
     if (m.id && String(m.id).startsWith('custom_')) {
       const copy = { ...m };
-      delete copy.src; // 抹除 inline base64
+      delete copy.src; // 鎶归櫎 inline base64
       return copy;
     }
     return m;
@@ -3738,7 +3764,7 @@ materialUploadInput.addEventListener('change', async (event) => {
   const src = await readFileAsDataURL(file);
   const descriptor = createTextureMaterialDescriptor({
     id: `custom_${Date.now()}`,
-    name: file.name.replace(/\.[^.]+$/, '') || '自定义材质',
+    name: file.name.replace(/\.[^.]+$/, '') || 'custom_material',
     fileName: file.name,
     category: materialCategorySelect.value || 'custom',
     src,
@@ -3746,7 +3772,7 @@ materialUploadInput.addEventListener('change', async (event) => {
   });
   descriptor.id = `custom_${Date.now()}`;
   materialLibrary.unshift(descriptor);
-  saveCustomMaterialToLocalStorage(descriptor.id, src); // 同步存入本地集中存储
+  saveCustomMaterialToLocalStorage(descriptor.id, src); // 鍚屾瀛樺叆鏈湴闆嗕腑瀛樺偍
   activeMaterialDescriptor = descriptor;
   editor.activeMaterialDescriptor = descriptor;
   editor.activeMaterialArray = null;
@@ -3804,7 +3830,7 @@ document.querySelectorAll('.tab').forEach((button) => {
     document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab === button));
     document.querySelectorAll('[data-panel]').forEach((panel) => panel.classList.toggle('hidden', panel.dataset.panel !== button.dataset.tab));
     
-    // 切出设计面板时自动恢复到 select 模式
+    // 鍒囧嚭璁捐闈㈡澘鏃惰嚜鍔ㄦ仮澶嶅埌 select 妯″紡
     if (button.dataset.tab !== 'design') {
       setDesignMode('select');
     }
@@ -3844,13 +3870,12 @@ document.querySelectorAll('.design-mode').forEach((button) => {
         // 状态 2：当前是未锁定粉刷，再次点击进入锁定粉刷
         setDesignMode('brush', true);
       } else {
-        // 状态 3：当前是锁定粉刷，再次点击取消粉刷（切换到选择模式）
-        setDesignMode('select');
+        // 状态 3：当前是锁定粉刷，再次点击取消粉刷（切换到选择模式）        setDesignMode('select');
       }
       return;
     }
 
-    // 吸色、油漆桶、橡皮擦等其它设计工具，选中后再次点击可以直接取消，切换成选择模式
+    // 鍚歌壊銆佹补婕嗘《銆佹鐨摝绛夊叾瀹冭璁″伐鍏凤紝閫変腑鍚庡啀娆＄偣鍑诲彲浠ョ洿鎺ュ彇娑堬紝鍒囨崲鎴愰€夋嫨妯″紡
     if (designMode === nextMode && designMode !== 'select') {
       setDesignMode('select');
       return;
@@ -3868,7 +3893,7 @@ document.querySelectorAll('.design-mode').forEach((button) => {
 document.querySelectorAll('.mode').forEach((button) => {
   button.addEventListener('click', () => {
     const clickedMode = button.dataset.mode;
-    // 设计工具（如画墙、删墙、开洞等）选中后再次点击可以取消（切换成选择模式）
+    // 再次点击当前建筑工具时回到选择模式
     if (mode === clickedMode && mode !== 'select') {
       switchToSelectMode();
       return;
@@ -3960,7 +3985,7 @@ stage.addEventListener('pointerdown', (event) => {
       showObjectContextMenu(target, startX, startY);
     }, 500)
   };
-}, true); // 捕获阶段，防止子元素 stopPropagation 阻断
+}, true); // 鎹曡幏闃舵锛岄槻姝㈠瓙鍏冪礌 stopPropagation 闃绘柇
 
 ['copy', 'cut', 'paste', 'selectstart', 'dragstart'].forEach((eventName) => {
   stage.addEventListener(eventName, (event) => event.preventDefault());
@@ -3993,20 +4018,20 @@ document.getElementById('btn-reset-camera').addEventListener('click', () => {
     renderPlan();
   }
 
-  // 显式调出左右工具栏，防止查看模式下侧边栏收起后无法返回
+  // 显式展开左右工具栏，避免查看模式下无法返回
   let panelChanged = false;
   const rightPanel = document.getElementById('right-panel');
   if (rightPanel && rightPanel.classList.contains('collapsed')) {
     rightPanel.classList.remove('collapsed');
     const btnToggleRight = document.getElementById('btn-toggle-right');
-    if (btnToggleRight) btnToggleRight.textContent = '›';
+    if (btnToggleRight) btnToggleRight.textContent = '>';
     panelChanged = true;
   }
   const leftPanel = document.querySelector('.left-panel');
   if (leftPanel && leftPanel.classList.contains('collapsed')) {
     leftPanel.classList.remove('collapsed');
     const btnToggleLeft = document.getElementById('btn-toggle-left');
-    if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    if (btnToggleLeft) btnToggleLeft.textContent = '<';
     panelChanged = true;
   }
   if (panelChanged) {
@@ -4015,7 +4040,7 @@ document.getElementById('btn-reset-camera').addEventListener('click', () => {
     }, 300);
   }
 
-  // 如果当前处于查看模式，自动切回选择模式，以确保用户能够继续交互
+  // 濡傛灉褰撳墠澶勪簬鏌ョ湅妯″紡锛岃嚜鍔ㄥ垏鍥為€夋嫨妯″紡锛屼互纭繚鐢ㄦ埛鑳藉缁х画浜や簰
   if (mode === 'view') {
     switchToSelectMode();
   }
@@ -4036,8 +4061,7 @@ function resetInteractionState() {
   end3DDrag();
 }
 
-// 文件的导入导出与 LocalStorage 项目管理已迁移至 FileManager.js 中管理
-
+// 鏂囦欢鐨勫鍏ュ鍑轰笌 LocalStorage 椤圭洰绠＄悊宸茶縼绉昏嚦 FileManager.js 涓鐞?
 document.getElementById('btn-new').addEventListener('click', () => {
   pushHistory();
   testMap.loadJSON(BLUEPRINT3D_TEST_FLOORPLAN);
@@ -4060,7 +4084,7 @@ btnFileMenu.addEventListener('click', (event) => {
 });
 
 fileMenuContent.addEventListener('click', (e) => {
-  // 如果点击的是子菜单触发按钮，不关闭主菜单
+  // 濡傛灉鐐瑰嚮鐨勬槸瀛愯彍鍗曡Е鍙戞寜閽紝涓嶅叧闂富鑿滃崟
   if (e.target.id === 'btn-export-menu') return;
   fileMenuContent.classList.add('hidden');
   // 同时关闭子菜单
@@ -4078,14 +4102,14 @@ const btnExportMenu = document.getElementById('btn-export-menu');
 const submenuContent = btnExportMenu?.nextElementSibling;
 if (btnExportMenu && submenuContent) {
   const wrapper = btnExportMenu.closest('.submenu-wrapper');
-  // 悬停展开
+  // 鎮仠灞曞紑
   wrapper.addEventListener('mouseenter', () => {
     submenuContent.classList.remove('hidden');
   });
   wrapper.addEventListener('mouseleave', () => {
     submenuContent.classList.add('hidden');
   });
-  // 点击也可切换
+  // 鐐瑰嚮涔熷彲鍒囨崲
   btnExportMenu.addEventListener('click', (e) => {
     e.stopPropagation();
     submenuContent.classList.toggle('hidden');
@@ -4103,7 +4127,7 @@ const rightPanel = document.getElementById('right-panel');
 btnToggleRight.addEventListener('click', (event) => {
   event.stopPropagation();
   const isCollapsed = rightPanel.classList.toggle('collapsed');
-  btnToggleRight.textContent = isCollapsed ? '‹' : '›';
+  btnToggleRight.textContent = isCollapsed ? '<' : '>';
   setTimeout(() => {
     if (engine) engine.resize();
   }, 300);
@@ -4116,7 +4140,7 @@ if (btnToggleLeft && leftPanel) {
   btnToggleLeft.addEventListener('click', (event) => {
     event.stopPropagation();
     const isCollapsed = leftPanel.classList.toggle('collapsed');
-    btnToggleLeft.textContent = isCollapsed ? '›' : '‹';
+    btnToggleLeft.textContent = isCollapsed ? '>' : '<';
     setTimeout(() => {
       if (engine) engine.resize();
     }, 300);
@@ -4150,8 +4174,7 @@ initToolGroupToggles();
 
 
 // ==========================================
-// 自定义下拉选择器组件
-// ==========================================
+// 鑷畾涔変笅鎷夐€夋嫨鍣ㄧ粍浠?// ==========================================
 
 export function getSnapEnabled() {
   return snapEnabled;
@@ -4242,3 +4265,9 @@ export {
   getItemsCountOnBookshelf,
   getSelectedStructure
 };
+
+
+
+
+
+

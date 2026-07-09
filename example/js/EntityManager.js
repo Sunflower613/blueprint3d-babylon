@@ -1,4 +1,4 @@
-import { pointInRoom } from '../../src/rooms/index.js';
+import { pointInRoom } from '../../src/index.js';
 import { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition } from './Topology.js';
 
 const INCHES_PER_UNIT = 39.37;
@@ -275,7 +275,7 @@ export class EntityManager {
       if (bestWall) {
         const wallThickness = this.opts.testMap.floorplan.wallThickness || 0.18;
         const itemScale = Number(item.scale || 1);
-        const itemDepth = ((item.depth || definition.defaultSize.depth) / INCHES_PER_UNIT) * itemScale;
+        const itemDepth = (item.depth ?? (definition.defaultSize.depth / INCHES_PER_UNIT)) * itemScale;
 
         const vx = snapped.x - bestProjX;
         const vz = snapped.z - bestProjZ;
@@ -316,7 +316,7 @@ export class EntityManager {
       // 天花板物体逻辑
       item.x = snapped.x;
       item.z = snapped.z;
-      item.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - (item.height || definition.defaultSize.height) * (item.scale || 1);
+      item.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - (item.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (item.scale || 1);
     } else {
       // 普通地板物体逻辑
       item.x = snapped.x;
@@ -337,7 +337,7 @@ export class EntityManager {
             const tableBelow = this.opts.findTableBelow(item);
             if (tableBelow) {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-              item.elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+              item.elevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
             } else {
               // 释放时无桌面：恢复为拖拽开始时的初始高程（而非强置为 0，防止手动调高物品释放时坠地）
               let origElevation = 0;
@@ -370,7 +370,7 @@ export class EntityManager {
             const tableBelow = this.opts.findTableBelow(item);
             if (tableBelow) {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-              targetElevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+              targetElevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
             }
           }
 
@@ -403,9 +403,9 @@ export class EntityManager {
         item.pose = 'stand';
         item.elevation = 0;
         definition.build(this.opts.testMap, item, node, {
-          width: (item.width / INCHES_PER_UNIT) * (item.scale || 1),
-          depth: (item.depth / INCHES_PER_UNIT) * (item.scale || 1),
-          height: (item.height / INCHES_PER_UNIT) * (item.scale || 1)
+          width: item.width * (item.scale || 1),
+          depth: item.depth * (item.scale || 1),
+          height: item.height * (item.scale || 1)
         });
       }
     }
@@ -413,7 +413,7 @@ export class EntityManager {
     if (node) {
       const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(item.floorId) : 0;
       const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset(item) : 0;
-      node.position.set(item.x, floorY + (item.elevation || 0) / INCHES_PER_UNIT + roomOffset, item.z);
+      node.position.set(item.x, floorY + (item.elevation || 0) + roomOffset, item.z);
       node.rotation.y = item.rotation || 0;
     }
     this.updateChildrenOnBookshelf(item, beforeState);
@@ -685,11 +685,11 @@ export class EntityManager {
     let elevation = elevationInches;
 
     if (definition.placeType === 'ceiling') {
-      const curElev = Number(((item.elevation || 0) / INCHES_PER_UNIT).toFixed(2));
-      const inputElev = Number((elevationInches / INCHES_PER_UNIT).toFixed(2));
+      const curElev = Number((item.elevation || 0).toFixed(2));
+      const inputElev = Number((elevationInches || 0).toFixed(2));
       if (curElev === inputElev) {
         // 天花板家具自适应高度计算
-        elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - heightInches * (item.scale || 1);
+        elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - heightInches * (item.scale || 1);
       }
     }
 
@@ -738,7 +738,7 @@ export class EntityManager {
     
     let patch = { scale };
     if (definition.placeType === 'ceiling') {
-      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - item.height * scale;
+      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - item.height * scale;
     }
     
     this.opts.testMap.updateItem(itemId, patch);
@@ -761,7 +761,7 @@ export class EntityManager {
       if (seat) {
         patch.x = seat.worldPos.x;
         patch.z = seat.worldPos.z;
-        patch.elevation = seat.worldPos.y * INCHES_PER_UNIT;
+        patch.elevation = seat.worldPos.y;
         patch.rotation = seat.item.rotation || 0;
       }
     } else {
@@ -959,11 +959,11 @@ export class EntityManager {
           const distSq = cdx * cdx + cdz * cdz;
           if (distSq > 0.05 * 0.05) return false; // 容差 0.05 米
 
-          // 高度范围检测 (英寸)
-          const modelH = (bookshelf.height || definition.defaultSize.height) * (bookshelf.scale || 1);
+          // 高度范围检测 (米)
+          const modelH = (bookshelf.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (bookshelf.scale || 1);
           const itemElev = item.elevation || 0;
           const modelElev = beforeState.elevation || 0;
-          return itemElev >= modelElev && itemElev <= modelElev + modelH + 5;
+          return itemElev >= modelElev && itemElev <= modelElev + modelH + (5.0 / INCHES_PER_UNIT);
         });
       } else {
         // 否则进行动态空间扫描书架小摆件
@@ -1049,7 +1049,9 @@ export class EntityManager {
     this.opts.pushHistory();
     const item = this.opts.testMap.addItem({
       type,
-      ...definition.defaultSize,
+      width: definition.defaultSize.width / INCHES_PER_UNIT,
+      depth: definition.defaultSize.depth / INCHES_PER_UNIT,
+      height: definition.defaultSize.height / INCHES_PER_UNIT,
       x,
       z,
       ...extraProps

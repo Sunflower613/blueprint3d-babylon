@@ -1,4 +1,4 @@
-import { FENCE_SUBTYPE_DEFAULTS } from '../../src/presets/blueprintTestMap.js';
+import { FENCE_SUBTYPE_DEFAULTS } from '../../src/index.js';
 import { TARGET_TYPES } from './types.js';
 import { isTargetLocked } from './TargetHandler.js';
 import { selection, editor } from '../store/index.js';

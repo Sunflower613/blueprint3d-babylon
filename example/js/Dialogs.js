@@ -451,3 +451,52 @@ export function showFurnitureUploadHelp() {
   window.addEventListener('keydown', handleKeyDown);
 }
 
+/**
+ * 显示带旋转加载动画的等待弹窗
+ * @param {string} title - 弹窗标题
+ * @param {string} message - 提示消息
+ * @returns {Object} 包含 close() 方法的对象，用于关闭弹窗
+ */
+export function showLoading(title, message = '') {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'custom-modal-backdrop';
+  
+  let finalTitle = title;
+  let finalMessage = message;
+  if (!message) {
+    finalTitle = '请稍候';
+    finalMessage = title;
+  }
+
+  backdrop.innerHTML = `
+    <div class="custom-modal-container" role="dialog" aria-modal="true" style="text-align: center; padding: 30px; max-width: 320px;">
+      <div class="custom-modal-spinner" style="margin: 0 auto 20px auto; width: 36px; height: 36px; border: 3px solid rgba(0, 0, 0, 0.08); border-top-color: var(--primary-color, #2563eb); border-radius: 50%; animation: custom-modal-spin 0.8s linear infinite;"></div>
+      <style>
+        @keyframes custom-modal-spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+      <h3 class="custom-modal-title" style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${finalTitle}</h3>
+      <div class="custom-modal-body" style="padding: 0; font-size: 14px; color: var(--text-secondary-color, #666); line-height: 1.5;">${finalMessage}</div>
+    </div>
+  `;
+  
+  document.body.appendChild(backdrop);
+  backdrop.getBoundingClientRect();
+  backdrop.classList.add('active');
+  
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    backdrop.classList.remove('active');
+    setTimeout(() => {
+      backdrop.remove();
+    }, 200);
+  };
+
+  return {
+    close: cleanup
+  };
+}
+

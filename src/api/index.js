@@ -149,6 +149,10 @@ export {
   SelectionController
 } from '../editor/SelectionController.js';
 
+export {
+  ExportService
+} from '../services/ExportService.js';
+
 // ==========================================
 // 8. Sample Data (将原 Presets 降级为样本数据)
 // ==========================================

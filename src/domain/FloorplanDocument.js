@@ -1,6 +1,5 @@
 import { getFurnitureDefinition, FURNITURE_LIST } from '../furniture/index.js';
-import { createBuildingFile, parseBuildingFile, stringifyBuildingFile } from '../core/buildingFile.js';
-import { stringifyDXF, create3MFPackage } from '../core/exporters.js';
+
 import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/index.js';
 import { normalizeOpeningShape } from '../openings/index.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
@@ -1346,32 +1345,5 @@ export class FloorplanDocument {
     return true;
   }
 
-  // --- 验证、导出与序列化方法 ---
-  exportJSON() {
-    return cloneFloorplan(this.floorplan);
-  }
 
-  exportBuildingFile(options = {}) {
-    return createBuildingFile(this.floorplan, options);
-  }
-
-  stringifyBuildingFile(options = {}) {
-    return stringifyBuildingFile(this.floorplan, options);
-  }
-
-  stringifyDXF() {
-    return stringifyDXF(this.floorplan);
-  }
-
-  create3MFPackage(options = {}) {
-    return create3MFPackage(this.floorplan, options);
-  }
-
-  loadBuildingFile(fileData) {
-    this.loadJSON(parseBuildingFile(fileData));
-  }
-
-  loadJSON(floorplan) {
-    this.floorplan = this.normalizeFloorplan(floorplan);
-  }
 }

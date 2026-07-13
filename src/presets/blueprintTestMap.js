@@ -3,6 +3,7 @@ const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorText
 import { BlueprintRegistry } from '../core/BlueprintRegistry.js';
 import { getFurnitureDefinition, FURNITURE_DEFINITIONS, FURNITURE_LIST } from '../furniture/index.js';
 import { FloorplanDocument, FENCE_SUBTYPE_DEFAULTS } from '../domain/FloorplanDocument.js';
+import { ExportService } from '../services/ExportService.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
 import { buildFenceGateGeometry } from '../geometry/fenceGateGeometry.js';
 import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } from '../openings/index.js';
@@ -101,6 +102,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   constructor(scene, options = {}) {
     super(scene, { name: options.name || 'blueprint3dTestMap' });
     this.document = new FloorplanDocument(options.floorplan || BLUEPRINT3D_TEST_FLOORPLAN);
+    this.exportService = new ExportService(this.document);
     
     // 初始化独立的 3D 渲染管线
     this.renderingEnabled = options.renderingEnabled !== false;
@@ -786,34 +788,34 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   exportJSON() {
-    return this.document.exportJSON();
+    return this.exportService.exportJSON();
   }
 
   exportBuildingFile(options = {}) {
-    return this.document.exportBuildingFile(options);
+    return this.exportService.exportBuildingFile(options);
   }
 
   stringifyBuildingFile(options = {}) {
-    return this.document.stringifyBuildingFile(options);
+    return this.exportService.stringifyBuildingFile(options);
   }
 
   stringifyDXF() {
-    return this.document.stringifyDXF();
+    return this.exportService.stringifyDXF();
   }
 
   create3MFPackage(options = {}) {
-    return this.document.create3MFPackage(options);
+    return this.exportService.create3MFPackage(options);
   }
 
   loadBuildingFile(fileData) {
-    this.document.loadBuildingFile(fileData);
+    this.exportService.loadBuildingFile(fileData);
     this.selectedItemId = this.selectedItemId && this.getItem(this.selectedItemId) ? this.selectedItemId : null;
     this.selectedWallId = this.selectedWallId && this.getWall(this.selectedWallId) ? this.selectedWallId : null;
     this.build();
   }
 
   loadJSON(floorplan) {
-    this.document.loadJSON(floorplan);
+    this.exportService.loadJSON(floorplan);
     this.selectedItemId = this.selectedItemId && this.getItem(this.selectedItemId) ? this.selectedItemId : null;
     this.selectedWallId = this.selectedWallId && this.getWall(this.selectedWallId) ? this.selectedWallId : null;
     this.build();

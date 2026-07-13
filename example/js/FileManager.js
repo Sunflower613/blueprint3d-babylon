@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { getEditHandleNodes } from './Viewer3DHandles.js';
+import { showLoading } from './Dialogs.js';
 import {
   Tools,
   createBuildingFileName,
@@ -113,26 +114,42 @@ export async function download3MFFile() {
   if (!result) return;
   const { category, enableTenon } = result;
 
-  const json = ctx.testMap.exportJSON();
-  const bytes = create3MFPackage(json, { category, enableTenon, testMap: ctx.testMap });
-  const blob = new Blob([bytes], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  
-  const baseName = ctx.testMap.floorplan.name || 'blueprint-building';
-  let exportName = baseName;
-  if (category === 'building') {
-    exportName = `${baseName}-building`;
-  } else if (category === 'furniture') {
-    exportName = `${baseName}-furniture`;
+  // 如果导出包含家具（'furniture' 或 'all'）且当前 3D 渲染未开启，则需要临时开启以生成真实的网格
+  const needsRendering = (category === 'furniture' || category === 'all') && !ctx.testMap.renderingEnabled;
+  const loading = showLoading('正在导出 3MF', '正在初始化 3D 渲染器并打包三维模型，请稍候...');
+
+  try {
+    if (needsRendering) {
+      ctx.testMap.enableRendering();
+    }
+
+    const json = ctx.testMap.exportJSON();
+    const bytes = create3MFPackage(json, { category, enableTenon, testMap: ctx.testMap });
+    const blob = new Blob([bytes], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const baseName = ctx.testMap.floorplan.name || 'blueprint-building';
+    let exportName = baseName;
+    if (category === 'building') {
+      exportName = `${baseName}-building`;
+    } else if (category === 'furniture') {
+      exportName = `${baseName}-furniture`;
+    }
+    
+    link.download = create3MFFileName(exportName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } finally {
+    loading.close();
+    if (needsRendering) {
+      ctx.testMap.disableRendering();
+      ctx.testMap.clearBuiltMeshes();
+    }
   }
-  
-  link.download = create3MFFileName(exportName);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 /**

@@ -76,6 +76,7 @@ function layerSet(index) {
     room: `${prefix}-A-ROOM`,
     furniture: `${prefix}-A-FURN`,
     plant: `${prefix}-A-FLOR-PLNT`,
+    light: `${prefix}-A-LITE`,
     text: `${prefix}-A-ANNO`,
     roomText: `${prefix}-A-ROOM-ANNO`,
     furnitureText: `${prefix}-A-FURN-ANNO`,
@@ -98,6 +99,7 @@ function layerDefinitions(floors) {
       { name: layers.room, color: 3 },
       { name: layers.furniture, color: 9 },
       { name: layers.plant, color: 3 },
+      { name: layers.light, color: 50 },
       { name: layers.text, color: 7 },
       { name: layers.roomText, color: 7 },
       { name: layers.furnitureText, color: 8 },
@@ -111,11 +113,46 @@ function layerDefinitions(floors) {
 }
 
 function drawDoor(span, basis, thickness, layers) {
+  const isSymmetric = !span.opening.shape || ['square', 'diamond', 'circle', 'semicircle', 'round-arch', 'pointed-arch'].includes(span.opening.shape);
+  const isDouble = !!span.opening.doubleDoor && isSymmetric;
+  const swingSign = span.opening.isFlippedIO ? -1 : 1;
+  const width = span.end - span.start;
+
+  if (isDouble) {
+    const halfWidth = width / 2;
+    // 左铰链（在 span.start 处，闭合方向朝 +u）
+    const hinge1 = pointAlongWall(basis, span.start);
+    const leafEnd1 = {
+      x: hinge1.x + basis.nx * halfWidth * swingSign,
+      z: hinge1.z + basis.nz * halfWidth * swingSign
+    };
+    const closedDirection1 = { x: basis.ux, z: basis.uz };
+    const closedAngle1 = Math.atan2(closedDirection1.z, closedDirection1.x) * 180 / Math.PI;
+    const openAngle1 = Math.atan2(basis.nz * swingSign, basis.nx * swingSign) * 180 / Math.PI;
+    const [arcStart1, arcEnd1] = shortArcAngles(closedAngle1, openAngle1);
+
+    // 右铰链（在 span.end 处，闭合方向朝 -u）
+    const hinge2 = pointAlongWall(basis, span.end);
+    const leafEnd2 = {
+      x: hinge2.x + basis.nx * halfWidth * swingSign,
+      z: hinge2.z + basis.nz * halfWidth * swingSign
+    };
+    const closedDirection2 = { x: -basis.ux, z: -basis.uz };
+    const closedAngle2 = Math.atan2(closedDirection2.z, closedDirection2.x) * 180 / Math.PI;
+    const openAngle2 = Math.atan2(basis.nz * swingSign, basis.nx * swingSign) * 180 / Math.PI;
+    const [arcStart2, arcEnd2] = shortArcAngles(closedAngle2, openAngle2);
+
+    return line(hinge1.x, hinge1.z, leafEnd1.x, leafEnd1.z, layers.door)
+      + circle(hinge1.x, hinge1.z, Math.min(0.035, thickness / 5), layers.door)
+      + arc(hinge1.x, hinge1.z, halfWidth, arcStart1, arcEnd1, layers.door)
+      + line(hinge2.x, hinge2.z, leafEnd2.x, leafEnd2.z, layers.door)
+      + circle(hinge2.x, hinge2.z, Math.min(0.035, thickness / 5), layers.door)
+      + arc(hinge2.x, hinge2.z, halfWidth, arcStart2, arcEnd2, layers.door);
+  }
+
   const hingeAtEnd = !!span.opening.isFlippedLR;
   const hingeDistance = hingeAtEnd ? span.end : span.start;
   const hinge = pointAlongWall(basis, hingeDistance);
-  const swingSign = span.opening.isFlippedIO ? -1 : 1;
-  const width = span.end - span.start;
   const leafEnd = {
     x: hinge.x + basis.nx * width * swingSign,
     z: hinge.z + basis.nz * width * swingSign
@@ -472,6 +509,7 @@ export function stringifyDXF(floorplan) {
       const nameLower = (item.name || item.type || '').toLowerCase();
       
       const isPlant = nameLower.includes('植') || nameLower.includes('花') || nameLower.includes('盆') || nameLower.includes('竹') || nameLower.includes('plant') || nameLower.includes('flower') || nameLower.includes('vegetation') || nameLower.includes('bonsai');
+      const isLight = nameLower.includes('灯') || nameLower.includes('light') || nameLower.includes('lamp') || nameLower.includes('luminaire') || nameLower.includes('chandelier') || nameLower.includes('fixture');
       const isRug = nameLower.includes('地毯') || nameLower.includes('垫') || nameLower.includes('rug') || nameLower.includes('carpet') || nameLower.includes('mat');
       const isCabinet = nameLower.includes('柜') || nameLower.includes('柜子') || nameLower.includes('衣柜') || nameLower.includes('cabinet') || nameLower.includes('wardrobe') || nameLower.includes('tv') || nameLower.includes('sideboard');
       const isTable = nameLower.includes('桌') || nameLower.includes('几') || nameLower.includes('台') || nameLower.includes('table') || nameLower.includes('desk');
@@ -491,6 +529,10 @@ export function stringifyDXF(floorplan) {
         const r = Math.min(size.width, size.depth) / 2;
         entities += circle(Number(item.x || 0), Number(item.z || 0), r, layers.plant);
         entities += circle(Number(item.x || 0), Number(item.z || 0), r * 0.6, layers.plant);
+      } else if (isLight) {
+        const r = Math.min(size.width, size.depth) / 2;
+        entities += circle(Number(item.x || 0), Number(item.z || 0), r, layers.light);
+        entities += circle(Number(item.x || 0), Number(item.z || 0), r * 0.4, layers.light);
       } else if (isRug) {
         if (nameLower.includes('圆') || nameLower.includes('circle') || nameLower.includes('round')) {
           const r = Math.min(size.width, size.depth) / 2;
@@ -523,10 +565,11 @@ export function stringifyDXF(floorplan) {
       }
 
       const labelRaw = item.name || item.type || '';
-      const isMini = size.width < 0.6 && size.depth < 0.6;
+      const isMini = size.width < 0.3 && size.depth < 0.3;
+      const isChairOrMannequin = nameLower.includes('椅') || nameLower.includes('凳') || nameLower.includes('chair') || nameLower.includes('stool') || nameLower.includes('seat') || nameLower.includes('bench') || nameLower.includes('沙发') || nameLower.includes('sofa') || nameLower.includes('couch') || nameLower.includes('模特') || nameLower.includes('人台') || nameLower.includes('mannequin') || nameLower.includes('puppet');
       
-      // 只有非微型家具才绘制文字标签，精炼图面
-      if (labelRaw && !isMini) {
+      // 只有非微型家具，或者核心品类（如椅子、模特人台等坐卧展示类家具）才绘制文字标签，精炼图面的同时保留关键定位信息
+      if (labelRaw && (!isMini || isChairOrMannequin)) {
         // 简化标签：过滤修饰词与过长文本
         const simplifyLabel = (str) => {
           if (!str) return '';

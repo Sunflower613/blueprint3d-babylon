@@ -76,6 +76,29 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function toFiniteNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toFinitePositive(value, fallback, min = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, parsed);
+}
+
+function normalizeFloorId(value, validFloorIds, fallbackFloorId) {
+  return validFloorIds.has(value) ? value : fallbackFloorId;
+}
+
+function normalizePointPair(value, fallback = [0, 0]) {
+  const base = Array.isArray(value) ? value : fallback;
+  return [
+    toFiniteNumber(base[0], fallback[0] ?? 0),
+    toFiniteNumber(base[1], fallback[1] ?? 0)
+  ];
+}
+
 function inchesToUnits(value) {
   return Number((Number(value || 0) / INCHES_PER_UNIT).toFixed(4));
 }
@@ -163,6 +186,8 @@ export class FloorplanDocument {
     if (!normalized.floors.some((floor) => floor.id === normalized.currentFloorId)) {
       normalized.currentFloorId = normalized.floors[0].id;
     }
+    const validFloorIds = new Set(normalized.floors.map((floor) => floor.id));
+    const fallbackFloorId = normalized.currentFloorId || normalized.floors[0].id || DEFAULT_FLOOR_ID;
 
     const alignedStoryHeight = (normalized.wallHeight || 3.0) + (normalized.floorHeight || 0.06);
     const legacyStoryHeight = (normalized.wallHeight || 3.0) + 0.35;
@@ -173,7 +198,12 @@ export class FloorplanDocument {
 
     normalized.floor.rooms ||= [];
     normalized.floor.rooms.forEach((room) => {
-      room.floorId ||= DEFAULT_FLOOR_ID;
+      room.floorId = normalizeFloorId(room.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      room.x = toFiniteNumber(room.x, 0);
+      room.z = toFiniteNumber(room.z, 0);
+      room.width = toFinitePositive(room.width, 4, 0.2);
+      room.depth = toFinitePositive(room.depth, 4, 0.2);
+      room.rotation = toFiniteNumber(room.rotation, 0);
       room.shape = normalizeRoomShape(room.shape);
       room.color ||= normalized.floor.color || DEFAULT_FLOOR_COLOR;
       if (!room.material || room.material === room.color || room.material === DEFAULT_FLOOR_COLOR) {
@@ -191,32 +221,35 @@ export class FloorplanDocument {
     normalized.fenceGates ||= [];
 
     normalized.walls.forEach((wall) => {
+      wall.floorId = normalizeFloorId(wall.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      wall.from = normalizePointPair(wall.from, [0, 0]);
+      wall.to = normalizePointPair(wall.to, [1, 0]);
       normalizeWallDecorSettings(wall);
     });
 
     normalized.openings.forEach((opening) => {
       const wall = normalized.walls.find((candidate) => candidate.id === opening.wallId);
-      opening.floorId ||= wall?.floorId || DEFAULT_FLOOR_ID;
-      opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
-      opening.width ||= opening.type === 'door' ? 0.9 : 1.25;
+      opening.floorId = normalizeFloorId(opening.floorId || wall?.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      opening.t = clamp(toFiniteNumber(opening.t ?? 0.5, 0.5), 0.08, 0.92);
+      opening.width = toFinitePositive(opening.width, opening.type === 'door' ? 0.9 : 1.25, 0.1);
       opening.shape = normalizeOpeningShape(opening.shape);
       opening.panelHidden = !!opening.panelHidden;
       opening.glassHidden = !!opening.glassHidden;
       opening.locked = !!opening.locked;
       if (opening.type === 'window') {
-        opening.height ||= 0.85;
-        opening.sillHeight = Math.max(0, Number(opening.sillHeight ?? 1.05));
+        opening.height = toFinitePositive(opening.height, 0.85, 0.1);
+        opening.sillHeight = Math.max(0, toFiniteNumber(opening.sillHeight ?? 1.05, 1.05));
       }
     });
 
     normalized.roofs.forEach((roof) => {
       roof.id ||= `roof_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      roof.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
-      roof.x = Number(roof.x || 0);
-      roof.z = Number(roof.z || 0);
-      roof.width = Math.max(1, Number(roof.width || 6));
-      roof.depth = Math.max(1, Number(roof.depth || 6));
-      roof.height = Math.max(0.2, Number(roof.height || 1.1));
+      roof.floorId = normalizeFloorId(roof.floorId || normalized.currentFloorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      roof.x = toFiniteNumber(roof.x, 0);
+      roof.z = toFiniteNumber(roof.z, 0);
+      roof.width = toFinitePositive(roof.width, 6, 1);
+      roof.depth = toFinitePositive(roof.depth, 6, 1);
+      roof.height = toFinitePositive(roof.height, 1.1, 0.2);
       roof.type ||= 'gable';
       roof.subtype ||= roof.type || 'gable';
       roof.color ||= '#b75b54';
@@ -229,42 +262,42 @@ export class FloorplanDocument {
       roof.sideHidden = !!roof.sideHidden;
       roof.bottomHidden = !!roof.bottomHidden;
       roof.locked = !!roof.locked;
-      roof.curve = Number(roof.curve || 0);
-      roof.elevation = roof.elevation !== undefined ? Number(roof.elevation) : undefined;
+      roof.curve = toFiniteNumber(roof.curve, 0);
+      roof.elevation = roof.elevation !== undefined ? toFiniteNumber(roof.elevation, 0) : undefined;
     });
 
     normalized.stairs.forEach((stairs) => {
       stairs.id ||= `stairs_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      stairs.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
-      stairs.x = Number(stairs.x || 0);
-      stairs.z = Number(stairs.z || 0);
-      stairs.width = Math.max(0.6, Number(stairs.width || 1.2));
-      stairs.depth = Math.max(1.2, Number(stairs.depth || 3.2));
-      stairs.height = Math.max(1, Number(stairs.height || normalized.storyHeight));
+      stairs.floorId = normalizeFloorId(stairs.floorId || normalized.currentFloorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      stairs.x = toFiniteNumber(stairs.x, 0);
+      stairs.z = toFiniteNumber(stairs.z, 0);
+      stairs.width = toFinitePositive(stairs.width, 1.2, 0.6);
+      stairs.depth = toFinitePositive(stairs.depth, 3.2, 1.2);
+      stairs.height = toFinitePositive(stairs.height, normalized.storyHeight, 1);
       stairs.subtype ||= 'straight';
-      stairs.rotation = Number(stairs.rotation || 0);
+      stairs.rotation = toFiniteNumber(stairs.rotation, 0);
       stairs.color ||= '#d8c0a0';
       stairs.material ||= stairs.color;
       stairs.sideColor ||= stairs.color || '#d8c0a0';
       stairs.sideMaterial ||= stairs.sideColor;
       stairs.sideHidden = !!stairs.sideHidden;
       stairs.locked = !!stairs.locked;
-      stairs.steps = Math.max(3, Math.min(32, Number(stairs.steps || 9)));
+      stairs.steps = Math.max(3, Math.min(32, toFiniteNumber(stairs.steps, 9)));
       stairs.mirrored = !!stairs.mirrored;
-      stairs.spiralDegrees = Number(stairs.spiralDegrees ?? (stairs.subtype === 'curved' ? 90 : 360));
-      stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, Number(stairs.cornerStep ?? Math.floor(stairs.steps / 2))));
-      stairs.uSlotWidth = Number(stairs.uSlotWidth ?? 0.1);
-      stairs.uVoidLength = Number(stairs.uVoidLength ?? (stairs.depth - 1));
+      stairs.spiralDegrees = toFiniteNumber(stairs.spiralDegrees ?? (stairs.subtype === 'curved' ? 90 : 360), stairs.subtype === 'curved' ? 90 : 360);
+      stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, toFiniteNumber(stairs.cornerStep ?? Math.floor(stairs.steps / 2), Math.floor(stairs.steps / 2))));
+      stairs.uSlotWidth = toFiniteNumber(stairs.uSlotWidth ?? 0.1, 0.1);
+      stairs.uVoidLength = toFiniteNumber(stairs.uVoidLength ?? (stairs.depth - 1), stairs.depth - 1);
     });
 
     normalized.fences.forEach((fence) => {
       fence.id ||= `fence_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      fence.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
-      fence.from ||= [0, 0];
-      fence.to ||= [2, 0];
+      fence.floorId = normalizeFloorId(fence.floorId || normalized.currentFloorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      fence.from = normalizePointPair(fence.from, [0, 0]);
+      fence.to = normalizePointPair(fence.to, [2, 0]);
       fence.subtype ||= 'picket_wood';
-      fence.height = Math.max(0.2, Number(fence.height || 1.1));
-      fence.thickness = Math.max(0.04, Number(fence.thickness || 0.1));
+      fence.height = toFinitePositive(fence.height, 1.1, 0.2);
+      fence.thickness = toFinitePositive(fence.thickness, 0.1, 0.04);
 
       const defaults = FENCE_SUBTYPE_DEFAULTS[fence.subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
       fence.color ||= defaults.color;
@@ -280,21 +313,21 @@ export class FloorplanDocument {
       fence.panelColor = materialPreviewColor(fence.panelMaterial, fence.panelColor || defaults.panelColor);
 
       fence.locked = !!fence.locked;
-      fence.tilt = Number(fence.tilt || 0);
-      fence.yOffset = Number(fence.yOffset || 0);
+      fence.tilt = toFiniteNumber(fence.tilt, 0);
+      fence.yOffset = toFiniteNumber(fence.yOffset, 0);
     });
 
     normalized.fenceGates.forEach((gate) => {
       gate.id ||= `gate_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      gate.floorId ||= normalized.currentFloorId || DEFAULT_FLOOR_ID;
-      gate.width = Math.max(0.2, Number(gate.width || 1.0));
-      gate.height = Math.max(0.2, Number(gate.height || 1.1));
-      gate.thickness = Math.max(0.04, Number(gate.thickness || 0.08));
-      gate.yOffset = Number(gate.yOffset || 0);
-      gate.from ||= [0, 0];
-      gate.to ||= [gate.from[0] + gate.width, gate.from[1]];
+      gate.floorId = normalizeFloorId(gate.floorId || normalized.currentFloorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      gate.width = toFinitePositive(gate.width, 1.0, 0.2);
+      gate.height = toFinitePositive(gate.height, 1.1, 0.2);
+      gate.thickness = toFinitePositive(gate.thickness, 0.08, 0.04);
+      gate.yOffset = toFiniteNumber(gate.yOffset, 0);
+      gate.from = normalizePointPair(gate.from, [0, 0]);
+      gate.to = normalizePointPair(gate.to, [gate.from[0] + gate.width, gate.from[1]]);
       gate.fenceId ||= null;
-      gate.t = gate.t !== undefined ? Number(gate.t) : 0.5;
+      gate.t = clamp(toFiniteNumber(gate.t ?? 0.5, 0.5), 0, 1);
       gate.subtype ||= 'picket_wood';
       gate.isOpen = !!gate.isOpen;
       gate.doubleDoor = !!gate.doubleDoor;
@@ -314,28 +347,37 @@ export class FloorplanDocument {
 
     normalized.items.forEach((item) => {
       const room = normalized.floor.rooms.find((candidate) => candidate.id === item.roomId);
-      item.floorId ||= room?.floorId || DEFAULT_FLOOR_ID;
+      item.floorId = normalizeFloorId(item.floorId || room?.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
       const definition = getFurnitureDefinition(item.type);
       item.name ||= definition.name;
+      item.x = toFiniteNumber(item.x, 0);
+      item.z = toFiniteNumber(item.z, 0);
+      item.rotation = toFiniteNumber(item.rotation, 0);
 
       const isMeterDef = definition.unit === 'm';
 
-      if (item.width === undefined || item.width === null) {
+      if (item.width === undefined || item.width === null || !Number.isFinite(Number(item.width))) {
         item.width = isMeterDef ? Number(definition.defaultSize.width.toFixed(4)) : Number((definition.defaultSize.width / INCHES_PER_UNIT).toFixed(4));
       } else if (needsConversion) {
         item.width = Number((item.width / INCHES_PER_UNIT).toFixed(4));
+      } else {
+        item.width = toFinitePositive(item.width, isMeterDef ? Number(definition.defaultSize.width.toFixed(4)) : Number((definition.defaultSize.width / INCHES_PER_UNIT).toFixed(4)), 0.05);
       }
 
-      if (item.depth === undefined || item.depth === null) {
+      if (item.depth === undefined || item.depth === null || !Number.isFinite(Number(item.depth))) {
         item.depth = isMeterDef ? Number(definition.defaultSize.depth.toFixed(4)) : Number((definition.defaultSize.depth / INCHES_PER_UNIT).toFixed(4));
       } else if (needsConversion) {
         item.depth = Number((item.depth / INCHES_PER_UNIT).toFixed(4));
+      } else {
+        item.depth = toFinitePositive(item.depth, isMeterDef ? Number(definition.defaultSize.depth.toFixed(4)) : Number((definition.defaultSize.depth / INCHES_PER_UNIT).toFixed(4)), 0.05);
       }
 
-      if (item.height === undefined || item.height === null) {
+      if (item.height === undefined || item.height === null || !Number.isFinite(Number(item.height))) {
         item.height = isMeterDef ? Number(definition.defaultSize.height.toFixed(4)) : Number((definition.defaultSize.height / INCHES_PER_UNIT).toFixed(4));
       } else if (needsConversion) {
         item.height = Number((item.height / INCHES_PER_UNIT).toFixed(4));
+      } else {
+        item.height = toFinitePositive(item.height, isMeterDef ? Number(definition.defaultSize.height.toFixed(4)) : Number((definition.defaultSize.height / INCHES_PER_UNIT).toFixed(4)), 0.05);
       }
 
       if (needsConversion) {

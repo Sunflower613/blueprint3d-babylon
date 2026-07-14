@@ -560,6 +560,7 @@ let testMap = new Blueprint3DTestMap(scene, {
   floorplan: initialLocalSave.buildingData || BLUEPRINT3D_TEST_FLOORPLAN,
   renderingEnabled: false
 });
+const recoveredInitialFloor = ensureVisibleCurrentFloor({ reason: 'startup', silent: !initialLocalSave.buildingData });
 
 // 鍒濆鍖栫墿浣撶鐞嗗櫒 EntityManager
 let entityManager = new EntityManager({
@@ -679,6 +680,7 @@ Object.assign(appState, {
   getMaterialLibrary: () => materialLibrary,
   DEFAULT_MATERIAL_PACKS,
   syncFloorControls,
+  ensureVisibleCurrentFloor,
   resetInteractionState,
   showCustomPrompt,
   showCustomAlert,
@@ -817,6 +819,7 @@ const store = new Store({
   applySnapshot: (data) => {
     restoreFloorplanMaterials(data);
     testMap.loadJSON(data);
+    ensureVisibleCurrentFloor({ reason: 'snapshot-restore', silent: true });
     syncFloorControls();
     selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
     selectedWallId = selectedWallId && testMap.getWall(selectedWallId) ? selectedWallId : null;
@@ -893,6 +896,9 @@ createCustomDropdown('opening-shape');
 refreshShadows();
 selectItem(testMap.floorplan.items[0]?.id || null);
 setView('2d');
+if (recoveredInitialFloor) {
+  syncFloorControls();
+}
 updateHistoryButtons();
 const snapToggleBtn = document.getElementById('btn-snap-toggle');
 if (snapToggleBtn) {
@@ -1113,6 +1119,40 @@ function currentRoofs() {
 
 function currentStairs() {
   return testMap.getCurrentFloorStairs ? testMap.getCurrentFloorStairs() : [];
+}
+
+function getFloorEntityCount(floorId) {
+  if (!testMap?.floorplan || !floorId) return 0;
+  const matchesFloor = (entity) => (entity?.floorId || 'floor_1') === floorId;
+  return (testMap.floorplan.floor?.rooms || []).filter(matchesFloor).length
+    + (testMap.floorplan.walls || []).filter(matchesFloor).length
+    + (testMap.floorplan.openings || []).filter(matchesFloor).length
+    + (testMap.floorplan.items || []).filter(matchesFloor).length
+    + (testMap.floorplan.roofs || []).filter(matchesFloor).length
+    + (testMap.floorplan.stairs || []).filter(matchesFloor).length
+    + (testMap.floorplan.fences || []).filter(matchesFloor).length
+    + (testMap.floorplan.fenceGates || []).filter(matchesFloor).length;
+}
+
+function ensureVisibleCurrentFloor(options = {}) {
+  const { reason = 'unknown', silent = false } = options;
+  if (!testMap?.floorplan?.floors?.length) return false;
+  const currentFloorId = testMap.floorplan.currentFloorId;
+  if (getFloorEntityCount(currentFloorId) > 0) return false;
+
+  const fallbackFloor = [...testMap.floorplan.floors]
+    .map((floor) => ({ floor, count: getFloorEntityCount(floor.id) }))
+    .sort((a, b) => b.count - a.count || Number(a.floor.level || 0) - Number(b.floor.level || 0))
+    .find((entry) => entry.count > 0);
+
+  if (!fallbackFloor || fallbackFloor.floor.id === currentFloorId) return false;
+
+  testMap.setCurrentFloor(fallbackFloor.floor.id);
+  console.warn(`[floor-recovery] Switched empty floor "${currentFloorId}" to populated floor "${fallbackFloor.floor.id}" during ${reason}.`);
+  if (!silent) {
+    showToast(`当前楼层无内容，已自动切换到“${fallbackFloor.floor.name || fallbackFloor.floor.id}”`);
+  }
+  return true;
 }
 
 function makeButton(id, label, className = '') {
@@ -1382,18 +1422,24 @@ function snapRoomPosition(room, x, z) {
 function updateViewBounds() {
   if (hasUserZoomedOrPanned) return;
   const corners = [];
+  const pushCorner = (x, z) => {
+    const nextX = Number(x);
+    const nextZ = Number(z);
+    if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) return;
+    corners.push({ x: nextX, z: nextZ });
+  };
   [...referenceFloorWalls(), ...currentWalls()].forEach((wall) => {
-    corners.push({ x: wall.from[0], z: wall.from[1] });
-    corners.push({ x: wall.to[0], z: wall.to[1] });
+    pushCorner(wall?.from?.[0], wall?.from?.[1]);
+    pushCorner(wall?.to?.[0], wall?.to?.[1]);
   });
   currentRooms().forEach((room) => {
-    corners.push(...getRoomVertices(room));
+    getRoomVertices(room).forEach((point) => pushCorner(point?.x, point?.z));
   });
   currentItems().forEach((item) => {
     const w = inchesToWorld(item.width) / 2;
     const d = inchesToWorld(item.depth) / 2;
-    corners.push({ x: item.x - w, z: item.z - d });
-    corners.push({ x: item.x + w, z: item.z + d });
+    pushCorner(item.x - w, item.z - d);
+    pushCorner(item.x + w, item.z + d);
   });
 
   if (!corners.length) {

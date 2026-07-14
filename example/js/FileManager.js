@@ -251,6 +251,7 @@ export async function openLocalStorageList() {
       restoreFloorplanMaterials(data.buildingData);
 
       ctx.testMap.loadJSON(data.buildingData);
+      ctx.ensureVisibleCurrentFloor?.({ reason: 'file-import', silent: true });
       ctx.syncFloorControls();
       ctx.setHasUserZoomedOrPanned(false);
       ctx.resetInteractionState();

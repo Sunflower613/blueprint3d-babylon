@@ -10,6 +10,7 @@ import {
   floorPrefix,
   getFloor,
   getFloorElevation,
+  getFloorWallRenderHeight,
   getItemRoomElevationOffset,
   itemSize,
   orderedFloors,
@@ -56,18 +57,23 @@ function appendMesh(target, source, colorHex = null) {
   }
 }
 
-// 辅助计算普通门的高程差
+// 辅助计算普通门窗的高程差
 function getOpeningElevationOffset(floorplan, opening) {
-  const wall = (floorplan.walls || []).find(w => w.id === opening.wallId);
-  if (!wall) return 0;
-  const basis = wallBasis(wall);
-  if (!basis) return 0;
-  const center = Math.max(0, Math.min(basis.length, Number(opening.t ?? 0.5) * basis.length));
-  const pos = pointAlongWall(basis, center);
+  const wallId = opening.wallId;
+  if (!wallId) return 0;
   const rooms = floorplan.floor?.rooms || [];
-  const floorId = opening.floorId || wall.floorId;
-  const room = rooms.find(r => entityFloorId(floorplan, r) === floorId && pointInRoom(r, pos.x, pos.z));
-  return room ? Number(room.elevation || 0) : 0;
+  const openingFloorId = opening.floorId;
+  let maxElev = 0;
+  rooms.forEach((room) => {
+    const rFloorId = entityFloorId(floorplan, room);
+    if (rFloorId === (openingFloorId || rFloorId)) {
+      const hasWall = Object.values(room.wallIds || {}).includes(wallId);
+      if (hasWall && Number(room.elevation || 0) > maxElev) {
+        maxElev = Number(room.elevation || 0);
+      }
+    }
+  });
+  return maxElev;
 }
 
 // 辅助提取 Babylon 真实 Mesh 并保留颜色
@@ -132,6 +138,14 @@ function normalizeColorHex(hex) {
   return '#E0E0E0FF';
 }
 
+// 辅助从可能为对象或字符串的材质描述符中提取 Hex 颜色
+function extractColor(desc, fallback) {
+  if (!desc) return fallback;
+  if (typeof desc === 'string') return desc;
+  if (desc.color) return desc.color;
+  return fallback;
+}
+
 function addRotatedBox(target, cx, cy, cz, width, height, depth, rotation = 0, colorHex = null) {
   if (width <= 0.00001 || height <= 0.00001 || depth <= 0.00001) return;
   const mesh = boxMesh(0, cy, 0, width, height, depth);
@@ -145,7 +159,7 @@ function addRotatedBox(target, cx, cy, cz, width, height, depth, rotation = 0, c
 function appendRoomSlab(mesh, floorplan, room) {
   const floorId = entityFloorId(floorplan, room);
   const floor = getFloor(floorplan, floorId);
-  const floorHeight = Number(floor?.floorHeight ?? floorplan.floorHeight ?? 0.06);
+  const floorHeight = Number(floor?.floorHeight ?? floorplan.floorHeight ?? 0.2);
   const topY = getFloorElevation(floorplan, floorId) + Number(room.elevation || 0);
   const bottomY = topY - floorHeight;
   const triangulated = triangulateRoom(room);
@@ -166,7 +180,7 @@ function appendWallWithOpenings(mesh, floorplan, wall, extraSpans = []) {
   if (!basis) return;
   const floorId = entityFloorId(floorplan, wall);
   const floor = getFloor(floorplan, floorId);
-  const wallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 3.0);
+  const wallHeight = getFloorWallRenderHeight(floorplan, floorId);
   const thickness = Math.max(0.02, Number(wall.thickness ?? floorplan.wallThickness ?? DEFAULT_WALL_THICKNESS));
   const floorY = getFloorElevation(floorplan, floorId);
   const rotation = Math.atan2(basis.uz, basis.ux);
@@ -207,8 +221,10 @@ function appendWallWithOpenings(mesh, floorplan, wall, extraSpans = []) {
   for (const span of spans) {
     if (span.start > cursor) addSegment(cursor, span.start, 0, wallHeight);
     const opening = span.opening;
-    const openingBottom = opening.type === 'door' ? 0 : Math.max(0, Number(opening.sillHeight ?? 1.05));
+    const openingOffset = getOpeningElevationOffset(floorplan, opening);
+    const sillHeight = Number(opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05));
     const openingHeight = Math.max(0.1, Number(opening.height ?? (opening.type === 'door' ? 2.05 : 0.85)));
+    const openingBottom = Math.max(0, sillHeight + openingOffset);
     const openingTop = Math.min(wallHeight, openingBottom + openingHeight);
     if (openingBottom > 0) addSegment(span.start, span.end, 0, openingBottom);
     if (openingTop < wallHeight) addSegment(span.start, span.end, openingTop, wallHeight);
@@ -255,6 +271,7 @@ function appendSimpleStructures(mesh, floorplan, floorId, options = {}) {
 
     if (!hasRealMesh) {
       const steps = Math.max(3, Number(stairs.steps || 9));
+      const stairsColor = extractColor(stairs.material, stairs.color || '#d8c0a0');
       for (let step = 0; step < steps; step += 1) {
         const stepDepth = depth / steps;
         const stepHeight = height * (step + 1) / steps;
@@ -269,7 +286,7 @@ function appendSimpleStructures(mesh, floorplan, floorId, options = {}) {
           stepHeight,
           stepDepth,
           Number(stairs.rotation || 0),
-          normalizeColorHex(stairs.color || '#d8c0a0')
+          normalizeColorHex(stairsColor)
         );
       }
     }
@@ -310,6 +327,7 @@ function appendSimpleStructures(mesh, floorplan, floorId, options = {}) {
       if (!basis) continue;
       const center = pointAlongWall(basis, basis.length / 2);
       const height = Number(fence.height || 1.1);
+      const fenceColor = extractColor(fence.material, fence.color || '#8d6e63');
       addRotatedBox(
         mesh,
         center.x,
@@ -319,7 +337,7 @@ function appendSimpleStructures(mesh, floorplan, floorId, options = {}) {
         height,
         Math.max(0.04, Number(fence.thickness || 0.1)),
         Math.atan2(basis.uz, basis.ux),
-        normalizeColorHex(fence.color || '#8d6e63')
+        normalizeColorHex(fenceColor)
       );
     }
   }
@@ -359,7 +377,7 @@ function appendSimpleStructures(mesh, floorplan, floorId, options = {}) {
     const height = Number(gate.height || 1.1);
     const thickness = Number(gate.thickness || 0.08);
     const gateOffset = Number(gate.yOffset || 0);
-    const panelColor = gate.panelMaterial || gate.panelColor || (gate.subtype === 'concrete' ? '#f9fbff' : '#8d6e63');
+    const panelColor = extractColor(gate.panelMaterial, gate.panelColor || (gate.subtype === 'concrete' ? '#f9fbff' : '#8d6e63'));
 
     let hasRealMesh = false;
     if (options.testMap && options.testMap.scene) {
@@ -468,7 +486,7 @@ function chunkIndices(indices) {
 function appendRoofs(mesh, floorplan, floorId, options = {}) {
   const floorY = getFloorElevation(floorplan, floorId);
   const floor = getFloor(floorplan, floorId);
-  const defaultWallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 3.0);
+  const defaultWallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 2.8);
 
   for (const roof of floorEntities(floorplan, 'roofs', floorId)) {
     const width = Math.max(1, Number(roof.width || 6));
@@ -477,7 +495,7 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
     const curve = Number(roof.curve || 0);
     const subtype = roof.subtype || roof.type || 'gable';
 
-    const roofWallHeight = floor ? (floor.wallHeight ?? floorplan.wallHeight ?? 3.0) : defaultWallHeight;
+    const roofWallHeight = floor ? (floor.wallHeight ?? floorplan.wallHeight ?? 2.8) : defaultWallHeight;
     const eaveY = floorY + (roof.elevation !== undefined ? Number(roof.elevation) : roofWallHeight);
 
     const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve);
@@ -543,7 +561,7 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
         // 如果墙体中点在屋顶水平包容矩形内，则判断墙体被屋顶覆盖
         const inRoof = Math.abs(localX) <= width / 2 + 0.1 && Math.abs(localZ) <= depth / 2 + 0.1;
         if (inRoof) {
-          const wallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 3.0);
+          const wallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 2.8);
           const thickness = Math.max(0.02, Number(wall.thickness ?? floorplan.wallThickness ?? DEFAULT_WALL_THICKNESS));
           const wallRot = Math.atan2(basis.uz, basis.ux);
           
@@ -566,6 +584,19 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
 
 function getColorHex(material) {
   if (!material) return '#E0E0E0FF';
+
+  // 优先获取真实的原始材质颜色，避免物理渲染通道的漫反射或高光缩放导致颜色丢失/变暗
+  const bpMat = material.metadata?.blueprintMaterial;
+  if (bpMat && bpMat.color) {
+    let baseColor = bpMat.color;
+    if (!baseColor.startsWith('#')) {
+      baseColor = '#' + baseColor;
+    }
+    const alphaVal = material.alpha !== undefined ? material.alpha : (bpMat.alpha !== undefined ? bpMat.alpha : 1.0);
+    const a = Math.round(alphaVal * 255).toString(16).padStart(2, '0');
+    return (baseColor.substring(0, 7) + a).toUpperCase();
+  }
+
   let color = material.diffuseColor || material.albedoColor;
   if (!color && material.color) {
     color = material.color;
@@ -682,7 +713,7 @@ function createObjects(floorplan, options = {}) {
             const t_center = overlap.center;
             const centerPos = pointAlongWall(basisA, t_center);
             const floorY = getFloorElevation(floorplan, currentFloor.id);
-            const wallHeight = Number(currentFloor.wallHeight ?? floorplan.wallHeight ?? 3.0);
+            const wallHeight = Number(currentFloor.wallHeight ?? floorplan.wallHeight ?? 2.8);
             const thickness = Math.max(0.02, Number(wallA.thickness ?? floorplan.wallThickness ?? DEFAULT_WALL_THICKNESS));
             const rotation = Math.atan2(basisA.uz, basisA.ux);
             
@@ -808,6 +839,7 @@ function createObjects(floorplan, options = {}) {
           const height = Number(stairs.height || floorplan.storyHeight || 3.06);
           const floorY = getFloorElevation(floorplan, floor.id);
           const steps = Math.max(3, Number(stairs.steps || 9));
+          const stairsColor = extractColor(stairs.material, stairs.color || '#d8c0a0');
           for (let step = 0; step < steps; step += 1) {
             const stepDepth = depth / steps;
             const stepHeight = height * (step + 1) / steps;
@@ -822,7 +854,7 @@ function createObjects(floorplan, options = {}) {
               stepHeight,
               stepDepth,
               Number(stairs.rotation || 0),
-              normalizeColorHex(stairs.color || '#d8c0a0')
+              normalizeColorHex(stairsColor)
             );
           }
         }
@@ -852,6 +884,7 @@ function createObjects(floorplan, options = {}) {
             const floorY = getFloorElevation(floorplan, floor.id);
             const center = pointAlongWall(basis, basis.length / 2);
             const height = Number(fence.height || 1.1);
+            const fenceColor = extractColor(fence.material, fence.color || '#8d6e63');
             addRotatedBox(
               mesh,
               center.x,
@@ -861,7 +894,7 @@ function createObjects(floorplan, options = {}) {
               height,
               Math.max(0.04, Number(fence.thickness || 0.1)),
               Math.atan2(basis.uz, basis.ux),
-              normalizeColorHex(fence.color || '#8d6e63')
+              normalizeColorHex(fenceColor)
             );
           }
         }
@@ -910,7 +943,7 @@ function createObjects(floorplan, options = {}) {
         const dz = z2 - z1;
         const length = Math.sqrt(dx * dx + dz * dz);
         const thickness = Number(gate.thickness || 0.08);
-        const panelColor = gate.panelMaterial || gate.panelColor || (gate.subtype === 'concrete' ? '#f9fbff' : '#8d6e63');
+        const panelColor = extractColor(gate.panelMaterial, gate.panelColor || (gate.subtype === 'concrete' ? '#f9fbff' : '#8d6e63'));
         const angle = length > 0.01 ? Math.atan2(dz, dx) : 0;
 
         if (!hasRealMesh && length > 0.01) {
@@ -988,7 +1021,7 @@ function createObjects(floorplan, options = {}) {
         let startY = 0;
         let angle = 0;
         let thickness = 0.08;
-        let panelColor = door.panelColor || door.color || '#8d6e63';
+        let panelColor = extractColor(door.panelMaterial, door.panelColor || door.color || '#8d6e63');
 
         let x1 = 0, z1 = 0, x2 = 0, z2 = 0;
         let hasWall = false;

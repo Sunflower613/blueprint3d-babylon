@@ -75,9 +75,9 @@ function resolveWallSurfaceDescriptor(wall, side, component = 'main') {
   return { descriptor, color };
 }
 
-function getWallFaceBands(wall, wallHeight, floorHeight) {
+function getWallFaceBands(wall, wallHeight) {
   const bands = [];
-  let cursor = -floorHeight;
+  let cursor = 0;
 
   if (wall.baseboardEnabled) {
     const baseboardEnd = Math.min(wallHeight, Math.max(0, Number(wall.baseboardHeight) || 0));
@@ -554,8 +554,7 @@ export class BabylonSceneRenderer {
     const centerX = (rect.left + rect.right) / 2;
     const centerZ = (rect.top + rect.bottom) / 2;
 
-    const floorObj = this.document.getFloor(room.floorId);
-    const currentFloorHeight = floorObj ? (floorObj.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
+    const currentFloorHeight = this.document.getFloorHeight(room.floorId);
 
     const piece = createBox(this, `floor_${room.id}_${index}`, {
       width,
@@ -649,8 +648,7 @@ export class BabylonSceneRenderer {
       const ceilingMaterial = createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
         fallbackColor: '#ffffff'
       });
-      const floorObj = this.document.getFloor(room.floorId);
-      const currentFloorHeight = floorObj ? (floorObj.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
+      const currentFloorHeight = this.document.getFloorHeight(room.floorId);
 
       const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
       group.position.set(room.x, floorY - currentFloorHeight / 2, room.z);
@@ -739,14 +737,14 @@ export class BabylonSceneRenderer {
 
       const T = this.floorplan.wallThickness;
       const wallFloor = this.document.getFloor(wall.floorId);
-      let H = wallFloor ? (wallFloor.wallHeight ?? this.floorplan.wallHeight ?? 3.0) : (this.floorplan.wallHeight ?? 3.0);
+      let H = this.document.getFloorWallRenderHeight(wall.floorId);
       if (wallFloor && wallFloor.hideWall) {
         H = 0.2;
       }
       const floorY = this.document.getFloorElevation(wall.floorId);
       const wallBaseY = floorY + this.document.getWallElevationOffset(wall.id);
-      const FH = wallFloor ? (wallFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
-      const wallFaceBands = getWallFaceBands(wall, H, FH);
+      const FH = Number(wallFloor ? (wallFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.2) : (this.floorplan.floorHeight ?? 0.2));
+      const wallFaceBands = getWallFaceBands(wall, H);
       const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
       const materialCache = new Map();
       const getWallFaceMaterial = (side, component) => {
@@ -824,26 +822,34 @@ export class BabylonSceneRenderer {
 
       intervals.forEach((inter) => {
         if (inter.left > curX + 0.001) {
-          const yEnd = H;
-          if (yEnd - (-FH) > 0.001) {
+          if (H > 0.001) {
             subBoxes.push({
               xStart: curX,
               xEnd: inter.left,
-              yStart: -FH,
-              yEnd: yEnd
+              yStart: 0,
+              yEnd: H
             });
           }
         }
         if (inter.sillHeight > 0.01) {
           const yEnd = Math.min(inter.sillHeight, H);
-          if (yEnd - (-FH) > 0.001) {
+          if (yEnd > 0.001) {
             subBoxes.push({
               xStart: Math.max(X_min, inter.left),
               xEnd: Math.min(X_max, inter.right),
-              yStart: -FH,
+              yStart: 0,
               yEnd: yEnd
             });
           }
+        }
+        // 落地门窗（sillHeight ≈ 0）：地板 slab 侧面需要墙体遮挡
+        if (inter.sillHeight <= 0.01 && FH > 0.001) {
+          subBoxes.push({
+            xStart: Math.max(X_min, inter.left),
+            xEnd: Math.min(X_max, inter.right),
+            yStart: -FH,
+            yEnd: 0
+          });
         }
         if (inter.sillHeight + inter.height < H - 0.01) {
           const yStart = inter.sillHeight + inter.height;
@@ -861,13 +867,12 @@ export class BabylonSceneRenderer {
       });
 
       if (curX < X_max - 0.001) {
-        const yEnd = H;
-        if (yEnd - (-FH) > 0.001) {
+        if (H > 0.001) {
           subBoxes.push({
             xStart: curX,
             xEnd: X_max,
-            yStart: -FH,
-            yEnd: yEnd
+            yStart: 0,
+            yEnd: H
           });
         }
       }
@@ -1113,7 +1118,7 @@ export class BabylonSceneRenderer {
       const depth = Math.max(1, Number(roof.depth || 6));
       const height = Math.max(0.2, Number(roof.height || 1.1));
       const roofFloor = this.document.getFloor(roof.floorId);
-      const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? this.floorplan.wallHeight ?? 3.0) : (this.floorplan.wallHeight ?? 3.0);
+      const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? this.floorplan.wallHeight ?? 2.8) : (this.floorplan.wallHeight ?? 2.8);
       const eaveY = floorY + (roof.elevation !== undefined ? roof.elevation : roofWallHeight);
       const material = createBlueprintMaterial(this.scene, `roof_${roof.id}_mat`, roof.material || roof.color || '#b75b54', {
         fallbackColor: roof.color || '#b75b54',
@@ -1825,7 +1830,7 @@ export class BabylonSceneRenderer {
         if (bounds) {
           sizeX = Math.max(3.0, bounds.right - bounds.left);
           sizeZ = Math.max(3.0, bounds.bottom - bounds.top);
-          sizeY = room.wallHeight ?? this.floorplan.wallHeight ?? 3.0;
+          sizeY = room.wallHeight ?? this.floorplan.wallHeight ?? 2.8;
         }
       }
 

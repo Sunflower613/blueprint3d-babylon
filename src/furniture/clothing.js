@@ -3,7 +3,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 
 export const clothing_mannequin_male = {
   type: 'clothing_mannequin_male',
-  name: '男模',
+  name: '男装模特',
   defaultSize: { width: 16, depth: 8, height: 72 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },
@@ -16,7 +16,7 @@ export const clothing_mannequin_male = {
 
 export const clothing_mannequin_female = {
   type: 'clothing_mannequin_female',
-  name: '女模',
+  name: '女装模特',
   defaultSize: { width: 14, depth: 7, height: 66 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },
@@ -29,7 +29,7 @@ export const clothing_mannequin_female = {
 
 export const clothing_mannequin_child = {
   type: 'clothing_mannequin_child',
-  name: '童模',
+  name: '童装模特',
   defaultSize: { width: 12, depth: 6, height: 44 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },

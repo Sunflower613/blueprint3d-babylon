@@ -51,6 +51,8 @@ import {
   setSnapSize,
   
   showCustomConfirm,
+  showCustomAlert,
+  syncFloorControls,
   currentRooms,
   canPlaceOnTable,
   findTableBelow,
@@ -320,6 +322,10 @@ export function updateEditor() {
       document.getElementById('floor-height').value = Number((currentFloor.floorHeight ?? testMap.floorplan.floorHeight ?? 0.06).toFixed(2));
       document.getElementById('floor-hide-roof').checked = !!currentFloor.hideRoof;
       document.getElementById('floor-hide-wall').checked = !!currentFloor.hideWall;
+      const skyboxInput = document.getElementById('floor-skybox-enabled');
+      if (skyboxInput) {
+        skyboxInput.checked = currentFloor.skyboxEnabled !== false;
+      }
     }
   }
 
@@ -1124,7 +1130,7 @@ export function initUiEventListeners() {
     updateSelectedRoom();
   });
 
-  ['floor-name', 'floor-wall-height', 'floor-height', 'floor-hide-roof', 'floor-hide-wall'].forEach((id) => {
+  ['floor-name', 'floor-wall-height', 'floor-height', 'floor-hide-roof', 'floor-hide-wall', 'floor-skybox-enabled'].forEach((id) => {
     document.getElementById(id).addEventListener('change', updateSelectedFloor);
   });
 
@@ -1492,6 +1498,27 @@ export function initUiEventListeners() {
         testMap.deleteRoom(selection.selectedRoomId);
         clearSelection();
         refreshShadows();
+      }
+    });
+  });
+
+  document.getElementById('btn-delete-floor')?.addEventListener('click', () => {
+    const currentFloorId = testMap.floorplan.currentFloorId;
+    if (testMap.floorplan.floors.length <= 1) {
+      showCustomAlert('提示', '至少需要保留一个楼层！');
+      return;
+    }
+    showCustomConfirm('提示', '确定要删除当前楼层吗？删除后该楼层上的所有房间、墙体和家具都将被移除。').then((confirmed) => {
+      if (confirmed) {
+        pushHistory();
+        const success = testMap.deleteFloor(currentFloorId);
+        if (success) {
+          clearSelection();
+          syncFloorControls();
+          refreshShadows();
+          updateEditor();
+          renderPlan();
+        }
       }
     });
   });

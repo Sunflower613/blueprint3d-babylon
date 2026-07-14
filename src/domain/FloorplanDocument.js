@@ -1,4 +1,4 @@
-import { getFurnitureDefinition, FURNITURE_LIST } from '../furniture/index.js';
+import { getFurnitureDefinition, FURNITURE_DEFINITIONS, FURNITURE_LIST } from '../furniture/index.js';
 
 import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/index.js';
 import { normalizeOpeningShape } from '../openings/index.js';
@@ -168,8 +168,8 @@ export class FloorplanDocument {
       floor.id ||= `floor_${index + 1}`;
       floor.name ||= `${index + 1}F`;
       floor.level = Number.isFinite(Number(floor.level)) ? Number(floor.level) : index;
-      floor.wallHeight = Number.isFinite(Number(floor.wallHeight)) ? Number(floor.wallHeight) : (normalized.wallHeight || 3.0);
-      floor.floorHeight = Number.isFinite(Number(floor.floorHeight)) ? Number(floor.floorHeight) : (normalized.floorHeight || 0.06);
+      floor.wallHeight = Number.isFinite(Number(floor.wallHeight)) ? Number(floor.wallHeight) : (normalized.wallHeight || 2.8);
+      floor.floorHeight = Number.isFinite(Number(floor.floorHeight)) ? Number(floor.floorHeight) : (normalized.floorHeight || 0.2);
     });
 
     if (!normalized.floors.length) {
@@ -177,8 +177,8 @@ export class FloorplanDocument {
         id: DEFAULT_FLOOR_ID,
         name: '1F',
         level: 0,
-        wallHeight: normalized.wallHeight || 3.0,
-        floorHeight: normalized.floorHeight || 0.06
+        wallHeight: normalized.wallHeight || 2.8,
+        floorHeight: normalized.floorHeight || 0.2
       });
     }
 
@@ -189,8 +189,8 @@ export class FloorplanDocument {
     const validFloorIds = new Set(normalized.floors.map((floor) => floor.id));
     const fallbackFloorId = normalized.currentFloorId || normalized.floors[0].id || DEFAULT_FLOOR_ID;
 
-    const alignedStoryHeight = (normalized.wallHeight || 3.0) + (normalized.floorHeight || 0.06);
-    const legacyStoryHeight = (normalized.wallHeight || 3.0) + 0.35;
+    const alignedStoryHeight = (normalized.wallHeight || 2.8) + (normalized.floorHeight || 0.2);
+    const legacyStoryHeight = (normalized.wallHeight || 2.8) + 0.35;
     const suppliedStoryHeight = Number(normalized.storyHeight);
     normalized.storyHeight = (!Number.isFinite(suppliedStoryHeight) || Math.abs(suppliedStoryHeight - legacyStoryHeight) < 0.001)
       ? alignedStoryHeight
@@ -349,7 +349,11 @@ export class FloorplanDocument {
       const room = normalized.floor.rooms.find((candidate) => candidate.id === item.roomId);
       item.floorId = normalizeFloorId(item.floorId || room?.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
       const definition = getFurnitureDefinition(item.type);
-      item.name ||= definition.name;
+      if (FURNITURE_DEFINITIONS[item.type]) {
+        item.name = definition.name;
+      } else {
+        item.name ||= definition.name;
+      }
       item.x = toFiniteNumber(item.x, 0);
       item.z = toFiniteNumber(item.z, 0);
       item.rotation = toFiniteNumber(item.rotation, 0);
@@ -417,17 +421,25 @@ export class FloorplanDocument {
     this.floorplan.floors.forEach((floor) => {
       const level = Number(floor.level || 0);
       if (level < targetLevel) {
-        const wh = Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 3.0);
-        const fh = Number(floor.floorHeight ?? this.floorplan.floorHeight ?? 0.06);
+        const wh = Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 2.8);
+        const fh = Number(floor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
         elevation += wh + fh;
       }
     });
-    return elevation;
+    // 加上当前楼层的地板厚度，返回地板表面（行走面）高度
+    const currentFH = Number(targetFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
+    return elevation + currentFH;
+  }
+
+  getFloorWallRenderHeight(floorId) {
+    const floor = this.getFloor(floorId);
+    if (!floor) return this.floorplan.wallHeight ?? 2.8;
+    return Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 2.8);
   }
 
   getFloorHeight(floorId) {
     const floor = this.getFloor(floorId);
-    return floor ? (floor.floorHeight ?? this.floorplan.floorHeight ?? 0.06) : (this.floorplan.floorHeight ?? 0.06);
+    return floor ? (floor.floorHeight ?? this.floorplan.floorHeight ?? 0.2) : (this.floorplan.floorHeight ?? 0.2);
   }
 
   getWallElevationOffset(wallId) {
@@ -464,7 +476,7 @@ export class FloorplanDocument {
     const nextFloorId = this.getNextFloorId(stairs.floorId);
     if (!nextFloorId) {
       const currentFloor = this.floorplan.floors.find(f => f.id === stairs.floorId);
-      const wh = currentFloor ? Number(currentFloor.wallHeight ?? this.floorplan.wallHeight ?? 3.0) : 3.0;
+      const wh = currentFloor ? Number(currentFloor.wallHeight ?? this.floorplan.wallHeight ?? 2.8) : 2.8;
       const floorY = this.getFloorElevation(stairs.floorId);
       const baseOffset = this.getStairsElevationOffset(stairs);
       return floorY + baseOffset + wh;
@@ -1246,10 +1258,13 @@ export class FloorplanDocument {
 
   addFloor(partialFloor = {}) {
     const nextLevel = partialFloor.level ?? (Math.max(...this.floorplan.floors.map((floor) => Number(floor.level || 0))) + 1);
+    const activeFloor = this.floorplan.floors[0];
+    const skyboxEnabled = activeFloor ? (activeFloor.skyboxEnabled !== false) : true;
     const floor = {
       id: partialFloor.id || `floor_${Date.now()}`,
       name: partialFloor.name || `${nextLevel + 1}F`,
-      level: nextLevel
+      level: nextLevel,
+      skyboxEnabled: skyboxEnabled
     };
     this.floorplan.floors.push(floor);
 
@@ -1350,11 +1365,17 @@ export class FloorplanDocument {
     return true;
   }
 
-  changeFloorHideSettings(floorId, hideRoof, hideWall) {
-    const floor = this.floorplan.floors.find((candidate) => candidate.id === floorId);
-    if (!floor) return false;
-    floor.hideRoof = !!hideRoof;
-    floor.hideWall = !!hideWall;
+  changeFloorHideSettings(floorId, hideRoof, hideWall, skyboxEnabled) {
+    const currentFloor = this.floorplan.floors.find((candidate) => candidate.id === floorId);
+    if (!currentFloor) return false;
+    currentFloor.hideRoof = !!hideRoof;
+    currentFloor.hideWall = !!hideWall;
+
+    // 不同楼层的天空盒开启状态保持一致：遍历所有楼层并广播更新 skyboxEnabled
+    const enabled = skyboxEnabled !== false;
+    this.floorplan.floors.forEach((f) => {
+      f.skyboxEnabled = enabled;
+    });
     return true;
   }
 
@@ -1381,11 +1402,29 @@ export class FloorplanDocument {
     if (!floor) return false;
     const newFloorHeight = Number(floorHeight);
     
-    const wh = Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 3.0);
+    const wh = Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 2.8);
     floor.floorHeight = Math.min(newFloorHeight, wh);
 
     return true;
   }
 
+  /**
+   * 将所有家具的名称同步为对应的最新家具定义名称
+   * @param {boolean} [force=false] 是否强制覆盖。若为 true，即使是自定义的名称也会被覆盖；若为 false，则仅更新未定义名称或在 legacyNames 中的旧名称
+   */
+  syncItemNamesWithDefinitions(force = false) {
+    this.floorplan.items.forEach((item) => {
+      const definition = getFurnitureDefinition(item.type);
+      if (!definition) return;
+      if (force) {
+        item.name = definition.name;
+      } else {
+        const legacyNames = definition.legacyNames || [];
+        if (!item.name || legacyNames.includes(item.name)) {
+          item.name = definition.name;
+        }
+      }
+    });
+  }
 
 }

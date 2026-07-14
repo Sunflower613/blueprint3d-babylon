@@ -16,9 +16,9 @@ import { SelectionController } from '../editor/SelectionController.js';
 export const BLUEPRINT3D_TEST_FLOORPLAN = {
   name: 'blueprint3dTestMap',
   unit: 'in',
-  wallHeight: 3.0,
+  wallHeight: 2.8,
   wallThickness: 0.18,
-  floorHeight: 0.06,
+  floorHeight: 0.2,
   floor: {
     color: '#f4efe6',
     rooms: [
@@ -506,8 +506,8 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.build();
   }
 
-  changeFloorHideSettings(floorId, hideRoof, hideWall) {
-    const success = this.document.changeFloorHideSettings(floorId, hideRoof, hideWall);
+  changeFloorHideSettings(floorId, hideRoof, hideWall, skyboxEnabled) {
+    const success = this.document.changeFloorHideSettings(floorId, hideRoof, hideWall, skyboxEnabled);
     if (success) this.build();
     return success;
   }

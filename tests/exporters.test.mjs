@@ -136,7 +136,7 @@ test('DXF filters out items snapped to bookshelves or clothing mannequins', () =
     openings: [],
     items: [
       // 1. 书架和在其上方的书籍 (应吸附)
-      { id: 'bookshelf_1', type: 'bookshelf', name: 'Bookshelf', floorId: 'ground', x: 2, z: 2, width: 39.37, depth: 15.74, height: 78.74, elevation: 0, scale: 1 },
+      { id: 'bookshelf_1', type: 'test_bookshelf', name: 'Bookshelf', floorId: 'ground', x: 2, z: 2, width: 39.37, depth: 15.74, height: 78.74, elevation: 0, scale: 1 },
       { id: 'book_1', type: 'book', name: 'Book', floorId: 'ground', x: 2.0, z: 2.0, width: 30.0, depth: 30.0, height: 7.87, elevation: 30.0 }, // 处于高度区间内，X/Z 在范围中，且大于0.6m
       { id: 'book_outside', type: 'book', name: 'Book Outside', floorId: 'ground', x: 4.0, z: 4.0, width: 30.0, depth: 30.0, height: 7.87, elevation: 30.0 }, // 不在 X/Z 投影内，不应吸附，且大于0.6m
       
@@ -184,7 +184,7 @@ test('DXF retains text labels for mini furniture items if they are chairs or man
       // 1. 普通微型家具（比如小摆件，尺寸小于 0.6m），应当被过滤掉，不显示文字
       { id: 'book_1', type: 'book', name: 'Mini Decoration', floorId: 'ground', x: 1, z: 1, width: 0.3, depth: 0.3, height: 0.2, elevation: 0, scale: 1 },
       // 2. 属于豁免类的微型椅子（尺寸小于 0.6m），应当保留文字显示
-      { id: 'chair_1', type: 'chair', name: 'Mini Chair', floorId: 'ground', x: 2, z: 2, width: 0.45, depth: 0.45, height: 0.8, elevation: 0, scale: 1 },
+      { id: 'chair_1', type: 'test_chair', name: 'Mini Chair', floorId: 'ground', x: 2, z: 2, width: 0.45, depth: 0.45, height: 0.8, elevation: 0, scale: 1 },
       // 3. 属于豁免类的微型模特人台（尺寸小于 0.6m），应当保留文字显示
       { id: 'mannequin_1', type: 'clothing_mannequin', name: 'Mini Mannequin', floorId: 'ground', x: 3, z: 3, width: 0.4, depth: 0.4, height: 1.7, elevation: 0, scale: 1 }
     ],
@@ -211,8 +211,8 @@ test('3MF keeps each floor building and each furniture item as named objects', (
   const xml = create3MFModelXml(getNorm(floorplan));
   assert.match(xml, /name="Building - Ground" partnumber="F01-BUILDING"/);
   assert.match(xml, /name="Building - Upper" partnumber="F02-BUILDING"/);
-  assert.match(xml, /name="Furniture - Chair" partnumber="FURNITURE-chair1"/);
-  assert.match(xml, /name="Furniture - Desk" partnumber="FURNITURE-desk1"/);
+  assert.match(xml, /name="Furniture - 椅子" partnumber="FURNITURE-chair1"/);
+  assert.match(xml, /name="Furniture - 书桌" partnumber="FURNITURE-desk1"/);
   assert.match(xml, /name="Furniture - Ceiling Light" partnumber="FURNITURE-light1"/);
   assert.match(xml, /name="Furniture - Floor Lamp" partnumber="FURNITURE-light2"/);
   assert.match(xml, /name="Furniture - Door - d1" partnumber="FURNITURE-DOOR-d1"/);
@@ -228,7 +228,7 @@ test('3MF respects category filter in options', () => {
   const xmlBuilding = create3MFModelXml(getNorm(floorplan), { category: 'building' });
   assert.match(xmlBuilding, /name="Building - Ground"/);
   assert.match(xmlBuilding, /name="Building - Upper"/);
-  assert.doesNotMatch(xmlBuilding, /name="Furniture - Chair"/);
+  assert.doesNotMatch(xmlBuilding, /name="Furniture - 椅子"/);
   assert.doesNotMatch(xmlBuilding, /name="Furniture - Door - d1"/);
   assert.equal((xmlBuilding.match(/<object /g) || []).length, 2);
   assert.equal((xmlBuilding.match(/<item objectid=/g) || []).length, 2);
@@ -236,8 +236,8 @@ test('3MF respects category filter in options', () => {
   // 仅导出家具
   const xmlFurniture = create3MFModelXml(getNorm(floorplan), { category: 'furniture' });
   assert.doesNotMatch(xmlFurniture, /name="Building - Ground"/);
-  assert.match(xmlFurniture, /name="Furniture - Chair"/);
-  assert.match(xmlFurniture, /name="Furniture - Desk"/);
+  assert.match(xmlFurniture, /name="Furniture - 椅子"/);
+  assert.match(xmlFurniture, /name="Furniture - 书桌"/);
   assert.match(xmlFurniture, /name="Furniture - Ceiling Light"/);
   assert.match(xmlFurniture, /name="Furniture - Floor Lamp"/);
   assert.match(xmlFurniture, /name="Furniture - Door - d1"/);
@@ -290,6 +290,74 @@ test('3MF exports custom base materials for colored meshes', () => {
   assert.match(xml, /<base name="mat_0" displaycolor="#FF0000CC"\/>/);
   assert.match(xml, /<triangle v1="0" v2="1" v3="2" pid="10001" p1="0"\/>/);
 });
+test('3MF exports custom colors for doors in both fallback and real mesh scenarios', () => {
+  // 1. 测试 fallback 情况下，能正确提取 door.panelMaterial 对象的 color，而不是返回默认棕色 #8D6E63
+  const fallbackPlan = {
+    name: 'Door Fallback Color Test',
+    unit: 'm',
+    wallHeight: 3.0,
+    wallThickness: 0.2,
+    floorHeight: 0.1,
+    currentFloorId: 'ground',
+    floors: [
+      { id: 'ground', name: 'Ground', level: 0, wallHeight: 3.0, floorHeight: 0.1 }
+    ],
+    floor: { rooms: [] },
+    walls: [
+      { id: 'w1', floorId: 'ground', from: [0, 0], to: [4, 0] }
+    ],
+    openings: [
+      {
+        id: 'd1',
+        type: 'door',
+        floorId: 'ground',
+        wallId: 'w1',
+        t: 0.5,
+        width: 1.0,
+        height: 2.1,
+        // 自定义材质
+        panelMaterial: { id: 'wood_cherry', kind: 'color', color: '#B22222' }
+      }
+    ],
+    items: [],
+    stairs: [],
+    roofs: [],
+    fences: []
+  };
+
+  const xmlFallback = create3MFModelXml(getNorm(fallbackPlan), { category: 'furniture' });
+  // #B22222 对应的 8 位 hex 应该为 #B22222FF
+  assert.match(xmlFallback, /<base name="mat_0" displaycolor="#B22222FF"\/>/);
+
+  // 2. 测试 real mesh 情况下，对于带 metadata.blueprintMaterial 的材质，getColorHex 优先读取 blueprintMaterial.color
+  const fakeScene = {
+    getNodeByName: () => ({
+      getChildMeshes: () => [
+        {
+          getVerticesData: () => [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          getIndices: () => [0, 1, 2],
+          getWorldMatrix: () => BABYLON.Matrix.Identity(),
+          material: {
+            diffuseColor: { r: 0.2, g: 0.1, b: 0.1 }, // 被 scale 了的暗色
+            alpha: 1.0,
+            metadata: {
+              blueprintMaterial: {
+                color: '#FF4500' // 原色（亮橙色）
+              }
+            }
+          }
+        }
+      ]
+    })
+  };
+
+  const xmlReal = create3MFModelXml(getNorm(fallbackPlan), {
+    category: 'furniture',
+    testMap: { scene: fakeScene }
+  });
+  // 应当匹配原始颜色 #FF4500FF 而不是被缩放的漫反射颜色
+  assert.match(xmlReal, /<base name="mat_0" displaycolor="#FF4500FF"\/>/);
+});
 
 test('3MF walls have physical thickness and door/window void geometry', () => {
   const xml = create3MFModelXml(getNorm(floorplan));
@@ -301,6 +369,94 @@ test('3MF walls have physical thickness and door/window void geometry', () => {
   assert.equal((groundBuilding.match(/<triangle /g) || []).length, 48);
   assert.equal((upperBuilding.match(/<triangle /g) || []).length, 60);
 });
+
+test('3MF walls void geometry respects room elevation offset', () => {
+  const customFloorplan = {
+    name: 'Void elevation offset test',
+    unit: 'm',
+    wallHeight: 3.0,
+    wallThickness: 0.2,
+    floorHeight: 0.1,
+    currentFloorId: 'ground',
+    floors: [
+      { id: 'ground', name: 'Ground', level: 0, wallHeight: 3.0, floorHeight: 0.1 }
+    ],
+    floor: {
+      rooms: [
+        { id: 'r1', name: 'Living', floorId: 'ground', x: 2, z: 2, width: 4, depth: 4, elevation: 0.2, wallIds: { north: 'w1' } }
+      ]
+    },
+    walls: [
+      { id: 'w1', floorId: 'ground', from: [0, 0], to: [4, 0] }
+    ],
+    openings: [
+      // 房间 elevation 为 0.2m，门的高度 2.1m，所以挖洞实际应该是从 0.2m 开始，到 2.3m。
+      // 因为 0.2m 之下会有 0.2m 的抬高门槛，所以墙段顶点会包含 y="0.20000"，顶部墙段会包含 y="2.30000"
+      { id: 'd1', type: 'door', floorId: 'ground', wallId: 'w1', t: 0.25, width: 1.0, height: 2.1 }
+    ],
+    items: [],
+    stairs: [],
+    roofs: [],
+    fences: []
+  };
+
+  const xml = create3MFModelXml(getNorm(customFloorplan));
+  const buildingObj = xml.match(/<object id="1"[\s\S]*?<\/object>/)?.[0] || '';
+  
+  // 应当能匹配到门底部被抬高产生的 0.2m 门槛墙和 2.3m 的门头墙顶点
+  assert.match(buildingObj, /y="0\.20000"/);
+  assert.match(buildingObj, /y="2\.30000"/);
+});
+
+test('Wall render height dynamically adapts to floor height changes to eliminate floor gaps', () => {
+  const multiFloorplan = {
+    name: 'Wall render height test',
+    unit: 'm',
+    wallHeight: 3.0,
+    wallThickness: 0.2,
+    floorHeight: 0.06,
+    currentFloorId: 'ground',
+    floors: [
+      { id: 'ground', name: 'Ground', level: 0, wallHeight: 3.0, floorHeight: 0.1 },
+      { id: 'upper', name: 'Upper', level: 1, wallHeight: 2.8, floorHeight: 0.15 },
+      { id: 'top', name: 'Top', level: 2, wallHeight: 2.6, floorHeight: 0.2 }
+    ],
+    floor: {
+      rooms: [
+        { id: 'r1', name: 'Room1', floorId: 'ground', x: 2, z: 2, width: 4, depth: 4 },
+        { id: 'r2', name: 'Room2', floorId: 'upper', x: 2, z: 2, width: 4, depth: 4 },
+        { id: 'r3', name: 'Room3', floorId: 'top', x: 2, z: 2, width: 4, depth: 4 }
+      ]
+    },
+    walls: [
+      { id: 'w1', floorId: 'ground', from: [0, 0], to: [4, 0] },
+      { id: 'w2', floorId: 'upper', from: [0, 0], to: [4, 0] },
+      { id: 'w3', floorId: 'top', from: [0, 0], to: [4, 0] }
+    ],
+    openings: [],
+    items: [],
+    stairs: [],
+    roofs: [],
+    fences: []
+  };
+
+  const doc = new FloorplanDocument(multiFloorplan);
+  
+  // 1楼墙体拉伸高度：3.0 + 0.1 - 0.15 = 2.95
+  assert.equal(doc.getFloorWallRenderHeight('ground').toFixed(4), '2.9500');
+  
+  // 2楼墙体拉伸高度：2.8 + 0.15 - 0.2 = 2.75
+  assert.equal(doc.getFloorWallRenderHeight('upper').toFixed(4), '2.7500');
+  
+  // 3楼是顶层，墙体渲染高度为 2.6
+  assert.equal(doc.getFloorWallRenderHeight('top').toFixed(4), '2.6000');
+
+  const xml = create3MFModelXml(getNorm(multiFloorplan));
+  // 验证在导出的3MF中，2楼的墙体顶点最高处应在 3.1 + 2.75 = 5.85 (其中地坪 3.10)
+  // 3楼底板（Building - Top）下底面顶点也在 6.05 - 0.2 = 5.85。它们完美契合，顶点包含 5.85
+  assert.match(xml, /y="5\.85000"/);
+});
+
 
 test('3MF exports tenon and mortise joints between floors', () => {
   const multiFloorplan = {

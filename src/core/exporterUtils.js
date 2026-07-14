@@ -104,9 +104,17 @@ export function getFloorElevation(floorplan, floorId) {
   let elevation = 0;
   for (const floor of orderedFloors(floorplan)) {
     if (Number(floor.level || 0) >= targetLevel) continue;
-    elevation += Number(floor.wallHeight ?? floorplan.wallHeight ?? 3.0) + Number(floor.floorHeight ?? floorplan.floorHeight ?? 0.06);
+    elevation += Number(floor.wallHeight ?? floorplan.wallHeight ?? 2.8) + Number(floor.floorHeight ?? floorplan.floorHeight ?? 0.2);
   }
-  return elevation;
+  // 加上当前楼层的地板厚度，返回地板表面（行走面）高度
+  const currentFH = Number(targetFloor.floorHeight ?? floorplan.floorHeight ?? 0.2);
+  return elevation + currentFH;
+}
+
+export function getFloorWallRenderHeight(floorplan, floorId) {
+  const floor = getFloor(floorplan, floorId);
+  if (!floor) return floorplan.wallHeight ?? 2.8;
+  return Number(floor.wallHeight ?? floorplan.wallHeight ?? 2.8);
 }
 
 export function getItemRoomElevationOffset(floorplan, item) {

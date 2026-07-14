@@ -42,6 +42,8 @@ export let setSnapEnabled;
 export let getSnapSize;
 export let setSnapSize;
 export let showCustomConfirm;
+export let showCustomAlert;
+export let syncFloorControls;
 export let currentRooms;
 export let canPlaceOnTable;
 export let findTableBelow;
@@ -97,6 +99,8 @@ export function initEditorUiContext(context) {
     getSnapSize,
     setSnapSize,
     showCustomConfirm,
+    showCustomAlert,
+    syncFloorControls,
     currentRooms,
     canPlaceOnTable,
     findTableBelow,

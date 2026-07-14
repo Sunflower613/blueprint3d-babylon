@@ -899,6 +899,7 @@ setView('2d');
 if (recoveredInitialFloor) {
   syncFloorControls();
 }
+updateSkyboxFromCurrentFloor();
 updateHistoryButtons();
 const snapToggleBtn = document.getElementById('btn-snap-toggle');
 if (snapToggleBtn) {
@@ -1054,6 +1055,7 @@ function setView(nextView) {
 
   if (nextView === '3d') {
     viewer3d.prepareFor3D();
+    updateSkyboxFromCurrentFloor();
     testMap.enableRendering();
     refresh3DGrid();
     requestAnimationFrame(() => {
@@ -1149,6 +1151,7 @@ function ensureVisibleCurrentFloor(options = {}) {
 
   testMap.setCurrentFloor(fallbackFloor.floor.id);
   console.warn(`[floor-recovery] Switched empty floor "${currentFloorId}" to populated floor "${fallbackFloor.floor.id}" during ${reason}.`);
+  updateSkyboxFromCurrentFloor();
   if (!silent) {
     showToast(`当前楼层无内容，已自动切换到“${fallbackFloor.floor.name || fallbackFloor.floor.id}”`);
   }
@@ -3244,7 +3247,8 @@ function updateSelectedFloor() {
 
   const hideRoofInput = document.getElementById('floor-hide-roof').checked;
   const hideWallInput = document.getElementById('floor-hide-wall').checked;
-  testMap.changeFloorHideSettings?.(currentFloorId, hideRoofInput, hideWallInput);
+  const skyboxInput = document.getElementById('floor-skybox-enabled').checked;
+  testMap.changeFloorHideSettings?.(currentFloorId, hideRoofInput, hideWallInput, skyboxInput);
 
   if (hideRoofInput && selectedRoofId) {
     const roof = testMap.getRoof?.(selectedRoofId);
@@ -3253,10 +3257,21 @@ function updateSelectedFloor() {
     }
   }
 
+  updateSkyboxFromCurrentFloor();
+
   syncFloorControls();
   refreshShadows();
   updateEditor();
   renderPlan();
+}
+
+function updateSkyboxFromCurrentFloor() {
+  const currentFloorId = testMap.floorplan.currentFloorId;
+  const currentFloor = testMap.floorplan.floors.find((f) => f.id === currentFloorId);
+  if (currentFloor) {
+    const skyboxEnabled = currentFloor.skyboxEnabled !== false;
+    viewer3d.setSkyboxEnabled(skyboxEnabled);
+  }
 }
 
 function updateSelectedFenceSubtype() {
@@ -3990,6 +4005,7 @@ if (floorFloatingGroup) {
       const floorId = floorBtn.dataset.floorId;
       testMap.setCurrentFloor(floorId);
       clearSelection();
+      updateSkyboxFromCurrentFloor();
       syncFloorControls();
       refreshShadows();
       renderPlan();

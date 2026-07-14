@@ -1,24 +1,60 @@
 import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
-const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
-const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
-const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
-const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
-const brickMarbleWarmUrl = new URL('../textures/brick_marble_warm.jpg', import.meta.url).href;
-const brickMarbleGreyGlossUrl = new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href;
-const stoneFineSandUrl = new URL('../textures/stone_fine_sand.jpg', import.meta.url).href;
-const stoneRockUrl = new URL('../textures/stone_rock.jpg', import.meta.url).href;
-const stoneTerrazzoUrl = new URL('../textures/stone_terrazzo.jpg', import.meta.url).href;
-const stoneWhiteSandUrl = new URL('../textures/stone_white_sand.jpg', import.meta.url).href;
-const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
-const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
-const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
-const wallpaperStripeTealPinkUrl = new URL('../textures/wallpaper_stripe_teal_pink.jpg', import.meta.url).href;
-const wallpaperDamaskOliveUrl = new URL('../textures/wallpaper_damask_olive.jpg', import.meta.url).href;
-const wallpaperInkBambooMistUrl = new URL('../textures/wallpaper_ink_bamboo_mist.jpg', import.meta.url).href;
-const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href;
-const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
-const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
-const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
+import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
+
+const TEXTURE_MAP = {
+  // 木纹
+  'light_fine_wood.jpg': new URL('../textures/light_fine_wood.jpg', import.meta.url).href,
+
+  // 砖块 & 大理石
+  'brick_marble_tiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href,
+  'marbletiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href, // 兼容老版本
+  'brick_light.jpg': new URL('../textures/brick_light.jpg', import.meta.url).href,
+  'brick_marble_warm.jpg': new URL('../textures/brick_marble_warm.jpg', import.meta.url).href,
+  'stone_marble_warm.jpg': new URL('../textures/brick_marble_warm.jpg', import.meta.url).href, // 兼容老版本
+  'brick_marble_grey_gloss.jpg': new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href,
+  'stone_marble_grey_gloss.jpg': new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href, // 兼容老版本
+  'brick_black_white.jpg': new URL('../textures/brick_black_white.jpg', import.meta.url).href,
+  'brick_small_black.png': new URL('../textures/brick_small_black.png', import.meta.url).href,
+  'brick_mosaic.jpg': new URL('../textures/brick_mosaic.jpg', import.meta.url).href,
+  'brick_red.jpg': new URL('../textures/brick_red.jpg', import.meta.url).href,
+  'light_brick.jpg': new URL('../textures/brick_red.jpg', import.meta.url).href, // 兼容老版本
+  'brick_cube.jpg': new URL('../textures/brick_cube.jpg', import.meta.url).href,
+  'brick_diamond.jpg': new URL('../textures/brick_diamond.jpg', import.meta.url).href,
+  'brick_square.jpg': new URL('../textures/brick_square.jpg', import.meta.url).href,
+  'brick_stone.jpg': new URL('../textures/brick_stone.jpg', import.meta.url).href,
+
+  // 沙石
+  'stone_earth.jpg': new URL('../textures/stone_earth.jpg', import.meta.url).href,
+  'stone_sand.jpg': new URL('../textures/stone_sand.jpg', import.meta.url).href,
+  'stone_sand_stone.jpg': new URL('../textures/stone_sand_stone.jpg', import.meta.url).href,
+  'stone_fine_sand.jpg': new URL('../textures/stone_fine_sand.jpg', import.meta.url).href,
+  'stone.jpg': new URL('../textures/stone.jpg', import.meta.url).href,
+  'stone_joint.jpg': new URL('../textures/stone_joint.jpg', import.meta.url).href,
+  'stone_road.jpg': new URL('../textures/stone_road.jpg', import.meta.url).href,
+  'stone_rock.jpg': new URL('../textures/stone_rock.jpg', import.meta.url).href,
+  'stone_terrazzo.jpg': new URL('../textures/stone_terrazzo.jpg', import.meta.url).href,
+  'stone_white_sand.jpg': new URL('../textures/stone_white_sand.jpg', import.meta.url).href,
+
+  // 织物
+  'fabric_rope_cable_beige.jpg': new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href,
+  'fabric_knit_cable_grey.jpg': new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href,
+  'fabric_knit_cable_white.jpg': new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href,
+  'fabric_knit_chevron_cream.jpg': new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href,
+  'fabric_weave_dark.jpg': new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href,
+
+  // 墙纸
+  'wallmap_yellow.png': new URL('../textures/wallmap_yellow.png', import.meta.url).href,
+  'wallpaper_leaf_bluegrey.jpg': new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href,
+  'wallpaper_paisley_orange.jpg': new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href,
+  'wallpaper_fan_gold.jpg': new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href,
+  'wallpaper_stripe_teal_pink.jpg': new URL('../textures/wallpaper_stripe_teal_pink.jpg', import.meta.url).href,
+  'wallpaper_damask_olive.jpg': new URL('../textures/wallpaper_damask_olive.jpg', import.meta.url).href,
+  'wallpaper_ink_bamboo_mist.jpg': new URL('../textures/wallpaper_ink_bamboo_mist.jpg', import.meta.url).href,
+  'wallpaper_cloud_navy_gold.jpg': new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href,
+  'wallpaper_ruyi_swirl_yellow.jpg': new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href,
+  'wallpaper_floral_blue_white.jpg': new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href,
+  'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href
+};
 
 const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
 const DEFAULT_PATTERN_MAX_ASPECT_RATIO = 1.8;
@@ -300,48 +336,20 @@ export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
   if (value.kind === 'texture' || value.src) {
     let src = value.src;
     if (src && typeof src === 'string') {
-      if (src.includes('brick_marble_tiles.jpg') || src.includes('marbletiles.jpg')) {
-        src = brickMarbleTilesUrl;
-      } else if (src.includes('light_fine_wood.jpg')) {
-        src = lightFineWoodUrl;
-      } else if (src.includes('wallmap_yellow.png')) {
-        src = wallmapYellowUrl;
-      } else if (src.includes('brick_red.jpg') || src.includes('light_brick.jpg')) {
-        src = brickRedUrl;
-      } else if (src.includes('brick_light.jpg')) {
-        src = brickLightUrl;
-      } else if (src.includes('brick_marble_warm.jpg') || src.includes('stone_marble_warm.jpg')) {
-        src = brickMarbleWarmUrl;
-      } else if (src.includes('brick_marble_grey_gloss.jpg') || src.includes('stone_marble_grey_gloss.jpg')) {
-        src = brickMarbleGreyGlossUrl;
-      } else if (src.includes('stone_fine_sand.jpg')) {
-        src = stoneFineSandUrl;
-      } else if (src.includes('stone_rock.jpg')) {
-        src = stoneRockUrl;
-      } else if (src.includes('stone_terrazzo.jpg')) {
-        src = stoneTerrazzoUrl;
-      } else if (src.includes('stone_white_sand.jpg')) {
-        src = stoneWhiteSandUrl;
-      } else if (src.includes('wallpaper_leaf_bluegrey.jpg')) {
-        src = wallpaperLeafBluegreyUrl;
-      } else if (src.includes('wallpaper_paisley_orange.jpg')) {
-        src = wallpaperPaisleyOrangeUrl;
-      } else if (src.includes('wallpaper_fan_gold.jpg')) {
-        src = wallpaperFanGoldUrl;
-      } else if (src.includes('wallpaper_stripe_teal_pink.jpg')) {
-        src = wallpaperStripeTealPinkUrl;
-      } else if (src.includes('wallpaper_damask_olive.jpg')) {
-        src = wallpaperDamaskOliveUrl;
-      } else if (src.includes('wallpaper_ink_bamboo_mist.jpg')) {
-        src = wallpaperInkBambooMistUrl;
-      } else if (src.includes('wallpaper_cloud_navy_gold.jpg')) {
-        src = wallpaperCloudNavyGoldUrl;
-      } else if (src.includes('wallpaper_ruyi_swirl_yellow.jpg')) {
-        src = wallpaperRuyiSwirlYellowUrl;
-      } else if (src.includes('wallpaper_floral_blue_white.jpg')) {
-        src = wallpaperFloralBlueWhiteUrl;
-      } else if (src.includes('wallpaper_seigaiha_blush.jpg')) {
-        src = wallpaperSeigaihaBlushUrl;
+      // 1. 如果有材质 id，优先从默认内置包中获取已经通过 Vite 打包处理的 src
+      if (value.id) {
+        const defaultPack = DEFAULT_MATERIAL_PACKS.find(p => p.id === value.id);
+        if (defaultPack && defaultPack.src) {
+          src = defaultPack.src;
+        }
+      }
+
+      // 2. 如果没能纠正，或者属于自定义没有 id 只有原始 src 的场景，提取文件名并从资产映射表 TEXTURE_MAP 中纠正
+      if (typeof src === 'string') {
+        const fileName = src.split('/').pop().split('?')[0];
+        if (TEXTURE_MAP[fileName]) {
+          src = TEXTURE_MAP[fileName];
+        }
       }
     }
 

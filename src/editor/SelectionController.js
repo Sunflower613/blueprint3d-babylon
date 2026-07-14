@@ -105,8 +105,8 @@ export class SelectionController {
     const floorY = this.document.getFloorElevation(room.floorId);
     const floorObj = this.document.getFloor(room.floorId);
     const floorplan = this.document.floorplan;
-    const currentFloorHeight = floorObj ? (floorObj.floorHeight ?? floorplan.floorHeight ?? 0.06) : (floorplan.floorHeight ?? 0.06);
-    const wallHeight = floorObj ? (floorObj.wallHeight ?? floorplan.wallHeight ?? 3.0) : (floorplan.wallHeight ?? 3.0);
+    const currentFloorHeight = floorObj ? (floorObj.floorHeight ?? floorplan.floorHeight ?? 0.2) : (floorplan.floorHeight ?? 0.2);
+    const wallHeight = floorObj ? (floorObj.wallHeight ?? floorplan.wallHeight ?? 2.8) : (floorplan.wallHeight ?? 2.8);
 
     const yBottom = (room.elevation || 0) + currentFloorHeight / 2;
     const yTop = yBottom + wallHeight;

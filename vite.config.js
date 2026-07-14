@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,12 +13,13 @@ function sendJson(res, statusCode, payload) {
 }
 
 function serveFurnitureImage(req, res, next) {
-  if (!req.url?.startsWith('/__furniture-images__/')) {
+  const urlPath = req.url ? req.url.split('?')[0] : '';
+  if (!urlPath.startsWith('/__furniture-images__/')) {
     next();
     return;
   }
 
-  const requestedName = decodeURIComponent(req.url.slice('/__furniture-images__/'.length));
+  const requestedName = decodeURIComponent(urlPath.slice('/__furniture-images__/'.length));
   const safeName = path.basename(requestedName);
   const filePath = path.join(furnitureImageDir, safeName);
 

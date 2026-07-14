@@ -565,7 +565,7 @@ export function stringifyDXF(floorplan) {
       }
 
       const labelRaw = item.name || item.type || '';
-      const isMini = size.width < 0.3 && size.depth < 0.3;
+      const isMini = size.width < 0.4 && size.depth < 0.4;
       const isChairOrMannequin = nameLower.includes('椅') || nameLower.includes('凳') || nameLower.includes('chair') || nameLower.includes('stool') || nameLower.includes('seat') || nameLower.includes('bench') || nameLower.includes('沙发') || nameLower.includes('sofa') || nameLower.includes('couch') || nameLower.includes('模特') || nameLower.includes('人台') || nameLower.includes('mannequin') || nameLower.includes('puppet');
       
       // 只有非微型家具，或者核心品类（如椅子、模特人台等坐卧展示类家具）才绘制文字标签，精炼图面的同时保留关键定位信息

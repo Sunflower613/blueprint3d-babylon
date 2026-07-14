@@ -1,5 +1,5 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 } from '../../src/index.js';
-const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3 };
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture } from '../../src/index.js';
+const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
  * Viewer3D — 3D 渲染引擎封装
@@ -76,6 +76,12 @@ export class Viewer3D {
     // 保存 canvas 引用以便后续 resize 事件绑定
     this._canvas = canvas;
     this._resizeHandler = () => this.engine.resize();
+
+    // ========== 天空盒与草地 ==========
+    /** @type {BABYLON.AbstractMesh} 天空盒网格 */
+    this.skybox = null;
+    /** @type {BABYLON.AbstractMesh} 1楼草地网格 */
+    this.grassLawn = null;
   }
 
   /**
@@ -394,10 +400,57 @@ export class Viewer3D {
   }
 
   /**
+   * 开启或关闭天空盒及 1 楼草地
+   * @param {boolean} enabled - 是否开启
+   */
+  setSkyboxEnabled(enabled) {
+    if (enabled) {
+      if (!this.skybox) {
+        // 创建天空球，直径设为 1000.0，细分数设为 16
+        this.skybox = BABYLON.MeshBuilder.CreateSphere('skyBox', { segments: 16, diameter: 1000.0 }, this.scene);
+        const skyboxMaterial = new BABYLON.StandardMaterial('skyBox', this.scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.disableLighting = true;
+        
+        // 加载本地 sky.png 天空背景贴图
+        const skyTextureUrl = new URL('../../src/textures/sky.png', import.meta.url).href;
+        skyboxMaterial.emissiveTexture = new BABYLON.Texture(skyTextureUrl, this.scene);
+        
+        this.skybox.material = skyboxMaterial;
+        this.skybox.infiniteDistance = true; // 随相机移动，保持无限远
+        this.skybox.isPickable = false; // 排除拾取，避免干扰物体交互
+      }
+      this.skybox.setEnabled(true);
+
+      if (!this.grassLawn) {
+        // 创建 1 楼 grassLawn 草坪，大小从 1000 减小为 120
+        this.grassLawn = BABYLON.MeshBuilder.CreateGround('grassLawn', { width: 120, height: 120 }, this.scene);
+        const groundMaterial = new BABYLON.StandardMaterial('grassLawnMat', this.scene);
+        groundMaterial.diffuseColor = new BABYLON.Color3(0.33, 0.55, 0.18); // 经典草地绿 #558b2f
+        groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // 无反射高光
+        this.grassLawn.material = groundMaterial;
+        this.grassLawn.receiveShadows = true; // 允许草地接收阴影
+        this.grassLawn.position.y = -0.01; // 略微低于 0 米，防止同 1 楼地板发生 Z-fighting 闪烁
+        this.grassLawn.isPickable = false; // 排除拾取
+      }
+      this.grassLawn.setEnabled(true);
+    } else {
+      if (this.skybox) {
+        this.skybox.setEnabled(false);
+      }
+      if (this.grassLawn) {
+        this.grassLawn.setEnabled(false);
+      }
+    }
+  }
+
+  /**
    * 销毁渲染器，释放所有资源
    */
   dispose() {
     this.clear3DGrid();
+    if (this.skybox) this.skybox.dispose();
+    if (this.grassLawn) this.grassLawn.dispose();
     window.removeEventListener('resize', this._resizeHandler);
     this.engine.stopRenderLoop();
     this.scene.dispose();

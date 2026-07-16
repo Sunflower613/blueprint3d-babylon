@@ -641,3 +641,82 @@ test('3MF 导出：验证屋顶与大门的榫卯结构生成（enableTenon: tru
   assert.match(xml, /Building - Ground/);
   assert.match(xml, /<triangle /);
 });
+test('3MF 导出：验证多重材质 (MultiMaterial) 迭代解包提取颜色', () => {
+  const fakeScene = {
+    getNodeByName: () => ({
+      getChildMeshes: () => [
+        {
+          getVerticesData: () => [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          getIndices: () => [0, 1, 2],
+          getWorldMatrix: () => BABYLON.Matrix.Identity(),
+          material: {
+            constructor: { name: 'MultiMaterial' },
+            subMaterials: [
+              null,
+              {
+                diffuseColor: { r: 0.1, g: 0.8, b: 0.2 },
+                alpha: 0.9
+              }
+            ]
+          }
+        }
+      ]
+    })
+  };
+
+  const coloredFloorplan = {
+    name: 'MultiMaterial Color Test',
+    unit: 'm',
+    wallHeight: 3.0,
+    wallThickness: 0.2,
+    floorHeight: 0.1,
+    currentFloorId: 'ground',
+    floors: [{ id: 'ground', name: 'Ground', level: 0, wallHeight: 3.0, floorHeight: 0.1 }],
+    floor: { rooms: [] },
+    walls: [],
+    openings: [],
+    items: [{ id: 'chair1', type: 'chair', name: 'Chair', floorId: 'ground', x: 2, z: 2, width: 1, depth: 1, height: 1 }]
+  };
+
+  const xml = create3MFModelXml(getNorm(coloredFloorplan), {
+    category: 'furniture',
+    testMap: { scene: fakeScene }
+  });
+
+  // (r: 0.1->1A, g: 0.8->CC, b: 0.2->33, alpha: 0.9->E6) => #1ACC33E6
+  assert.match(xml, /displaycolor="#1ACC33E6"/);
+});
+
+test('3MF 导出：验证落地大窗挖洞及在无 sillHeight 时的默认高程处理', () => {
+  const customFloorplan = {
+    name: 'Floor to ceiling window test',
+    unit: 'm',
+    wallHeight: 3.0,
+    wallThickness: 0.2,
+    floorHeight: 0.1,
+    currentFloorId: 'ground',
+    floors: [
+      { id: 'ground', name: 'Ground', level: 0, wallHeight: 3.0, floorHeight: 0.1 }
+    ],
+    floor: {
+      rooms: []
+    },
+    walls: [
+      { id: 'w1', floorId: 'ground', from: [0, 0], to: [4, 0] }
+    ],
+    openings: [
+      // 落地顶天大窗：没有 sillHeight 属性，默认应该使用 0 高程，并且由于 height === wallHeight (3.0), 不应该生成任何多余墙体
+      { id: 'win_floor', type: 'window', floorId: 'ground', wallId: 'w1', t: 0.5, width: 2.0, height: 3.0 }
+    ],
+    items: [],
+    stairs: [],
+    roofs: [],
+    fences: []
+  };
+
+  const xml = create3MFModelXml(getNorm(customFloorplan));
+  const buildingObj = xml.match(/<object id="1"[\s\S]*?<\/object>/)?.[0] || '';
+
+  const triangleCount = (buildingObj.match(/<triangle /g) || []).length;
+  assert.equal(triangleCount, 24);
+});

@@ -5,9 +5,7 @@ import {
   Tools,
   createBuildingFileName,
   createDXFFileName,
-  stringifyDXF,
-  create3MFFileName,
-  create3MFPackage
+  create3MFFileName
 } from '../../src/index.js';
 const BABYLON = { Tools };
 import { createStoreProxy } from '../store/proxyHelper.js';
@@ -93,8 +91,7 @@ export function downloadBuildingFile() {
  * 导出并下载 DXF 格式文件
  */
 export function downloadDXFFile() {
-  const json = ctx.testMap.exportJSON();
-  const dxfText = stringifyDXF(json);
+  const dxfText = ctx.testMap.stringifyDXF();
   const blob = new Blob([dxfText], { type: 'image/vnd.dxf' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -123,8 +120,7 @@ export async function download3MFFile() {
       ctx.testMap.enableRendering();
     }
 
-    const json = ctx.testMap.exportJSON();
-    const bytes = create3MFPackage(json, { category, enableTenon, testMap: ctx.testMap });
+    const bytes = ctx.testMap.create3MFPackage({ category, enableTenon });
     const blob = new Blob([bytes], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

@@ -6,6 +6,7 @@ import { FloorplanDocument, FENCE_SUBTYPE_DEFAULTS } from '../domain/FloorplanDo
 import { ExportService } from '../services/ExportService.js';
 import { BabylonSceneRenderer } from '../runtime/BabylonSceneRenderer.js';
 import { SelectionController } from '../editor/SelectionController.js';
+import { EditorFacade } from '../editor/EditorFacade.js';
 
 
 export const BLUEPRINT3D_TEST_FLOORPLAN = {
@@ -96,17 +97,20 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    */
   constructor(scene, options = {}) {
     super(scene, { name: options.name || 'blueprint3dTestMap' });
-    this.document = new FloorplanDocument(options.floorplan || BLUEPRINT3D_TEST_FLOORPLAN);
-    this.exportService = new ExportService(this.document);
-    
-    // 初始化独立的 3D 渲染管线
-    this.renderingEnabled = options.renderingEnabled !== false;
-    this.renderer = new BabylonSceneRenderer(scene, this.document, {
-      palette: options.palette || {},
-      renderingEnabled: this.renderingEnabled
+    this.editorFacade = new EditorFacade({
+      scene,
+      floorplan: options.floorplan || BLUEPRINT3D_TEST_FLOORPLAN,
+      options: {
+        palette: options.palette || {},
+        renderingEnabled: options.renderingEnabled !== false
+      }
     });
 
-    this.selectionController = new SelectionController(scene, this.document, this.renderer);
+    this.document = this.editorFacade._document;
+    this.exportService = this.editorFacade._exportService;
+    this.renderingEnabled = this.editorFacade.renderingEnabled;
+    this.renderer = this.editorFacade._renderer;
+    this.selectionController = this.editorFacade._selectionController;
     
     // 代理节点容器 map 指向渲染器内部 map，保证向下兼容性
     this.itemNodes = this.renderer.itemNodes;

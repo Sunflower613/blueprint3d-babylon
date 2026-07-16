@@ -188,6 +188,13 @@ export {
   ExportService
 } from '../services/ExportService.js';
 
+export {
+  EditorFacade,
+  createDocument,
+  createBabylonRenderer,
+  createEditor
+} from '../editor/EditorFacade.js';
+
 // ==========================================
 // 8. Sample Data (将原 Presets 降级为样本数据)
 // ==========================================

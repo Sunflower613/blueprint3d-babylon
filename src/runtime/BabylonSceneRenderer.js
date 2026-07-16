@@ -826,7 +826,7 @@ export class BabylonSceneRenderer {
             subBoxes.push({
               xStart: curX,
               xEnd: inter.left,
-              yStart: 0,
+              yStart: -FH,
               yEnd: H
             });
           }
@@ -837,7 +837,7 @@ export class BabylonSceneRenderer {
             subBoxes.push({
               xStart: Math.max(X_min, inter.left),
               xEnd: Math.min(X_max, inter.right),
-              yStart: 0,
+              yStart: -FH,
               yEnd: yEnd
             });
           }
@@ -871,7 +871,7 @@ export class BabylonSceneRenderer {
           subBoxes.push({
             xStart: curX,
             xEnd: X_max,
-            yStart: 0,
+            yStart: -FH,
             yEnd: H
           });
         }

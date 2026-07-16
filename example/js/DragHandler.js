@@ -85,7 +85,15 @@ export function beginRoomResize(event, roomId, side) {
   const room = ctx.testMap.getRoom(roomId);
   if (!room || room.locked) return;
 
-  const original = { x: room.x, z: room.z, width: room.width, depth: room.depth, rotation: room.rotation || 0 };
+  const original = {
+    x: room.x,
+    z: room.z,
+    width: room.width,
+    depth: room.depth,
+    rotation: room.rotation || 0,
+    edgeWidth: room.edgeWidth !== undefined && room.edgeWidth !== null ? room.edgeWidth : room.width / 2,
+    edgeDepth: room.edgeDepth !== undefined && room.edgeDepth !== null ? room.edgeDepth : room.depth / 2
+  };
   const left = -original.width / 2;
   const right = original.width / 2;
   const top = -original.depth / 2;
@@ -108,6 +116,8 @@ export function beginRoomResize(event, roomId, side) {
   if (side === 'east') offsetX = right - lx;
   if (side === 'north') offsetZ = top - lz;
   if (side === 'south') offsetZ = bottom - lz;
+  if (side === 'edgeWidth') offsetX = (right - original.edgeWidth) - lx;
+  if (side === 'edgeDepth') offsetZ = (bottom - original.edgeDepth) - lz;
 
   states.roomResize = {
     roomId,
@@ -165,25 +175,33 @@ export function moveRoomResize(event) {
 
   let nextWidth = original.width;
   let nextDepth = original.depth;
+  let nextEdgeWidth = original.edgeWidth;
+  let nextEdgeDepth = original.edgeDepth;
   let localCenterX = 0;
   let localCenterZ = 0;
 
   if (side === 'west') {
-    const nextLeft = Math.min(ctx.snapNumber(lx + states.roomResize.offsetX), right - 1.2);
+    const nextLeft = Math.min(ctx.snapNumber(lx + states.roomResize.offsetX), right - 1.0);
     nextWidth = ctx.snapNumber(right - nextLeft);
     localCenterX = right - nextWidth / 2;
   } else if (side === 'east') {
-    const nextRight = Math.max(ctx.snapNumber(lx + states.roomResize.offsetX), left + 1.2);
+    const nextRight = Math.max(ctx.snapNumber(lx + states.roomResize.offsetX), left + 1.0);
     nextWidth = ctx.snapNumber(nextRight - left);
     localCenterX = left + nextWidth / 2;
   } else if (side === 'north') {
-    const nextTop = Math.min(ctx.snapNumber(lz + states.roomResize.offsetZ), bottom - 1.2);
+    const nextTop = Math.min(ctx.snapNumber(lz + states.roomResize.offsetZ), bottom - 1.0);
     nextDepth = ctx.snapNumber(bottom - nextTop);
     localCenterZ = bottom - nextDepth / 2;
   } else if (side === 'south') {
-    const nextBottom = Math.max(ctx.snapNumber(lz + states.roomResize.offsetZ), top + 1.2);
+    const nextBottom = Math.max(ctx.snapNumber(lz + states.roomResize.offsetZ), top + 1.0);
     nextDepth = ctx.snapNumber(nextBottom - top);
     localCenterZ = top + nextDepth / 2;
+  } else if (side === 'edgeWidth') {
+    const targetLx = lx + states.roomResize.offsetX;
+    nextEdgeWidth = Math.max(0.2, Math.min(original.width - 0.2, ctx.snapNumber(right - targetLx)));
+  } else if (side === 'edgeDepth') {
+    const targetLz = lz + states.roomResize.offsetZ;
+    nextEdgeDepth = Math.max(0.2, Math.min(original.depth - 0.2, ctx.snapNumber(bottom - targetLz)));
   }
 
   // 局部中心转换回世界坐标
@@ -194,9 +212,16 @@ export function moveRoomResize(event) {
     x: nextX,
     z: nextZ,
     width: nextWidth,
-    depth: nextDepth
+    depth: nextDepth,
+    edgeWidth: nextEdgeWidth,
+    edgeDepth: nextEdgeDepth
   };
-  if (!states.roomResize.historyPushed && (Math.abs(patch.width - original.width) > 0.02 || Math.abs(patch.depth - original.depth) > 0.02)) {
+  const isChanged = Math.abs(patch.width - original.width) > 0.02 ||
+                    Math.abs(patch.depth - original.depth) > 0.02 ||
+                    Math.abs((patch.edgeWidth || 0) - (original.edgeWidth || 0)) > 0.02 ||
+                    Math.abs((patch.edgeDepth || 0) - (original.edgeDepth || 0)) > 0.02;
+
+  if (!states.roomResize.historyPushed && isChanged) {
     ctx.pushHistory();
     states.roomResize.historyPushed = true;
   }

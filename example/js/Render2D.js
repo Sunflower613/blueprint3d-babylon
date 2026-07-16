@@ -226,6 +226,13 @@ export function renderSelectedRoomHandles(room) {
     west: { lx: -width / 2, lz: 0 }
   };
 
+  if (room.shape === 'l-shape') {
+    const edgeWidth = room.edgeWidth !== undefined && room.edgeWidth !== null ? room.edgeWidth : width / 2;
+    const edgeDepth = room.edgeDepth !== undefined && room.edgeDepth !== null ? room.edgeDepth : depth / 2;
+    localOffsets.edgeWidth = { lx: width / 2 - edgeWidth, lz: depth / 2 - edgeDepth / 2 };
+    localOffsets.edgeDepth = { lx: width / 2 - edgeWidth / 2, lz: depth / 2 - edgeDepth };
+  }
+
   const handles = Object.entries(localOffsets).map(([side, { lx, lz }]) => {
     const rx = lx * cos - lz * sin;
     const rz = lx * sin + lz * cos;

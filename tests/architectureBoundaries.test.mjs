@@ -146,3 +146,12 @@ test('架构防腐守卫：限制 example 直接访问 .document / .renderer / .
   checkDir(exampleDir);
 });
 
+test('example app entry remains orchestration-only', () => {
+  const appPath = path.resolve('example/app.js');
+  const source = fs.readFileSync(appPath, 'utf8');
+  const physicalLines = source.split(/\r?\n/).length;
+  assert.ok(physicalLines <= 1100, `example/app.js has ${physicalLines} lines; expected at most 1100`);
+
+  const runtimeNodeMaps = /\.(?:item|wall|room|opening|fence|fenceGate|roof|stair)Nodes\b/g;
+  assert.equal(runtimeNodeMaps.test(source), false, 'example/app.js must not access renderer node maps directly');
+});

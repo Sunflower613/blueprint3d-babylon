@@ -4,10 +4,51 @@ import {
   sphereComponent,
   FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
+  FURNITURE_CATEGORIES,
   MATERIAL_CATEGORIES
 } from '../../src/index.js';
 
 let Context = null;
+const FURNITURE_IMAGE_PROXY_PREFIX = '/__furniture-images__/';
+const fallbackFurnitureImagePath = '../src/furniture/image/custom_cube.png';
+const transparentGIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+let furnitureImageLoadersPromise = null;
+
+function getFurnitureImageProxyUrl(path) {
+  const fileName = path.split('/').pop() || 'custom_cube.png';
+  return `${FURNITURE_IMAGE_PROXY_PREFIX}${encodeURIComponent(fileName)}`;
+}
+
+async function getFurnitureImageLoaders() {
+  if (import.meta.env.DEV) return null;
+  furnitureImageLoadersPromise ||= import('./furnitureThumbnailLoaders.js').then((module) => module.furnitureImageLoaders);
+  return furnitureImageLoadersPromise;
+}
+
+async function resolveFurnitureThumbnailUrl(path) {
+  if (import.meta.env.DEV) return getFurnitureImageProxyUrl(path);
+  const loaders = await getFurnitureImageLoaders();
+  const loader = loaders?.[path] || loaders?.[fallbackFurnitureImagePath];
+  return loader ? await loader() : null;
+}
+
+const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
+  entries.forEach(async (entry) => {
+    if (!entry.isIntersecting) return;
+    const img = entry.target;
+    furnitureThumbnailObserver.unobserve(img);
+    try {
+      const thumbnailUrl = await resolveFurnitureThumbnailUrl(img.dataset.thumbnailPath || fallbackFurnitureImagePath);
+      if (!thumbnailUrl) {
+        img.dispatchEvent(new Event('error'));
+        return;
+      }
+      img.src = thumbnailUrl;
+    } catch {
+      img.dispatchEvent(new Event('error'));
+    }
+  });
+}, { rootMargin: '160px' });
 
 export function initUiControls(appState) {
   Context = appState;
@@ -159,6 +200,128 @@ export function initFurnitureUpload() {
       input.value = '';
     }
   });
+}
+
+export function initFurnitureButtons() {
+  const categorySelect = document.getElementById('furniture-category-select');
+  const searchInput = document.getElementById('furniture-search-input');
+  const clearSearchBtn = document.getElementById('btn-clear-furniture-search');
+  const groups = [
+    { label: '', items: ['all', 'custom'] },
+    { label: '室内家具', items: ['tables', 'seating', 'storage', 'bedroom', 'kitchen', 'bathroom'] },
+    { label: '生活家电', items: ['appliances', 'lighting', 'decor', 'textiles', 'clothing', 'plants'] },
+    { label: '庭院户外', items: ['outdoor', 'landscape', 'flora'] }
+  ];
+
+  if (categorySelect && categorySelect.children.length === 0) {
+    groups.forEach((group) => {
+      let parent = categorySelect;
+      if (group.label) {
+        parent = document.createElement('optgroup');
+        parent.label = group.label;
+        categorySelect.appendChild(parent);
+      }
+      group.items.forEach((categoryId) => {
+        const category = FURNITURE_CATEGORIES.find((candidate) => candidate.id === categoryId);
+        if (!category) return;
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.label;
+        if (category.icon) option.setAttribute('data-icon', category.icon);
+        parent.appendChild(option);
+      });
+    });
+    categorySelect.addEventListener('change', renderFurnitureGrid);
+  }
+
+  searchInput?.addEventListener('input', () => {
+    clearSearchBtn?.classList.toggle('hidden', !searchInput.value);
+    renderFurnitureGrid();
+  });
+  clearSearchBtn?.addEventListener('click', () => {
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.focus();
+    }
+    clearSearchBtn.classList.add('hidden');
+    renderFurnitureGrid();
+  });
+
+  initFurnitureUpload();
+  restoreCustomFurnitureFromLocalStorage();
+  renderFurnitureGrid();
+}
+
+async function loadFurnitureThumbnail(img, path) {
+  const thumbnailUrl = await resolveFurnitureThumbnailUrl(path);
+  if (thumbnailUrl) img.src = thumbnailUrl;
+}
+
+export function renderFurnitureGrid() {
+  const itemGrid = document.getElementById('item-grid');
+  if (!itemGrid) return;
+  furnitureThumbnailObserver?.disconnect();
+  itemGrid.innerHTML = '';
+
+  const categorySelect = document.getElementById('furniture-category-select');
+  const selectedCategory = categorySelect?.value || 'all';
+  const searchInput = document.getElementById('furniture-search-input');
+  const searchQuery = searchInput?.value.trim().toLowerCase() || '';
+  document.getElementById('furniture-upload-actions')?.classList.toggle('hidden', selectedCategory !== 'custom');
+
+  FURNITURE_LIST
+    .filter((definition) => (selectedCategory === 'all' || definition.category === selectedCategory)
+      && (!searchQuery || definition.name.toLowerCase().includes(searchQuery)))
+    .forEach((definition) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.addItem = definition.type;
+      button.className = 'furniture-item-btn';
+
+      const img = document.createElement('img');
+      const imgPath = `../src/furniture/image/${definition.type}.png`;
+      img.alt = definition.name;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.fetchPriority = 'low';
+      img.src = transparentGIF;
+      img.classList.add('placeholder-active', 'loading');
+      img.onload = () => {
+        if (img.src !== transparentGIF) img.classList.remove('placeholder-active', 'loading');
+      };
+      img.onerror = async () => {
+        img.onerror = null;
+        try {
+          const fallbackUrl = await resolveFurnitureThumbnailUrl(fallbackFurnitureImagePath);
+          if (!fallbackUrl) throw new Error('No fallback loader');
+          img.onerror = () => {
+            img.onerror = null;
+            img.src = transparentGIF;
+            img.classList.add('placeholder-active');
+            img.classList.remove('loading');
+          };
+          img.src = fallbackUrl;
+        } catch {
+          img.src = transparentGIF;
+          img.classList.add('placeholder-active');
+          img.classList.remove('loading');
+        }
+      };
+
+      if (definition.thumbnail) {
+        img.src = definition.thumbnail;
+      } else if (furnitureThumbnailObserver) {
+        img.dataset.thumbnailPath = imgPath;
+        furnitureThumbnailObserver.observe(img);
+      } else {
+        loadFurnitureThumbnail(img, imgPath).catch(() => img.dispatchEvent(new Event('error')));
+      }
+
+      const label = document.createElement('span');
+      label.textContent = definition.name;
+      button.append(img, label);
+      itemGrid.appendChild(button);
+    });
 }
 
 export function cleanFloorplanMaterials(obj) {

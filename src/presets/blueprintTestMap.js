@@ -1438,11 +1438,15 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   // 8. 拖拽预览 API 与资源释放代理（转发给 editorFacade）
   // ----------------------------------------------------
   getEntityRenderNode(type, id) { return this.editorFacade.getEntityRenderNode(type, id); }
+  syncEntityPreview(type, id) { return this.editorFacade.syncEntityPreview(type, id); }
+  getEntityWorldTransform(type, id) { return this.editorFacade.getEntityWorldTransform(type, id); }
+  getEntityPreviewStatus() { return this.editorFacade.getEntityPreviewStatus(); }
+  getRuntimePreviewResourceCount() { return this.editorFacade.getRuntimePreviewResourceCount(); }
   beginEntityPreview(type, id) { return this.editorFacade.beginEntityPreview(type, id); }
   updateEntityPreview(type, id, transform) { return this.editorFacade.updateEntityPreview(type, id, transform); }
   commitEntityPreview(type, id) { return this.editorFacade.commitEntityPreview(type, id); }
   cancelEntityPreview(type, id) { return this.editorFacade.cancelEntityPreview(type, id); }
-  dispose() { this.editorFacade.dispose(); }
+  dispose() { return this.editorFacade.dispose(); }
 }
 
 export { FURNITURE_DEFINITIONS, FURNITURE_LIST, FENCE_SUBTYPE_DEFAULTS };

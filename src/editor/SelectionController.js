@@ -209,6 +209,7 @@ export class SelectionController {
 
   // --- Opening / Door / Window Drag Preview ---
   beginOpeningDragPreview(openingId) {
+    if (this.renderer.isDisposed) return false;
     if (this.renderer.openingDragPreviews.has(openingId)) return true;
     const opening = this.document.getOpening(openingId);
     const wall = opening ? this.document.getWall(opening.wallId) : null;
@@ -290,20 +291,27 @@ export class SelectionController {
     this.renderer.buildWalls(new Set([preview.wallId, opening.wallId]));
     this.renderer.buildOpenings(new Set([openingId]));
 
-    return new Promise((resolve) => {
-      this.scene.executeWhenReady(() => {
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      try {
         preview.root.dispose(false, false);
         oldWallNode.dispose(false, false);
         oldOpeningNode.dispose(false, false);
         preview.wallMaterials.forEach((material) => material.dispose(false, true));
         oldOpeningMaterials.forEach((material) => material.dispose(false, true));
 
-        const activeShadowCasters = this.renderer.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
-        this.renderer.shadowCasters.length = 0;
-        this.renderer.shadowCasters.push(...activeShadowCasters);
-        resolve(true);
-      });
-    });
+        if (!this.renderer.isDisposed) {
+          const activeShadowCasters = this.renderer.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
+          this.renderer.shadowCasters.length = 0;
+          this.renderer.shadowCasters.push(...activeShadowCasters);
+        }
+      } finally {
+        preview.plugins.length = 0;
+      }
+    };
+    return this.renderer.executeWhenReady(cleanup, { onCancel: cleanup, previewResource: true });
   }
 
   updateOpeningNodePose(openingId) {
@@ -331,6 +339,7 @@ export class SelectionController {
 
   // --- Fence Gate Drag Preview ---
   beginFenceGateDragPreview(gateId) {
+    if (this.renderer.isDisposed) return false;
     if (this.renderer.fenceGateDragPreviews.has(gateId)) return true;
     const gate = this.document.getFenceGate(gateId);
     const gateNode = this.renderer.fenceGateNodes.get(gateId);
@@ -398,23 +407,7 @@ export class SelectionController {
   }
 
   syncFenceGateDragPreview(gateId) {
-    const preview = this.renderer.fenceGateDragPreviews.get(gateId);
-    const gate = this.document.getFenceGate(gateId);
-    if (!preview || !gate || !gate.fenceId || preview.affectedFenceIds.has(gate.fenceId)) return;
-    const fenceNode = this.renderer.fenceNodes.get(gate.fenceId);
-    if (!fenceNode) return;
-
-    preview.affectedFenceIds.add(gate.fenceId);
-    preview.fenceNodes.set(gate.fenceId, fenceNode);
-    const materials = [
-      ...fenceNode.getChildMeshes().map((mesh) => mesh.material),
-      ...(gate.fenceId === preview.sourceFenceId ? preview.root.getChildMeshes().map((mesh) => mesh.material) : [])
-    ].filter(Boolean);
-    [...new Set(materials)].forEach((material) => {
-      if (preview.pluginMaterials.has(material)) return;
-      preview.pluginMaterials.add(material);
-      preview.plugins.push(new FenceGateGapPreviewPlugin(material, this.renderer, gateId, gate.fenceId));
-    });
+    return this.renderer.syncFenceGateDragPreview(gateId);
   }
 
   finishFenceGateDragPreview(gateId) {
@@ -437,67 +430,31 @@ export class SelectionController {
     if (preview.affectedFenceIds.size > 0) this.renderer.buildFences(preview.affectedFenceIds);
     this.renderer.buildFenceGates(new Set([gateId]));
 
-    return new Promise((resolve) => {
-      this.scene.executeWhenReady(() => {
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      try {
         preview.root.dispose(false, false);
         oldFenceNodes.forEach((node) => node.dispose(false, false));
         oldGateNode.dispose(false, false);
         oldMaterials.forEach((material) => material.dispose(false, true));
 
-        const activeShadowCasters = this.renderer.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
-        this.renderer.shadowCasters.length = 0;
-        this.renderer.shadowCasters.push(...activeShadowCasters);
-        resolve(true);
-      });
-    });
+        if (!this.renderer.isDisposed) {
+          const activeShadowCasters = this.renderer.shadowCasters.filter((mesh) => !oldMeshes.has(mesh) && !mesh.isDisposed());
+          this.renderer.shadowCasters.length = 0;
+          this.renderer.shadowCasters.push(...activeShadowCasters);
+        }
+      } finally {
+        preview.plugins.length = 0;
+        preview.pluginMaterials.clear();
+        preview.previewMeshes.clear();
+      }
+    };
+    return this.renderer.executeWhenReady(cleanup, { onCancel: cleanup, previewResource: true });
   }
 
   updateFenceGateNodeTransform(gateId) {
-    const gate = this.document.getFenceGate(gateId);
-    if (!gate) return;
-    const node = this.renderer.fenceGateNodes.get(gate.id);
-    if (!node) return;
-
-    let [x1, z1] = gate.from || [0, 0];
-    let [x2, z2] = gate.to || [1, 0];
-
-    if (gate.fenceId) {
-      const fence = this.document.getFence(gate.fenceId);
-      if (fence) {
-        const [fx1, fz1] = fence.from;
-        const [fx2, fz2] = fence.to;
-        const dx = fx2 - fx1;
-        const dz = fz2 - fz1;
-        const fenceLen = Math.sqrt(dx * dx + dz * dz) || 1;
-        const halfT = (gate.width) / fenceLen / 2;
-        const t1 = Math.max(0, gate.t - halfT);
-        const t2 = Math.min(1, gate.t + halfT);
-        x1 = fx1 + dx * t1;
-        z1 = fz1 + dz * t1;
-        x2 = fx1 + dx * t2;
-        z2 = fz1 + dz * t2;
-      }
-    }
-
-    const dx = x2 - x1;
-    const dz = z2 - z1;
-    const length = Math.sqrt(dx * dx + dz * dz);
-    if (length <= 0.01) return;
-
-    const angle = Math.atan2(dz, dx);
-    const centerX = (x1 + x2) / 2;
-    const centerZ = (z1 + z2) / 2;
-    const floorY = this.document.getFloorElevation(gate.floorId);
-    const gateOffset = (gate.fenceId ? this.document.getFenceElevationOffset(this.document.getFence(gate.fenceId)) : 0) + (gate.yOffset || 0);
-
-    node.position.set(centerX, floorY + gateOffset, centerZ);
-    node.rotation.y = -angle;
-
-    const fenceTilt = gate.fenceId ? (this.document.getFence(gate.fenceId)?.tilt || 0) : 0;
-    node.rotation.z = fenceTilt;
-
-    if (this.renderer.fenceGateDragPreviews.has(gateId)) {
-      this.syncFenceGateDragPreview(gateId);
-    }
+    return this.renderer.syncEntityPreview('fenceGate', gateId);
   }
 }

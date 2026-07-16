@@ -376,18 +376,13 @@ export class EntityManager {
       patch.roomId = room.id;
     }
 
-    const node = this.opts.testMap.itemNodes.get(item.id);
-
+    let requiresRuntimeRebuild = false;
     if (item.type === 'mannequin' && item.pose && item.pose !== 'stand') {
       const seat = this.opts.findNearestSeat({ ...item, x: updatedX, z: updatedZ });
       if (!seat) {
         patch.pose = 'stand';
         patch.elevation = 0;
-        definition.build(this.opts.testMap, { ...item, x: updatedX, z: updatedZ, pose: 'stand', elevation: 0 }, node, {
-          width: item.width * (item.scale || 1),
-          depth: item.depth * (item.scale || 1),
-          height: item.height * (item.scale || 1)
-        });
+        requiresRuntimeRebuild = true;
       }
     }
 
@@ -397,12 +392,8 @@ export class EntityManager {
       this.opts.testMap.executeCommand('assignItemToRoom', { itemId: item.id, roomId: room.id, rebuild: false });
     }
 
-    if (node) {
-      const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(item.floorId) : 0;
-      const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset({ ...item, x: updatedX, z: updatedZ, elevation: updatedElevation }) : 0;
-      node.position.set(updatedX, floorY + updatedElevation + roomOffset, updatedZ);
-      node.rotation.y = updatedRotation;
-    }
+    if (requiresRuntimeRebuild) this.opts.testMap.build();
+    else this.opts.testMap.syncEntityPreview('item', item.id);
     this.updateChildrenOnBookshelf({ ...item, x: updatedX, z: updatedZ, rotation: updatedRotation, elevation: updatedElevation }, beforeState);
     this.opts.renderPlan();
   }
@@ -1020,13 +1011,7 @@ export class EntityManager {
         rebuild: false
       });
       
-      const node = this.opts.testMap.itemNodes?.get(childItem.id);
-      if (node) {
-        const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(childItem.floorId) : 0;
-        const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset(childItem) : 0;
-        node.position.set(newWx, floorY + newElevation + roomOffset, newWz);
-        node.rotation.y = newRot;
-      }
+      this.opts.testMap.syncEntityPreview('item', childItem.id);
     }
   }
 

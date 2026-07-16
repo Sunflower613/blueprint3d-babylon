@@ -116,6 +116,12 @@ function bindToolSelectors(Context) {
 
   document.querySelectorAll('.mode').forEach((button) => {
     button.addEventListener('click', () => {
+      const preview = Context.testMap.getEntityPreviewStatus?.();
+      if (preview?.state === 'active' && preview.type && preview.id) {
+        void Promise.resolve(Context.testMap.cancelEntityPreview(preview.type, preview.id)).catch((error) => {
+          console.error('Failed to cancel active preview while changing tools:', error);
+        });
+      }
       const clickedMode = button.dataset.mode;
       if (Context.mode === clickedMode && clickedMode !== 'select') {
         Context.switchToSelectMode();

@@ -16,6 +16,12 @@ export class DragHandler {
   }
 
   clearAllDragStates() {
+    const preview = this.ctx.testMap.getEntityPreviewStatus?.();
+    if (preview?.state === 'active' && preview.type && preview.id) {
+      void Promise.resolve(this.ctx.testMap.cancelEntityPreview(preview.type, preview.id)).catch((error) => {
+        console.error('Failed to cancel active drag preview:', error);
+      });
+    }
     this.states.roomDrag = null;
     this.states.roomResize = null;
     this.states.structureDrag = null;

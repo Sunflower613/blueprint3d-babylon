@@ -133,7 +133,9 @@ test('架构防腐守卫：限制 example 直接访问 .document / .renderer / .
           /\.selectionController\b/g,
           /\._document\b/g,
           /\._renderer\b/g,
-          /\._selectionController\b/g
+          /\._selectionController\b/g,
+          /(?:\.|\?\.)[A-Za-z_$][\w$]*Nodes\b(?!\s*\()/g,
+          /\.getEntityRenderNode\b/g
         ];
         for (const pattern of forbiddenPatterns) {
           if (pattern.test(content)) {
@@ -152,6 +154,7 @@ test('example app entry remains orchestration-only', () => {
   const physicalLines = source.split(/\r?\n/).length;
   assert.ok(physicalLines <= 1100, `example/app.js has ${physicalLines} lines; expected at most 1100`);
 
-  const runtimeNodeMaps = /\.(?:item|wall|room|opening|fence|fenceGate|roof|stair)Nodes\b/g;
+  const runtimeNodeMaps = /(?:\.|\?\.)[A-Za-z_$][\w$]*Nodes\b(?!\s*\()/g;
   assert.equal(runtimeNodeMaps.test(source), false, 'example/app.js must not access renderer node maps directly');
+  assert.equal(/\.getEntityRenderNode\b/.test(source), false, 'example/app.js must not obtain raw renderer nodes');
 });

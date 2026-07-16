@@ -3,8 +3,6 @@ import { BabylonSceneRenderer } from '../runtime/BabylonSceneRenderer.js';
 import { SelectionController } from './SelectionController.js';
 import { ExportService } from '../services/ExportService.js';
 import { getFurnitureDefinition } from '../furniture/index.js';
-import { triangulateRoom } from '../rooms/index.js';
-import { VertexData } from '../core/babylon.js';
 
 export class EditorFacade {
   /**
@@ -21,6 +19,8 @@ export class EditorFacade {
     this._selectionController = new SelectionController(scene, this._document, this._renderer);
     this._exportService = new ExportService(this._document);
     this._activePreview = null;
+    this._previewState = 'idle';
+    this._disposePromise = null;
   }
 
   /** @returns {Object} 户型平面图数据结构 */
@@ -275,6 +275,7 @@ export class EditorFacade {
    * @returns {Object|boolean|void} 指令执行结果
    */
   executeCommand(name, args = {}) {
+    if (this._previewState !== 'idle') return false;
     let result = null;
 
     switch (name) {
@@ -427,8 +428,7 @@ export class EditorFacade {
           const item = this._document.getItem(id);
           if (!item) return false;
           item.locked = value;
-          const node = this._renderer.itemNodes?.get(id);
-          if (node) node.metadata = { ...(node.metadata || {}), locked: value };
+          this._renderer.setEntityLocked('items', id, value);
           result = true;
         } else {
           const updateCmds = {
@@ -548,18 +548,38 @@ export class EditorFacade {
   // 10. 资源释放方法
   // ==========================================
   dispose() {
-    if (this._activePreview) {
-      this.cancelEntityPreview(this._activePreview.type, this._activePreview.id);
-    }
-    if (this._renderer && typeof this._renderer.dispose === 'function') {
-      this._renderer.dispose();
-    }
-    if (this._selectionController) {
-      if (this._selectionController.roomSelectionOutlineMesh) {
+    if (this._disposePromise) return this._disposePromise;
+    this._disposePromise = this._disposeSafely();
+    return this._disposePromise;
+  }
+
+  async _disposeSafely() {
+    let completed = true;
+    try {
+      const preview = this._activePreview;
+      let operation = null;
+      if (preview && this._previewState === 'active') {
+        operation = this.cancelEntityPreview(preview.type, preview.id);
+      } else if (preview?.operation) {
+        operation = preview.operation;
+      }
+      this._renderer?.cancelReadyWork?.();
+      if (operation) await operation;
+    } catch (error) {
+      completed = false;
+      console.error('Failed to finish active preview during dispose:', error);
+    } finally {
+      this._previewState = 'disposed';
+      this._activePreview = null;
+      if (this._selectionController?.roomSelectionOutlineMesh) {
         this._selectionController.roomSelectionOutlineMesh.dispose(false, true);
         this._selectionController.roomSelectionOutlineMesh = null;
       }
+      if (this._renderer && typeof this._renderer.dispose === 'function') {
+        await this._renderer.dispose();
+      }
     }
+    return completed;
   }
 
   // ==========================================
@@ -595,354 +615,159 @@ export class EditorFacade {
   // ==========================================
   getEntityRenderNode(type, id) {
     const normType = this._normalizeEntityType(type);
-    if (!normType) return null;
-    if (normType === 'items') return this._renderer.itemNodes?.get(id) || null;
-    if (normType === 'walls') return this._renderer.wallNodes?.get(id) || null;
-    if (normType === 'rooms') return this._renderer.floorNodes?.get(id) || null;
-    if (normType === 'openings') return this._renderer.openingNodes?.get(id) || null;
-    if (normType === 'roofs') return this._renderer.roofNodes?.get(id) || null;
-    if (normType === 'stairs') return this._renderer.stairNodes?.get(id) || null;
-    if (normType === 'fences') return this._renderer.fenceNodes?.get(id) || null;
-    if (normType === 'fenceGates') return this._renderer.fenceGateNodes?.get(id) || null;
-    return null;
+    return normType ? this._renderer.getEntityNode(normType, id) : null;
+  }
+
+  getEntityWorldTransform(type, id) {
+    const normType = this._normalizeEntityType(type);
+    return normType ? this._renderer.getEntityWorldTransform(normType, id) : null;
+  }
+
+  syncEntityPreview(type, id) {
+    const normType = this._normalizeEntityType(type);
+    return normType ? this._renderer.syncEntityPreview(normType, id) : false;
+  }
+
+  getEntityPreviewStatus() {
+    return {
+      state: this._previewState,
+      type: this._activePreview?.type || null,
+      id: this._activePreview?.id || null,
+      resourceCount: this._renderer.getPreviewResourceCount()
+    };
+  }
+
+  getRuntimePreviewResourceCount() {
+    return this._renderer.getPreviewResourceCount();
   }
 
   beginEntityPreview(type, id) {
     const normType = this._normalizeEntityType(type);
-    if (!normType) return false;
-    const originalData = this.getEntity(type, id);
-    if (!originalData) return false;
-    this._activePreview = {
+    if (!normType || this._previewState !== 'idle' || this._activePreview) return false;
+    if (!this.getEntity(normType, id)) return false;
+    const preview = {
       type: normType,
       id,
-      originalData
+      snapshot: this._document.createSnapshot(),
+      operation: null
     };
-    if (normType === 'openings') {
-      this._selectionController.beginOpeningDragPreview(id);
-    } else if (normType === 'fenceGates') {
-      this._selectionController.beginFenceGateDragPreview(id);
+    try {
+      if (normType === 'openings') {
+        this._selectionController.beginOpeningDragPreview(id);
+      } else if (normType === 'fenceGates') {
+        this._selectionController.beginFenceGateDragPreview(id);
+      }
+      this._activePreview = preview;
+      this._previewState = 'active';
+      return true;
+    } catch (error) {
+      this._activePreview = null;
+      this._previewState = 'idle';
+      throw error;
     }
-    return true;
   }
 
   updateEntityPreview(type, id, transform) {
-    if (!this._activePreview || this._activePreview.id !== id) return false;
     const normType = this._normalizeEntityType(type);
-    if (normType !== this._activePreview.type) return false;
+    if (this._previewState !== 'active' || !this._activePreview
+      || normType !== this._activePreview.type || id !== this._activePreview.id) return false;
 
-    if (normType === 'items') {
-      this._document.updateItem(id, transform);
-      this._syncItemPreview(id);
-    } else if (normType === 'rooms') {
-      const moveItems = transform.moveItems !== false;
-      const patch = { ...transform };
-      delete patch.moveItems;
-      this._document.updateRoom(id, patch, { moveItems, rebuild: false });
-      this._syncRoomPreview(id);
-    } else if (normType === 'walls') {
-      this._document.updateWall(id, transform);
-      this._syncWallPreview(id);
-    } else if (normType === 'fences') {
-      this._document.updateFence(id, transform);
-      this._syncFencePreview(id);
-    } else if (normType === 'fenceGates') {
-      this._document.updateFenceGate(id, transform);
-      this._selectionController.updateFenceGateNodeTransform(id);
-    } else if (normType === 'openings') {
-      this._document.updateOpening(id, transform);
-      this._selectionController.updateOpeningNodePose(id);
-    } else if (normType === 'roofs') {
-      this._document.updateRoof(id, transform);
-      this._syncRoofPreview(id);
-    } else if (normType === 'stairs') {
-      this._document.updateStairs(id, transform);
-      this._syncStairsPreview(id);
+    const preview = this._activePreview;
+    try {
+      if (normType === 'items') {
+        this._document.updateItem(id, transform);
+      } else if (normType === 'rooms') {
+        const moveItems = transform.moveItems !== false;
+        const patch = { ...transform };
+        delete patch.moveItems;
+        this._document.updateRoom(id, patch, { moveItems, rebuild: false });
+      } else if (normType === 'walls') {
+        this._document.updateWall(id, transform);
+      } else if (normType === 'fences') {
+        this._document.updateFence(id, transform);
+      } else if (normType === 'fenceGates') {
+        this._document.updateFenceGate(id, transform);
+      } else if (normType === 'openings') {
+        this._document.updateOpening(id, transform);
+      } else if (normType === 'roofs') {
+        this._document.updateRoof(id, transform);
+      } else if (normType === 'stairs') {
+        this._document.updateStairs(id, transform);
+      }
+      this._renderer.syncEntityPreview(normType, id);
+      return true;
+    } catch (error) {
+      try {
+        this._document.restoreSnapshot(preview.snapshot);
+        this._renderer.build();
+      } catch (cleanupError) {
+        console.error('Failed to clean up entity preview after update error:', cleanupError);
+      } finally {
+        if (this._activePreview === preview) this._activePreview = null;
+        this._previewState = 'idle';
+        this._syncSelectionAfterChange();
+      }
+      throw error;
     }
-    return true;
   }
 
-  async commitEntityPreview(type, id) {
-    if (!this._activePreview || this._activePreview.id !== id) return false;
+  commitEntityPreview(type, id) {
     const normType = this._normalizeEntityType(type);
-    if (normType === 'openings') {
-      await this._selectionController.finishOpeningDragPreview(id);
-    } else if (normType === 'fenceGates') {
-      await this._selectionController.finishFenceGateDragPreview(id);
-    } else {
-      if (this._renderer && typeof this._renderer.build === 'function') {
-        this._renderer.build();
+    const preview = this._activePreview;
+    if (this._previewState !== 'active' || !preview
+      || normType !== preview.type || id !== preview.id) return Promise.resolve(false);
+
+    this._previewState = 'committing';
+    preview.operation = (async () => {
+      try {
+        if (normType === 'openings') {
+          const finished = await this._selectionController.finishOpeningDragPreview(id);
+          if (!finished) this._renderer.build();
+        } else if (normType === 'fenceGates') {
+          const finished = await this._selectionController.finishFenceGateDragPreview(id);
+          if (!finished) this._renderer.build();
+        } else if (this._renderer && typeof this._renderer.build === 'function') {
+          this._renderer.build();
+        }
+        return true;
+      } finally {
+        if (this._activePreview === preview) this._activePreview = null;
+        if (this._previewState !== 'disposed') this._previewState = 'idle';
+        this._syncSelectionAfterChange();
       }
-    }
-    this._activePreview = null;
-    this._syncSelectionAfterChange();
-    return true;
+    })();
+    return preview.operation;
   }
 
   cancelEntityPreview(type, id) {
-    if (!this._activePreview || this._activePreview.id !== id) return false;
     const normType = this._normalizeEntityType(type);
-    
-    // 恢复内存数据
-    if (normType === 'items') {
-      const idx = this._document.floorplan.items.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.items[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'rooms') {
-      const idx = this._document.floorplan.floor.rooms.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.floor.rooms[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'walls') {
-      const idx = this._document.floorplan.walls.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.walls[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'fences') {
-      const idx = this._document.floorplan.fences.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.fences[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'fenceGates') {
-      const idx = this._document.floorplan.fenceGates.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.fenceGates[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'openings') {
-      const idx = this._document.floorplan.openings.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.openings[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'roofs') {
-      const idx = this._document.floorplan.roofs.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.roofs[idx] = { ...this._activePreview.originalData };
-    } else if (normType === 'stairs') {
-      const idx = this._document.floorplan.stairs.findIndex(e => e.id === id);
-      if (idx !== -1) this._document.floorplan.stairs[idx] = { ...this._activePreview.originalData };
-    }
+    const preview = this._activePreview;
+    if (this._previewState !== 'active' || !preview
+      || normType !== preview.type || id !== preview.id) return Promise.resolve(false);
 
-    if (normType === 'openings') {
-      this._selectionController.finishOpeningDragPreview(id);
-    } else if (normType === 'fenceGates') {
-      this._selectionController.finishFenceGateDragPreview(id);
-    } else {
-      if (this._renderer && typeof this._renderer.build === 'function') {
-        this._renderer.build();
-      }
-    }
-    this._activePreview = null;
-    this._syncSelectionAfterChange();
-    return true;
-  }
-
-  // ==========================================
-  // 13. 预览节点位姿同步辅助函数
-  // ==========================================
-  _syncItemPreview(id) {
-    const item = this._document.getItem(id);
-    const node = this.getEntityRenderNode('item', id);
-    if (!item || !node) return;
-    const floorY = this._document.getFloorElevation(item.floorId || this.getCurrentFloorId());
-    const roomOffset = this._renderer.getItemRoomElevationOffset ? this._renderer.getItemRoomElevationOffset(item) : 0;
-    node.position.set(item.x, floorY + (item.elevation || 0) / 39.37 + roomOffset, item.z);
-    if (item.rotation !== undefined) {
-      node.rotation.y = item.rotation;
-    }
-  }
-
-  _syncRoomPreview(id) {
-    const room = this._document.getRoom(id);
-    if (!room) return;
-    const floorY = this._document.getFloorElevation(room.floorId || this.getCurrentFloorId());
-    const floorNode = this.getEntityRenderNode('room', id);
-    if (floorNode) {
-      floorNode.position.set(room.x, floorY - (this.floorplan.floorHeight || 0.08) / 2, room.z);
-      
-      const { vertices, triangles } = triangulateRoom(room);
-      if (vertices.length >= 3 && triangles.length) {
-        const height = (this.floorplan.floorHeight || 0.08);
-        const children = floorNode.getChildren ? floorNode.getChildren() : [];
-        
-        // 1. 地板 Shape Mesh 更新
-        const shapeMesh = children.find(child => child.name && child.name.endsWith('_shape'));
-        if (shapeMesh) {
-          const positions = [];
-          const indices = [];
-          const uvs = [];
-          const halfHeight = height / 2;
-          const centerY = room.elevation || 0;
-          
-          vertices.forEach((point) => {
-            positions.push(point.x, centerY + halfHeight, point.z);
-            uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
-          });
-          vertices.forEach((point) => {
-            positions.push(point.x, centerY - halfHeight, point.z);
-            uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
-          });
-          const bottomOffset = vertices.length;
-          triangles.forEach(([a, b, c]) => {
-            indices.push(a, c, b);
-            indices.push(bottomOffset + a, bottomOffset + b, bottomOffset + c);
-          });
-          vertices.forEach((point, index) => {
-            const nextIndex = (index + 1) % vertices.length;
-            const next = vertices[nextIndex];
-            const sideOffset = positions.length / 3;
-            positions.push(
-              point.x, centerY + halfHeight, point.z,
-              next.x, centerY + halfHeight, next.z,
-              next.x, centerY - halfHeight, next.z,
-              point.x, centerY - halfHeight, point.z
-            );
-            uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-            indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
-          });
-          
-          const normals = [];
-          VertexData.ComputeNormals(positions, indices, normals);
-          const vertexData = new VertexData();
-          vertexData.positions = positions;
-          vertexData.indices = indices;
-          vertexData.normals = normals;
-          vertexData.uvs = uvs;
-          vertexData.applyToMesh(shapeMesh);
+    this._previewState = 'cancelling';
+    preview.operation = (async () => {
+      try {
+        this._document.restoreSnapshot(preview.snapshot);
+        if (normType === 'openings') {
+          const finished = await this._selectionController.finishOpeningDragPreview(id);
+          if (!finished) this._renderer.build();
+        } else if (normType === 'fenceGates') {
+          const finished = await this._selectionController.finishFenceGateDragPreview(id);
+          if (!finished) this._renderer.build();
+        } else if (this._renderer && typeof this._renderer.build === 'function') {
+          this._renderer.build();
         }
-
-        // 2. 天花板 Ceiling Mesh 更新
-        const ceilingMesh = children.find(child => child.name && child.name.endsWith('_ceiling'));
-        if (ceilingMesh) {
-          const positions = [];
-          const indices = [];
-          const uvs = [];
-          const ceilHeight = 0.002;
-          const halfHeight = ceilHeight / 2;
-          const centerY = -height / 2 - 0.001;
-          
-          vertices.forEach((point) => {
-            positions.push(point.x, centerY + halfHeight, point.z);
-            uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
-          });
-          vertices.forEach((point) => {
-            positions.push(point.x, centerY - halfHeight, point.z);
-            uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
-          });
-          const bottomOffset = vertices.length;
-          triangles.forEach(([a, b, c]) => {
-            indices.push(a, c, b);
-            indices.push(bottomOffset + a, bottomOffset + b, bottomOffset + c);
-          });
-          vertices.forEach((point, index) => {
-            const nextIndex = (index + 1) % vertices.length;
-            const next = vertices[nextIndex];
-            const sideOffset = positions.length / 3;
-            positions.push(
-              point.x, centerY + halfHeight, point.z,
-              next.x, centerY + halfHeight, next.z,
-              next.x, centerY - halfHeight, next.z,
-              point.x, centerY - halfHeight, point.z
-            );
-            uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-            indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
-          });
-          
-          const normals = [];
-          VertexData.ComputeNormals(positions, indices, normals);
-          const vertexData = new VertexData();
-          vertexData.positions = positions;
-          vertexData.indices = indices;
-          vertexData.normals = normals;
-          vertexData.uvs = uvs;
-          vertexData.applyToMesh(ceilingMesh);
-        }
+        return true;
+      } finally {
+        if (this._activePreview === preview) this._activePreview = null;
+        if (this._previewState !== 'disposed') this._previewState = 'idle';
+        this._syncSelectionAfterChange();
       }
-      
-      // 3. 重置整体缩放
-      floorNode.scaling.set(1, 1, 1);
-    }
-
-    const wallIds = new Set(Object.values(room.wallIds || {}));
-    wallIds.forEach((wallId) => {
-      this._syncWallPreview(wallId);
-    });
-
-    this.floorplan.items.forEach((item) => {
-      if (item.roomId === id) {
-        this._syncItemPreview(item.id);
-      }
-    });
+    })();
+    return preview.operation;
   }
 
-  _syncWallPreview(wallId) {
-    const wall = this._document.getWall(wallId);
-    const node = this.getEntityRenderNode('wall', wallId);
-    if (!wall || !node) return;
-    const [x1, z1] = wall.from;
-    const [x2, z2] = wall.to;
-    node.position.set(x1, 0, z1);
-    const currentLength = Math.hypot(x2 - x1, z2 - z1);
-    const originalLength = node.metadata?.originalLength || currentLength || 1;
-    node.scaling.x = currentLength / originalLength;
-    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-
-    this.floorplan.openings.forEach((opening) => {
-      if (opening.wallId === wallId) {
-        this._syncOpeningPreview(opening.id);
-      }
-    });
-  }
-
-  _syncOpeningPreview(id) {
-    const opening = this._document.getOpening(id);
-    const node = this.getEntityRenderNode('opening', id);
-    if (!opening || !node) return;
-    const wall = this._document.getWall(opening.wallId);
-    if (!wall) return;
-    const [x1, z1] = wall.from;
-    const [x2, z2] = wall.to;
-    const point = {
-      x: x1 + (x2 - x1) * (opening.t ?? 0.5),
-      z: z1 + (z2 - z1) * (opening.t ?? 0.5)
-    };
-    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
-    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
-    const localY = sillHeight + height / 2;
-    const floorY = this._document.getFloorElevation(opening.floorId || wall.floorId);
-    const openingOffset = this._document.getOpeningElevationOffset(opening);
-    node.position.set(point.x, floorY + localY + openingOffset, point.z);
-    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-  }
-
-  _syncFencePreview(id) {
-    const fence = this._document.getFence(id);
-    const node = this.getEntityRenderNode('fence', id);
-    if (!fence || !node) return;
-    const [x1, z1] = fence.from;
-    const [x2, z2] = fence.to;
-    const floorY = this._document.getFloorElevation(fence.floorId || this.getCurrentFloorId());
-    const fenceOffset = this._renderer.getFenceElevationOffset ? this._renderer.getFenceElevationOffset(fence) : 0;
-    node.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
-    
-    const currentLength = Math.hypot(x2 - x1, z2 - z1);
-    const originalLength = node.metadata?.originalLength || currentLength || 1;
-    node.scaling.x = currentLength / originalLength;
-    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-  }
-
-  _syncRoofPreview(id) {
-    const roof = this._document.getRoof(id);
-    const node = this.getEntityRenderNode('roof', id);
-    if (roof && node) {
-      node.position.x = roof.x || 0;
-      node.position.z = roof.z || 0;
-      if (roof.rotation !== undefined) {
-        node.rotation.y = roof.rotation;
-      }
-    }
-  }
-
-  _syncStairsPreview(id) {
-    const stairs = this._document.getStairs(id);
-    const node = this.getEntityRenderNode('stairs', id);
-    if (stairs && node) {
-      node.position.x = stairs.x || 0;
-      node.position.z = stairs.z || 0;
-      const floorY = this._document.getFloorElevation(stairs.floorId || this.getCurrentFloorId());
-      const stairsOffset = this._renderer.getStairsElevationOffset ? this._renderer.getStairsElevationOffset(stairs) : 0;
-      node.position.y = floorY + stairsOffset;
-      if (stairs.rotation !== undefined) {
-        node.rotation.y = stairs.rotation;
-      }
-    }
-  }
 }
 
 /**

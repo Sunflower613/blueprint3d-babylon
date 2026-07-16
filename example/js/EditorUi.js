@@ -1447,11 +1447,8 @@ export function initUiEventListeners() {
       if (fence && !fence.locked) {
         const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', event.target.value);
         const preview = getRotatedWallEndpoints(fence, normalized);
-        const node = testMap.fenceNodes?.get(selection.selectedFenceId);
-        if (node) {
-          node.position.set((preview.from[0] + preview.to[0]) / 2, node.position.y, (preview.from[1] + preview.to[1]) / 2);
-          node.rotation.y = -preview.angleRad;
-        }
+        testMap.beginEntityPreview('fence', selection.selectedFenceId);
+        testMap.updateEntityPreview('fence', selection.selectedFenceId, { from: preview.from, to: preview.to });
       }
     }
   });

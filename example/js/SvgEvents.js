@@ -322,7 +322,7 @@ function onPointercancel(event) {
   }
   ctx.entityManager.dragState = null;
   ctx.finishRoofResize();
-  DragHandler.finishDrag();
+  DragHandler.clearAllDragStates();
 }
 
 function onDblclick(event) {

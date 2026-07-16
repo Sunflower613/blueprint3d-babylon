@@ -5,6 +5,39 @@ import { showCustomPrompt } from './Dialogs.js';
 let Context = null;
 let structureRotationPreview = null;
 
+const PREVIEW_TYPES = {
+  item: 'items',
+  room: 'rooms',
+  wall: 'walls',
+  opening: 'openings',
+  fence: 'fences',
+  fenceGate: 'fenceGates',
+  fencegate: 'fenceGates',
+  roof: 'roofs',
+  stairs: 'stairs'
+};
+
+function commitAfterPreview(type, id, commit, label) {
+  const status = Context.testMap.getEntityPreviewStatus();
+  if (status.state === 'idle') {
+    commit();
+    return Promise.resolve(true);
+  }
+  if (status.state !== 'active' || status.type !== PREVIEW_TYPES[type] || status.id !== id) {
+    return Promise.resolve(false);
+  }
+  return Promise.resolve(Context.testMap.cancelEntityPreview(type, id))
+    .then((cancelled) => {
+      if (!cancelled) return false;
+      commit();
+      return true;
+    })
+    .catch((error) => {
+      console.error(`Failed to commit ${label} preview:`, error);
+      return false;
+    });
+}
+
 export function initPropertyManager(appState) {
   Context = appState;
 }
@@ -25,37 +58,39 @@ export function syncRotationInputs(inputId, rangeId, degrees) {
   return normalized;
 }
 
-export function getStructureNode(type, id) {
-  return type === 'roof' ? Context.testMap.roofNodes?.get(id) : Context.testMap.stairNodes?.get(id);
-}
-
 export function previewSelectedStructureRotation(degrees) {
   const selected = Context.getSelectedStructure();
   if (!selected?.value || selected.value.locked) return;
   const normalized = syncRotationInputs('structure-rotation', 'structure-rotation-range', degrees);
-  const node = getStructureNode(selected.type, selected.id);
   const rotationRad = normalized * Math.PI / 180;
   if (!structureRotationPreview || structureRotationPreview.type !== selected.type || structureRotationPreview.id !== selected.id) {
-    structureRotationPreview = { type: selected.type, id: selected.id, rotation: selected.value.rotation || 0 };
+    if (!Context.testMap.beginEntityPreview(selected.type, selected.id)) return false;
+    structureRotationPreview = { type: selected.type, id: selected.id };
   }
-  selected.value.rotation = rotationRad;
-  if (node) node.rotation.y = rotationRad;
+  const updated = Context.testMap.updateEntityPreview(selected.type, selected.id, { rotation: rotationRad });
   if (Context.currentView !== '3d') Context.renderPlan();
+  return updated;
 }
 
 export function commitSelectedStructureRotation(degrees) {
   const selected = Context.getSelectedStructure();
   if (!selected?.value || selected.value.locked) return;
   const normalized = syncRotationInputs('structure-rotation', 'structure-rotation-range', degrees);
-  if (structureRotationPreview && structureRotationPreview.type === selected.type && structureRotationPreview.id === selected.id) {
-    selected.value.rotation = structureRotationPreview.rotation;
-  }
+  const preview = structureRotationPreview;
   structureRotationPreview = null;
-  Context.pushHistory();
-  Context.updateStructure(selected.type, selected.id, { rotation: normalized * Math.PI / 180 });
-  Context.refreshShadows();
-  Context.updateEditor();
-  Context.renderPlan();
+  const commit = () => {
+    Context.pushHistory();
+    Context.updateStructure(selected.type, selected.id, { rotation: normalized * Math.PI / 180 });
+    Context.refreshShadows();
+    Context.updateEditor();
+    Context.renderPlan();
+  };
+  if (!preview) {
+    commit();
+    return Promise.resolve(true);
+  }
+  if (preview.type !== selected.type || preview.id !== selected.id) return Promise.resolve(false);
+  return commitAfterPreview(selected.type, selected.id, commit, 'structure rotation');
 }
 
 export function getRotatedWallEndpoints(wall, degrees) {
@@ -76,34 +111,14 @@ export function getRotatedWallEndpoints(wall, degrees) {
   };
 }
 
-export function syncOpeningPreviewToWall(opening, wallLike) {
-  const node = Context.testMap.openingNodes?.get(opening.id);
-  if (!node) return;
-  const point = Context.wallPointAt(wallLike, opening.t ?? 0.5);
-  const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
-  const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
-  const localY = sillHeight + height / 2;
-  const floorY = Context.testMap.getFloorElevation ? Context.testMap.getFloorElevation(opening.floorId || wallLike.floorId) : 0;
-  const [x1, z1] = wallLike.from;
-  const [x2, z2] = wallLike.to;
-  const openingOffset = Context.testMap.getOpeningElevationOffset ? Context.testMap.getOpeningElevationOffset(opening) : 0;
-  node.position.set(point.x, floorY + localY + openingOffset, point.z);
-  node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-}
-
 export function previewSelectedWallRotation(degrees) {
   if (!Context.selectedWallId) return;
   const wall = Context.testMap.getWall(Context.selectedWallId);
   if (!wall) return;
   const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', degrees);
   const preview = getRotatedWallEndpoints(wall, normalized);
-  const node = Context.testMap.wallNodes?.get(Context.selectedWallId);
-  if (node) {
-    node.position.set(preview.from[0], 0, preview.from[1]);
-    node.rotation.y = -preview.angleRad;
-  }
-  const wallLike = { ...wall, from: preview.from, to: preview.to };
-  Context.testMap.getEntities('opening').filter((opening) => opening.wallId === wall.id).forEach((opening) => syncOpeningPreviewToWall(opening, wallLike));
+  Context.testMap.beginEntityPreview('wall', wall.id);
+  Context.testMap.updateEntityPreview('wall', wall.id, { from: preview.from, to: preview.to });
 }
 
 export function previewSelectedFenceRotation(degrees) {
@@ -112,11 +127,8 @@ export function previewSelectedFenceRotation(degrees) {
   if (!fence || fence.locked) return;
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', degrees);
   const preview = getRotatedWallEndpoints(fence, normalized);
-  const node = Context.testMap.fenceNodes?.get(Context.selectedFenceId);
-  if (node) {
-    node.position.set((preview.from[0] + preview.to[0]) / 2, node.position.y, (preview.from[1] + preview.to[1]) / 2);
-    node.rotation.y = -preview.angleRad;
-  }
+  Context.testMap.beginEntityPreview('fence', fence.id);
+  Context.testMap.updateEntityPreview('fence', fence.id, { from: preview.from, to: preview.to });
 }
 
 export function updateSelectedStructure() {
@@ -302,21 +314,22 @@ export function updateSelectedFenceLength() {
 
 export function updateSelectedFenceRotation(deg) {
   if (!Context.selectedFenceId) return;
-  const fence = Context.testMap.getFence(Context.selectedFenceId);
+  const fenceId = Context.selectedFenceId;
+  const fence = Context.testMap.getFence(fenceId);
   if (!fence || fence.locked) return;
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', deg);
   const preview = getRotatedWallEndpoints(fence, normalized);
-  Context.pushHistory();
-  Context.testMap.executeCommand('updateFence', {
-    fenceId: Context.selectedFenceId,
-    patch: {
-      from: preview.from,
-      to: preview.to
-    }
-  });
-  Context.refreshShadows();
-  Context.updateEditor();
-  Context.renderPlan();
+  const commit = () => {
+    Context.pushHistory();
+    Context.testMap.executeCommand('updateFence', {
+      fenceId,
+      patch: { from: preview.from, to: preview.to }
+    });
+    Context.refreshShadows();
+    Context.updateEditor();
+    Context.renderPlan();
+  };
+  return commitAfterPreview('fence', fenceId, commit, 'fence rotation');
 }
 
 export function updateSelectedFenceHeight() {
@@ -371,21 +384,22 @@ export function updateSelectedWallLength() {
 
 export function updateSelectedWallRotation(deg) {
   if (!Context.selectedWallId) return;
-  const wall = Context.testMap.getWall(Context.selectedWallId);
+  const wallId = Context.selectedWallId;
+  const wall = Context.testMap.getWall(wallId);
   if (!wall) return;
   const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', deg);
   const preview = getRotatedWallEndpoints(wall, normalized);
-  Context.pushHistory();
-  Context.testMap.executeCommand('updateWall', {
-    wallId: Context.selectedWallId,
-    patch: {
-      from: preview.from,
-      to: preview.to
-    }
-  });
-  Context.refreshShadows();
-  Context.updateEditor();
-  Context.renderPlan();
+  const commit = () => {
+    Context.pushHistory();
+    Context.testMap.executeCommand('updateWall', {
+      wallId,
+      patch: { from: preview.from, to: preview.to }
+    });
+    Context.refreshShadows();
+    Context.updateEditor();
+    Context.renderPlan();
+  };
+  return commitAfterPreview('wall', wallId, commit, 'wall rotation');
 }
 
 export function updateSelectedRotation() {

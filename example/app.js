@@ -22,8 +22,8 @@ const {
   selectOpening, selectRoof, selectStairs, selectFence, selectFenceGate
 } = SelectionManager;
 const {
-  syncRotationInputs, getStructureNode, previewSelectedStructureRotation,
-  commitSelectedStructureRotation, getRotatedWallEndpoints, syncOpeningPreviewToWall,
+  syncRotationInputs, previewSelectedStructureRotation,
+  commitSelectedStructureRotation, getRotatedWallEndpoints,
   previewSelectedWallRotation, previewSelectedFenceRotation, updateSelectedStructure,
   updateSelectedStructureRotation, deleteSelectedStructure, updateSelectedRoom,
   updateSelectedFloor, updateSkyboxFromCurrentFloor, updateSelectedFenceSubtype,

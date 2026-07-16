@@ -116,6 +116,18 @@ export class FloorplanDocument {
     this._floorplan = val;
   }
 
+  createSnapshot() {
+    return cloneFloorplan(this._floorplan);
+  }
+
+  restoreSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') {
+      throw new TypeError('A valid floorplan snapshot is required.');
+    }
+    this._floorplan = cloneFloorplan(snapshot);
+    return this._floorplan;
+  }
+
   normalizeFloorplan(floorplan) {
     const normalized = cloneFloorplan(floorplan);
     const defaultFloorMaterial = {

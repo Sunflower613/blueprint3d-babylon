@@ -282,8 +282,316 @@ export class BabylonSceneRenderer {
     this.materialCache = new Map();
     this.enableAdvancedRendering = false;
     this.renderingEnabled = options.renderingEnabled !== false;
+    this._disposed = false;
+    this._readyTasks = new Set();
 
     this.materials = this.createMaterials(options.palette || {});
+  }
+
+  get isDisposed() {
+    return this._disposed;
+  }
+
+  executeWhenReady(work, { onCancel = null, previewResource = false } = {}) {
+    if (this._disposed) {
+      if (onCancel) onCancel();
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      const task = { resolve, onCancel, previewResource, settled: false };
+      this._readyTasks.add(task);
+      const finish = (result) => {
+        if (task.settled) return;
+        task.settled = true;
+        this._readyTasks.delete(task);
+        resolve(result);
+      };
+      task.cancel = () => {
+        if (task.settled) return;
+        try {
+          task.onCancel?.();
+        } finally {
+          finish(false);
+        }
+      };
+
+      try {
+        this.scene.executeWhenReady(() => {
+          if (task.settled) return;
+          if (this._disposed || this.scene?.isDisposed === true || this.scene?._isDisposed === true) {
+            task.cancel();
+            return;
+          }
+          try {
+            work();
+            finish(true);
+          } catch (error) {
+            console.error('Deferred renderer work failed:', error);
+            finish(false);
+          }
+        });
+      } catch (error) {
+        console.error('Unable to schedule renderer work:', error);
+        task.cancel();
+      }
+    });
+  }
+
+  cancelReadyWork() {
+    [...this._readyTasks].forEach((task) => task.cancel());
+  }
+
+  getEntityNode(type, id) {
+    const normalized = String(type || '').toLowerCase();
+    const maps = {
+      item: this.itemNodes,
+      items: this.itemNodes,
+      wall: this.wallNodes,
+      walls: this.wallNodes,
+      room: this.floorNodes,
+      rooms: this.floorNodes,
+      opening: this.openingNodes,
+      openings: this.openingNodes,
+      roof: this.roofNodes,
+      roofs: this.roofNodes,
+      stair: this.stairNodes,
+      stairs: this.stairNodes,
+      fence: this.fenceNodes,
+      fences: this.fenceNodes,
+      fencegate: this.fenceGateNodes,
+      fencegates: this.fenceGateNodes,
+    };
+    return maps[normalized]?.get(id) || null;
+  }
+
+  getEntityWorldTransform(type, id) {
+    const node = this.getEntityNode(type, id);
+    if (!node) return null;
+    const position = node.getAbsolutePosition ? node.getAbsolutePosition() : node.position;
+    return {
+      position: { x: position.x, y: position.y, z: position.z },
+      rotation: { x: node.rotation?.x || 0, y: node.rotation?.y || 0, z: node.rotation?.z || 0 },
+      scaling: { x: node.scaling?.x ?? 1, y: node.scaling?.y ?? 1, z: node.scaling?.z ?? 1 }
+    };
+  }
+
+  setEntityLocked(type, id, locked) {
+    const node = this.getEntityNode(type, id);
+    if (!node) return false;
+    node.metadata = { ...(node.metadata || {}), locked: !!locked };
+    return true;
+  }
+
+  getPreviewResourceCount() {
+    const pendingResources = [...this._readyTasks].filter((task) => task.previewResource).length;
+    return this.openingDragPreviews.size + this.fenceGateDragPreviews.size + pendingResources;
+  }
+
+  syncEntityPreview(type, id) {
+    if (this._disposed) return false;
+    const normalized = String(type || '').toLowerCase();
+    if (normalized === 'item' || normalized === 'items') return this._syncItemPreview(id);
+    if (normalized === 'room' || normalized === 'rooms') return this._syncRoomPreview(id);
+    if (normalized === 'wall' || normalized === 'walls') return this._syncWallPreview(id);
+    if (normalized === 'opening' || normalized === 'openings') return this._syncOpeningPreview(id);
+    if (normalized === 'fence' || normalized === 'fences') return this._syncFencePreview(id);
+    if (normalized === 'fencegate' || normalized === 'fencegates') return this._syncFenceGatePreview(id);
+    if (normalized === 'roof' || normalized === 'roofs') return this._syncRoofPreview(id);
+    if (normalized === 'stair' || normalized === 'stairs') return this._syncStairsPreview(id);
+    return false;
+  }
+
+  _syncItemPreview(id) {
+    const item = this.document.getItem(id);
+    const node = this.getEntityNode('item', id);
+    if (!item || !node) return false;
+    const floorY = this.document.getFloorElevation(item.floorId || this.floorplan.currentFloorId);
+    const roomOffset = this.document.getItemRoomElevationOffset(item);
+    node.position.set(item.x, floorY + (item.elevation || 0) + roomOffset, item.z);
+    if (item.rotation !== undefined) node.rotation.y = item.rotation;
+    return true;
+  }
+
+  _applyRoomPolygonGeometry(mesh, room, height, centerY) {
+    if (!mesh) return;
+    const { vertices, triangles } = triangulateRoom(room);
+    if (vertices.length < 3 || !triangles.length) return;
+    const positions = [];
+    const indices = [];
+    const uvs = [];
+    const halfHeight = height / 2;
+    vertices.forEach((point) => {
+      positions.push(point.x, centerY + halfHeight, point.z);
+      uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
+    });
+    vertices.forEach((point) => {
+      positions.push(point.x, centerY - halfHeight, point.z);
+      uvs.push(point.x / Math.max(room.width, 0.001) + 0.5, point.z / Math.max(room.depth, 0.001) + 0.5);
+    });
+    const bottomOffset = vertices.length;
+    triangles.forEach(([a, b, c]) => {
+      indices.push(a, c, b, bottomOffset + a, bottomOffset + b, bottomOffset + c);
+    });
+    vertices.forEach((point, index) => {
+      const next = vertices[(index + 1) % vertices.length];
+      const sideOffset = positions.length / 3;
+      positions.push(
+        point.x, centerY + halfHeight, point.z,
+        next.x, centerY + halfHeight, next.z,
+        next.x, centerY - halfHeight, next.z,
+        point.x, centerY - halfHeight, point.z
+      );
+      uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
+      indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
+    });
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    const vertexData = new BABYLON.VertexData();
+    vertexData.positions = positions;
+    vertexData.indices = indices;
+    vertexData.normals = normals;
+    vertexData.uvs = uvs;
+    vertexData.applyToMesh(mesh);
+  }
+
+  _syncRoomPreview(id) {
+    const room = this.document.getRoom(id);
+    const node = this.getEntityNode('room', id);
+    if (!room || !node) return false;
+    const floorY = this.document.getFloorElevation(room.floorId || this.floorplan.currentFloorId);
+    const height = this.document.getFloorHeight(room.floorId);
+    node.position.set(room.x, floorY - height / 2, room.z);
+    const children = node.getChildren ? node.getChildren() : [];
+    this._applyRoomPolygonGeometry(children.find((child) => child.name?.endsWith('_shape')), room, height, room.elevation || 0);
+    this._applyRoomPolygonGeometry(children.find((child) => child.name?.endsWith('_ceiling')), room, 0.002, -height / 2 - 0.001);
+    node.scaling.set(1, 1, 1);
+
+    new Set(Object.values(room.wallIds || {})).forEach((wallId) => this._syncWallPreview(wallId));
+    this.floorplan.items.forEach((item) => {
+      if (item.roomId === id) this._syncItemPreview(item.id);
+    });
+    return true;
+  }
+
+  _syncWallPreview(id) {
+    const wall = this.document.getWall(id);
+    const node = this.getEntityNode('wall', id);
+    if (!wall || !node) return false;
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    node.position.set(x1, 0, z1);
+    const length = Math.hypot(x2 - x1, z2 - z1);
+    node.scaling.x = length / (node.metadata?.originalLength || length || 1);
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+    this.floorplan.openings.forEach((opening) => {
+      if (opening.wallId === id) this._syncOpeningPreview(opening.id);
+    });
+    return true;
+  }
+
+  _syncOpeningPreview(id) {
+    const opening = this.document.getOpening(id);
+    const node = this.getEntityNode('opening', id);
+    const wall = opening ? this.document.getWall(opening.wallId) : null;
+    if (!opening || !node || !wall) return false;
+    const [x1, z1] = wall.from;
+    const [x2, z2] = wall.to;
+    const t = opening.t ?? 0.5;
+    const height = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
+    const sillHeight = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const floorY = this.document.getFloorElevation(opening.floorId || wall.floorId);
+    node.position.set(
+      x1 + (x2 - x1) * t,
+      floorY + sillHeight + height / 2 + this.document.getOpeningElevationOffset(opening),
+      z1 + (z2 - z1) * t
+    );
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+    return true;
+  }
+
+  _syncFencePreview(id) {
+    const fence = this.document.getFence(id);
+    const node = this.getEntityNode('fence', id);
+    if (!fence || !node) return false;
+    const [x1, z1] = fence.from;
+    const [x2, z2] = fence.to;
+    const floorY = this.document.getFloorElevation(fence.floorId || this.floorplan.currentFloorId);
+    node.position.set((x1 + x2) / 2, floorY + this.document.getFenceElevationOffset(fence) + (fence.yOffset || 0), (z1 + z2) / 2);
+    const length = Math.hypot(x2 - x1, z2 - z1);
+    node.scaling.x = length / (node.metadata?.originalLength || length || 1);
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+    node.rotation.z = fence.tilt || 0;
+    return true;
+  }
+
+  _syncFenceGatePreview(id) {
+    const gate = this.document.getFenceGate(id);
+    const node = this.getEntityNode('fenceGate', id);
+    if (!gate || !node) return false;
+    let [x1, z1] = gate.from || [0, 0];
+    let [x2, z2] = gate.to || [1, 0];
+    const fence = gate.fenceId ? this.document.getFence(gate.fenceId) : null;
+    if (fence) {
+      const [fx1, fz1] = fence.from;
+      const [fx2, fz2] = fence.to;
+      const dx = fx2 - fx1;
+      const dz = fz2 - fz1;
+      const halfT = gate.width / (Math.hypot(dx, dz) || 1) / 2;
+      const t1 = Math.max(0, gate.t - halfT);
+      const t2 = Math.min(1, gate.t + halfT);
+      x1 = fx1 + dx * t1;
+      z1 = fz1 + dz * t1;
+      x2 = fx1 + dx * t2;
+      z2 = fz1 + dz * t2;
+    }
+    const floorY = this.document.getFloorElevation(gate.floorId);
+    node.position.set((x1 + x2) / 2, floorY + (fence ? this.document.getFenceElevationOffset(fence) : 0) + (gate.yOffset || 0), (z1 + z2) / 2);
+    node.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+    node.rotation.z = gate.tilt || fence?.tilt || 0;
+    this.syncFenceGateDragPreview(id);
+    return true;
+  }
+
+  syncFenceGateDragPreview(gateId) {
+    const preview = this.fenceGateDragPreviews.get(gateId);
+    const gate = this.document.getFenceGate(gateId);
+    if (!preview || !gate || !gate.fenceId || preview.affectedFenceIds.has(gate.fenceId)) return false;
+    const fenceNode = this.fenceNodes.get(gate.fenceId);
+    if (!fenceNode) return false;
+
+    preview.affectedFenceIds.add(gate.fenceId);
+    preview.fenceNodes.set(gate.fenceId, fenceNode);
+    const materials = [
+      ...fenceNode.getChildMeshes().map((mesh) => mesh.material),
+      ...(gate.fenceId === preview.sourceFenceId ? preview.root.getChildMeshes().map((mesh) => mesh.material) : [])
+    ].filter(Boolean);
+    [...new Set(materials)].forEach((material) => {
+      if (preview.pluginMaterials.has(material)) return;
+      preview.pluginMaterials.add(material);
+      preview.plugins.push(new FenceGateGapPreviewPlugin(material, this, gateId, gate.fenceId));
+    });
+    return true;
+  }
+
+  _syncRoofPreview(id) {
+    const roof = this.document.getRoof(id);
+    const node = this.getEntityNode('roof', id);
+    if (!roof || !node) return false;
+    node.position.x = roof.x || 0;
+    node.position.z = roof.z || 0;
+    if (roof.rotation !== undefined) node.rotation.y = roof.rotation;
+    return true;
+  }
+
+  _syncStairsPreview(id) {
+    const stairs = this.document.getStairs(id);
+    const node = this.getEntityNode('stairs', id);
+    if (!stairs || !node) return false;
+    const floorY = this.document.getFloorElevation(stairs.floorId || this.floorplan.currentFloorId);
+    node.position.set(stairs.x || 0, floorY + this.document.getStairsElevationOffset(stairs), stairs.z || 0);
+    if (stairs.rotation !== undefined) node.rotation.y = stairs.rotation;
+    return true;
   }
 
   get floorplan() {
@@ -401,6 +709,9 @@ export class BabylonSceneRenderer {
   }
 
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    this.cancelReadyWork();
     this.clearBuiltMeshes();
     if (this.root) {
       this.root.dispose(false, true);
@@ -415,7 +726,7 @@ export class BabylonSceneRenderer {
   }
 
   build() {
-    if (!this.renderingEnabled) {
+    if (!this.renderingEnabled || this._disposed) {
       return;
     }
     this.clearBuiltMeshes();
@@ -428,7 +739,7 @@ export class BabylonSceneRenderer {
     this.buildFenceGates();
     this.floorplan.items.filter((item) => this.document.isFloorVisible(item.floorId)).forEach((item) => this.buildItem(item));
 
-    this.scene.executeWhenReady(() => {
+    void this.executeWhenReady(() => {
       this.scene.meshes.forEach((mesh) => {
         const mat = mesh.material;
         if (mat) {
@@ -1525,7 +1836,7 @@ export class BabylonSceneRenderer {
       });
     }
 
-    this.scene.executeWhenReady(() => {
+    void this.executeWhenReady(() => {
       node.getChildMeshes().forEach((mirrorMesh) => {
         const mat = mirrorMesh.material;
         const bpMaterial = mat?.metadata?.blueprintMaterial;

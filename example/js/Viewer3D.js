@@ -71,7 +71,7 @@ export class Viewer3D {
     /** @type {boolean} 是否显示 3D 辅助网格 */
     this.show3DGrid = true;
     /** @type {BABYLON.Node[]} 3D 辅助网格节点列表 */
-    this.grid3DNodes = [];
+    this.grid3DHelpers = [];
 
     // 保存 canvas 引用以便后续 resize 事件绑定
     this._canvas = canvas;
@@ -199,7 +199,7 @@ export class Viewer3D {
    * 清除所有 3D 辅助网格节点
    */
   clear3DGrid() {
-    this.grid3DNodes.splice(0).forEach((node) => node.dispose(false, true));
+    this.grid3DHelpers.splice(0).forEach((node) => node.dispose(false, true));
   }
 
   /**
@@ -393,7 +393,7 @@ export class Viewer3D {
       grid.alpha = isDeleteWall ? 0.12 : 0.08;
       grid.isPickable = false;
       grid.renderingGroupId = 0;
-      this.grid3DNodes.push(grid);
+      this.grid3DHelpers.push(grid);
     }
     if (axisLines.length) {
       const axes = BABYLON.MeshBuilder.CreateLineSystem('floor_grid_3d_axes', { lines: axisLines }, this.scene);
@@ -401,7 +401,7 @@ export class Viewer3D {
       axes.alpha = isDeleteWall ? 0.38 : 0.28;
       axes.isPickable = false;
       axes.renderingGroupId = 0;
-      this.grid3DNodes.push(axes);
+      this.grid3DHelpers.push(axes);
     }
   }
 

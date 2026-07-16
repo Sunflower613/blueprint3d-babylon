@@ -229,6 +229,9 @@ export function renderSelectedRoomHandles(room) {
   if (room.shape === 'l-shape') {
     const edgeWidth = room.edgeWidth !== undefined && room.edgeWidth !== null ? room.edgeWidth : width / 2;
     const edgeDepth = room.edgeDepth !== undefined && room.edgeDepth !== null ? room.edgeDepth : depth / 2;
+    localOffsets.north = { lx: -edgeWidth / 2, lz: -depth / 2 };
+    localOffsets.east = { lx: width / 2, lz: -edgeDepth / 2 };
+    localOffsets.south = { lx: -edgeWidth / 2, lz: depth / 2 };
     localOffsets.edgeWidth = { lx: width / 2 - edgeWidth, lz: depth / 2 - edgeDepth / 2 };
     localOffsets.edgeDepth = { lx: width / 2 - edgeWidth / 2, lz: depth / 2 - edgeDepth };
   }

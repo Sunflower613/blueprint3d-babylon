@@ -44,7 +44,14 @@ export function getRoomLocalVertices(shape) {
         { x: 0, z: 0.5 }, { x: -0.5, z: 0 }
       ];
     case 'sector': {
-      const arc = ellipseArc(-Math.PI / 2, 0, 10);
+      const segments = 10;
+      const arc = Array.from({ length: segments + 1 }, (_, index) => {
+        const angle = -Math.PI / 2 + (Math.PI / 2) * index / segments;
+        return {
+          x: -0.5 + Math.cos(angle),
+          z: 0.5 + Math.sin(angle)
+        };
+      });
       return [{ x: -0.5, z: 0.5 }, ...arc];
     }
     case 'semicircle':

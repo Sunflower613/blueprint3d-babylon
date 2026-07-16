@@ -1,5 +1,5 @@
-import { pointInRoom } from '../../src/index.js';
-import { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition } from './Topology.js';
+import { pointInRoom, Topology } from '../../src/index.js';
+const { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition } = Topology;
 
 const INCHES_PER_UNIT = 39.37;
 

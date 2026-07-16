@@ -287,7 +287,7 @@ export class SelectionController {
     const oldOpeningMaterials = [...new Set(oldOpeningNode.getChildMeshes().map((mesh) => mesh.material).filter(Boolean))]
       .filter((material) => !sharedMaterials.has(material) && !preview.wallMaterials.includes(material));
 
-    this.renderer.buildWalls(new Set([preview.wallId]));
+    this.renderer.buildWalls(new Set([preview.wallId, opening.wallId]));
     this.renderer.buildOpenings(new Set([openingId]));
 
     return new Promise((resolve) => {

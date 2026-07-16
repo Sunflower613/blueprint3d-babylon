@@ -114,3 +114,35 @@ test('MaterialResolver 边界测试：墙面装饰与材质规范化行为', () 
   assert.strictEqual(resolved.descriptor, '#0000ff');
   assert.strictEqual(resolved.color, '#ff00ff');
 });
+
+test('架构防腐守卫：限制 example 直接访问 .document / .renderer / .selectionController', () => {
+  const exampleDir = path.resolve('example');
+  const checkDir = (dir) => {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      if (file === 'dist' || file === 'dist-temp' || file === 'node_modules') continue;
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        checkDir(fullPath);
+      } else if (file.endsWith('.js') || file.endsWith('.html')) {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const forbiddenPatterns = [
+          /\.document\b/g,
+          /\.renderer\b/g,
+          /\.selectionController\b/g,
+          /\._document\b/g,
+          /\._renderer\b/g,
+          /\._selectionController\b/g
+        ];
+        for (const pattern of forbiddenPatterns) {
+          if (pattern.test(content)) {
+            assert.fail(`架构越权越界访问：在文件 ${path.relative('.', fullPath)} 中发现了非法的私有字段访问 "${pattern.source}"！所有核心层访问必须通过 Facade 接口进行。`);
+          }
+        }
+      }
+    }
+  };
+  checkDir(exampleDir);
+});
+

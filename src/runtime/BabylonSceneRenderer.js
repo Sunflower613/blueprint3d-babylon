@@ -375,6 +375,20 @@ export class BabylonSceneRenderer {
     this.root.getChildren().forEach((child) => child.dispose(false, true));
   }
 
+  dispose() {
+    this.clearBuiltMeshes();
+    if (this.root) {
+      this.root.dispose(false, true);
+    }
+    if (this.materials) {
+      Object.values(this.materials).forEach((mat) => {
+        if (mat && !mat.isDisposed) {
+          mat.dispose(true, true);
+        }
+      });
+    }
+  }
+
   build() {
     if (!this.renderingEnabled) {
       return;

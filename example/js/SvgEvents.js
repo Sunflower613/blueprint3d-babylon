@@ -1,4 +1,4 @@
-import * as Topology from './Topology.js';
+import { Topology } from '../../src/index.js';
 import * as DragHandler from './DragHandler.js';
 import { createStoreProxy } from '../store/proxyHelper.js';
 

@@ -246,3 +246,11 @@ export {
   buildBlueprint3DTestMap,
   FENCE_SUBTYPE_DEFAULTS
 } from '../presets/blueprintTestMap.js';
+
+// ==========================================
+// 9. 编辑器交互与拓扑计算导出
+// ==========================================
+export * as Topology from '../editor/Topology.js';
+export { DragHandler } from '../editor/DragHandler.js';
+export { Viewer3DHandles } from '../editor/Viewer3DHandles.js';
+

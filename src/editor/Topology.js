@@ -1,4 +1,4 @@
-import { getRoomVertices } from '../../src/index.js';
+import { getRoomVertices } from '../rooms/index.js';
 
 /**
  * 空间拓扑与网格对齐相关算法
@@ -870,7 +870,7 @@ export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
   const sin = Math.sin(-angle);
   const localX = dx * cos - dz * sin;
   
-  // 根据不同类型限制宽度和深度
+  // 根据不同类型限制宽度 and 深度
   let clampedLocalX = localX;
   let clampedLocalZ = 0.0; // 默认锁定在搁板深度正中线（局部Z = 0）
   

@@ -601,7 +601,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @returns {BABYLON.Mesh|null} 预览辅助网格
    */
   beginOpeningDragPreview(openingId) {
-    return this.selectionController.beginOpeningDragPreview(openingId);
+    return this.editorFacade.beginEntityPreview('opening', openingId);
   }
 
   /**
@@ -610,7 +610,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @returns {boolean} 是否销毁成功
    */
   finishOpeningDragPreview(openingId) {
-    return this.selectionController.finishOpeningDragPreview(openingId);
+    return this.editorFacade.commitEntityPreview('opening', openingId);
   }
 
   /**
@@ -627,7 +627,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @returns {BABYLON.Mesh|null} 大门预览网格
    */
   beginFenceGateDragPreview(gateId) {
-    return this.selectionController.beginFenceGateDragPreview(gateId);
+    return this.editorFacade.beginEntityPreview('fenceGate', gateId);
   }
 
   /**
@@ -644,7 +644,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @returns {boolean} 是否销毁成功
    */
   finishFenceGateDragPreview(gateId) {
-    return this.selectionController.finishFenceGateDragPreview(gateId);
+    return this.editorFacade.commitEntityPreview('fenceGate', gateId);
   }
 
   /**
@@ -1441,6 +1441,16 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   getFloorElevation(id) { return this.editorFacade.getFloorElevation(id); }
   getFloorLevel(floorId) { return this.editorFacade.getFloorLevel(floorId); }
   getStairsAutoHeight(stairs) { return this.editorFacade.getStairsAutoHeight(stairs); }
+
+  // ----------------------------------------------------
+  // 8. 拖拽预览 API 与资源释放代理（转发给 editorFacade）
+  // ----------------------------------------------------
+  getEntityRenderNode(type, id) { return this.editorFacade.getEntityRenderNode(type, id); }
+  beginEntityPreview(type, id) { return this.editorFacade.beginEntityPreview(type, id); }
+  updateEntityPreview(type, id, transform) { return this.editorFacade.updateEntityPreview(type, id, transform); }
+  commitEntityPreview(type, id) { return this.editorFacade.commitEntityPreview(type, id); }
+  cancelEntityPreview(type, id) { return this.editorFacade.cancelEntityPreview(type, id); }
+  dispose() { this.editorFacade.dispose(); }
 }
 
 export { FURNITURE_DEFINITIONS, FURNITURE_LIST, FENCE_SUBTYPE_DEFAULTS };

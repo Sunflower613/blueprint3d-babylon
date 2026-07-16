@@ -85,6 +85,12 @@ example/app.js 只编排 UI，不再直接操作底层 geometry/material/room sh
 example/js/* 全部通过 facade 调库
 这样 demo 才能反过来验证“库 API 是否够用”
 
+第一批：建立 Consumer API，迁移文件管理
+第二批：迁移只读查询和 UI 渲染
+第三批：迁移写操作和材质命令
+第四批：迁移 Runtime 预览
+第五批：收缩 app.js
+
 第四阶段：再决定是否拆包
 
 如果后面真要做 npm 库，建议再拆成：@blueprint3d/core

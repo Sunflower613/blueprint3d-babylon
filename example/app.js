@@ -7,7 +7,6 @@ import { handleHotkeys } from './js/Hotkeys.js';
 import { Store, showToast, formatTimestamp, readLocalSave } from './js/Store.js';
 import { EntityManager } from './js/EntityManager.js';
 import { Viewer3D } from './js/Viewer3D.js';
-import * as Topology from './js/Topology.js';
 import * as DragHandler from './js/DragHandler.js';
 import * as SvgEvents from './js/SvgEvents.js';
 import * as FileManager from './js/FileManager.js';
@@ -72,9 +71,6 @@ import {
   create3DEditHandle,
   set3DEditTarget,
   same3DEditTarget,
-  syncRoomMovePreview,
-  syncWallMovePreview,
-  syncFenceMovePreview,
   updateHandleHoverState
 } from './js/Viewer3DHandles.js';
 import {
@@ -92,6 +88,10 @@ import {
   Tools,
   Blueprint3DTestMap,
   BLUEPRINT3D_TEST_FLOORPLAN,
+  DragHandler as LibDragHandler,
+  Viewer3DHandles as LibViewer3DHandles,
+  Topology,
+  sampleData,
   FENCE_SUBTYPE_DEFAULTS,
   FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
@@ -510,6 +510,14 @@ const appState = {
 
   get testMap() { return testMap; },
   get entityManager() { return entityManager; },
+  get dragHandler() { return dragHandler; },
+  get viewer3DHandles() { return viewer3DHandles; },
+
+  get mode() { return ui.mode; },
+  get currentView() { return ui.currentView; },
+  get designMode() { return ui.designMode; },
+  get snapEnabled() { return editor.snapEnabled; },
+  get snapSize() { return editor.snapSize; },
 
   executeDesignTool: (target) => executeDesignTool(target),
   setDesignMode: (newMode, fromDblClick = false) => setDesignMode(newMode, fromDblClick),
@@ -521,7 +529,13 @@ const appState = {
   get engine() { return engine; },
   get refresh3DGrid() { return refresh3DGrid; },
   showToast: (msg) => showToast(msg),
-  takePhoto: () => takePhoto()
+  takePhoto: () => takePhoto(),
+  dispose: () => {
+    dragHandler?.dispose?.();
+    viewer3DHandles?.dispose?.();
+    testMap?.dispose?.();
+    viewer3d?.dispose?.();
+  }
 };
 
 const stage = document.getElementById('stage');
@@ -554,12 +568,18 @@ scene.onBeforeRenderObservable.add(() => {
   });
 });
 
+let dragHandler = null;
+let viewer3DHandles = null;
+
 const initialLocalSave = readLocalSave();
 if (initialLocalSave.buildingData) restoreFloorplanMaterials(initialLocalSave.buildingData);
 let testMap = new Blueprint3DTestMap(scene, {
   floorplan: initialLocalSave.buildingData || BLUEPRINT3D_TEST_FLOORPLAN,
   renderingEnabled: false
 });
+dragHandler = new LibDragHandler(appState);
+viewer3DHandles = new LibViewer3DHandles(appState);
+
 const recoveredInitialFloor = ensureVisibleCurrentFloor({ reason: 'startup', silent: !initialLocalSave.buildingData });
 
 // 鍒濆鍖栫墿浣撶鐞嗗櫒 EntityManager
@@ -620,7 +640,6 @@ Object.assign(appState, {
   snapNumber,
   updateViewBounds,
   pushHistory,
-  syncRoomMovePreview,
   refreshShadows,
   updateEditor,
   renderPlan,
@@ -636,8 +655,6 @@ Object.assign(appState, {
   updateStructure,
   moveStructureTo,
   rememberPointer,
-  syncWallMovePreview,
-  syncFenceMovePreview,
   snapToGridSegmentCenter,
   getWallProjectionT,
   forgetPointer,
@@ -2398,25 +2415,27 @@ function end3DDrag(event) {
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
   if (openingId) {
-    testMap.finishOpeningDragPreview(openingId).then(() => {
+    testMap.commitEntityPreview('opening', openingId).then(() => {
       refreshShadows();
       selectOpening(openingId);
     });
   }
   if (fenceGateId) {
-    testMap.finishFenceGateDragPreview(fenceGateId).then(() => {
+    testMap.commitEntityPreview('fencegate', fenceGateId).then(() => {
       refreshShadows();
       selectFenceGate(fenceGateId);
     });
   }
   if (roofId) selectRoof(roofId);
   if (stairsId) selectStairs(stairsId);
-  if (completedEditHandle?.type === 'room' || completedEditHandle?.type === 'wall' ||
-      completedEditHandle?.type === 'fence' ||
-      completedEditHandle?.type === 'roof' || completedEditHandle?.type === 'stairs' ||
-      roofId || stairsId) {
-    testMap.build();
-    refreshShadows();
+  if (completedEditHandle) {
+    testMap.commitEntityPreview(completedEditHandle.type, completedEditHandle.id).then(() => {
+      refreshShadows();
+    });
+  } else if (roofId || stairsId) {
+    testMap.commitEntityPreview(roofId ? 'roof' : 'stairs', roofId || stairsId).then(() => {
+      refreshShadows();
+    });
   }
   if (editTarget) {
     active3DEditTarget = editTarget;

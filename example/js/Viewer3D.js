@@ -94,6 +94,12 @@ export class Viewer3D {
     window.addEventListener('resize', this._resizeHandler);
   }
 
+  stopRenderLoop() {
+    this._renderLoopStarted = false;
+    this.engine.stopRenderLoop();
+    window.removeEventListener('resize', this._resizeHandler);
+  }
+
   prepareFor3D() {
     if (!this._environmentInitialized) {
       this._environmentInitialized = true;
@@ -401,6 +407,19 @@ export class Viewer3D {
 
   /**
    * 开启或关闭天空盒及 1 楼草地
+  /**
+   * 更新天空盒滤镜/背景颜色
+   * @param {string} colorHex - 颜色十六进制值
+   */
+  updateSkyboxColor(colorHex) {
+    this._skyboxColor = colorHex;
+    if (this.skybox && this.skybox.material) {
+      this.skybox.material.emissiveColor = BABYLON.Color3.FromHexString(colorHex);
+    }
+  }
+
+  /**
+   * 开启或关闭天空球与地面草地层
    * @param {boolean} enabled - 是否开启
    */
   setSkyboxEnabled(enabled) {
@@ -416,6 +435,10 @@ export class Viewer3D {
         const skyTextureUrl = new URL('../../src/textures/sky.png', import.meta.url).href;
         skyboxMaterial.emissiveTexture = new BABYLON.Texture(skyTextureUrl, this.scene);
         
+        if (this._skyboxColor) {
+          skyboxMaterial.emissiveColor = BABYLON.Color3.FromHexString(this._skyboxColor);
+        }
+
         this.skybox.material = skyboxMaterial;
         this.skybox.infiniteDistance = true; // 随相机移动，保持无限远
         this.skybox.isPickable = false; // 排除拾取，避免干扰物体交互

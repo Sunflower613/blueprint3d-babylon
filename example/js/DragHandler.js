@@ -338,33 +338,71 @@ export function moveOpeningDrag(event) {
 
 export function moveOpeningToWorld(openingId, world, dragMeta) {
   const opening = ctx.testMap.getOpening(openingId);
-  const wall = opening ? ctx.testMap.getWall(opening.wallId) : null;
-  if (!opening || opening.locked || !wall) return;
+  if (!opening || opening.locked) return;
   
-  let nextT = ctx.getWallProjectionT(wall, world);
-  
+  const walls = ctx.currentWalls();
+  let closestWall = null;
+  let closestT = 0.5;
+  let minDistance = Infinity;
+
+  for (const w of walls) {
+    const ax = w.from[0];
+    const az = w.from[1];
+    const bx = w.to[0];
+    const bz = w.to[1];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const lengthSq = dx * dx + dz * dz;
+    if (lengthSq < 0.001) continue;
+
+    // 计算世界点在墙体线段上的投影参数（限制在 0.08 到 0.92 之间）
+    let t = ((world.x - ax) * dx + (world.z - az) * dz) / lengthSq;
+    t = Math.max(0.08, Math.min(0.92, t));
+
+    // 计算投影点坐标
+    const projX = ax + dx * t;
+    const projZ = az + dz * t;
+
+    // 计算世界拖拽点到投影点的距离
+    const dist = Math.hypot(world.x - projX, world.z - projZ);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestWall = w;
+      closestT = t;
+    }
+  }
+
+  if (!closestWall) return;
+
   if (ctx.snapEnabled && ctx.snapSize) {
-    const ax = wall.from[0];
-    const az = wall.from[1];
-    const bx = wall.to[0];
-    const bz = wall.to[1];
+    const ax = closestWall.from[0];
+    const az = closestWall.from[1];
+    const bx = closestWall.to[0];
+    const bz = closestWall.to[1];
     const dx = bx - ax;
     const dz = bz - az;
     const lengthSq = dx * dx + dz * dz;
     if (lengthSq > 0.001) {
-      const rawCenterX = ax + dx * nextT;
-      const rawCenterZ = az + dz * nextT;
-      const snapped = ctx.snapToGridSegmentCenter({ x: rawCenterX, z: rawCenterZ });
-      nextT = Math.max(0.08, Math.min(0.92, ((snapped.x - ax) * dx + (snapped.z - az) * dz) / lengthSq));
+      const rawCenterX = ax + dx * closestT;
+      const rawCenterZ = az + dz * closestT;
+      // 半格吸附，传入 snapSize / 2
+      const snapped = Topology.snapToGridSegmentCenter(
+        { x: rawCenterX, z: rawCenterZ },
+        ctx.snapEnabled,
+        ctx.snapSize / 2
+      );
+      closestT = Math.max(0.08, Math.min(0.92, ((snapped.x - ax) * dx + (snapped.z - az) * dz) / lengthSq));
     }
   }
-  
-  if (dragMeta && !dragMeta.historyPushed && Math.abs(nextT - dragMeta.originalT) > 0.01) {
+
+  const wallChanged = closestWall.id !== opening.wallId;
+  const tChanged = Math.abs(closestT - (dragMeta ? dragMeta.originalT : opening.t)) > 0.01;
+  if (dragMeta && !dragMeta.historyPushed && (wallChanged || tChanged)) {
     ctx.pushHistory();
     dragMeta.historyPushed = true;
   }
-  
-  ctx.testMap.updateOpening(openingId, { t: nextT }, false);
+
+  ctx.testMap.updateOpening(openingId, { t: closestT, wallId: closestWall.id }, false);
   ctx.updateEditor();
   ctx.renderPlan();
 }

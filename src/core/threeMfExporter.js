@@ -222,12 +222,27 @@ function appendWallWithOpenings(mesh, floorplan, wall, extraSpans = []) {
     if (span.start > cursor) addSegment(cursor, span.start, 0, wallHeight);
     const opening = span.opening;
     const openingOffset = getOpeningElevationOffset(floorplan, opening);
-    const sillHeight = Number(opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05));
+    
+    // 对没有 sillHeight 属性的落地大窗默认使用 0 高程
+    let sillHeight = opening.sillHeight;
+    if (opening.type === 'window' && Number(opening.height) === wallHeight) {
+      sillHeight = 0;
+    } else if (sillHeight === undefined || sillHeight === null) {
+      sillHeight = opening.type === 'door' ? 0 : 1.05;
+    }
+    sillHeight = Number(sillHeight);
+
     const openingHeight = Math.max(0.1, Number(opening.height ?? (opening.type === 'door' ? 2.05 : 0.85)));
     const openingBottom = Math.max(0, sillHeight + openingOffset);
     const openingTop = Math.min(wallHeight, openingBottom + openingHeight);
-    if (openingBottom > 0) addSegment(span.start, span.end, 0, openingBottom);
-    if (openingTop < wallHeight) addSegment(span.start, span.end, openingTop, wallHeight);
+    
+    // 检查在落地大窗 sillHeight === 0 且 height === wallHeight 时的墙面片段生成，防止在此区间内输出多余的墙体
+    const isFloorToCeiling = (sillHeight === 0 && openingHeight === wallHeight);
+    if (!isFloorToCeiling) {
+      if (openingBottom > 0.0001) addSegment(span.start, span.end, 0, openingBottom);
+      if (openingTop < wallHeight - 0.0001) addSegment(span.start, span.end, openingTop, wallHeight);
+    }
+    
     cursor = Math.max(cursor, span.end);
   }
   if (cursor < basis.length) addSegment(cursor, basis.length, 0, wallHeight);
@@ -584,6 +599,24 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
 
 function getColorHex(material) {
   if (!material) return '#E0E0E0FF';
+
+  // 兼容多重材质 MultiMaterial，对其进行迭代解包读取其子材质的真实颜色
+  if (material.subMaterials || material.constructor?.name === 'MultiMaterial') {
+    const subMats = material.subMaterials || [];
+    for (const subMat of subMats) {
+      if (subMat) {
+        const hex = getColorHex(subMat);
+        if (hex && hex !== '#E0E0E0FF') {
+          return hex;
+        }
+      }
+    }
+    for (const subMat of subMats) {
+      if (subMat) {
+        return getColorHex(subMat);
+      }
+    }
+  }
 
   // 优先获取真实的原始材质颜色，避免物理渲染通道的漫反射或高光缩放导致颜色丢失/变暗
   const bpMat = material.metadata?.blueprintMaterial;

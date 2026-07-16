@@ -942,7 +942,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
       bHeight
     ];
   } else if (bookshelfDef.type === 'grid_cabinet') {
-    // 九宫格收纳柜：比例 0.33, 0.66，隔板厚度0.02m，顶面1.0
+    // 九宫格柜：比例 0.33, 0.66，隔板厚度0.02m，顶面1.0
     localShelvesY = [
       0.03 * scale, // 底部外框厚度约 0.03m
       bHeight * 0.33 + 0.01 * scale,

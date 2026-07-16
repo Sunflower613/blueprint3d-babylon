@@ -352,7 +352,7 @@ export const romanShadeFurniture = {
 
 export const verticalBlindFurniture = {
   type: 'vertical_blind',
-  name: '垂直百叶帘',
+  name: '竖百叶帘',
   defaultSize: { width: 48, depth: 2, height: 60 },
   placeType: 'wall',
   isSwitchable: true,

@@ -1214,7 +1214,7 @@ export const traditionalChineseScreenFurniture = {
 
 export const modernSlatScreenFurniture = {
   type: 'modern_slat_screen',
-  name: '北欧木格栅屏风',
+  name: '格栅屏风',
   defaultSize: { width: 48, depth: 6, height: 72 },
   components: [
     { id: 'base', label: '水磨石底座', defaultColor: '#37474f' },
@@ -1248,7 +1248,7 @@ export const modernSlatScreenFurniture = {
 
 export const rattanWaveScreenFurniture = {
   type: 'rattan_wave_screen',
-  name: '日式藤编波浪屏风',
+  name: '藤编屏风',
   defaultSize: { width: 54, depth: 10, height: 60 },
   components: [
     { id: 'frame', label: '白蜡木框', defaultColor: '#d7ccc8' },
@@ -1328,7 +1328,7 @@ export const rattanWaveScreenFurniture = {
 
 export const luxuryMetalGlassScreenFurniture = {
   type: 'luxury_metal_glass_screen',
-  name: '轻奢金属长虹玻璃屏风',
+  name: '玻璃屏风',
   defaultSize: { width: 44, depth: 8, height: 70 },
   components: [
     { id: 'frame', label: '拉丝黄铜框', defaultColor: '#cfb53b' },
@@ -1385,7 +1385,7 @@ export const luxuryMetalGlassScreenFurniture = {
 
 export const japaneseShojiScreenFurniture = {
   type: 'japanese_shoji_screen',
-  name: '日式障子木格屏风',
+  name: '障子屏风',
   defaultSize: { width: 64, depth: 6, height: 64 },
   components: [
     { id: 'frame', label: '黑胡桃木框', defaultColor: '#2b221a' },

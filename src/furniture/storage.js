@@ -176,7 +176,7 @@ export const nightstandFurniture = {
 // 5. 厨房地柜 (Cabinet Kitchen)
 export const cabinetKitchenFurniture = {
   type: 'cabinet_kitchen',
-  name: '厨房橱柜',
+  name: '橱柜',
   defaultSize: { width: 36, depth: 24, height: 36 },
   components: [
     { id: 'counter', label: '石英台面', defaultColor: '#fcfcfa' },
@@ -371,10 +371,10 @@ export const wallShelfFurniture = {
   }
 };
 
-// 11. 九宫格收纳柜 (Grid Cabinet)
+// 11. 九宫格柜 (Grid Cabinet)
 export const gridCabinetFurniture = {
   type: 'grid_cabinet',
-  name: '九宫格收纳柜',
+  name: '九宫格柜',
   defaultSize: { width: 39.37, depth: 12, height: 39.37 },
   components: [
     { id: 'frame', label: '外框', defaultColor: '#f5f5f5' },

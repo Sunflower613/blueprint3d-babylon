@@ -1,63 +1,9 @@
 import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
 import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
-
-const TEXTURE_MAP = {
-  // 木纹
-  'light_fine_wood.jpg': new URL('../textures/light_fine_wood.jpg', import.meta.url).href,
-
-  // 砖块 & 大理石
-  'brick_marble_tiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href,
-  'marbletiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href, // 兼容老版本
-  'brick_light.jpg': new URL('../textures/brick_light.jpg', import.meta.url).href,
-  'brick_marble_warm.jpg': new URL('../textures/brick_marble_warm.jpg', import.meta.url).href,
-  'stone_marble_warm.jpg': new URL('../textures/brick_marble_warm.jpg', import.meta.url).href, // 兼容老版本
-  'brick_marble_grey_gloss.jpg': new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href,
-  'stone_marble_grey_gloss.jpg': new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href, // 兼容老版本
-  'brick_black_white.jpg': new URL('../textures/brick_black_white.jpg', import.meta.url).href,
-  'brick_small_black.png': new URL('../textures/brick_small_black.png', import.meta.url).href,
-  'brick_mosaic.jpg': new URL('../textures/brick_mosaic.jpg', import.meta.url).href,
-  'brick_red.jpg': new URL('../textures/brick_red.jpg', import.meta.url).href,
-  'light_brick.jpg': new URL('../textures/brick_red.jpg', import.meta.url).href, // 兼容老版本
-  'brick_cube.jpg': new URL('../textures/brick_cube.jpg', import.meta.url).href,
-  'brick_diamond.jpg': new URL('../textures/brick_diamond.jpg', import.meta.url).href,
-  'brick_square.jpg': new URL('../textures/brick_square.jpg', import.meta.url).href,
-  'brick_stone.jpg': new URL('../textures/brick_stone.jpg', import.meta.url).href,
-
-  // 沙石
-  'stone_earth.jpg': new URL('../textures/stone_earth.jpg', import.meta.url).href,
-  'stone_sand.jpg': new URL('../textures/stone_sand.jpg', import.meta.url).href,
-  'stone_sand_stone.jpg': new URL('../textures/stone_sand_stone.jpg', import.meta.url).href,
-  'stone_fine_sand.jpg': new URL('../textures/stone_fine_sand.jpg', import.meta.url).href,
-  'stone.jpg': new URL('../textures/stone.jpg', import.meta.url).href,
-  'stone_joint.jpg': new URL('../textures/stone_joint.jpg', import.meta.url).href,
-  'stone_road.jpg': new URL('../textures/stone_road.jpg', import.meta.url).href,
-  'stone_rock.jpg': new URL('../textures/stone_rock.jpg', import.meta.url).href,
-  'stone_terrazzo.jpg': new URL('../textures/stone_terrazzo.jpg', import.meta.url).href,
-  'stone_white_sand.jpg': new URL('../textures/stone_white_sand.jpg', import.meta.url).href,
-
-  // 织物
-  'fabric_rope_cable_beige.jpg': new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href,
-  'fabric_knit_cable_grey.jpg': new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href,
-  'fabric_knit_cable_white.jpg': new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href,
-  'fabric_knit_chevron_cream.jpg': new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href,
-  'fabric_weave_dark.jpg': new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href,
-
-  // 墙纸
-  'wallmap_yellow.png': new URL('../textures/wallmap_yellow.png', import.meta.url).href,
-  'wallpaper_leaf_bluegrey.jpg': new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href,
-  'wallpaper_paisley_orange.jpg': new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href,
-  'wallpaper_fan_gold.jpg': new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href,
-  'wallpaper_stripe_teal_pink.jpg': new URL('../textures/wallpaper_stripe_teal_pink.jpg', import.meta.url).href,
-  'wallpaper_damask_olive.jpg': new URL('../textures/wallpaper_damask_olive.jpg', import.meta.url).href,
-  'wallpaper_ink_bamboo_mist.jpg': new URL('../textures/wallpaper_ink_bamboo_mist.jpg', import.meta.url).href,
-  'wallpaper_cloud_navy_gold.jpg': new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href,
-  'wallpaper_ruyi_swirl_yellow.jpg': new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href,
-  'wallpaper_floral_blue_white.jpg': new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href,
-  'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href
-};
+import { MaterialResolver } from '../domain/MaterialResolver.js';
+import { resolveMaterialAssetDescriptor } from './materialAssets.js';
 
 const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
-const DEFAULT_PATTERN_MAX_ASPECT_RATIO = 1.8;
 
 const STAINED_GLASS_WARM_COLORS = [
   '#f27462', '#e88972', '#ef5b5b', '#f28a48', '#e36f35', '#ef9f58',
@@ -189,53 +135,8 @@ function createStainedGlassTexture(scene, name, patternScale) {
   return texture;
 }
 
-function shouldLimitPatternStretch(normalized, options = {}) {
-  if (options.limitPatternStretch === false) return false;
-  if (options.limitPatternStretch === true) return true;
-  return normalized.kind === 'stained-glass' || normalized.category === 'wallpaper';
-}
-
 export function resolvePatternTextureScale(normalized, options = {}, baseScale = 1) {
-  const scale = Number(baseScale || 1);
-  let uScale = scale;
-  let vScale = scale;
-
-  if (!shouldLimitPatternStretch(normalized, options)) {
-    return { uScale, vScale };
-  }
-
-  const surfaceWidth = Number(options.surfaceWidth || options.width || 0);
-  const surfaceHeight = Number(options.surfaceHeight || options.height || 0);
-  if (!(surfaceWidth > 0) || !(surfaceHeight > 0)) {
-    return { uScale, vScale };
-  }
-
-  const minSide = Math.max(0.001, Math.min(surfaceWidth, surfaceHeight));
-  const maxSide = Math.max(surfaceWidth, surfaceHeight);
-  if (maxSide <= minSide) {
-    return { uScale, vScale };
-  }
-
-  const maxAspectRatio = Number(
-    options.maxPatternStretchRatio || normalized.maxPatternStretchRatio || DEFAULT_PATTERN_MAX_ASPECT_RATIO
-  );
-  if (!Number.isFinite(maxAspectRatio) || maxAspectRatio <= 1) {
-    return { uScale, vScale };
-  }
-
-  const surfaceAspectRatio = maxSide / minSide;
-  if (surfaceAspectRatio <= maxAspectRatio) {
-    return { uScale, vScale };
-  }
-
-  const axisRepeatBoost = surfaceAspectRatio / maxAspectRatio;
-  if (surfaceWidth >= surfaceHeight) {
-    uScale *= axisRepeatBoost;
-  } else {
-    vScale *= axisRepeatBoost;
-  }
-
-  return { uScale, vScale };
+  return MaterialResolver.resolvePatternTextureScale(normalized, options, baseScale);
 }
 
 export function createFlatMaterial(scene, name, colorHex, options = {}) {
@@ -270,117 +171,11 @@ export function createFlatMaterial(scene, name, colorHex, options = {}) {
 }
 
 export function normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
-  if (!value) return { id: undefined, kind: 'color', color: fallbackColor };
-  if (typeof value === 'string') return { id: undefined, kind: 'color', color: value };
-
-  // 镜面材质
-  if (value.kind === 'mirror') {
-    return {
-      id: value.id,
-      kind: 'mirror',
-      category: value.category || 'mirror',
-      name: value.name || '镜面',
-      color: value.color || fallbackColor
-    };
-  }
-
-  // 金属材质
-  if (value.kind === 'metal') {
-    return {
-      id: value.id,
-      kind: 'metal',
-      category: value.category || 'metal',
-      name: value.name || '金属',
-      color: value.color || fallbackColor,
-      roughness: value.roughness !== undefined ? value.roughness : 0
-    };
-  }
-
-  // 玻璃材质
-  if (value.kind === 'glass') {
-    return {
-      id: value.id,
-      kind: 'glass',
-      category: value.category || 'glass',
-      name: value.name || '玻璃',
-      color: value.color || fallbackColor,
-      alpha: value.alpha !== undefined ? value.alpha : 0.3
-    };
-  }
-
-  if (value.kind === 'stained-glass') {
-    return {
-      id: value.id,
-      kind: 'stained-glass',
-      category: value.category || 'glass',
-      name: value.name || '教堂彩色玻璃',
-      color: value.color || '#8e4cc9',
-      alpha: value.alpha !== undefined ? value.alpha : 0.72,
-      patternScale: Number(value.patternScale || 1.1),
-      emissiveStrength: value.emissiveStrength !== undefined ? value.emissiveStrength : 0.18
-    };
-  }
-
-  // 发光材质
-  if (value.kind === 'emissive') {
-    return {
-      id: value.id,
-      kind: 'emissive',
-      category: value.category || 'emissive',
-      name: value.name || '发光',
-      color: value.color || fallbackColor
-    };
-  }
-
-  // 纹理材质
-  if (value.kind === 'texture' || value.src) {
-    let src = value.src;
-    if (src && typeof src === 'string') {
-      // 1. 如果有材质 id，优先从默认内置包中获取已经通过 Vite 打包处理的 src
-      if (value.id) {
-        const defaultPack = DEFAULT_MATERIAL_PACKS.find(p => p.id === value.id);
-        if (defaultPack && defaultPack.src) {
-          src = defaultPack.src;
-        }
-      }
-
-      // 2. 如果没能纠正，或者属于自定义没有 id 只有原始 src 的场景，提取文件名并从资产映射表 TEXTURE_MAP 中纠正
-      if (typeof src === 'string') {
-        const fileName = src.split('/').pop().split('?')[0];
-        if (TEXTURE_MAP[fileName]) {
-          src = TEXTURE_MAP[fileName];
-        }
-      }
-    }
-
-    return {
-      id: value.id,
-      kind: 'texture',
-      category: value.category || 'custom',
-      name: value.name || value.fileName || '自定义材质',
-      fileName: value.fileName,
-      src: src,
-      scale: Number(value.scale || 1),
-      color: value.color || fallbackColor,
-      reflective: !!value.reflective,
-      reflectionLevel: value.reflectionLevel !== undefined ? Number(value.reflectionLevel) : undefined,
-      specularStrength: value.specularStrength !== undefined ? Number(value.specularStrength) : undefined,
-      specularPower: value.specularPower !== undefined ? Number(value.specularPower) : undefined
-    };
-  }
-
-  // 默认：颜色材质
-  return {
-    id: value.id,
-    kind: 'color',
-    category: value.category || 'paint',
-    name: value.name || '颜色',
-    color: value.color || fallbackColor
-  };
+  return MaterialResolver.normalizeMaterialDescriptor(value, fallbackColor);
 }
 
 export function materialPreviewColor(value, fallbackColor = '#ffffff') {
-  return normalizeMaterialDescriptor(value, fallbackColor).color || fallbackColor;
+  return MaterialResolver.materialPreviewColor(value, fallbackColor);
 }
 
 function createEnvironmentReflectionTexture(scene, name, level) {
@@ -397,7 +192,8 @@ function createEnvironmentReflectionTexture(scene, name, level) {
 }
 
 export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
-  const normalized = normalizeMaterialDescriptor(descriptor, options.fallbackColor || '#ffffff');
+  let normalized = normalizeMaterialDescriptor(descriptor, options.fallbackColor || '#ffffff');
+  normalized = resolveMaterialAssetDescriptor(normalized);
   const baseColor = normalized.color || options.fallbackColor || '#ffffff';
   const resolvedColor = BABYLON.Color3.FromHexString(baseColor);
   const resolvedFloorColor = options.isFloor ? resolvedColor.scale(0.85) : resolvedColor;

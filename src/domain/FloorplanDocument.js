@@ -1,9 +1,10 @@
-import { getFurnitureDefinition, FURNITURE_DEFINITIONS, FURNITURE_LIST } from '../furniture/index.js';
+import { getFurnitureDefinition, hasFurnitureDefinition } from './FurnitureCatalog.js';
 
-import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/index.js';
-import { normalizeOpeningShape } from '../openings/index.js';
-import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
-import { materialPreviewColor, normalizeMaterialDescriptor } from '../core/materials.js';
+import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/roomShapes.js';
+import { normalizeOpeningShape } from '../openings/openingShapes.js';
+import { MaterialResolver } from './MaterialResolver.js';
+
+const { materialPreviewColor, normalizeMaterialDescriptor } = MaterialResolver;
 
 const INCHES_PER_UNIT = 39.37;
 const DEFAULT_WALL_COLOR = '#f9fbff';
@@ -12,18 +13,7 @@ const DEFAULT_FLOOR_ID = 'floor_1';
 const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
 const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
 
-const WALL_SURFACE_FIELD_MAP = {
-  front: {
-    main: { materialField: 'materialFront', colorField: 'colorFront' },
-    baseboard: { materialField: 'baseboardMaterialFront', colorField: 'baseboardColorFront' },
-    wainscot: { materialField: 'wainscotMaterialFront', colorField: 'wainscotColorFront' }
-  },
-  back: {
-    main: { materialField: 'materialBack', colorField: 'colorBack' },
-    baseboard: { materialField: 'baseboardMaterialBack', colorField: 'baseboardColorBack' },
-    wainscot: { materialField: 'wainscotMaterialBack', colorField: 'wainscotColorBack' }
-  }
-};
+const WALL_SURFACE_FIELD_MAP = MaterialResolver.WALL_SURFACE_FIELD_MAP;
 
 export const FENCE_SUBTYPE_DEFAULTS = {
   picket_wood: {
@@ -104,26 +94,7 @@ function inchesToUnits(value) {
 }
 
 function normalizeWallDecorSettings(wall) {
-  wall.floorId ||= DEFAULT_FLOOR_ID;
-  wall.color ||= DEFAULT_WALL_COLOR;
-  wall.material ||= wall.color;
-  wall.color = materialPreviewColor(wall.material, wall.color || DEFAULT_WALL_COLOR);
-  wall.baseboardEnabled = !!wall.baseboardEnabled;
-  wall.baseboardHeight = Math.max(0, Number(wall.baseboardHeight ?? DEFAULT_WALL_BASEBOARD_HEIGHT));
-  wall.wainscotEnabled = !!wall.wainscotEnabled;
-  wall.wainscotHeight = Math.max(0, Number(wall.wainscotHeight ?? DEFAULT_WALL_WAINSCOT_HEIGHT));
-
-  Object.values(WALL_SURFACE_FIELD_MAP).forEach((sideMap) => {
-    Object.values(sideMap).forEach(({ materialField, colorField }) => {
-      if (wall[materialField] !== undefined && wall[materialField] !== null) {
-        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
-      } else if (wall[colorField] !== undefined && wall[colorField] !== null) {
-        wall[materialField] = wall[colorField];
-        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
-      }
-    });
-  });
-  return wall;
+  return MaterialResolver.normalizeWallDecorSettings(wall);
 }
 
 function setWallEndpoints(wall, from, to) {
@@ -147,12 +118,11 @@ export class FloorplanDocument {
 
   normalizeFloorplan(floorplan) {
     const normalized = cloneFloorplan(floorplan);
-    const defaultFloorMaterial = DEFAULT_MATERIAL_PACKS.find(p => p.id === 'wood-light-fine') || {
+    const defaultFloorMaterial = {
       id: 'wood-light-fine',
       name: '精细浅木',
       category: 'wood',
       kind: 'texture',
-      src: 'https://furnishup.github.io/blueprint3d/example/rooms/textures/light_fine_wood.jpg',
       scale: 3,
       color: '#e5c4a3'
     };
@@ -351,7 +321,7 @@ export class FloorplanDocument {
       const room = normalized.floor.rooms.find((candidate) => candidate.id === item.roomId);
       item.floorId = normalizeFloorId(item.floorId || room?.floorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
       const definition = getFurnitureDefinition(item.type);
-      if (FURNITURE_DEFINITIONS[item.type]) {
+      if (hasFurnitureDefinition(item.type)) {
         item.name = definition.name;
       } else {
         item.name ||= definition.name;

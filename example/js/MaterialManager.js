@@ -1,4 +1,4 @@
-import { FENCE_SUBTYPE_DEFAULTS } from '../../src/index.js';
+import { FENCE_SUBTYPE_DEFAULTS, MaterialResolver } from '../../src/index.js';
 import { TARGET_TYPES } from './types.js';
 import { isTargetLocked } from './TargetHandler.js';
 import { selection, editor } from '../store/index.js';
@@ -549,37 +549,15 @@ function findWallComponentFromNode(node) {
 }
 
 function getWallSurfaceFields(side, component = 'main') {
-  const fieldMap = {
-    front: {
-      main: { materialField: 'materialFront', colorField: 'colorFront' },
-      baseboard: { materialField: 'baseboardMaterialFront', colorField: 'baseboardColorFront' },
-      wainscot: { materialField: 'wainscotMaterialFront', colorField: 'wainscotColorFront' }
-    },
-    back: {
-      main: { materialField: 'materialBack', colorField: 'colorBack' },
-      baseboard: { materialField: 'baseboardMaterialBack', colorField: 'baseboardColorBack' },
-      wainscot: { materialField: 'wainscotMaterialBack', colorField: 'wainscotColorBack' }
-    }
-  };
-  return fieldMap[side]?.[component] || fieldMap[side]?.main || fieldMap.front.main;
+  return MaterialResolver.getWallSurfaceFields(side, component);
 }
 
 function getWallSurfaceValue(wall, side, component = 'main') {
-  const { materialField, colorField } = getWallSurfaceFields(side, component);
-  const sideMaterial = side === 'front' ? wall.materialFront : wall.materialBack;
-  const sideColor = side === 'front' ? wall.colorFront : wall.colorBack;
-  return {
-    material: wall[materialField] ?? sideMaterial ?? wall.material ?? null,
-    color: wall[colorField] ?? sideColor ?? wall.color ?? '#f9fbff'
-  };
+  return MaterialResolver.getWallSurfaceValue(wall, side, component);
 }
 
 function buildWallSurfacePatch(side, component, material, color) {
-  const { materialField, colorField } = getWallSurfaceFields(side, component);
-  return {
-    [materialField]: material,
-    [colorField]: color
-  };
+  return MaterialResolver.buildWallSurfacePatch(side, component, material, color);
 }
 
 function get2DWallSideFromPoint(wall, point) {

@@ -2,6 +2,7 @@ import * as BABYLON from '@babylonjs/core';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import JSZip from 'jszip';
+import '../src/furniture/index.js';
 import {
   create3MFModelXml,
   create3MFPackage,

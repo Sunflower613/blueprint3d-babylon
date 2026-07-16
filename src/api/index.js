@@ -63,6 +63,10 @@ export {
 } from '../domain/FloorplanDocument.js';
 
 export {
+  MaterialResolver
+} from '../domain/MaterialResolver.js';
+
+export {
   createFlatMaterial,
   createMaterialPalette
 } from '../core/materials.js';
@@ -130,13 +134,40 @@ export {
   sphereComponent
 } from '../furniture/_helpers.js';
 
-export * from '../furniture/index.js';
+export {
+  FURNITURE_CATEGORIES,
+  FURNITURE_DEFINITIONS,
+  FURNITURE_LIST,
+  getFurnitureDefinition,
+  isPowerControllable,
+  isAppliancePowerOn
+} from '../furniture/index.js';
 
 // ==========================================
 // 6. Openings & Rooms 空间逻辑
 // ==========================================
-export * from '../openings/index.js';
-export * from '../rooms/index.js';
+export {
+  buildOpeningGeometry,
+  createOpeningCutterMesh,
+  normalizeOpeningShape,
+  isSymmetricShape,
+  OPENING_SHAPES,
+  getOpeningUnitVertices,
+  getOpeningVertices,
+  triangulateOpening
+} from '../openings/index.js';
+
+export {
+  ROOM_SHAPES,
+  normalizeRoomShape,
+  getRoomShapeDefinition,
+  getRoomLocalVertices,
+  getRoomVertices,
+  getRoomBounds,
+  getRoomWallKeys,
+  pointInRoom,
+  triangulateRoom
+} from '../rooms/index.js';
 
 // ==========================================
 // 7. Runtime 运行时发生器

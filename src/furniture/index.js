@@ -1,3 +1,4 @@
+import { FURNITURE_DEFINITIONS as DOMAIN_FURNITURE_DEFINITIONS } from '../domain/FurnitureCatalog.js';
 export * from './seating.js';
 export * from './tables.js';
 export * from './storage.js';
@@ -100,7 +101,7 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   air_conditioner_floor: { label: '立式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true }
 });
 
-export const FURNITURE_DEFINITIONS = {};
+export const FURNITURE_DEFINITIONS = DOMAIN_FURNITURE_DEFINITIONS;
 
 
 const KITCHEN_APPLIANCES = [

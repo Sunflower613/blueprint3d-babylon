@@ -1,6 +1,7 @@
 import { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, Texture, TransformNode, Vector3, VertexBuffer, VertexData } from '../core/babylon.js';
 const BABYLON = { CSG, Color3, MaterialPluginBase, Mesh, MeshBuilder, MirrorTexture, Plane, PointLight, ReflectionProbe, RenderTargetTexture, ShaderLanguage, SpotLight, Texture, TransformNode, Vector3, VertexBuffer, VertexData };
 import { createFlatMaterial, createBlueprintMaterial, materialPreviewColor, normalizeMaterialDescriptor } from '../core/materials.js';
+import { MaterialResolver } from '../domain/MaterialResolver.js';
 import { createBox, createCylinder, createSphere } from '../core/primitives.js';
 import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition, isAppliancePowerOn } from '../furniture/index.js';
 import { healingMusic } from '../audio/healingMusic.js';
@@ -26,53 +27,18 @@ const DEFAULT_FLOOR_ID = 'floor_1';
 const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
 const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
 
-const WALL_SURFACE_FIELD_MAP = {
-  front: {
-    main: { materialField: 'materialFront', colorField: 'colorFront' },
-    baseboard: { materialField: 'baseboardMaterialFront', colorField: 'baseboardColorFront' },
-    wainscot: { materialField: 'wainscotMaterialFront', colorField: 'wainscotColorFront' }
-  },
-  back: {
-    main: { materialField: 'materialBack', colorField: 'colorBack' },
-    baseboard: { materialField: 'baseboardMaterialBack', colorField: 'baseboardColorBack' },
-    wainscot: { materialField: 'wainscotMaterialBack', colorField: 'wainscotColorBack' }
-  }
-};
+const WALL_SURFACE_FIELD_MAP = MaterialResolver.WALL_SURFACE_FIELD_MAP;
 
 function normalizeWallDecorSettings(wall) {
-  wall.floorId ||= DEFAULT_FLOOR_ID;
-  wall.color ||= DEFAULT_WALL_COLOR;
-  wall.material ||= wall.color;
-  wall.color = materialPreviewColor(wall.material, wall.color || DEFAULT_WALL_COLOR);
-  wall.baseboardEnabled = !!wall.baseboardEnabled;
-  wall.baseboardHeight = Math.max(0, Number(wall.baseboardHeight ?? DEFAULT_WALL_BASEBOARD_HEIGHT));
-  wall.wainscotEnabled = !!wall.wainscotEnabled;
-  wall.wainscotHeight = Math.max(0, Number(wall.wainscotHeight ?? DEFAULT_WALL_WAINSCOT_HEIGHT));
-
-  Object.values(WALL_SURFACE_FIELD_MAP).forEach((sideMap) => {
-    Object.values(sideMap).forEach(({ materialField, colorField }) => {
-      if (wall[materialField] !== undefined && wall[materialField] !== null) {
-        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
-      } else if (wall[colorField] !== undefined && wall[colorField] !== null) {
-        wall[materialField] = wall[colorField];
-        wall[colorField] = materialPreviewColor(wall[materialField], wall[colorField] || wall.color || DEFAULT_WALL_COLOR);
-      }
-    });
-  });
-  return wall;
+  return MaterialResolver.normalizeWallDecorSettings(wall);
 }
 
 function getWallSurfaceFields(side, component = 'main') {
-  return WALL_SURFACE_FIELD_MAP[side]?.[component] || WALL_SURFACE_FIELD_MAP[side]?.main || WALL_SURFACE_FIELD_MAP.front.main;
+  return MaterialResolver.getWallSurfaceFields(side, component);
 }
 
 function resolveWallSurfaceDescriptor(wall, side, component = 'main') {
-  const { materialField, colorField } = getWallSurfaceFields(side, component);
-  const sideMaterial = side === 'front' ? wall.materialFront : wall.materialBack;
-  const sideColor = side === 'front' ? wall.colorFront : wall.colorBack;
-  const descriptor = wall[materialField] ?? sideMaterial ?? wall.material ?? sideColor ?? wall.color ?? DEFAULT_WALL_COLOR;
-  const color = wall[colorField] ?? sideColor ?? wall.color ?? DEFAULT_WALL_COLOR;
-  return { descriptor, color };
+  return MaterialResolver.resolveWallSurfaceDescriptor(wall, side, component);
 }
 
 function getWallFaceBands(wall, wallHeight) {

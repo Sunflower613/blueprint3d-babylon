@@ -5,6 +5,7 @@ import * as DesignController from './DesignController.js';
 import * as FloorManager from './FloorManager.js';
 import { showObjectContextMenu } from './TargetHandler.js';
 import { clear3DEditHandles } from './Viewer3DHandles.js';
+import { fitBoundsToViewport } from './ViewGeometry.js';
 
 let Context = null;
 
@@ -234,11 +235,16 @@ export function updateViewBounds() {
     push(item.x - width, item.z - depth);
     push(item.x + width, item.z + depth);
   });
-  if (!corners.length) return Object.assign(Context.view, { minX: -6.4, maxX: 6.8, minZ: -9.2, maxZ: 4.2 });
+  if (!corners.length) {
+    return Object.assign(Context.view, fitBoundsToViewport(
+      { minX: -6.4, maxX: 6.8, minZ: -9.2, maxZ: 4.2 },
+      Context.view
+    ));
+  }
   const xs = corners.map((point) => point.x);
   const zs = corners.map((point) => point.z);
-  Object.assign(Context.view, {
+  Object.assign(Context.view, fitBoundsToViewport({
     minX: Math.min(...xs) - 1.5, maxX: Math.max(...xs) + 1.5,
     minZ: Math.min(...zs) - 1.5, maxZ: Math.max(...zs) + 1.5
-  });
+  }, Context.view));
 }

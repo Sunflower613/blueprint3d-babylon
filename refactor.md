@@ -46,6 +46,39 @@ ExportService
 MaterialResolver
 管理 descriptor 归一化和预览色
 
+prompt参考：
+```
+角色：软件架构师 / 领域驱动设计 (DDD) 专家
+
+大背景：
+我们正在重构 3D 户型编辑器。目前正在进行第二阶段：拆解 God Object `Blueprint3DTestMap`。在之前的步骤中，我们已经成功剥离了数据模型（`FloorplanDocument`）、3D 渲染器（`BabylonSceneRenderer`）和选中控制器（`SelectionController`）。目前它正一步步回归为一个纯粹的外部 Facade 门面。
+
+当前小任务（第二阶段核心：剥离 ExportService 导出与加载服务）：
+请帮我从 `BlueprintTestMap` 类中，将所有与【数据导出与文件加载】相关的业务方法剥离出来，封装进一个独立的类 `ExportService`（存放在 `src/services/ExportService.js`）。
+
+具体剥离职责包括：
+1. **导出服务封装**：
+   - 新建 `src/services/ExportService.js` 并导出 `ExportService` 类。其构造函数接收 `FloorplanDocument` 实例。
+   - 迁移所有的文件转换与序列化方法，例如：
+     - `exportJSON()`
+     - `exportBuildingFile(options)`
+     - `stringifyBuildingFile(options)`
+     - `stringifyDXF()`
+     - `create3MFPackage(options)`
+   - 迁移读取和反序列化的业务前置逻辑：
+     - `loadBuildingFile(fileData)`
+     - `loadJSON(floorplan)`
+2. **上帝对象适配**：
+   - 在 `Blueprint3DTestMap` 的构造函数中实例化该服务：`this.exportService = new ExportService(this.document);`。
+   - 对原本暴露在 `Blueprint3DTestMap` 外部的上述导出与加载方法进行桥接代理（例如让 `exportJSON()` 委托调用 `this.exportService.exportJSON()`），确保向下兼容不被破坏。
+3. **接口导出**：
+   - 将 `ExportService` 在公开 API 门面 `src/api/index.js` 中导出，方便第三方消费者独立使用它进行文件 IO 操作。
+
+限制与边界：
+- 【铁律】`ExportService` 是纯数据转换与文件字节流处理服务，【绝不能】直接接触或导入任何 Babylon.js 的 API、Mesh 或 3D 材质组件。
+- 它仅依赖传入的 `FloorplanDocument` 暴露的数据状态，以及底层的核心转换器（如 `buildingFile.js`, `exporters.js` 等）。
+```
+
 第三阶段：把 example 变成真正的消费者
 
 example/app.js 只编排 UI，不再直接操作底层 geometry/material/room shape

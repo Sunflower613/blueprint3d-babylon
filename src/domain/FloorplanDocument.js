@@ -434,7 +434,16 @@ export class FloorplanDocument {
   getFloorWallRenderHeight(floorId) {
     const floor = this.getFloor(floorId);
     if (!floor) return this.floorplan.wallHeight ?? 2.8;
-    return Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 2.8);
+    const baseHeight = Number(floor.wallHeight ?? this.floorplan.wallHeight ?? 2.8);
+    const sortedFloors = [...this.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
+    const index = sortedFloors.findIndex((f) => f.id === floorId);
+    if (index >= 0 && index < sortedFloors.length - 1) {
+      const nextFloor = sortedFloors[index + 1];
+      const currentFH = Number(floor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
+      const nextFH = Number(nextFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
+      return baseHeight + currentFH - nextFH;
+    }
+    return baseHeight;
   }
 
   getFloorHeight(floorId) {

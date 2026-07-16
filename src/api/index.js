@@ -59,6 +59,10 @@ export {
 } from '../core/BlueprintRegistry.js';
 
 export {
+  FloorplanDocument
+} from '../domain/FloorplanDocument.js';
+
+export {
   createFlatMaterial,
   createMaterialPalette
 } from '../core/materials.js';

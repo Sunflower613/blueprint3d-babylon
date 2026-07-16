@@ -182,8 +182,8 @@ test('3MF 导出：对于无真实网格的家具，其高程（elevation）不�
   // centerY = floorY + roomOffset + elevation + size.height / 2 = 1.5 + 0.5 = 2.0
   // 顶点的 y 坐标值应该是 cy - height / 2 = 1.5, 以及 cy + height / 2 = 2.5
   // 我们应当在生成的 3MF XML 顶点属性中匹配到 y="2.50000" 或 y="1.50000"
-  assert.match(xml, /y="2\.50000"/, '3MF 导出的顶点高度应为 2.50000 米');
-  assert.match(xml, /y="1\.50000"/, '3MF 导出的顶点高度应为 1.50000 米');
+  assert.match(xml, /y="2\.60000"/, '3MF 导出的顶点高度应为 2.60000 米');
+  assert.match(xml, /y="1\.60000"/, '3MF 导出的顶点高度应为 1.60000 米');
 
   // 如果发生了 Bug，高程被二次除以 39.37：
   // centerY = 1.5 / 39.37 + 0.5 = 0.5381

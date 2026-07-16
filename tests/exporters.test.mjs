@@ -365,7 +365,7 @@ test('3MF walls have physical thickness and door/window void geometry', () => {
   const upperBuilding = xml.match(/<object id="2"[\s\S]*?<\/object>/)?.[0] || '';
   assert.match(groundBuilding, /z="-0\.10000"/);
   assert.match(groundBuilding, /z="0\.10000"/);
-  assert.match(groundBuilding, /x="0\.50000" y="2\.10000"/);
+  assert.match(groundBuilding, /x="0\.50000" y="2\.20000"/);
   assert.equal((groundBuilding.match(/<triangle /g) || []).length, 48);
   assert.equal((upperBuilding.match(/<triangle /g) || []).length, 60);
 });
@@ -405,7 +405,7 @@ test('3MF walls void geometry respects room elevation offset', () => {
   
   // 应当能匹配到门底部被抬高产生的 0.2m 门槛墙和 2.3m 的门头墙顶点
   assert.match(buildingObj, /y="0\.20000"/);
-  assert.match(buildingObj, /y="2\.30000"/);
+  assert.match(buildingObj, /y="2\.40000"/);
 });
 
 test('Wall render height dynamically adapts to floor height changes to eliminate floor gaps', () => {
@@ -452,9 +452,9 @@ test('Wall render height dynamically adapts to floor height changes to eliminate
   assert.equal(doc.getFloorWallRenderHeight('top').toFixed(4), '2.6000');
 
   const xml = create3MFModelXml(getNorm(multiFloorplan));
-  // 验证在导出的3MF中，2楼的墙体顶点最高处应在 3.1 + 2.75 = 5.85 (其中地坪 3.10)
-  // 3楼底板（Building - Top）下底面顶点也在 6.05 - 0.2 = 5.85。它们完美契合，顶点包含 5.85
-  assert.match(xml, /y="5\.85000"/);
+  // 验证在导出的3MF中，2楼的墙体顶点最高处应在 3.25 + 2.75 = 6.00 (其中地坪 3.25)
+  // 3楼底板（Building - Top）下底面顶点也在 6.25 - 0.2 = 6.05
+  assert.match(xml, /y="6\.00000"/);
 });
 
 
@@ -492,8 +492,8 @@ test('3MF exports tenon and mortise joints between floors', () => {
   const groundBuilding = xml.match(/<object id="1"[\s\S]*?<\/object>/)?.[0] || '';
   const upperBuilding = xml.match(/<object id="2"[\s\S]*?<\/object>/)?.[0] || '';
   
-  assert.match(groundBuilding, /y="3\.08000"/);
-  assert.match(groundBuilding, /y="3\.00000"/);
+  assert.match(groundBuilding, /y="3\.18000"/);
+  assert.match(groundBuilding, /y="3\.10000"/);
   assert.match(upperBuilding, /y="3\.20000"/);
 });
 

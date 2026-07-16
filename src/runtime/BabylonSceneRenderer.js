@@ -321,6 +321,31 @@ export class BabylonSceneRenderer {
     });
   }
 
+  requestReflectionTexturesUpdate() {
+    const refreshedTextures = new Set();
+    const refreshedProbes = new Set();
+
+    this.scene.meshes.forEach((mesh) => {
+      const mat = mesh.material;
+      if (!mat) return;
+
+      const reflectionTexture = mat.reflectionTexture;
+      if (reflectionTexture instanceof BABYLON.MirrorTexture && !refreshedTextures.has(reflectionTexture)) {
+        reflectionTexture.resetRefreshCounter();
+        refreshedTextures.add(reflectionTexture);
+      }
+
+      const probe = mat.customReflectionProbe;
+      if (!probe || refreshedProbes.has(probe)) return;
+
+      const renderTarget = probe.cubeTexture;
+      if (renderTarget?.resetRefreshCounter) {
+        renderTarget.resetRefreshCounter();
+      }
+      refreshedProbes.add(probe);
+    });
+  }
+
 
   add(node, options = {}) {
     if (!node) return node;

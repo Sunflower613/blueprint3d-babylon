@@ -171,6 +171,18 @@ test('反射方案分级：测试主镜面、次要镜面、金属材质在高�
   assert.ok(subMat.customReflectionProbe instanceof BABYLON.ReflectionProbe, '重新切回普通模式后，次要镜面应还原为反射探针');
   assert.ok(!metalMat.customReflectionProbe, '重新切回普通模式后，金属材质应还原');
 
+  // 保存或场景内容变化后，主镜面与次要镜面的反射目标都必须能被强制刷新。
+  let mirrorRefreshCount = 0;
+  let probeRefreshCount = 0;
+  mainMat.reflectionTexture.resetRefreshCounter = () => { mirrorRefreshCount += 1; };
+  const subProbeRenderTarget = subMat.customReflectionProbe.cubeTexture;
+  subProbeRenderTarget.resetRefreshCounter = () => { probeRefreshCount += 1; };
+
+  renderer.requestReflectionTexturesUpdate();
+
+  assert.equal(mirrorRefreshCount, 1, '强制刷新时应重置主镜面的 MirrorTexture');
+  assert.equal(probeRefreshCount, 1, '强制刷新时应重置次要镜面的 ReflectionProbe');
+
   scene.dispose();
   engine.dispose();
 });

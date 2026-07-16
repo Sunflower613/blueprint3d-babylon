@@ -223,7 +223,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
   /** @param {boolean} val - 是否启用高级渲染模式 */
   set enableAdvancedRendering(val) {
-    this.renderer.enableAdvancedRendering = val;
+    this.setAdvancedRendering(val);
   }
 
   /**
@@ -657,15 +657,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
   /** 强制请求重置刷新所有的反射探针与实时镜像贴图 */
   requestReflectionProbesUpdate() {
-    this.scene.meshes.forEach((mesh) => {
-      if (mesh.material && mesh.material.customReflectionProbe) {
-        const probe = mesh.material.customReflectionProbe;
-        if (probe && probe.cubeTexture && probe.cubeTexture.getRenderTargetTexture) {
-          const rtt = probe.cubeTexture.getRenderTargetTexture();
-          if (rtt) rtt.resetRefreshCounter();
-        }
-      }
-    });
+    this.renderer.requestReflectionTexturesUpdate();
   }
 
   // ----------------------------------------------------

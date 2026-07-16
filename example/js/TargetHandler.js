@@ -33,28 +33,7 @@ export function isTargetLocked(target) {
 
 export function setTargetLocked(target, locked) {
   if (!isAllowedTarget(target)) return;
-  const value = !!locked;
-  if (target.type === TARGET_TYPES.ITEM) {
-    const item = ctx.testMap.getItem(target.id);
-    if (!item) return;
-    item.locked = value;
-    const node = ctx.testMap.itemNodes.get(item.id);
-    if (node) node.metadata = { ...(node.metadata || {}), locked: value };
-  } else if (target.type === TARGET_TYPES.OPENING) {
-    ctx.testMap.updateOpening(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.ROOF) {
-    ctx.testMap.updateRoof?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.STAIRS) {
-    ctx.testMap.updateStairs?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.ROOM) {
-    ctx.testMap.updateRoom(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.WALL) {
-    ctx.testMap.updateWall(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.FENCE) {
-    ctx.testMap.updateFence?.(target.id, { locked: value });
-  } else if (target.type === TARGET_TYPES.FENCE_GATE) {
-    ctx.testMap.updateFenceGate?.(target.id, { locked: value });
-  }
+  ctx.testMap.executeCommand('setTargetLocked', { type: target.type, id: target.id, locked });
 }
 
 export function getTargetFloorId(target) {
@@ -148,7 +127,6 @@ export function showObjectContextMenu(target, clientX, clientY) {
     ? !!ctx.testMap.getOpening(target.id)?.doubleDoor
     : (target.type === 'fence_gate' ? !!ctx.testMap.getFenceGate(target.id)?.doubleDoor : false);
   
-  // 检查是否是具有水体的容器家具 (浴缸、厨房水槽、洗手台) 及其放水状态
   let isWaterContainer = false;
   let isWaterOn = true;
   if (target.type === 'item') {
@@ -159,7 +137,6 @@ export function showObjectContextMenu(target, clientX, clientY) {
     }
   }
 
-  // 检查是否是马桶 (toilet) 及其开盖状态
   let isToilet = false;
   let isLidOpen = false;
   if (target.type === 'item') {
@@ -170,7 +147,6 @@ export function showObjectContextMenu(target, clientX, clientY) {
     }
   }
 
-  // 检查门窗隐藏状态
   const isOpening = target.type === 'opening';
   let isDoor = false;
   let isWindow = false;
@@ -204,9 +180,9 @@ export function showObjectContextMenu(target, clientX, clientY) {
       onClick: () => {
         ctx.pushHistory();
         if (target.type === 'opening') {
-          ctx.testMap.updateOpening(target.id, { doubleDoor: !isDouble });
+          ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { doubleDoor: !isDouble } });
         } else if (target.type === 'fence_gate') {
-          ctx.testMap.updateFenceGate(target.id, { doubleDoor: !isDouble });
+          ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { doubleDoor: !isDouble } });
         }
         ctx.refreshShadows();
         ctx.updateEditor();
@@ -243,7 +219,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
       disabled: isLocked,
       onClick: () => {
         ctx.pushHistory();
-        ctx.testMap.updateOpening(target.id, { panelHidden: !isPanelHidden });
+        ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { panelHidden: !isPanelHidden } });
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
@@ -255,7 +231,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
       disabled: isLocked,
       onClick: () => {
         ctx.pushHistory();
-        ctx.testMap.updateOpening(target.id, { glassHidden: !isGlassHidden });
+        ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { glassHidden: !isGlassHidden } });
         ctx.refreshShadows();
         ctx.updateEditor();
         ctx.renderPlan();
@@ -292,14 +268,14 @@ export function toggleTarget(target) {
   if (target.type === 'opening') {
     const opening = ctx.testMap.getOpening(target.id);
     if (!opening) return;
-    ctx.testMap.updateOpening(target.id, { isOpen: !opening.isOpen });
+    ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { isOpen: !opening.isOpen } });
     if (selection.selectedOpeningId === target.id) {
       ctx.updateEditor();
     }
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getFenceGate(target.id);
     if (!gate) return;
-    ctx.testMap.updateFenceGate(target.id, { isOpen: !gate.isOpen });
+    ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isOpen: !gate.isOpen } });
     if (selection.selectedFenceGateId === target.id) {
       ctx.updateEditor();
     }
@@ -325,17 +301,17 @@ export function rotateTarget(target) {
       const dz = wall.to[1] - wall.from[1];
       const nextFrom = [Number((cx + dz / 2).toFixed(3)), Number((cz - dx / 2).toFixed(3))];
       const nextTo = [Number((cx - dz / 2).toFixed(3)), Number((cz + dx / 2).toFixed(3))];
-      ctx.testMap.updateWall(target.id, { from: nextFrom, to: nextTo });
+      ctx.testMap.executeCommand('updateWall', { wallId: target.id, patch: { from: nextFrom, to: nextTo } });
       if (selection.selectedWallId === target.id) {
         ctx.updateEditor();
       }
     }
   } else if (target.type === 'roof' || target.type === 'stairs') {
-    const structure = ctx.getStructure(target.type, target.id);
+    const structure = getTargetObject(target);
     if (!structure) return;
     const currentDegrees = Math.round(((structure.rotation || 0) * 180 / Math.PI + 360) % 360);
     const nextDegrees = (currentDegrees + 90) % 360;
-    ctx.updateStructure(target.type, target.id, { rotation: nextDegrees * Math.PI / 180 });
+    ctx.testMap.executeCommand('updateStructure', { type: target.type, id: target.id, patch: { rotation: nextDegrees * Math.PI / 180 } });
     const selected = ctx.getSelectedStructure();
     if (selected && selected.type === target.type && selected.id === target.id) {
       ctx.updateEditor();
@@ -345,7 +321,7 @@ export function rotateTarget(target) {
     if (!room) return;
     const currentDegrees = Math.round(((-room.rotation || 0) * 180 / Math.PI + 360) % 360);
     const nextDegrees = (currentDegrees + 90) % 360;
-    ctx.testMap.updateRoom(target.id, { rotation: - (nextDegrees * Math.PI / 180) });
+    ctx.testMap.executeCommand('updateRoom', { roomId: target.id, patch: { rotation: - (nextDegrees * Math.PI / 180) } });
     if (selection.selectedRoomId === target.id) {
       ctx.updateEditor();
     }
@@ -363,9 +339,12 @@ export function rotateTarget(target) {
     const nextLr = (nextState === 1 || nextState === 2);
     const nextIo = (nextState === 2 || nextState === 3);
     
-    ctx.testMap.updateOpening(target.id, {
-      isFlippedLR: nextLr,
-      isFlippedIO: nextIo
+    ctx.testMap.executeCommand('updateOpening', {
+      openingId: target.id,
+      patch: {
+        isFlippedLR: nextLr,
+        isFlippedIO: nextIo
+      }
     });
     if (selection.selectedOpeningId === target.id) {
       ctx.updateEditor();
@@ -377,12 +356,14 @@ export function rotateTarget(target) {
     const cz = (gate.from[1] + gate.to[1]) / 2;
     const dx = gate.to[0] - gate.from[0];
     const dz = gate.to[1] - gate.from[1];
-    // 顺时针旋转 90 度：(x, z) -> (-z, x)
     const nextFrom = [cx + dz / 2, cz - dx / 2];
     const nextTo = [cx - dz / 2, cz + dx / 2];
-    ctx.testMap.updateFenceGate(target.id, {
-      from: nextFrom,
-      to: nextTo
+    ctx.testMap.executeCommand('updateFenceGate', {
+      gateId: target.id,
+      patch: {
+        from: nextFrom,
+        to: nextTo
+      }
     });
     if (selection.selectedFenceGateId === target.id) {
       ctx.updateEditor();
@@ -394,12 +375,14 @@ export function rotateTarget(target) {
     const cz = (fence.from[1] + fence.to[1]) / 2;
     const dx = fence.to[0] - fence.from[0];
     const dz = fence.to[1] - fence.from[1];
-    // 顺时针旋转 90 度：(x, z) -> (-z, x)
     const nextFrom = [cx + dz / 2, cz - dx / 2];
     const nextTo = [cx - dz / 2, cz + dx / 2];
-    ctx.testMap.updateFence(target.id, {
-      from: nextFrom,
-      to: nextTo
+    ctx.testMap.executeCommand('updateFence', {
+      fenceId: target.id,
+      patch: {
+        from: nextFrom,
+        to: nextTo
+      }
     });
     if (selection.selectedFenceId === target.id) {
       ctx.updateEditor();
@@ -442,34 +425,37 @@ export function mirrorTarget(target) {
   if (target.type === 'item') {
     const item = ctx.testMap.getItem(target.id);
     if (item) {
-      ctx.testMap.updateItem(target.id, { mirrored: !item.mirrored });
+      ctx.testMap.executeCommand('updateItem', { itemId: target.id, patch: { mirrored: !item.mirrored } });
     }
   } else if (target.type === 'opening') {
     const opening = ctx.testMap.getOpening(target.id);
     if (opening) {
-      ctx.testMap.updateOpening(target.id, { isFlippedLR: !opening.isFlippedLR });
+      ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { isFlippedLR: !opening.isFlippedLR } });
     }
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getFenceGate(target.id);
     if (gate) {
-      ctx.testMap.updateFenceGate(target.id, { isFlippedLR: !gate.isFlippedLR });
+      ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isFlippedLR: !gate.isFlippedLR } });
     }
   } else if (target.type === 'roof') {
     const roof = ctx.testMap.getRoof?.(target.id);
     if (roof) {
-      ctx.testMap.updateRoof?.(target.id, { mirrored: !roof.mirrored });
+      ctx.testMap.executeCommand('updateRoof', { roofId: target.id, patch: { mirrored: !roof.mirrored } });
     }
   } else if (target.type === 'stairs') {
     const stairs = ctx.testMap.getStairs?.(target.id);
     if (stairs) {
-      ctx.testMap.updateStairs?.(target.id, { mirrored: !stairs.mirrored });
+      ctx.testMap.executeCommand('updateStairs', { stairsId: target.id, patch: { mirrored: !stairs.mirrored } });
     }
   } else if (target.type === 'fence') {
     const fence = ctx.testMap.getFence(target.id);
     if (fence) {
-      ctx.testMap.updateFence(target.id, {
-        from: [...fence.to],
-        to: [...fence.from]
+      ctx.testMap.executeCommand('updateFence', {
+        fenceId: target.id,
+        patch: {
+          from: [...fence.to],
+          to: [...fence.from]
+        }
       });
     }
   }
@@ -489,32 +475,35 @@ export function copyTarget(target) {
   if (target.type === 'wall') {
     const wall = ctx.testMap.getWall(target.id);
     if (wall) {
-      const copy = ctx.testMap.addWall(
-        [wall.from[0] + 1.0, wall.from[1] + 1.0],
-        [wall.to[0] + 1.0, wall.to[1] + 1.0]
-      );
+      const copy = ctx.testMap.executeCommand('addWall', {
+        from: [wall.from[0] + 1.0, wall.from[1] + 1.0],
+        to: [wall.to[0] + 1.0, wall.to[1] + 1.0]
+      });
       if (copy) {
-        ctx.testMap.updateWall(copy.id, {
-          color: wall.color,
-          material: wall.material,
-          materialFront: wall.materialFront,
-          colorFront: wall.colorFront,
-          materialBack: wall.materialBack,
-          colorBack: wall.colorBack,
-          baseboardEnabled: wall.baseboardEnabled,
-          baseboardHeight: wall.baseboardHeight,
-          baseboardMaterialFront: wall.baseboardMaterialFront,
-          baseboardColorFront: wall.baseboardColorFront,
-          baseboardMaterialBack: wall.baseboardMaterialBack,
-          baseboardColorBack: wall.baseboardColorBack,
-          wainscotEnabled: wall.wainscotEnabled,
-          wainscotHeight: wall.wainscotHeight,
-          wainscotMaterialFront: wall.wainscotMaterialFront,
-          wainscotColorFront: wall.wainscotColorFront,
-          wainscotMaterialBack: wall.wainscotMaterialBack,
-          wainscotColorBack: wall.wainscotColorBack,
-          floorId: ctx.testMap.floorplan.currentFloorId,
-          locked: false
+        ctx.testMap.executeCommand('updateWall', {
+          wallId: copy.id,
+          patch: {
+            color: wall.color,
+            material: wall.material,
+            materialFront: wall.materialFront,
+            colorFront: wall.colorFront,
+            materialBack: wall.materialBack,
+            colorBack: wall.colorBack,
+            baseboardEnabled: wall.baseboardEnabled,
+            baseboardHeight: wall.baseboardHeight,
+            baseboardMaterialFront: wall.baseboardMaterialFront,
+            baseboardColorFront: wall.baseboardColorFront,
+            baseboardMaterialBack: wall.baseboardMaterialBack,
+            baseboardColorBack: wall.baseboardColorBack,
+            wainscotEnabled: wall.wainscotEnabled,
+            wainscotHeight: wall.wainscotHeight,
+            wainscotMaterialFront: wall.wainscotMaterialFront,
+            wainscotColorFront: wall.wainscotColorFront,
+            wainscotMaterialBack: wall.wainscotMaterialBack,
+            wainscotColorBack: wall.wainscotColorBack,
+            floorId: ctx.testMap.floorplan.currentFloorId,
+            locked: false
+          }
         });
         nextSelection = { type: 'wall', id: copy.id };
       }
@@ -527,25 +516,33 @@ export function copyTarget(target) {
     const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
     if (!targetWall) return;
     const nextT = Math.min(0.92, ctx.getWallProjectionT(targetWall, sourcePoint) + 0.08);
-    const next = ctx.testMap.addOpening(targetWall.id, opening.type, nextT, opening.shape);
+    const next = ctx.testMap.executeCommand('addOpening', {
+      wallId: targetWall.id,
+      type: opening.type,
+      t: nextT,
+      shape: opening.shape
+    });
     if (next) {
-      ctx.testMap.updateOpening(next.id, {
-        width: opening.width,
-        height: opening.height,
-        sillHeight: opening.sillHeight,
-        isOpen: opening.isOpen,
-        isFlippedLR: opening.isFlippedLR,
-        isFlippedIO: opening.isFlippedIO,
-        panelHidden: opening.panelHidden,
-        glassHidden: opening.glassHidden,
-        floorId: ctx.testMap.floorplan.currentFloorId
+      ctx.testMap.executeCommand('updateOpening', {
+        openingId: next.id,
+        patch: {
+          width: opening.width,
+          height: opening.height,
+          sillHeight: opening.sillHeight,
+          isOpen: opening.isOpen,
+          isFlippedLR: opening.isFlippedLR,
+          isFlippedIO: opening.isFlippedIO,
+          panelHidden: opening.panelHidden,
+          glassHidden: opening.glassHidden,
+          floorId: ctx.testMap.floorplan.currentFloorId
+        }
       });
       nextSelection = { type: 'opening', id: next.id };
     }
   } else if (target.type === 'roof') {
     const roof = ctx.testMap.getRoof?.(target.id);
     if (!roof) return;
-    const copy = ctx.testMap.addRoof({
+    const copy = ctx.testMap.executeCommand('addRoof', {
       ...JSON.parse(JSON.stringify(roof)),
       id: undefined,
       x: (roof.x || 0) + 0.5,
@@ -557,7 +554,7 @@ export function copyTarget(target) {
   } else if (target.type === 'stairs') {
     const stairs = ctx.testMap.getStairs?.(target.id);
     if (!stairs) return;
-    const copy = ctx.testMap.addStairs({
+    const copy = ctx.testMap.executeCommand('addStairs', {
       ...JSON.parse(JSON.stringify(stairs)),
       id: undefined,
       x: (stairs.x || 0) + 0.5,
@@ -569,7 +566,7 @@ export function copyTarget(target) {
   } else if (target.type === 'fence') {
     const fence = ctx.testMap.getFence?.(target.id);
     if (!fence) return;
-    const copy = ctx.testMap.addFence({
+    const copy = ctx.testMap.executeCommand('addFence', {
       ...JSON.parse(JSON.stringify(fence)),
       id: undefined,
       from: [(fence.from?.[0] || 0) + 0.5, (fence.from?.[1] || 0) + 0.5],
@@ -581,12 +578,20 @@ export function copyTarget(target) {
   } else if (target.type === 'room') {
     const room = ctx.testMap.getRoom(target.id);
     if (!room) return;
-    const copy = ctx.testMap.addRoom({ ...JSON.parse(JSON.stringify(room)), id: undefined, name: room.name, x: room.x + 0.5, z: room.z + 0.5, floorId: ctx.testMap.floorplan.currentFloorId, locked: false });
+    const copy = ctx.testMap.executeCommand('addRoom', {
+      ...JSON.parse(JSON.stringify(room)),
+      id: undefined,
+      name: room.name,
+      x: room.x + 0.5,
+      z: room.z + 0.5,
+      floorId: ctx.testMap.floorplan.currentFloorId,
+      locked: false
+    });
     nextSelection = { type: 'room', id: copy.id };
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getFenceGate(target.id);
     if (!gate) return;
-    const copy = ctx.testMap.addFenceGate({
+    const copy = ctx.testMap.executeCommand('addFenceGate', {
       ...JSON.parse(JSON.stringify(gate)),
       id: undefined,
       fenceId: null,
@@ -610,30 +615,28 @@ export function deleteTarget(target) {
   }
   if (target.type === 'wall') {
     ctx.pushHistory();
-    ctx.testMap.deleteWall(target.id);
+    ctx.testMap.executeCommand('deleteWall', { wallId: target.id });
     ctx.clearSelection();
     ctx.refreshShadows();
-    ctx.renderPlan();
     return;
   }
   if (target.type === 'room') {
     ctx.showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
       if (confirmed) {
         ctx.pushHistory();
-        ctx.testMap.deleteRoom(target.id);
+        ctx.testMap.executeCommand('deleteRoom', { roomId: target.id });
         ctx.clearSelection();
         ctx.refreshShadows();
-        ctx.renderPlan();
       }
     });
     return;
   }
   ctx.pushHistory();
-  if (target.type === 'opening') ctx.testMap.deleteOpening(target.id);
-  if (target.type === 'roof') ctx.testMap.deleteRoof?.(target.id);
-  if (target.type === 'stairs') ctx.testMap.deleteStairs?.(target.id);
-  if (target.type === 'fence') ctx.testMap.deleteFence?.(target.id);
-  if (target.type === 'fence_gate') ctx.testMap.deleteFenceGate(target.id);
+  if (target.type === 'opening') ctx.testMap.executeCommand('deleteOpening', { openingId: target.id });
+  if (target.type === 'roof') ctx.testMap.executeCommand('deleteRoof', { roofId: target.id });
+  if (target.type === 'stairs') ctx.testMap.executeCommand('deleteStairs', { stairsId: target.id });
+  if (target.type === 'fence') ctx.testMap.executeCommand('deleteFence', { fenceId: target.id });
+  if (target.type === 'fence_gate') ctx.testMap.executeCommand('deleteFenceGate', { gateId: target.id });
   ctx.clearSelection();
   ctx.refreshShadows();
   ctx.renderPlan();

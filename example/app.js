@@ -982,26 +982,29 @@ function resetCurrentMaterial() {
   } else if (selectedWallId) {
     const wall = testMap.getWall(selectedWallId);
     if (wall && wall.locked) {
-      showToast('璇ョ墿浣撳凡閿佸畾');
+      showToast('该物体已锁定');
       return;
     }
     pushHistory();
     if (wall) {
-      testMap.updateWall(selectedWallId, {
-        material: '#f9fbff',
-        color: '#f9fbff',
-        materialFront: null,
-        colorFront: null,
-        materialBack: null,
-        colorBack: null,
-        baseboardMaterialFront: null,
-        baseboardColorFront: null,
-        baseboardMaterialBack: null,
-        baseboardColorBack: null,
-        wainscotMaterialFront: null,
-        wainscotColorFront: null,
-        wainscotMaterialBack: null,
-        wainscotColorBack: null
+      testMap.executeCommand('updateWall', {
+        wallId: selectedWallId,
+        patch: {
+          material: '#f9fbff',
+          color: '#f9fbff',
+          materialFront: null,
+          colorFront: null,
+          materialBack: null,
+          colorBack: null,
+          baseboardMaterialFront: null,
+          baseboardColorFront: null,
+          baseboardMaterialBack: null,
+          baseboardColorBack: null,
+          wainscotMaterialFront: null,
+          wainscotColorFront: null,
+          wainscotMaterialBack: null,
+          wainscotColorBack: null
+        }
       });
       refreshShadows();
       updateEditor();
@@ -1009,12 +1012,12 @@ function resetCurrentMaterial() {
     }
   } else if (selectedRoomId) {
     if (isTargetLocked({ type: 'room', id: selectedRoomId })) {
-      showToast('璇ョ墿浣撳凡閿佸畾');
+      showToast('该物体已锁定');
       return;
     }
     pushHistory();
     const defaultFloorMaterial = DEFAULT_MATERIAL_PACKS.find(p => p.id === 'wood-light-fine');
-    testMap.setRoomFloorMaterial(selectedRoomId, defaultFloorMaterial);
+    testMap.executeCommand('setRoomFloorMaterial', { roomId: selectedRoomId, material: defaultFloorMaterial });
     refreshShadows();
     updateEditor();
     renderPlan();
@@ -1330,7 +1333,7 @@ function cancelObjectInteractions() {
   let needBuild = false;
   testMap.getEntities('opening').forEach((op) => {
     if (op.isDragging) {
-      testMap.updateOpening(op.id, { isDragging: false });
+      testMap.executeCommand('updateOpening', { openingId: op.id, patch: { isDragging: false }, rebuild: false });
       needBuild = true;
     }
   });
@@ -1506,10 +1509,7 @@ function getStructure(type, id) {
 }
 
 function updateStructure(type, id, patch, rebuild = true) {
-  if (type === 'roof') return testMap.updateRoof?.(id, patch, rebuild);
-  if (type === 'stairs') return testMap.updateStairs?.(id, patch, rebuild);
-  if (type === 'fence') return testMap.updateFence?.(id, patch, rebuild);
-  return null;
+  return testMap.executeCommand('updateStructure', { type, id, patch, rebuild });
 }
 
 
@@ -1850,31 +1850,31 @@ function executeDesignTool(target) {
       }
       pushHistory();
       const defaultFloorMaterial = DEFAULT_MATERIAL_PACKS.find(p => p.id === 'wood-light-fine');
-      testMap.setRoomFloorMaterial(target.id, defaultFloorMaterial);
+      testMap.executeCommand('setRoomFloorMaterial', { roomId: target.id, material: defaultFloorMaterial });
       refreshShadows();
       updateEditor();
       renderPlan();
     } else if (target.type === 'wall') {
       const wall = testMap.getWall(target.id);
       if (wall && wall.locked) {
-        showToast('璇ョ墿浣撳凡閿佸畾');
+        showToast('该物体已锁定');
         return;
       }
       pushHistory();
       const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
       if (side === 'front') {
-        testMap.updateWall(target.id, { materialFront: null, colorFront: null });
+        testMap.executeCommand('updateWall', { wallId: target.id, patch: { materialFront: null, colorFront: null } });
       } else if (side === 'back') {
-        testMap.updateWall(target.id, { materialBack: null, colorBack: null });
+        testMap.executeCommand('updateWall', { wallId: target.id, patch: { materialBack: null, colorBack: null } });
       } else {
-        testMap.updateWall(target.id, { material: '#f9fbff', color: '#f9fbff', materialFront: null, colorFront: null, materialBack: null, colorBack: null });
+        testMap.executeCommand('updateWall', { wallId: target.id, patch: { material: '#f9fbff', color: '#f9fbff', materialFront: null, colorFront: null, materialBack: null, colorBack: null } });
       }
       refreshShadows();
       updateEditor();
       renderPlan();
     } else if (target.type === 'item') {
       if (isTargetLocked({ type: 'item', id: target.id })) {
-        showToast('璇ョ墿浣撳凡閿佸畾');
+        showToast('该物体已锁定');
         return;
       }
       const item = testMap.getItem(target.id);
@@ -2004,21 +2004,21 @@ function begin3DDrag(pointerInfo) {
     if (target && isTargetOnCurrentFloor(target)) {
       if (target.type === 'wall') {
         pushHistory();
-        testMap.deleteWall(target.id);
+        testMap.executeCommand('deleteWall', { wallId: target.id });
         clearSelection();
         refreshShadows();
         event.preventDefault();
         return;
       } else if (target.type === 'fence') {
         pushHistory();
-        testMap.deleteFence(target.id);
+        testMap.executeCommand('deleteFence', { fenceId: target.id });
         clearSelection();
         refreshShadows();
         event.preventDefault();
         return;
       } else if (target.type === 'fence_gate') {
         pushHistory();
-        testMap.deleteFenceGate(target.id);
+        testMap.executeCommand('deleteFenceGate', { gateId: target.id });
         clearSelection();
         refreshShadows();
         event.preventDefault();
@@ -2036,7 +2036,7 @@ function begin3DDrag(pointerInfo) {
         drawStart = snappedPos;
       } else {
         pushHistory();
-        testMap.addWall(drawStart, snappedPos);
+        testMap.executeCommand('addWall', { from: drawStart, to: snappedPos });
         drawStart = null;
         clearDrawWallPreview();
         refreshShadows();
@@ -2077,7 +2077,7 @@ function begin3DDrag(pointerInfo) {
         if (bestEdge && minDist < 0.4) {
           pushHistory();
           const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
-          const fence = testMap.addFence({
+          const fence = testMap.executeCommand('addFence', {
             floorId: testMap.getCurrentFloorId(),
             from: [bestEdge.p1.x, bestEdge.p1.z],
             to: [bestEdge.p2.x, bestEdge.p2.z],
@@ -2103,7 +2103,7 @@ function begin3DDrag(pointerInfo) {
           drawStart = [snapped.x, snapped.z];
         } else {
           pushHistory();
-          const fence = testMap.addFence({
+          const fence = testMap.executeCommand('addFence', {
             from: drawStart,
             to: [snapped.x, snapped.z],
             subtype: subtype
@@ -2117,7 +2117,7 @@ function begin3DDrag(pointerInfo) {
       } else {
         pushHistory();
         if (isAddRoomMode()) {
-          const room = testMap.addRoom({ x: snapped.x, z: snapped.z, shape: roomShapeFromMode(), name: `\u65b0\u623f\u95f4 ${roomCounter++}` });
+          const room = testMap.executeCommand('addRoom', { x: snapped.x, z: snapped.z, shape: roomShapeFromMode(), name: `新房间 ${roomCounter++}` });
           refreshShadows();
           selectRoom(room.id);
         } else if (mode.startsWith('add-roof')) {
@@ -2125,7 +2125,7 @@ function begin3DDrag(pointerInfo) {
           const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
           const wallThickness = testMap.getSnapshot().wallThickness || 0.15;
           const roofBounds = Topology.calculateAutoRoofBounds(room, { x: snapped.x, z: snapped.z }, wallThickness);
-          const roof = testMap.addRoof({
+          const roof = testMap.executeCommand('addRoof', {
             x: roofBounds.x,
             z: roofBounds.z,
             width: roofBounds.width,
@@ -2136,7 +2136,7 @@ function begin3DDrag(pointerInfo) {
           selectRoof(roof.id);
         } else {
           const subtype = mode.replace('add-stairs-', '') || 'straight';
-          const stairs = testMap.addStairs({
+          const stairs = testMap.executeCommand('addStairs', {
             x: snapped.x,
             z: snapped.z,
             subtype: subtype
@@ -2160,7 +2160,7 @@ function begin3DDrag(pointerInfo) {
         pushHistory();
         const { t } = Topology.projectPointToFence(pt, fence, false, 0);
         const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
-        const gate = testMap.addFenceGate({
+        const gate = testMap.executeCommand('addFenceGate', {
           floorId: testMap.getCurrentFloorId(),
           fenceId: fence.id,
           t: t,
@@ -2180,7 +2180,7 @@ function begin3DDrag(pointerInfo) {
       pushHistory();
       const snapped = snapToGridSegmentCenter({ x: point.x, z: point.z });
       const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
-      const gate = testMap.addFenceGate({
+      const gate = testMap.executeCommand('addFenceGate', {
         floorId: testMap.getCurrentFloorId(),
         from: [snapped.x - 0.5, snapped.z],
         to: [snapped.x + 0.5, snapped.z],
@@ -2204,7 +2204,12 @@ function begin3DDrag(pointerInfo) {
         pushHistory();
         const pt = target.pick.pickedPoint;
         const openingMode = getOpeningModeInfo();
-        const opening = testMap.addOpening(wallId, openingMode.type, getWallProjectionT(wall, pt), openingMode.shape);
+        const opening = testMap.executeCommand('addOpening', {
+          wallId,
+          type: openingMode.type,
+          t: getWallProjectionT(wall, pt),
+          shape: openingMode.shape
+        });
         refreshShadows();
         selectOpening(opening?.id || null);
         switchToSelectMode();
@@ -3212,12 +3217,15 @@ function updateSelectedRoom() {
   const rotation = - (rotationDegrees * Math.PI / 180);
 
   pushHistory();
-  testMap.updateRoom(selectedRoomId, {
-    name: document.getElementById('room-name').value,
-    width: Number(document.getElementById('room-width').value),
-    depth: Number(document.getElementById('room-depth').value),
-    elevation: elevation,
-    rotation: rotation
+  testMap.executeCommand('updateRoom', {
+    roomId: selectedRoomId,
+    patch: {
+      name: document.getElementById('room-name').value,
+      width: Number(document.getElementById('room-width').value),
+      depth: Number(document.getElementById('room-depth').value),
+      elevation: elevation,
+      rotation: rotation
+    }
   });
   refreshShadows();
   updateEditor();
@@ -3232,23 +3240,23 @@ function updateSelectedFloor() {
 
   const nameInput = document.getElementById('floor-name').value.trim();
   if (nameInput && nameInput !== currentFloor.name) {
-    testMap.renameFloor?.(currentFloorId, nameInput);
+    testMap.executeCommand('renameFloor', { floorId: currentFloorId, name: nameInput });
   }
 
   const heightInput = parseFloat(document.getElementById('floor-wall-height').value);
   if (Number.isFinite(heightInput) && heightInput > 0) {
-    testMap.changeFloorHeight?.(currentFloorId, heightInput);
+    testMap.executeCommand('changeFloorHeight', { floorId: currentFloorId, height: heightInput });
   }
 
   const floorHInput = parseFloat(document.getElementById('floor-height').value);
   if (Number.isFinite(floorHInput) && floorHInput > 0) {
-    testMap.changeFloorDefaultFloorHeight?.(currentFloorId, floorHInput);
+    testMap.executeCommand('changeFloorDefaultFloorHeight', { floorId: currentFloorId, height: floorHInput });
   }
 
   const hideRoofInput = document.getElementById('floor-hide-roof').checked;
   const hideWallInput = document.getElementById('floor-hide-wall').checked;
   const skyboxInput = document.getElementById('floor-skybox-enabled').checked;
-  testMap.changeFloorHideSettings?.(currentFloorId, hideRoofInput, hideWallInput, skyboxInput);
+  testMap.executeCommand('changeFloorHideSettings', { floorId: currentFloorId, hideRoof: hideRoofInput, hideWall: hideWallInput, skybox: skyboxInput });
 
   if (hideRoofInput && selectedRoofId) {
     const roof = testMap.getRoof?.(selectedRoofId);
@@ -3278,7 +3286,7 @@ function updateSelectedFenceSubtype() {
   if (!selectedFenceId) return;
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
-  testMap.updateFence(selectedFenceId, { subtype: document.getElementById('fence-subtype').value });
+  testMap.executeCommand('updateFence', { fenceId: selectedFenceId, patch: { subtype: document.getElementById('fence-subtype').value } });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3308,9 +3316,12 @@ function updateSelectedFenceLength() {
     const nextToX = Number((midX + ux * len / 2).toFixed(3));
     const nextToZ = Number((midZ + uz * len / 2).toFixed(3));
     
-    testMap.updateFence(selectedFenceId, {
-      from: [nextFromX, nextFromZ],
-      to: [nextToX, nextToZ]
+    testMap.executeCommand('updateFence', {
+      fenceId: selectedFenceId,
+      patch: {
+        from: [nextFromX, nextFromZ],
+        to: [nextToX, nextToZ]
+      }
     });
   }
   
@@ -3326,9 +3337,12 @@ function updateSelectedFenceRotation(deg) {
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', deg);
   const preview = getRotatedWallEndpoints(fence, normalized);
   pushHistory();
-  testMap.updateFence(selectedFenceId, {
-    from: preview.from,
-    to: preview.to
+  testMap.executeCommand('updateFence', {
+    fenceId: selectedFenceId,
+    patch: {
+      from: preview.from,
+      to: preview.to
+    }
   });
   refreshShadows();
   updateEditor();
@@ -3339,7 +3353,7 @@ function updateSelectedFenceHeight() {
   if (!selectedFenceId) return;
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
-  testMap.updateFence(selectedFenceId, { height: Number(document.getElementById('fence-height').value) });
+  testMap.executeCommand('updateFence', { fenceId: selectedFenceId, patch: { height: Number(document.getElementById('fence-height').value) } });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3349,7 +3363,7 @@ function updateSelectedFenceYOffset() {
   if (!selectedFenceId) return;
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
-  testMap.updateFence(selectedFenceId, { yOffset: Number(document.getElementById('fence-yoffset').value) });
+  testMap.executeCommand('updateFence', { fenceId: selectedFenceId, patch: { yOffset: Number(document.getElementById('fence-yoffset').value) } });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3360,7 +3374,7 @@ function updateSelectedFenceColor() {
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
   const col = document.getElementById('fence-color').value;
-  testMap.updateFence(selectedFenceId, { color: col, material: col });
+  testMap.executeCommand('updateFence', { fenceId: selectedFenceId, patch: { color: col, material: col } });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3370,7 +3384,7 @@ function deleteSelectedFence() {
   if (!selectedFenceId) return;
   if (testMap.getFence(selectedFenceId)?.locked) return;
   pushHistory();
-  testMap.deleteFence(selectedFenceId);
+  testMap.executeCommand('deleteFence', { fenceId: selectedFenceId });
   clearSelection();
   refreshShadows();
   renderPlan();
@@ -3379,7 +3393,7 @@ function deleteSelectedFence() {
 function updateSelectedWallLength() {
   if (!selectedWallId) return;
   pushHistory();
-  testMap.updateWallLength(selectedWallId, Number(document.getElementById('wall-length').value));
+  testMap.executeCommand('updateWallLength', { wallId: selectedWallId, length: Number(document.getElementById('wall-length').value) });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3392,9 +3406,12 @@ function updateSelectedWallRotation(deg) {
   const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', deg);
   const preview = getRotatedWallEndpoints(wall, normalized);
   pushHistory();
-  testMap.updateWall(selectedWallId, {
-    from: preview.from,
-    to: preview.to
+  testMap.executeCommand('updateWall', {
+    wallId: selectedWallId,
+    patch: {
+      from: preview.from,
+      to: preview.to
+    }
   });
   refreshShadows();
   updateEditor();
@@ -3431,7 +3448,7 @@ function updateSelectedOpening(patch) {
   if (!selectedOpeningId) return;
   if (testMap.getOpening(selectedOpeningId)?.locked && !('locked' in patch)) return;
   pushHistory();
-  testMap.updateOpening(selectedOpeningId, patch);
+  testMap.executeCommand('updateOpening', { openingId: selectedOpeningId, patch });
   refreshShadows();
   updateEditor();
   renderPlan();
@@ -3991,7 +4008,7 @@ if (floorFloatingGroup) {
       showCustomConfirm('复制户型', '是否复制当前户型？').then((copyCurrentFloor) => {
         const sourceFloorId = testMap.getCurrentFloorId();
         pushHistory();
-        testMap.addFloor(copyCurrentFloor ? { copyFromFloorId: sourceFloorId } : {});
+        testMap.executeCommand('addFloor', copyCurrentFloor ? { copyFromFloorId: sourceFloorId } : {});
         clearSelection();
         syncFloorControls();
         refreshShadows();
@@ -4003,7 +4020,7 @@ if (floorFloatingGroup) {
     const floorBtn = event.target.closest('[data-floor-id]');
     if (floorBtn) {
       const floorId = floorBtn.dataset.floorId;
-      testMap.setCurrentFloor(floorId);
+      testMap.executeCommand('setCurrentFloor', { floorId });
       clearSelection();
       updateSkyboxFromCurrentFloor();
       syncFloorControls();

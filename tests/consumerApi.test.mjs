@@ -301,3 +301,145 @@ test('静态方法调用分析测试: 确保 example 调用的所有 testMap 方
     }
   }
 });
+
+test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  const mockPlan = {
+    unit: 'm',
+    currentFloorId: 'floor_1',
+    floors: [
+      { id: 'floor_1', name: '1F', level: 0, wallHeight: 3.0, floorHeight: 0.06 }
+    ],
+    floor: { rooms: [] },
+    walls: [],
+    openings: [],
+    items: [],
+    roofs: [],
+    stairs: [],
+    fences: []
+  };
+
+  const editor = createEditor({ scene, floorplan: mockPlan });
+
+  // 1. 楼层命令测试
+  editor.executeCommand('addFloor', { id: 'floor_2', name: '2F', level: 1 });
+  assert.ok(editor.getFloor('floor_2'), '应该成功执行 addFloor 命令创建 floor_2');
+
+  editor.executeCommand('setCurrentFloor', { floorId: 'floor_2' });
+  assert.equal(editor.getCurrentFloorId(), 'floor_2', '应该成功执行 setCurrentFloor 命令切换至 floor_2');
+
+  editor.executeCommand('renameFloor', { floorId: 'floor_2', name: '2F_Renamed' });
+  assert.equal(editor.getFloor('floor_2').name, '2F_Renamed', '应该成功执行 renameFloor 命令');
+
+  editor.executeCommand('changeFloorHeight', { floorId: 'floor_2', height: 3.5 });
+  assert.equal(editor.getFloor('floor_2').wallHeight, 3.5, '应该成功执行 changeFloorHeight 命令');
+
+  editor.executeCommand('changeFloorDefaultFloorHeight', { floorId: 'floor_2', floorHeight: 0.1 });
+  assert.equal(editor.getFloor('floor_2').floorHeight, 0.1, '应该成功执行 changeFloorDefaultFloorHeight 命令');
+
+  editor.executeCommand('changeFloorHideSettings', { floorId: 'floor_2', hideRoof: true, hideWall: false, skybox: true });
+  assert.equal(editor.getFloor('floor_2').hideRoof, true, '应该成功执行 changeFloorHideSettings 命令');
+
+  // 切回 floor_1 做其它实体的 CRUD 测试
+  editor.executeCommand('setCurrentFloor', { floorId: 'floor_1' });
+
+  // 2. 墙体命令测试
+  const wall = editor.executeCommand('addWall', { from: [0, 0], to: [4, 0] });
+  assert.ok(wall, '应该成功执行 addWall 命令');
+  assert.equal(editor.getEntities('wall').length, 1, '当前层应该有1面墙');
+
+  editor.executeCommand('updateWall', { wallId: wall.id, patch: { color: '#ff0000', material: '#ff0000' } });
+  assert.equal(editor.getEntity('wall', wall.id).color, '#ff0000', '应该成功执行 updateWall 命令');
+
+  editor.executeCommand('updateWallLength', { wallId: wall.id, length: 5.0 });
+  const updatedWall = editor.getEntity('wall', wall.id);
+  const len = Math.hypot(updatedWall.to[0] - updatedWall.from[0], updatedWall.to[1] - updatedWall.from[1]);
+  assert.ok(Math.abs(len - 5.0) < 0.01, '应该成功执行 updateWallLength 命令将墙体长度更新为 5');
+
+  // 3. 门窗开口命令测试
+  const opening = editor.executeCommand('addOpening', { wallId: wall.id, type: 'door', t: 0.5, shape: 'rect' });
+  assert.ok(opening, '应该成功执行 addOpening 命令');
+  assert.equal(editor.getEntities('opening').length, 1, '当前层应该有1个开口');
+
+  editor.executeCommand('updateOpening', { openingId: opening.id, patch: { width: 1.2 } });
+  assert.equal(editor.getEntity('opening', opening.id).width, 1.2, '应该成功执行 updateOpening 命令');
+
+  // 4. 房间命令测试
+  const room = editor.executeCommand('addRoom', { x: 2, z: 2, name: '主卧' });
+  assert.ok(room, '应该成功执行 addRoom 命令');
+  assert.equal(editor.getEntities('room').length, 1, '应该有1个房间');
+
+  editor.executeCommand('updateRoom', { roomId: room.id, patch: { name: '主卧_已更新' } });
+  assert.equal(editor.getEntity('room', room.id).name, '主卧_已更新', '应该成功执行 updateRoom 命令');
+
+  editor.executeCommand('setRoomFloorMaterial', { roomId: room.id, material: { id: 'wood' } });
+  assert.equal(editor.getEntity('room', room.id).material?.id, 'wood', '应该成功执行 setRoomFloorMaterial 命令');
+
+  // 5. 家具物品命令测试
+  const item = editor.executeCommand('addItem', { type: 'chair', x: 2, z: 2, width: 0.5, depth: 0.5, height: 0.8 });
+  assert.ok(item, '应该成功执行 addItem 命令');
+  assert.equal(editor.getEntities('item').length, 1, '应该有1个家具物品');
+
+  editor.executeCommand('updateItem', { itemId: item.id, patch: { rotation: Math.PI } });
+  assert.equal(editor.getEntity('item', item.id).rotation, Math.PI, '应该成功执行 updateItem 命令');
+
+  editor.executeCommand('assignItemToRoom', { itemId: item.id, roomId: room.id });
+  assert.equal(editor.getEntity('item', item.id).roomId, room.id, '应该成功执行 assignItemToRoom 命令');
+
+  editor.executeCommand('updateItemComponentColor', { itemId: item.id, componentId: 'seat', color: '#00ff00' });
+  assert.equal(editor.getEntity('item', item.id).colors?.seat, '#00ff00', '应该成功执行 updateItemComponentColor 命令');
+
+  editor.executeCommand('updateItemComponentMaterial', { itemId: item.id, componentId: 'seat', material: { id: 'leather' } });
+  assert.equal(editor.getEntity('item', item.id).materials?.seat?.id, 'leather', '应该成功执行 updateItemComponentMaterial 命令');
+
+  // 6. 锁定命令测试
+  editor.executeCommand('setTargetLocked', { type: 'item', id: item.id, locked: true });
+  assert.equal(editor.getEntity('item', item.id).locked, true, '应该成功执行 setTargetLocked 命令');
+
+  // 7. 其它结构（屋顶、楼梯、围栏、围栏门）和 updateStructure 测试
+  const roof = editor.executeCommand('addRoof', { x: 2, z: 2, width: 4, depth: 4, subtype: 'gable' });
+  assert.ok(roof, '应该成功执行 addRoof 命令');
+
+  editor.executeCommand('updateStructure', { type: 'roof', id: roof.id, patch: { height: 1.5 } });
+  assert.equal(editor.getEntity('roof', roof.id).height, 1.5, '应该成功执行 updateStructure 更新屋顶高度');
+
+  const stairs = editor.executeCommand('addStairs', { x: 2, z: 2, subtype: 'straight' });
+  assert.ok(stairs, '应该成功执行 addStairs 命令');
+
+  const fence = editor.executeCommand('addFence', { from: [0, 0], to: [0, 4], subtype: 'picket' });
+  assert.ok(fence, '应该成功执行 addFence 命令');
+
+  const fenceGate = editor.executeCommand('addFenceGate', { fenceId: fence.id, t: 0.5, subtype: 'picket' });
+  assert.ok(fenceGate, '应该成功执行 addFenceGate 命令');
+
+  // 8. 各种删除命令测试
+  editor.executeCommand('deleteOpening', { openingId: opening.id });
+  assert.equal(editor.getEntity('opening', opening.id), null, '应该成功删除开口');
+
+  editor.executeCommand('deleteWall', { wallId: wall.id });
+  assert.equal(editor.getEntity('wall', wall.id), null, '应该成功删除墙体');
+
+  editor.executeCommand('deleteRoom', { roomId: room.id });
+  assert.equal(editor.getEntity('room', room.id), null, '应该成功删除房间');
+
+  editor.executeCommand('deleteItem', { itemId: item.id });
+  assert.equal(editor.getEntity('item', item.id), null, '应该成功删除家具');
+
+  editor.executeCommand('deleteRoof', { roofId: roof.id });
+  assert.equal(editor.getEntity('roof', roof.id), null, '应该成功删除屋顶');
+
+  editor.executeCommand('deleteStairs', { stairsId: stairs.id });
+  assert.equal(editor.getEntity('stairs', stairs.id), null, '应该成功删除楼梯');
+
+  editor.executeCommand('deleteFenceGate', { gateId: fenceGate.id });
+  assert.equal(editor.getEntity('fence_gate', fenceGate.id), null, '应该成功删除围栏门');
+
+  editor.executeCommand('deleteFence', { fenceId: fence.id });
+  assert.equal(editor.getEntity('fence', fence.id), null, '应该成功删除围栏');
+
+  scene.dispose();
+  engine.dispose();
+});
+

@@ -265,6 +265,256 @@ export class EditorFacade {
     return this._document.getStairsAutoHeight(stairs);
   }
 
+  /**
+   * 执行修改户型平面图数据的指令
+   * @param {string} name - 指令名称
+   * @param {Object} [args={}] - 指令参数
+   * @returns {Object|boolean|void} 指令执行结果
+   */
+  executeCommand(name, args = {}) {
+    let result = null;
+
+    switch (name) {
+      // 1. 楼层命令
+      case 'addFloor':
+        result = this._document.addFloor(args);
+        break;
+      case 'deleteFloor':
+        result = this._document.deleteFloor(args.floorId);
+        break;
+      case 'moveFloor':
+        result = this._document.moveFloor(args.floorId, args.direction);
+        break;
+      case 'renameFloor':
+        result = this._document.renameFloor(args.floorId, args.name);
+        break;
+      case 'setCurrentFloor':
+        result = this._document.setCurrentFloor(args.floorId);
+        break;
+      case 'changeFloorHideSettings':
+        result = this._document.changeFloorHideSettings(args.floorId, args.hideRoof, args.hideWall, args.skyboxEnabled);
+        break;
+      case 'changeFloorHeight':
+        result = this._document.changeFloorHeight(args.floorId, args.height);
+        break;
+      case 'changeFloorDefaultFloorHeight':
+        result = this._document.changeFloorDefaultFloorHeight(args.floorId, args.floorHeight);
+        break;
+
+      // 2. 房间命令
+      case 'addRoom':
+        result = this._document.addRoom(args);
+        break;
+      case 'updateRoom':
+        result = this._document.updateRoom(args.roomId, args.patch, args.options);
+        break;
+      case 'deleteRoom':
+        result = this._document.deleteRoom(args.roomId);
+        break;
+      case 'setRoomFloorMaterial':
+        result = this._document.setRoomFloorMaterial(args.roomId, args.material);
+        break;
+
+      // 3. 墙体命令
+      case 'addWall':
+        result = this._document.addWall(args.from, args.to);
+        break;
+      case 'updateWall':
+        result = this._document.updateWall(args.wallId, args.patch);
+        break;
+      case 'deleteWall':
+        result = this._document.deleteWall(args.wallId);
+        break;
+      case 'updateWallLength':
+        result = this._document.updateWallLength(args.wallId, args.length);
+        break;
+
+      // 4. 门窗命令
+      case 'addOpening':
+        result = this._document.addOpening(args.wallId, args.type, args.t, args.shape);
+        break;
+      case 'updateOpening':
+        result = this._document.updateOpening(args.openingId, args.patch);
+        break;
+      case 'deleteOpening':
+        result = this._document.deleteOpening(args.openingId);
+        break;
+      case 'updateOpeningMaterial':
+        result = this._document.updateOpeningMaterial(args.openingId, args.componentKey, args.materialDescriptor);
+        break;
+      case 'resetOpeningMaterial':
+        result = this._document.resetOpeningMaterial(args.openingId);
+        break;
+
+      // 5. 家具命令
+      case 'addItem':
+        result = this._document.addItem(args);
+        break;
+      case 'updateItem':
+        result = this._document.updateItem(args.itemId, args.patch);
+        break;
+      case 'deleteItem':
+        result = this._document.deleteItem(args.itemId);
+        break;
+      case 'updateItemComponentColor':
+        result = this._document.updateItemComponentColor(args.itemId, args.componentId, args.color);
+        break;
+      case 'updateItemComponentMaterial':
+        result = this._document.updateItemComponentMaterial(args.itemId, args.componentId, args.material);
+        break;
+      case 'rotateItem':
+        result = this._document.rotateItem(args.itemId, args.rotationRadians);
+        break;
+      case 'assignItemToRoom':
+        result = this._document.assignItemToRoom(args.itemId, args.roomId);
+        break;
+      case 'refreshItemRoomLinks':
+        result = this._document.refreshItemRoomLinks();
+        break;
+
+      // 6. 屋顶命令
+      case 'addRoof':
+        result = this._document.addRoof(args);
+        break;
+      case 'updateRoof':
+        result = this._document.updateRoof(args.roofId, args.patch);
+        break;
+      case 'deleteRoof':
+        result = this._document.deleteRoof(args.roofId);
+        break;
+
+      // 7. 楼梯命令
+      case 'addStairs':
+        result = this._document.addStairs(args);
+        break;
+      case 'updateStairs':
+        result = this._document.updateStairs(args.stairsId, args.patch);
+        break;
+      case 'deleteStairs':
+        result = this._document.deleteStairs(args.stairsId);
+        break;
+
+      // 8. 围栏命令
+      case 'addFence':
+        result = this._document.addFence(args);
+        break;
+      case 'updateFence':
+        result = this._document.updateFence(args.fenceId, args.patch);
+        break;
+      case 'deleteFence':
+        result = this._document.deleteFence(args.fenceId);
+        break;
+
+      // 9. 围栏门命令
+      case 'addFenceGate':
+        result = this._document.addFenceGate(args);
+        break;
+      case 'updateFenceGate':
+        result = this._document.updateFenceGate(args.gateId, args.patch);
+        break;
+      case 'deleteFenceGate':
+        result = this._document.deleteFenceGate(args.gateId);
+        break;
+
+      // 10. 其它/通用/材质/锁定命令
+      case 'setTargetLocked': {
+        const { type, id, locked } = args;
+        const value = !!locked;
+        if (type === 'item') {
+          const item = this._document.getItem(id);
+          if (!item) return false;
+          item.locked = value;
+          const node = this._renderer.itemNodes?.get(id);
+          if (node) node.metadata = { ...(node.metadata || {}), locked: value };
+          result = true;
+        } else {
+          const updateCmds = {
+            opening: 'updateOpening',
+            roof: 'updateRoof',
+            stairs: 'updateStairs',
+            room: 'updateRoom',
+            wall: 'updateWall',
+            fence: 'updateFence',
+            fencegate: 'updateFenceGate',
+            fenceGate: 'updateFenceGate'
+          };
+          const cmd = updateCmds[type];
+          if (cmd) {
+            const patchKey = type === 'opening' ? 'openingId' : 
+                             (type === 'room' ? 'roomId' : 
+                             (type === 'wall' ? 'wallId' : 
+                             (type === 'fence' ? 'fenceId' : 
+                             (type === 'fence_gate' || type === 'fenceGate' ? 'gateId' : 
+                             (type === 'roof' ? 'roofId' : 'stairsId')))));
+            result = this.executeCommand(cmd, { [patchKey]: id, patch: { locked: value }, rebuild: false });
+          }
+        }
+        break;
+      }
+      case 'updateStructure': {
+        const { type, id, patch } = args;
+        if (type === 'roof') {
+          result = this._document.updateRoof(id, patch);
+        } else if (type === 'stairs') {
+          result = this._document.updateStairs(id, patch);
+        } else if (type === 'fence') {
+          result = this._document.updateFence(id, patch);
+        }
+        break;
+      }
+      case 'setFloorColor':
+        result = this._document.setFloorColor(args.color);
+        break;
+      case 'setFloorMaterial':
+        result = this._document.setFloorMaterial(args.material);
+        break;
+
+      default:
+        console.warn(`Unknown command: ${name}`);
+        return null;
+    }
+
+    // 后置处理：同步选中状态
+    this._syncSelectionAfterChange();
+
+    // 默认触发 3D 渲染更新
+    if (args.rebuild !== false && this._renderer && typeof this._renderer.build === 'function') {
+      this._renderer.build();
+    }
+
+    // 深拷贝返回快照，确保不直接暴露可变的数据层引用，而如果是基础类型/void直接返回
+    if (result && typeof result === 'object') {
+      return JSON.parse(JSON.stringify(result));
+    }
+    return result;
+  }
+
+  /** @private */
+  _syncSelectionAfterChange() {
+    if (!this._selectionController) return;
+    if (this._selectionController.selectedItemId && !this._document.getItem(this._selectionController.selectedItemId)) {
+      this._selectionController.selectedItemId = null;
+    }
+    if (this._selectionController.selectedWallId && !this._document.getWall(this._selectionController.selectedWallId)) {
+      this._selectionController.selectedWallId = null;
+    }
+    if (this._selectionController.selectedRoomId && !this._document.getRoom(this._selectionController.selectedRoomId)) {
+      this._selectionController.selectedRoomId = null;
+    }
+    if (this._selectionController.selectedRoofId && !this._document.getRoof(this._selectionController.selectedRoofId)) {
+      this._selectionController.selectedRoofId = null;
+    }
+    if (this._selectionController.selectedStairsId && !this._document.getStairs(this._selectionController.selectedStairsId)) {
+      this._selectionController.selectedStairsId = null;
+    }
+    if (this._selectionController.selectedFenceId && !this._document.getFence(this._selectionController.selectedFenceId)) {
+      this._selectionController.selectedFenceId = null;
+    }
+    if (this._selectionController.selectedFenceGateId && !this._document.getFenceGate(this._selectionController.selectedFenceGateId)) {
+      this._selectionController.selectedFenceGateId = null;
+    }
+  }
+
   /** @private */
   _normalizeEntityType(type) {
     if (typeof type !== 'string') return null;

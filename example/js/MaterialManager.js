@@ -436,14 +436,14 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
     } else {
       patch = { material: matVal, color: color };
     }
-    ctx.testMap.updateWall(id, patch, { rebuild });
+    ctx.testMap.executeCommand('updateWall', { wallId: id, patch, rebuild });
   } else if (type === 'stairs') {
     if (part === 'top') {
       patch = { material: matVal, color: color };
     } else if (part === 'side') {
       patch = { sideMaterial: matVal, sideColor: color };
     }
-    ctx.testMap.updateStairs(id, patch, rebuild);
+    ctx.testMap.executeCommand('updateStairs', { stairsId: id, patch, rebuild });
   } else if (type === 'roof') {
     if (part === 'top') {
       patch = { material: matVal, color: color };
@@ -452,7 +452,7 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
     } else if (part === 'bottom') {
       patch = { bottomMaterial: matVal, bottomColor: color };
     }
-    ctx.testMap.updateRoof(id, patch, rebuild);
+    ctx.testMap.executeCommand('updateRoof', { roofId: id, patch, rebuild });
   } else if (type === 'fence') {
     if (part === 'frame') {
       patch = { frameMaterial: matVal, frameColor: color };
@@ -468,7 +468,7 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
         panelColor: color
       };
     }
-    ctx.testMap.updateFence(id, patch, rebuild);
+    ctx.testMap.executeCommand('updateFence', { fenceId: id, patch, rebuild });
   } else if (type === 'fence_gate') {
     if (part === 'frame') {
       patch = { frameMaterial: matVal, frameColor: color };
@@ -482,7 +482,7 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
         panelColor: color
       };
     }
-    ctx.testMap.updateFenceGate(id, patch, rebuild);
+    ctx.testMap.executeCommand('updateFenceGate', { gateId: id, patch, rebuild });
   } else if (type === 'opening') {
     if (part === 'frame') {
       patch = { frameMaterial: matVal };
@@ -498,9 +498,9 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
         panelMaterial: matVal
       };
     }
-    ctx.testMap.updateOpening(id, patch, rebuild);
+    ctx.testMap.executeCommand('updateOpening', { openingId: id, patch, rebuild });
   } else if (type === 'room') {
-    ctx.testMap.setRoomFloorMaterial(id, material);
+    ctx.testMap.executeCommand('setRoomFloorMaterial', { roomId: id, material });
   }
 
   ctx.refreshShadows();

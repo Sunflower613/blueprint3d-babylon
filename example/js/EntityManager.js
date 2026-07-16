@@ -142,34 +142,6 @@ export class EntityManager {
 
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
 
-    /*
-    // 实时调试面板显示家具属性与吸附状态
-    let debugDiv = document.getElementById('debug-snap-info');
-    if (!debugDiv) {
-      debugDiv = document.createElement('div');
-      debugDiv.id = 'debug-snap-info';
-      debugDiv.style.position = 'fixed';
-      debugDiv.style.top = '120px'; // 避开可能存在的顶部导航栏
-      debugDiv.style.left = '20px';
-      debugDiv.style.background = 'rgba(15, 23, 42, 0.9)';
-      debugDiv.style.color = '#38bdf8';
-      debugDiv.style.border = '1px solid #0284c7';
-      debugDiv.style.borderRadius = '8px';
-      debugDiv.style.padding = '12px';
-      debugDiv.style.zIndex = '99999';
-      debugDiv.style.fontFamily = 'monospace';
-      debugDiv.style.pointerEvents = 'none';
-      debugDiv.style.fontSize = '13px';
-      debugDiv.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3)';
-      document.body.appendChild(debugDiv);
-    }
-    debugDiv.innerHTML = `<div><strong>[家具调试信息]</strong></div>
-                          <div>ID: ${item.id}</div>
-                          <div>类型: ${item.type}</div>
-                          <div>分类: ${definition?.category || '无'}</div>
-                          <div>边缘吸附 (shouldSnapToEdge): <span style="color: ${this.shouldSnapToEdge(item.type) ? '#4ade80' : '#f87171'}">${this.shouldSnapToEdge(item.type)}</span></div>`;
-    */
-
     let finalX = x;
     let finalZ = z;
 
@@ -196,6 +168,8 @@ export class EntityManager {
       x: Number(finalX.toFixed(3)),
       z: Number(finalZ.toFixed(3))
     };
+
+    let patch = {};
 
     if (definition.placeType === 'wall') {
       // 挂墙物体逻辑（例如壁灯、窗帘）
@@ -271,7 +245,6 @@ export class EntityManager {
         });
       }
 
-
       if (bestWall) {
         const wallThickness = this.opts.testMap.floorplan.wallThickness || 0.18;
         const itemScale = Number(item.scale || 1);
@@ -298,29 +271,29 @@ export class EntityManager {
           offsetZ = (dx / len) * offsetDist;
         }
 
-        item.x = bestProjX + offsetX;
-        item.z = bestProjZ + offsetZ;
+        patch.x = bestProjX + offsetX;
+        patch.z = bestProjZ + offsetZ;
 
         const dot1 = Math.sin(bestAngle) * offsetX + Math.cos(bestAngle) * offsetZ;
         const dot2 = Math.sin(bestAngle + Math.PI) * offsetX + Math.cos(bestAngle + Math.PI) * offsetZ;
-        item.rotation = dot1 >= dot2 ? bestAngle : bestAngle + Math.PI;
+        patch.rotation = dot1 >= dot2 ? bestAngle : bestAngle + Math.PI;
       } else {
-        item.x = snapped.x;
-        item.z = snapped.z;
+        patch.x = snapped.x;
+        patch.z = snapped.z;
       }
 
       if (item.elevation === undefined || item.elevation === 0) {
-        item.elevation = 33.6;
+        patch.elevation = 33.6;
       }
     } else if (definition.placeType === 'ceiling') {
       // 天花板物体逻辑
-      item.x = snapped.x;
-      item.z = snapped.z;
-      item.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - (item.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (item.scale || 1);
+      patch.x = snapped.x;
+      patch.z = snapped.z;
+      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - (item.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (item.scale || 1);
     } else {
       // 普通地板物体逻辑
-      item.x = snapped.x;
-      item.z = snapped.z;
+      patch.x = snapped.x;
+      patch.z = snapped.z;
       if (this.opts.canPlaceOnTable(item, definition)) {
         if (isFinished) {
           // 移动完毕：触发搁板/桌面磁吸定位
@@ -328,18 +301,18 @@ export class EntityManager {
           if (bookshelfBelow) {
             const snappedState = this.opts.snapToBookshelf ? this.opts.snapToBookshelf(item, bookshelfBelow) : null;
             if (snappedState) {
-              item.x = snappedState.x;
-              item.z = snappedState.z;
-              item.elevation = snappedState.elevation;
-              item.rotation = snappedState.rotation;
+              patch.x = snappedState.x;
+              patch.z = snappedState.z;
+              patch.elevation = snappedState.elevation;
+              patch.rotation = snappedState.rotation;
             }
           } else {
             const tableBelow = this.opts.findTableBelow(item);
             if (tableBelow) {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-              item.elevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
+              patch.elevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
             } else {
-              // 释放时无桌面：恢复为拖拽开始时的初始高程（而非强置为 0，防止手动调高物品释放时坠地）
+              // 释放时无桌面：恢复为拖拽开始时的初始高程
               let origElevation = 0;
               if (this.dragState && this.dragState.itemId === itemId) {
                 origElevation = this.dragState.originalElevation || 0;
@@ -349,7 +322,7 @@ export class EntityManager {
                   origElevation = d3s.originalElevation || 0;
                 }
               }
-              item.elevation = origElevation;
+              patch.elevation = origElevation;
             }
           }
         } else {
@@ -374,7 +347,7 @@ export class EntityManager {
             }
           }
 
-          // 3. 若什么都没检测到，退回到物件的拖拽初始高度（防止手动调高高度在移动中坠地）
+          // 3. 若什么都没检测到，退回到物件的拖拽初始高度
           if (targetElevation === null) {
             let origElevation = 0;
             if (this.dragState && this.dragState.itemId === itemId) {
@@ -388,21 +361,29 @@ export class EntityManager {
             targetElevation = origElevation;
           }
 
-          item.elevation = targetElevation;
+          patch.elevation = targetElevation;
         }
       }
     }
 
-    const room = this.opts.testMap.getRoomAt(item.x, item.z);
-    if (room) this.opts.testMap.assignItemToRoom(item.id, room.id);
+    const updatedX = patch.x !== undefined ? patch.x : item.x;
+    const updatedZ = patch.z !== undefined ? patch.z : item.z;
+    const updatedRotation = patch.rotation !== undefined ? patch.rotation : (item.rotation || 0);
+    const updatedElevation = patch.elevation !== undefined ? patch.elevation : (item.elevation || 0);
+
+    const room = this.opts.testMap.getRoomAt(updatedX, updatedZ);
+    if (room) {
+      patch.roomId = room.id;
+    }
+
     const node = this.opts.testMap.itemNodes.get(item.id);
 
     if (item.type === 'mannequin' && item.pose && item.pose !== 'stand') {
-      const seat = this.opts.findNearestSeat(item);
+      const seat = this.opts.findNearestSeat({ ...item, x: updatedX, z: updatedZ });
       if (!seat) {
-        item.pose = 'stand';
-        item.elevation = 0;
-        definition.build(this.opts.testMap, item, node, {
+        patch.pose = 'stand';
+        patch.elevation = 0;
+        definition.build(this.opts.testMap, { ...item, x: updatedX, z: updatedZ, pose: 'stand', elevation: 0 }, node, {
           width: item.width * (item.scale || 1),
           depth: item.depth * (item.scale || 1),
           height: item.height * (item.scale || 1)
@@ -410,13 +391,19 @@ export class EntityManager {
       }
     }
 
+    // 统一通过 Command API 写入
+    this.opts.testMap.executeCommand('updateItem', { itemId: item.id, patch, rebuild: false });
+    if (room) {
+      this.opts.testMap.executeCommand('assignItemToRoom', { itemId: item.id, roomId: room.id, rebuild: false });
+    }
+
     if (node) {
       const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(item.floorId) : 0;
-      const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset(item) : 0;
-      node.position.set(item.x, floorY + (item.elevation || 0) + roomOffset, item.z);
-      node.rotation.y = item.rotation || 0;
+      const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset({ ...item, x: updatedX, z: updatedZ, elevation: updatedElevation }) : 0;
+      node.position.set(updatedX, floorY + updatedElevation + roomOffset, updatedZ);
+      node.rotation.y = updatedRotation;
     }
-    this.updateChildrenOnBookshelf(item, beforeState);
+    this.updateChildrenOnBookshelf({ ...item, x: updatedX, z: updatedZ, rotation: updatedRotation, elevation: updatedElevation }, beforeState);
     this.opts.renderPlan();
   }
 
@@ -535,7 +522,7 @@ export class EntityManager {
       patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
     }
 
-    this.opts.testMap.updateItem(item.id, patch);
+    this.opts.testMap.executeCommand('updateItem', { itemId: item.id, patch });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -550,7 +537,7 @@ export class EntityManager {
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const isWaterOn = item.waterEnabled !== false;
-    this.opts.testMap.updateItem(itemId, { waterEnabled: !isWaterOn });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { waterEnabled: !isWaterOn } });
     this.opts.renderPlan();
   }
 
@@ -563,7 +550,7 @@ export class EntityManager {
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const isLidOpen = item.lidOpen === true;
-    this.opts.testMap.updateItem(itemId, { lidOpen: !isLidOpen });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { lidOpen: !isLidOpen } });
     this.opts.renderPlan();
   }
 
@@ -579,7 +566,7 @@ export class EntityManager {
     const copyX = (item.x || 0) + 0.4;
     const copyZ = (item.z || 0) + 0.4;
     const targetRoom = this.opts.getRooms().find((room) => pointInRoom(room, copyX, copyZ));
-    const copy = this.opts.testMap.addItem({
+    const copy = this.opts.testMap.executeCommand('addItem', {
       ...JSON.parse(JSON.stringify(item)),
       id: undefined,
       name: item.name,
@@ -603,7 +590,7 @@ export class EntityManager {
     this.opts.pushHistory();
     const currentDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
     const nextDegrees = (currentDegrees + 90) % 360;
-    this.opts.testMap.updateItem(itemId, { rotation: nextDegrees * Math.PI / 180 });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { rotation: nextDegrees * Math.PI / 180 } });
     if (this.selectedItemId === itemId) {
       this.opts.updateEditor();
     }
@@ -629,11 +616,6 @@ export class EntityManager {
   /**
    * 设置家具锁定状态，并做清除3D控制柄与2D视图联动
    *
-   * 注意：此方法不能使用 testMap.updateItem，因为 updateItem 内部
-   * 在第一行就有 `if (item.locked) return` 的锁定守卫，
-   * 这会导致对已锁定物体调用 updateItem({ locked: false }) 时直接被短路，
-   * 解锁操作永远无法生效。因此这里直接操作 item 数据和 node.metadata。
-   *
    * @param {string} itemId - 家具物品ID
    * @param {boolean} locked - 是否锁定
    */
@@ -642,10 +624,7 @@ export class EntityManager {
     if (!item) return;
     this.opts.pushHistory();
 
-    // 直接修改数据层和 3D 节点元数据，绕过 updateItem 的锁定守卫
-    item.locked = !!locked;
-    const node = this.opts.testMap.itemNodes.get(itemId);
-    if (node) node.metadata = { ...(node.metadata || {}), locked: item.locked };
+    this.opts.testMap.executeCommand('setTargetLocked', { type: 'item', id: itemId, locked });
 
     // 当物体被锁定时，立即清除 3D 编辑控制柄，以保证交互状态联动正确
     if (locked) {
@@ -675,7 +654,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
-    this.opts.testMap.deleteItem(itemId);
+    this.opts.testMap.executeCommand('deleteItem', { itemId });
     if (this.selectedItemId === itemId) {
       this.deselect();
     }
@@ -706,11 +685,14 @@ export class EntityManager {
       }
     }
 
-    this.opts.testMap.updateItem(itemId, {
-      width: widthInches,
-      depth: depthInches,
-      height: heightInches,
-      elevation: elevation
+    this.opts.testMap.executeCommand('updateItem', {
+      itemId,
+      patch: {
+        width: widthInches,
+        depth: depthInches,
+        height: heightInches,
+        elevation: elevation
+      }
     });
 
     this.updateChildrenOnBookshelf(item, beforeState);
@@ -730,7 +712,7 @@ export class EntityManager {
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
 
     this.opts.pushHistory();
-    this.opts.testMap.rotateItem(itemId, degrees * Math.PI / 180);
+    this.opts.testMap.executeCommand('rotateItem', { itemId, rotationRadians: degrees * Math.PI / 180 });
 
     this.updateChildrenOnBookshelf(item, beforeState);
 
@@ -763,7 +745,7 @@ export class EntityManager {
       patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
     }
     
-    this.opts.testMap.updateItem(itemId, patch);
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -790,7 +772,7 @@ export class EntityManager {
       patch.elevation = 0;
     }
     
-    this.opts.testMap.updateItem(itemId, patch);
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -832,7 +814,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
-    this.opts.testMap.updateItem(itemId, { lightOn });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { lightOn } });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -845,7 +827,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
-    this.opts.testMap.updateItem(itemId, { isOn: !!isOn });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { isOn: !!isOn } });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -864,7 +846,7 @@ export class EntityManager {
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
 
     this.opts.pushHistory();
-    this.opts.testMap.updateItem(itemId, { x: item.x + dx, z: item.z + dz });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { x: item.x + dx, z: item.z + dz } });
 
     this.updateChildrenOnBookshelf(item, beforeState);
 
@@ -886,7 +868,7 @@ export class EntityManager {
 
     this.opts.pushHistory();
     const newElev = Math.max(0, (item.elevation || 0) + deltaInches);
-    this.opts.testMap.updateItem(itemId, { elevation: newElev });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { elevation: newElev } });
 
     this.updateChildrenOnBookshelf(item, beforeState);
 
@@ -905,7 +887,7 @@ export class EntityManager {
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const nextScale = Math.max(0.5, Math.min(4.0, (item.scale || 1) + delta));
-    this.opts.testMap.updateItem(itemId, { scale: nextScale });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { scale: nextScale } });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -923,7 +905,7 @@ export class EntityManager {
     const radStep = deltaDeg * Math.PI / 180;
     let rotation = (item.rotation || 0) + radStep;
     rotation = (rotation % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-    this.opts.testMap.updateItem(itemId, { rotation });
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { rotation } });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -948,7 +930,6 @@ export class EntityManager {
     const de = (bookshelf.elevation || 0) - (beforeState.elevation || 0);
     if (Math.abs(dx) < 0.0001 && Math.abs(dz) < 0.0001 && Math.abs(dr) < 0.0001 && Math.abs(de) < 0.0001) return;
     
-    // 判断是否在拖拽该书架/柜子/模特
     let isDraggingThis = false;
     let initialChildrenIds = null;
 
@@ -963,32 +944,26 @@ export class EntityManager {
       }
     }
 
-    // 找出在移动前放置在该书架/模特上的所有物品
     let itemsOnShelf;
     if (isDraggingThis && initialChildrenIds) {
-      // 如果已在拖拽中缓存了子摆件列表，直接使用缓存的 ID 列表进行过滤
       itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => initialChildrenIds.includes(item.id));
     } else {
       if (isMannequin) {
-        // 动态扫描穿在模特身上的衣物帽子鞋子
         itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => {
           if (item.id === bookshelf.id) return false;
           if (!item.type.startsWith('clothing_') || item.type.includes('mannequin')) return false;
 
-          // 距离检测 (米)
           const cdx = item.x - beforeState.x;
           const cdz = item.z - beforeState.z;
           const distSq = cdx * cdx + cdz * cdz;
-          if (distSq > 0.05 * 0.05) return false; // 容差 0.05 米
+          if (distSq > 0.05 * 0.05) return false;
 
-          // 高度范围检测 (米)
           const modelH = (bookshelf.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (bookshelf.scale || 1);
           const itemElev = item.elevation || 0;
           const modelElev = beforeState.elevation || 0;
           return itemElev >= modelElev && itemElev <= modelElev + modelH + (5.0 / INCHES_PER_UNIT);
         });
       } else {
-        // 否则进行动态空间扫描书架小摆件
         itemsOnShelf = getItemsOnBookshelf(
           beforeState, 
           this.opts.testMap.floorplan.items, 
@@ -996,7 +971,6 @@ export class EntityManager {
         );
       }
       
-      // 如果是在拖拽状态下的首次更新，把扫到的结果缓存起来，在后续拖拽帧中使用
       if (isDraggingThis) {
         const ids = itemsOnShelf.map(item => item.id);
         if (this.dragState && this.dragState.itemId === bookshelf.id) {
@@ -1011,7 +985,6 @@ export class EntityManager {
     }
     
     for (const childItem of itemsOnShelf) {
-      // 1. 计算小摆件相对于柜子旧状态的局部坐标 (lx, lz)
       const cx = beforeState.x;
       const cz = beforeState.z;
       const oRot = beforeState.rotation || 0;
@@ -1024,7 +997,6 @@ export class EntityManager {
       const lx = cdx * cos - cdz * sin;
       const lz = cdx * sin + cdz * cos;
       
-      // 2. 根据柜子的新状态 (bookshelf.x, bookshelf.z, bookshelf.rotation) 计算小摆件的世界新坐标
       const nx = bookshelf.x;
       const nz = bookshelf.z;
       const nRot = bookshelf.rotation || 0;
@@ -1034,24 +1006,25 @@ export class EntityManager {
       const newWx = nx + lx * cosRot + lz * sinRot;
       const newWz = nz - lx * sinRot + lz * cosRot;
       
-      // 3. 计算新旋转和新高程
       const newRot = (childItem.rotation || 0) + dr;
       const newElevation = (childItem.elevation || 0) + de;
       
-      // 4. 更新小摆件在数据库里的值
-      this.opts.testMap.updateItem(childItem.id, {
-        x: Number(newWx.toFixed(3)),
-        z: Number(newWz.toFixed(3)),
-        rotation: newRot,
-        elevation: newElevation
+      this.opts.testMap.executeCommand('updateItem', {
+        itemId: childItem.id,
+        patch: {
+          x: Number(newWx.toFixed(3)),
+          z: Number(newWz.toFixed(3)),
+          rotation: newRot,
+          elevation: newElevation
+        },
+        rebuild: false
       });
       
-      // 5. 同步更新小摆件的 3D mesh 节点
       const node = this.opts.testMap.itemNodes?.get(childItem.id);
       if (node) {
         const floorY = this.opts.testMap.getFloorElevation ? this.opts.testMap.getFloorElevation(childItem.floorId) : 0;
         const roomOffset = this.opts.testMap.getItemRoomElevationOffset ? this.opts.testMap.getItemRoomElevationOffset(childItem) : 0;
-        node.position.set(newWx, floorY + newElevation / INCHES_PER_UNIT + roomOffset, newWz);
+        node.position.set(newWx, floorY + newElevation + roomOffset, newWz);
         node.rotation.y = newRot;
       }
     }
@@ -1069,7 +1042,7 @@ export class EntityManager {
     const definition = this.opts.testMap.getFurnitureDefinition(type);
     if (!definition) return null;
     this.opts.pushHistory();
-    const item = this.opts.testMap.addItem({
+    const item = this.opts.testMap.executeCommand('addItem', {
       type,
       width: definition.defaultSize.width / INCHES_PER_UNIT,
       depth: definition.defaultSize.depth / INCHES_PER_UNIT,
@@ -1092,15 +1065,17 @@ export class EntityManager {
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
-    item.colors = {};
-    item.materials = {};
+    
+    const colors = {};
+    const materials = {};
     if (definition && definition.components) {
       definition.components.forEach((component) => {
-        item.colors[component.id] = component.defaultColor;
-        item.materials[component.id] = component.defaultColor;
+        colors[component.id] = component.defaultColor;
+        materials[component.id] = component.defaultColor;
       });
     }
-    this.opts.testMap.updateItem(itemId, { colors: item.colors, materials: item.materials });
+    
+    this.opts.testMap.executeCommand('updateItem', { itemId, patch: { colors, materials } });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -1114,7 +1089,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item) return;
     if (item.pose && item.pose !== 'stand') {
-      this.opts.testMap.updateItem(itemId, { pose: 'stand', elevation: 0 });
+      this.opts.testMap.executeCommand('updateItem', { itemId, patch: { pose: 'stand', elevation: 0 } });
       this.opts.refreshShadows();
       this.opts.updateEditor();
       this.opts.renderPlan();
@@ -1131,7 +1106,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
-    this.opts.testMap.updateItemComponentColor(itemId, componentId, color);
+    this.opts.testMap.executeCommand('updateItemComponentColor', { itemId, componentId, color });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -1147,7 +1122,7 @@ export class EntityManager {
     const item = this.opts.testMap.getItem(itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
-    this.opts.testMap.updateItemComponentMaterial(itemId, componentId, material);
+    this.opts.testMap.executeCommand('updateItemComponentMaterial', { itemId, componentId, material });
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();

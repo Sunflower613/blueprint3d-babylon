@@ -127,6 +127,16 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (this.renderingEnabled) this.build();
   }
 
+  /**
+   * 执行修改户型平面图数据的指令（代理到 editorFacade）
+   * @param {string} name - 指令名称
+   * @param {Object} [args={}] - 指令参数
+   * @returns {Object|boolean|void} 指令执行结果
+   */
+  executeCommand(name, args = {}) {
+    return this.editorFacade.executeCommand(name, args);
+  }
+
   /** @returns {boolean} 是否启用 3D 渲染 */
   get renderingEnabled() { return this.editorFacade.renderingEnabled; }
   /** @param {boolean} val - 是否启用 3D 渲染 */

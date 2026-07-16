@@ -94,7 +94,7 @@ export function renderPlan() {
   ctx.currentRoofs().forEach((roof) => renderRoof(roof));
   ctx.currentStairs().forEach((stairs) => renderStairs(stairs));
   ctx.currentFences().forEach((fence) => renderFence(fence));
-  (ctx.testMap.floorplan.fenceGates || []).filter(gate => gate.floorId === ctx.testMap.floorplan.currentFloorId).forEach(gate => renderFenceGate(gate));
+  ctx.testMap.getCurrentFloorEntities('fenceGate').forEach(gate => renderFenceGate(gate));
 
   // 绘制没有墙体的地板边缘热区线段，用来实现画栅栏悬浮预览和点击自动吸附
   ctx.getFreeFloorEdges().forEach((edge, index) => {
@@ -738,7 +738,7 @@ export function renderStairs(stairs) {
 }
 
 export function renderPlanItem(item) {
-  if (isItemSnappedToBookshelfOrMannequin(item, ctx.testMap.floorplan.items, (type) => ctx.testMap.getFurnitureDefinition(type))) {
+  if (isItemSnappedToBookshelfOrMannequin(item, ctx.testMap.getEntities('item'), (type) => ctx.testMap.getFurnitureDefinition(type))) {
     return;
   }
   const center = worldToSvg(item.x, item.z);
@@ -786,7 +786,7 @@ export function renderFence(fence) {
   ctx.attachContextMenuTrigger(group, () => ({ type: 'fence', id: fence.id }));
 
   const occupiedIntervals = [];
-  (ctx.testMap.floorplan.fenceGates || []).forEach(gate => {
+  ctx.testMap.getEntities('fenceGate').forEach(gate => {
     const gFrom = gate.from || [0, 0];
     const gTo = gate.to || [1, 0];
     const gcx = (gFrom[0] + gTo[0]) / 2;
@@ -880,7 +880,7 @@ export function renderFence(fence) {
           const { t } = ctx.Topology.projectPointToFence(world, fence, false, 0);
           const subtype = ctx.mode.replace('add-fence-gate-', '') || fence.subtype || 'picket_wood';
           const gate = ctx.testMap.addFenceGate({
-            floorId: ctx.testMap.floorplan.currentFloorId,
+            floorId: ctx.testMap.getCurrentFloorId(),
             fenceId: fence.id,
             t: t,
             width: 1.0,

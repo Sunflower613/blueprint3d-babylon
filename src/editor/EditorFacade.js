@@ -2,6 +2,7 @@ import { FloorplanDocument } from '../domain/FloorplanDocument.js';
 import { BabylonSceneRenderer } from '../runtime/BabylonSceneRenderer.js';
 import { SelectionController } from './SelectionController.js';
 import { ExportService } from '../services/ExportService.js';
+import { getFurnitureDefinition } from '../furniture/index.js';
 
 export class EditorFacade {
   /**
@@ -142,6 +143,152 @@ export class EditorFacade {
     if (typeof this._renderer.build === 'function') {
       this._renderer.build();
     }
+  }
+
+  /**
+   * 获取当前户型平面图数据的只读深拷贝快照
+   * @returns {Object} 户型平面图快照
+   */
+  getSnapshot() {
+    return JSON.parse(JSON.stringify(this._document.floorplan));
+  }
+
+  /**
+   * 获取当前楼层的 ID
+   * @returns {string} 楼层 ID
+   */
+  getCurrentFloorId() {
+    return this._document.floorplan.currentFloorId;
+  }
+
+  /**
+   * 获取所有楼层配置的只读深拷贝列表
+   * @returns {Array<Object>} 楼层列表
+   */
+  getFloors() {
+    return JSON.parse(JSON.stringify(this._document.floorplan.floors || []));
+  }
+
+  /**
+   * 根据 ID 获取单个楼层配置的只读深拷贝
+   * @param {string} id - 楼层 ID
+   * @returns {Object|null} 楼层配置
+   */
+  getFloor(id) {
+    const floor = this._document.getFloor(id);
+    return floor ? JSON.parse(JSON.stringify(floor)) : null;
+  }
+
+  /**
+   * 根据类型和选项获取实体列表的只读深拷贝
+   * @param {string} type - 实体类型
+   * @param {Object} [options={}] - 过滤选项
+   * @param {string} [options.floorId] - 限制楼层 ID
+   * @returns {Array<Object>} 实体只读拷贝列表
+   */
+  getEntities(type, options = {}) {
+    const normType = this._normalizeEntityType(type);
+    if (!normType) return [];
+    let list = [];
+    if (normType === 'rooms') {
+      list = this._document.floorplan.floor?.rooms || [];
+    } else {
+      list = this._document.floorplan[normType] || [];
+    }
+    if (options.floorId) {
+      list = list.filter(entity => (entity.floorId || 'floor_1') === options.floorId);
+    }
+    return JSON.parse(JSON.stringify(list));
+  }
+
+  /**
+   * 根据类型和 ID 获取单个实体的只读深拷贝
+   * @param {string} type - 实体类型
+   * @param {string} id - 实体 ID
+   * @returns {Object|null} 实体只读拷贝
+   */
+  getEntity(type, id) {
+    const normType = this._normalizeEntityType(type);
+    if (!normType) return null;
+    let entity;
+    if (normType === 'rooms') {
+      entity = this._document.floorplan.floor?.rooms?.find(e => e.id === id);
+    } else {
+      entity = (this._document.floorplan[normType] || []).find(e => e.id === id);
+    }
+    return entity ? JSON.parse(JSON.stringify(entity)) : null;
+  }
+
+  /**
+   * 获取当前楼层下特定类型的实体只读深拷贝列表
+   * @param {string} type - 实体类型
+   * @returns {Array<Object>} 实体只读拷贝列表
+   */
+  getCurrentFloorEntities(type) {
+    return this.getEntities(type, { floorId: this.getCurrentFloorId() });
+  }
+
+  /**
+   * 获取特定类型家具定义的只读拷贝
+   * @param {string} type - 家具类型
+   * @returns {Object|null} 家具只读定义
+   */
+  getFurnitureDefinition(type) {
+    const def = getFurnitureDefinition(type);
+    return def ? JSON.parse(JSON.stringify(def)) : null;
+  }
+
+  /**
+   * 获取特定楼层的高度（绝对海拔）
+   * @param {string} id - 楼层 ID
+   * @returns {number} 楼层绝对海拔
+   */
+  getFloorElevation(id) {
+    return this._document.getFloorElevation(id);
+  }
+
+  /**
+   * 获取特定楼层在其层级（level）对应的高度数值
+   * @param {string} floorId - 楼层 ID
+   * @returns {number} 楼层层级
+   */
+  getFloorLevel(floorId) {
+    return this._document.getFloorLevel(floorId);
+  }
+
+  /**
+   * 计算楼梯的自动生成高度
+   * @param {Object} stairs - 楼梯实体数据
+   * @returns {number} 自动计算高度
+   */
+  getStairsAutoHeight(stairs) {
+    return this._document.getStairsAutoHeight(stairs);
+  }
+
+  /** @private */
+  _normalizeEntityType(type) {
+    if (typeof type !== 'string') return null;
+    const typeMap = {
+      room: 'rooms',
+      rooms: 'rooms',
+      wall: 'walls',
+      walls: 'walls',
+      opening: 'openings',
+      openings: 'openings',
+      item: 'items',
+      items: 'items',
+      roof: 'roofs',
+      roofs: 'roofs',
+      stair: 'stairs',
+      stairs: 'stairs',
+      fence: 'fences',
+      fences: 'fences',
+      fencegate: 'fenceGates',
+      fencegates: 'fenceGates',
+      fenceGate: 'fenceGates',
+      fenceGates: 'fenceGates'
+    };
+    return typeMap[type.toLowerCase()] || typeMap[type] || null;
   }
 }
 

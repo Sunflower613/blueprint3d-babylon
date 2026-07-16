@@ -108,7 +108,6 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
 
     this.document = this.editorFacade._document;
     this.exportService = this.editorFacade._exportService;
-    this.renderingEnabled = this.editorFacade.renderingEnabled;
     this.renderer = this.editorFacade._renderer;
     this.selectionController = this.editorFacade._selectionController;
     
@@ -127,6 +126,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.renderingDirty = true;
     if (this.renderingEnabled) this.build();
   }
+
+  /** @returns {boolean} 是否启用 3D 渲染 */
+  get renderingEnabled() { return this.editorFacade.renderingEnabled; }
+  /** @param {boolean} val - 是否启用 3D 渲染 */
+  set renderingEnabled(val) { this.editorFacade.renderingEnabled = val; }
 
   /** @returns {string|null} 当前选中的家具 ID */
   get selectedItemId() { return this.selectionController.selectedItemId; }
@@ -1295,6 +1299,15 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   }
 
   /**
+   * 重置指定洞口的材质，使其恢复默认
+   * @param {string} openingId - 洞口 ID
+   */
+  resetOpeningMaterial(openingId) {
+    this.document.resetOpeningMaterial(openingId);
+    this.build();
+  }
+
+  /**
    * 从宿主墙体上物理销毁移除该洞口并重建墙体几何
    * @param {string} openingId - 洞口 ID
    * @returns {boolean} 是否删除成功
@@ -1403,6 +1416,21 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     this.selectedWallId = this.selectedWallId && this.getWall(this.selectedWallId) ? this.selectedWallId : null;
     this.build();
   }
+
+  // ----------------------------------------------------
+  // 7. 只读查询 API 代理（转发给 editorFacade，确保防篡改）
+  // ----------------------------------------------------
+  getSnapshot() { return this.editorFacade.getSnapshot(); }
+  getCurrentFloorId() { return this.editorFacade.getCurrentFloorId(); }
+  getFloors() { return this.editorFacade.getFloors(); }
+  getFloor(id) { return this.editorFacade.getFloor(id); }
+  getEntities(type, options) { return this.editorFacade.getEntities(type, options); }
+  getEntity(type, id) { return this.editorFacade.getEntity(type, id); }
+  getCurrentFloorEntities(type) { return this.editorFacade.getCurrentFloorEntities(type); }
+  getFurnitureDefinition(type) { return this.editorFacade.getFurnitureDefinition(type); }
+  getFloorElevation(id) { return this.editorFacade.getFloorElevation(id); }
+  getFloorLevel(floorId) { return this.editorFacade.getFloorLevel(floorId); }
+  getStairsAutoHeight(stairs) { return this.editorFacade.getStairsAutoHeight(stairs); }
 }
 
 export { FURNITURE_DEFINITIONS, FURNITURE_LIST, FENCE_SUBTYPE_DEFAULTS };

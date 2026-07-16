@@ -593,9 +593,9 @@ let entityManager = new EntityManager({
   pointerDistance: (a, b) => pointerDistance(a, b),
   pointerAngle: (a, b) => pointerAngle(a, b),
   canPlaceOnTable: (item, def) => Topology.canPlaceOnTable(item, def),
-  findTableBelow: (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
-  findNearestSeat: (item) => Topology.findNearestSeat(item, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type)),
-  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  findTableBelow: (item) => Topology.findTableBelow(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type)),
+  findNearestSeat: (item) => Topology.findNearestSeat(item, testMap.getEntities('item'), (type) => testMap.getFurnitureDefinition(type)),
+  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type)),
   snapToBookshelf: (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type)),
   getDrag3DState: () => drag3DState
 });
@@ -713,9 +713,9 @@ Object.assign(appState, {
   
   // Topology 浠ｇ悊鏂规硶
   canPlaceOnTable: Topology.canPlaceOnTable,
-  findTableBelow: (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
-  findNearestSeat: (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type)),
-  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  findTableBelow: (item) => Topology.findTableBelow(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type)),
+  findNearestSeat: (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.getEntities('item'), (type) => testMap.getFurnitureDefinition(type)),
+  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type)),
   snapToBookshelf: (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type)),
 
   // 手柄特定存取器
@@ -875,7 +875,7 @@ store.on('saveError', () => {
 store.startAutoSave(() => ({
   materialLibrary: cleanMaterialLibraryForStorage(materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))),
   uiState: {
-    currentFloorId: testMap.floorplan.currentFloorId,
+    currentFloorId: testMap.getCurrentFloorId(),
     currentView,
   },
 }));
@@ -894,7 +894,7 @@ createCustomDropdown('fence-subtype');
 createCustomDropdown('fence-gate-subtype');
 createCustomDropdown('opening-shape');
 refreshShadows();
-selectItem(testMap.floorplan.items[0]?.id || null);
+selectItem(testMap.getEntities('item')[0]?.id || null);
 setView('2d');
 if (recoveredInitialFloor) {
   syncFloorControls();
@@ -946,7 +946,7 @@ function getMeshFloorId(mesh) { return viewer3d.getMeshFloorId(mesh); }
 function refreshShadows() {
   viewer3d.refreshShadowCasters(
     () => testMap.getShadowCasters(),
-    testMap.floorplan.currentFloorId
+    testMap.getCurrentFloorId()
   );
   refresh3DGrid();
 }
@@ -964,8 +964,8 @@ function refresh3DGrid() {
     roofs: currentRoofs(),
     stairs: currentStairs(),
     items: currentItems(),
-    currentFloorId: testMap.floorplan.currentFloorId,
-    floorElevation: testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0,
+    currentFloorId: testMap.getCurrentFloorId(),
+    floorElevation: testMap.getFloorElevation ? testMap.getFloorElevation(testMap.getCurrentFloorId()) : 0,
     inchesToWorld,
     hasTestMap: !!testMap,
     isDeleteWallMode: mode === 'delete-wall'
@@ -1091,60 +1091,58 @@ function snapNumber(value) {
 }
 
 function currentRooms() {
-  return testMap.getCurrentFloorRooms ? testMap.getCurrentFloorRooms() : testMap.floorplan.floor.rooms;
+  return testMap.getCurrentFloorEntities('room');
 }
 
 function currentWalls() {
-  return testMap.getCurrentFloorWalls ? testMap.getCurrentFloorWalls() : testMap.floorplan.walls;
+  return testMap.getCurrentFloorEntities('wall');
 }
 
 function referenceFloorWalls() {
-  if (!testMap.getFloorLevel || !testMap.floorplan.floors?.length) return [];
-  const currentLevel = testMap.getFloorLevel(testMap.floorplan.currentFloorId);
-  const lowerFloors = testMap.floorplan.floors
+  if (!testMap.getFloorLevel || !testMap.getFloors().length) return [];
+  const currentLevel = testMap.getFloorLevel(testMap.getCurrentFloorId());
+  const lowerFloors = testMap.getFloors()
     .filter((floor) => Number(floor.level || 0) < currentLevel)
     .sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
   const referenceFloor = lowerFloors[0];
   if (!referenceFloor) return [];
-  return testMap.floorplan.walls.filter((wall) => (wall.floorId || 'floor_1') === referenceFloor.id);
+  return testMap.getEntities('wall', { floorId: referenceFloor.id });
 }
 
 function currentOpenings() {
-  return testMap.getCurrentFloorOpenings ? testMap.getCurrentFloorOpenings() : testMap.floorplan.openings;
+  return testMap.getCurrentFloorEntities('opening');
 }
 
 function currentItems() {
-  return testMap.getCurrentFloorItems ? testMap.getCurrentFloorItems() : testMap.floorplan.items;
+  return testMap.getCurrentFloorEntities('item');
 }
 
 function currentRoofs() {
-  return testMap.getCurrentFloorRoofs ? testMap.getCurrentFloorRoofs() : [];
+  return testMap.getCurrentFloorEntities('roof');
 }
 
 function currentStairs() {
-  return testMap.getCurrentFloorStairs ? testMap.getCurrentFloorStairs() : [];
+  return testMap.getCurrentFloorEntities('stairs');
 }
 
 function getFloorEntityCount(floorId) {
-  if (!testMap?.floorplan || !floorId) return 0;
-  const matchesFloor = (entity) => (entity?.floorId || 'floor_1') === floorId;
-  return (testMap.floorplan.floor?.rooms || []).filter(matchesFloor).length
-    + (testMap.floorplan.walls || []).filter(matchesFloor).length
-    + (testMap.floorplan.openings || []).filter(matchesFloor).length
-    + (testMap.floorplan.items || []).filter(matchesFloor).length
-    + (testMap.floorplan.roofs || []).filter(matchesFloor).length
-    + (testMap.floorplan.stairs || []).filter(matchesFloor).length
-    + (testMap.floorplan.fences || []).filter(matchesFloor).length
-    + (testMap.floorplan.fenceGates || []).filter(matchesFloor).length;
+  if (!floorId) return 0;
+  const types = ['room', 'wall', 'opening', 'item', 'roof', 'stairs', 'fence', 'fenceGate'];
+  let count = 0;
+  for (const type of types) {
+    count += testMap.getEntities(type, { floorId }).length;
+  }
+  return count;
 }
 
 function ensureVisibleCurrentFloor(options = {}) {
   const { reason = 'unknown', silent = false } = options;
-  if (!testMap?.floorplan?.floors?.length) return false;
-  const currentFloorId = testMap.floorplan.currentFloorId;
+  const floors = testMap.getFloors();
+  if (!floors.length) return false;
+  const currentFloorId = testMap.getCurrentFloorId();
   if (getFloorEntityCount(currentFloorId) > 0) return false;
 
-  const fallbackFloor = [...testMap.floorplan.floors]
+  const fallbackFloor = [...floors]
     .map((floor) => ({ floor, count: getFloorEntityCount(floor.id) }))
     .sort((a, b) => b.count - a.count || Number(a.floor.level || 0) - Number(b.floor.level || 0))
     .find((entry) => entry.count > 0);
@@ -1272,14 +1270,14 @@ function getSelectedTarget() {
 
 function showFloorContextMenu(target, clientX, clientY) {
   if (!target?.id) return;
-  const sorted = [...testMap.floorplan.floors].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
+  const sorted = [...testMap.getFloors()].sort((a, b) => Number(a.level || 0) - Number(b.level || 0));
   const index = sorted.findIndex((floor) => floor.id === target.id);
   if (index < 0) return;
   showIconMenu(clientX, clientY, [
     { icon: 'edit', title: '\u547d\u540d', onClick: () => renameCurrentFloor(target.id) },
     { icon: 'up', title: '\u4e0a\u79fb', disabled: index === sorted.length - 1, onClick: () => moveFloorAction(target.id, 'up') },
     { icon: 'down', title: '\u4e0b\u79fb', disabled: index <= 0, onClick: () => moveFloorAction(target.id, 'down') },
-    { icon: 'trash', title: '\u5220\u9664', disabled: testMap.floorplan.floors.length <= 1, onClick: () => deleteFloorAction(target.id) }
+    { icon: 'trash', title: '\u5220\u9664', disabled: testMap.getFloors().length <= 1, onClick: () => deleteFloorAction(target.id) }
   ]);
 }
 
@@ -1293,7 +1291,7 @@ function moveFloorAction(floorId, direction) {
 }
 
 function deleteFloorAction(floorId) {
-  if (testMap.floorplan.floors.length <= 1) return;
+  if (testMap.getFloors().length <= 1) return;
   pushHistory();
   if (testMap.deleteFloor?.(floorId)) {
     clearSelection();
@@ -1304,7 +1302,7 @@ function deleteFloorAction(floorId) {
 }
 
 async function renameCurrentFloor(floorId) {
-  const floor = testMap.floorplan.floors.find((f) => f.id === floorId);
+  const floor = testMap.getFloor(floorId);
   if (!floor) return;
   const currentName = floor.name || `${Number(floor.level || 0) + 1}F`;
   const newName = await showCustomPrompt('妤煎眰鍛藉悕', '璇疯緭鍏ユ柊鐨勬ゼ灞傚悕绉帮細', currentName);
@@ -1330,9 +1328,9 @@ function cancelObjectInteractions() {
   camera.attachControl(canvas, true, false, 1);
 
   let needBuild = false;
-  testMap.floorplan.openings.forEach((op) => {
+  testMap.getEntities('opening').forEach((op) => {
     if (op.isDragging) {
-      op.isDragging = false;
+      testMap.updateOpening(op.id, { isDragging: false });
       needBuild = true;
     }
   });
@@ -1375,7 +1373,7 @@ function syncFloorControls() {
   }
 
   // 灞曞紑鐘舵€佷笅姝ｅ父娓叉煋妤煎眰鍒楄〃
-  const sortedFloors = [...testMap.floorplan.floors].sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
+  const sortedFloors = [...testMap.getFloors()].sort((a, b) => Number(b.level || 0) - Number(a.level || 0));
 
   sortedFloors.forEach((floor) => {
     const btn = document.createElement('button');
@@ -1387,7 +1385,7 @@ function syncFloorControls() {
     btn.title = `鍒囨崲鍒?${floorName}`;
     btn.setAttribute('aria-label', `鍒囨崲鍒?${floorName}`);
 
-    if (floor.id === testMap.floorplan.currentFloorId) {
+    if (floor.id === testMap.getCurrentFloorId()) {
       btn.classList.add('active');
     }
     attachContextMenuTrigger(btn, () => ({ type: 'floor', id: floor.id }), showFloorContextMenu);
@@ -1700,8 +1698,8 @@ function pointerAngle(a, b) {
 }
 
 const canPlaceOnTable = Topology.canPlaceOnTable;
-const findTableBelow = (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
-const findBookshelfNearby = (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type));
+const findTableBelow = (item) => Topology.findTableBelow(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type));
+const findBookshelfNearby = (item) => Topology.findBookshelfNearby(item, testMap.getEntities('item'), testMap.getCurrentFloorId(), (type) => testMap.getFurnitureDefinition(type));
 const snapToBookshelf = (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type));
 function getShelfLayerHeights(bookshelf) {
   return Topology.getShelfLayerHeights(bookshelf, (type) => testMap.getFurnitureDefinition(type));
@@ -1755,7 +1753,7 @@ function findRoofIdFromNode(node) {
   if (id) {
     const roof = testMap.getRoof?.(id);
     if (roof) {
-      const floor = testMap.floorplan.floors.find(f => f.id === roof.floorId);
+      const floor = testMap.getFloor(roof.floorId);
       if (floor && floor.hideRoof) {
         return null;
       }
@@ -1777,7 +1775,7 @@ function findFenceGateIdFromNode(node) {
 }
 
 function groundPointFromPointer() {
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.getCurrentFloorId()) : 0;
   return viewer3d.groundPointFromPointer(floorY);
 }
 
@@ -2080,7 +2078,7 @@ function begin3DDrag(pointerInfo) {
           pushHistory();
           const subtype = mode.replace('draw-fence-', '') || 'picket_wood';
           const fence = testMap.addFence({
-            floorId: testMap.floorplan.currentFloorId,
+            floorId: testMap.getCurrentFloorId(),
             from: [bestEdge.p1.x, bestEdge.p1.z],
             to: [bestEdge.p2.x, bestEdge.p2.z],
             subtype: subtype
@@ -2125,7 +2123,7 @@ function begin3DDrag(pointerInfo) {
         } else if (mode.startsWith('add-roof')) {
           const subtype = mode.replace('add-roof-', '') || 'gable';
           const room = selectedRoomId ? testMap.getRoom(selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
-          const wallThickness = testMap.floorplan.wallThickness || 0.15;
+          const wallThickness = testMap.getSnapshot().wallThickness || 0.15;
           const roofBounds = Topology.calculateAutoRoofBounds(room, { x: snapped.x, z: snapped.z }, wallThickness);
           const roof = testMap.addRoof({
             x: roofBounds.x,
@@ -2163,7 +2161,7 @@ function begin3DDrag(pointerInfo) {
         const { t } = Topology.projectPointToFence(pt, fence, false, 0);
         const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
         const gate = testMap.addFenceGate({
-          floorId: testMap.floorplan.currentFloorId,
+          floorId: testMap.getCurrentFloorId(),
           fenceId: fence.id,
           t: t,
           width: 1.0,
@@ -2183,7 +2181,7 @@ function begin3DDrag(pointerInfo) {
       const snapped = snapToGridSegmentCenter({ x: point.x, z: point.z });
       const subtype = mode.replace('add-fence-gate-', '') || 'picket_wood';
       const gate = testMap.addFenceGate({
-        floorId: testMap.floorplan.currentFloorId,
+        floorId: testMap.getCurrentFloorId(),
         from: [snapped.x - 0.5, snapped.z],
         to: [snapped.x + 0.5, snapped.z],
         width: 1.0,
@@ -2633,7 +2631,7 @@ function update3DFloorEdgeRailingPreview(edgeIndex, edge, fenceSubtype) {
   currentPreviewFloorEdgeIndex = edgeIndex;
   floorEdgeRailingPreview3DGroup = new BABYLON.TransformNode("floor_edge_railing_preview_group", scene);
 
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.getCurrentFloorId()) : 0;
   const p1 = edge.p1;
   const p2 = edge.p2;
   
@@ -2818,10 +2816,10 @@ function clearDrawWallPreview() {
 window.clearDrawWallPreview = clearDrawWallPreview;
 
 function updateDrawWallPreview(snappedPoint) {
-  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.floorplan.currentFloorId) : 0;
+  const floorY = testMap.getFloorElevation ? testMap.getFloorElevation(testMap.getCurrentFloorId()) : 0;
   const isFence = mode.startsWith('draw-fence');
-  const H = isFence ? 1.1 : (testMap.floorplan.wallHeight || 2.8);
-  const T = isFence ? 0.1 : (testMap.floorplan.wallThickness || 0.18);
+  const H = isFence ? 1.1 : (testMap.getSnapshot().wallHeight || 2.8);
+  const T = isFence ? 0.1 : (testMap.getSnapshot().wallThickness || 0.18);
 
   // 如果预览类型变化，先销毁再重建
   if (drawWallPreviewCylinder && drawWallPreviewCylinder.metadata?.isFence !== isFence) {
@@ -2967,7 +2965,7 @@ function selectFence(id) { return selectTarget(TARGET_TYPES.FENCE, id); }
 function selectFenceGate(id) { return selectTarget(TARGET_TYPES.FENCE_GATE, id); }
 
 function currentFences() {
-  return testMap.floorplan.fences || [];
+  return testMap.getEntities('fence');
 }
 
 
@@ -3002,7 +3000,7 @@ function deleteSelectedFenceGate() {
 }
 
 
-const findNearestSeat = (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type));
+const findNearestSeat = (mannequinItem) => Topology.findNearestSeat(mannequinItem, testMap.getEntities('item'), (type) => testMap.getFurnitureDefinition(type));
 
 
 
@@ -3131,7 +3129,7 @@ function previewSelectedWallRotation(degrees) {
     node.rotation.y = -preview.angleRad;
   }
   const wallLike = { ...wall, from: preview.from, to: preview.to };
-  testMap.floorplan.openings.filter((opening) => opening.wallId === wall.id).forEach((opening) => syncOpeningPreviewToWall(opening, wallLike));
+  testMap.getEntities('opening').filter((opening) => opening.wallId === wall.id).forEach((opening) => syncOpeningPreviewToWall(opening, wallLike));
 }
 
 function previewSelectedFenceRotation(degrees) {
@@ -3204,8 +3202,8 @@ function updateSelectedRoom() {
   const room = testMap.getRoom(selectedRoomId);
   if (room?.locked) return;
 
-  const roomFloor = testMap.floorplan.floors.find(f => f.id === room.floorId);
-  const wallHeight = roomFloor ? (roomFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+  const roomFloor = testMap.getFloor(room.floorId);
+  const wallHeight = roomFloor ? (roomFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0) : (testMap.getSnapshot().wallHeight ?? 3.0);
   let elevation = Number(document.getElementById('room-elevation').value || 0);
   if (elevation < 0) elevation = 0;
   if (elevation > wallHeight) elevation = wallHeight;
@@ -3227,8 +3225,8 @@ function updateSelectedRoom() {
 }
 
 function updateSelectedFloor() {
-  const currentFloorId = testMap.floorplan.currentFloorId;
-  const currentFloor = testMap.floorplan.floors.find((f) => f.id === currentFloorId);
+  const currentFloorId = testMap.getCurrentFloorId();
+  const currentFloor = testMap.getFloor(currentFloorId);
   if (!currentFloor) return;
   pushHistory();
 
@@ -3268,8 +3266,8 @@ function updateSelectedFloor() {
 }
 
 function updateSkyboxFromCurrentFloor() {
-  const currentFloorId = testMap.floorplan.currentFloorId;
-  const currentFloor = testMap.floorplan.floors.find((f) => f.id === currentFloorId);
+  const currentFloorId = testMap.getCurrentFloorId();
+  const currentFloor = testMap.getFloor(currentFloorId);
   if (currentFloor) {
     const skyboxEnabled = currentFloor.skyboxEnabled !== false;
     viewer3d.setSkyboxEnabled(skyboxEnabled);
@@ -3991,7 +3989,7 @@ if (floorFloatingGroup) {
     const addBtn = event.target.closest('#btn-add-floor');
     if (addBtn) {
       showCustomConfirm('复制户型', '是否复制当前户型？').then((copyCurrentFloor) => {
-        const sourceFloorId = testMap.floorplan.currentFloorId;
+        const sourceFloorId = testMap.getCurrentFloorId();
         pushHistory();
         testMap.addFloor(copyCurrentFloor ? { copyFromFloorId: sourceFloorId } : {});
         clearSelection();

@@ -283,14 +283,14 @@ export function updateEditor() {
   const openingEditor = document.getElementById('opening-editor');
   const structureEditor = document.getElementById('structure-editor');
   const emptyState = document.getElementById('empty-state');
-  const room = selection.selectedRoomId ? testMap.getRoom(selection.selectedRoomId) : null;
-  const wall = selection.selectedWallId ? testMap.getWall(selection.selectedWallId) : null;
-  const fence = selection.selectedFenceId ? testMap.getFence(selection.selectedFenceId) : null;
-  const fenceGate = selection.selectedFenceGateId ? testMap.getFenceGate(selection.selectedFenceGateId) : null;
-  const item = selection.selectedItemId ? testMap.getItem(selection.selectedItemId) : null;
-  const opening = selection.selectedOpeningId ? testMap.getOpening(selection.selectedOpeningId) : null;
-  const roof = selection.selectedRoofId ? testMap.getRoof?.(selection.selectedRoofId) : null;
-  const stairs = selection.selectedStairsId ? testMap.getStairs?.(selection.selectedStairsId) : null;
+  const room = selection.selectedRoomId ? testMap.getEntity('room', selection.selectedRoomId) : null;
+  const wall = selection.selectedWallId ? testMap.getEntity('wall', selection.selectedWallId) : null;
+  const fence = selection.selectedFenceId ? testMap.getEntity('fence', selection.selectedFenceId) : null;
+  const fenceGate = selection.selectedFenceGateId ? testMap.getEntity('fenceGate', selection.selectedFenceGateId) : null;
+  const item = selection.selectedItemId ? testMap.getEntity('item', selection.selectedItemId) : null;
+  const opening = selection.selectedOpeningId ? testMap.getEntity('opening', selection.selectedOpeningId) : null;
+  const roof = selection.selectedRoofId ? testMap.getEntity('roof', selection.selectedRoofId) : null;
+  const stairs = selection.selectedStairsId ? testMap.getEntity('stairs', selection.selectedStairsId) : null;
   const structure = roof || stairs;
   const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
@@ -313,13 +313,13 @@ export function updateEditor() {
   emptyState.classList.add('hidden');
 
   if (!hasSelection) {
-    const currentFloorId = testMap.floorplan.currentFloorId;
-    const currentFloor = testMap.floorplan.floors.find((f) => f.id === currentFloorId);
+    const currentFloorId = testMap.getCurrentFloorId();
+    const currentFloor = testMap.getFloor(currentFloorId);
     if (currentFloor) {
       document.getElementById('selected-floor-name').textContent = currentFloor.name || '楼层属性';
       document.getElementById('floor-name').value = currentFloor.name || '';
-      document.getElementById('floor-wall-height').value = Number((currentFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0).toFixed(2));
-      document.getElementById('floor-height').value = Number((currentFloor.floorHeight ?? testMap.floorplan.floorHeight ?? 0.06).toFixed(2));
+      document.getElementById('floor-wall-height').value = Number((currentFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0).toFixed(2));
+      document.getElementById('floor-height').value = Number((currentFloor.floorHeight ?? testMap.getSnapshot().floorHeight ?? 0.06).toFixed(2));
       document.getElementById('floor-hide-roof').checked = !!currentFloor.hideRoof;
       document.getElementById('floor-hide-wall').checked = !!currentFloor.hideWall;
       const skyboxInput = document.getElementById('floor-skybox-enabled');
@@ -329,7 +329,7 @@ export function updateEditor() {
     }
   }
 
-  document.getElementById('floor-color').value = room?.color || testMap.floorplan.floor.color || '#f4efe6';
+  document.getElementById('floor-color').value = room?.color || testMap.getSnapshot().floor?.color || '#f4efe6';
 
   if (room) {
     document.getElementById('selected-room-name').textContent = room.name || '房间';
@@ -337,8 +337,8 @@ export function updateEditor() {
     document.getElementById('room-width').value = Number(room.width.toFixed(2));
     document.getElementById('room-depth').value = Number(room.depth.toFixed(2));
 
-    const roomFloor = testMap.floorplan.floors.find((f) => f.id === room.floorId);
-    const wallHeight = roomFloor ? (roomFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+    const roomFloor = testMap.getFloor(room.floorId);
+    const wallHeight = roomFloor ? (roomFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0) : (testMap.getSnapshot().wallHeight ?? 3.0);
     const roomElevationInput = document.getElementById('room-elevation');
     if (roomElevationInput) {
       roomElevationInput.max = wallHeight;
@@ -405,8 +405,8 @@ export function updateEditor() {
     document.getElementById('item-height').value = Number((item.height || 0).toFixed(2));
     const elevationVal = Number((item.elevation || 0).toFixed(2));
     document.getElementById('item-elevation').value = elevationVal;
-    const itemFloor = testMap.floorplan.floors.find((f) => f.id === item.floorId);
-    const floorWallHeight = itemFloor ? (itemFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+    const itemFloor = testMap.getFloor(item.floorId);
+    const floorWallHeight = itemFloor ? (itemFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0) : (testMap.getSnapshot().wallHeight ?? 3.0);
     const elevationRange = document.getElementById('item-elevation-range');
     if (elevationRange) {
       elevationRange.max = floorWallHeight;
@@ -514,7 +514,7 @@ export function updateEditor() {
     const elevationInput = document.getElementById('structure-elevation');
     if (elevationInput) {
       const roofFloor = testMap.getFloor?.(structure.floorId);
-      const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? testMap.floorplan.wallHeight ?? 3.0) : (testMap.floorplan.wallHeight ?? 3.0);
+      const roofWallHeight = roofFloor ? (roofFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0) : (testMap.getSnapshot().wallHeight ?? 3.0);
       elevationInput.value = Number((structure.elevation ?? roofWallHeight).toFixed(2));
     }
 
@@ -1028,10 +1028,10 @@ export function initUiEventListeners() {
     let elevation = undefined;
     let rotation = undefined;
     if (definition.placeType === 'ceiling') {
-      elevation = (testMap.floorplan.wallHeight || 2.8) * INCHES_PER_UNIT - (definition.defaultSize.height || 0);
-    } else if (canPlaceOnTable({ x, z, floorId: testMap.floorplan.currentFloorId, width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
+      elevation = (testMap.getSnapshot().wallHeight || 2.8) * INCHES_PER_UNIT - (definition.defaultSize.height || 0);
+    } else if (canPlaceOnTable({ x, z, floorId: testMap.getCurrentFloorId(), width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
       // 检查当前选中的物品是否是多层架子柜
-      const selectedItem = selection.selectedItemId ? testMap.getItem(selection.selectedItemId) : null;
+      const selectedItem = selection.selectedItemId ? testMap.getEntity('item', selection.selectedItemId) : null;
       const selectedDef = selectedItem ? testMap.getFurnitureDefinition(selectedItem.type) : null;
       const supportedTypes = ['bookshelf', 'shoerack', 'corner_shelf', 'display_cabinet', 'grid_cabinet'];
       
@@ -1045,7 +1045,7 @@ export function initUiEventListeners() {
         rotation = selectedItem.rotation || 0;
         
         // 统计当前架子上的小摆件数量，以此轮流计算生成在第几个层板上
-        const count = getItemsCountOnBookshelf(selectedItem, testMap.floorplan.items);
+        const count = getItemsCountOnBookshelf(selectedItem, testMap.getEntities('item'));
         const worldShelvesY = getShelfLayerHeights(selectedItem);
         if (worldShelvesY && worldShelvesY.length > 0) {
           const layerIndex = count % worldShelvesY.length;
@@ -1097,14 +1097,14 @@ export function initUiEventListeners() {
         
         elevation = Number(elevation.toFixed(2));
       } else {
-        const bookshelfBelow = findBookshelfNearby({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
+        const bookshelfBelow = findBookshelfNearby({ x, z, floorId: testMap.getCurrentFloorId(), id: null });
         if (bookshelfBelow) {
-          const snappedState = snapToBookshelf({ x, z, elevation: 0, floorId: testMap.floorplan.currentFloorId, id: null }, bookshelfBelow);
+          const snappedState = snapToBookshelf({ x, z, elevation: 0, floorId: testMap.getCurrentFloorId(), id: null }, bookshelfBelow);
           if (snappedState) {
             elevation = snappedState.elevation;
           }
         } else {
-          const tableBelow = findTableBelow({ x, z, floorId: testMap.floorplan.currentFloorId, id: null });
+          const tableBelow = findTableBelow({ x, z, floorId: testMap.getCurrentFloorId(), id: null });
           if (tableBelow) {
             const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
             elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
@@ -1118,7 +1118,7 @@ export function initUiEventListeners() {
       elevation,
       rotation,
       roomId: room?.id,
-      floorId: testMap.floorplan.currentFloorId
+      floorId: testMap.getCurrentFloorId()
     });
     if (item && room) testMap.assignItemToRoom(item.id, room.id);
   });
@@ -1504,8 +1504,8 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('btn-delete-floor')?.addEventListener('click', () => {
-    const currentFloorId = testMap.floorplan.currentFloorId;
-    if (testMap.floorplan.floors.length <= 1) {
+    const currentFloorId = testMap.getCurrentFloorId();
+    if (testMap.getFloors().length <= 1) {
       showCustomAlert('提示', '至少需要保留一个楼层！');
       return;
     }

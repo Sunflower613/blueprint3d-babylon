@@ -61,19 +61,36 @@ export function getRoomLocalVertices(shape) {
 }
 
 export function getRoomVertices(room, local = false) {
-  const width = Math.max(1.2, Number(room.width) || 4);
-  const depth = Math.max(1.2, Number(room.depth) || 4);
+  const width = Math.max(1.0, Number(room.width) || 4);
+  const depth = Math.max(1.0, Number(room.depth) || 4);
   const originX = local ? 0 : Number(room.x) || 0;
   const originZ = local ? 0 : Number(room.z) || 0;
   const rotation = Number(room.rotation) || 0;
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
 
-  return getRoomLocalVertices(room.shape).map((point) => {
-    const lx = point.x * width;
-    const lz = point.z * depth;
-    const rx = lx * cos - lz * sin;
-    const rz = lx * sin + lz * cos;
+  let localPoints;
+  if (normalizeRoomShape(room.shape) === 'l-shape') {
+    const edgeWidth = room.edgeWidth !== undefined && room.edgeWidth !== null ? Number(room.edgeWidth) : (width / 2);
+    const edgeDepth = room.edgeDepth !== undefined && room.edgeDepth !== null ? Number(room.edgeDepth) : (depth / 2);
+    localPoints = [
+      { lx: -0.5 * width, lz: -0.5 * depth },
+      { lx: 0.5 * width, lz: -0.5 * depth },
+      { lx: 0.5 * width, lz: 0.5 * depth - edgeDepth },
+      { lx: 0.5 * width - edgeWidth, lz: 0.5 * depth - edgeDepth },
+      { lx: 0.5 * width - edgeWidth, lz: 0.5 * depth },
+      { lx: -0.5 * width, lz: 0.5 * depth }
+    ];
+  } else {
+    localPoints = getRoomLocalVertices(room.shape).map((point) => ({
+      lx: point.x * width,
+      lz: point.z * depth
+    }));
+  }
+
+  return localPoints.map((point) => {
+    const rx = point.lx * cos - point.lz * sin;
+    const rz = point.lx * sin + point.lz * cos;
     return {
       x: originX + rx,
       z: originZ + rz

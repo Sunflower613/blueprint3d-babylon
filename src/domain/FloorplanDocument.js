@@ -210,6 +210,8 @@ export class FloorplanDocument {
         room.material = normalized.floor.material;
       }
       room.locked = !!room.locked;
+      room.edgeWidth = Math.max(0.2, Math.min(room.width - 0.2, Number(room.edgeWidth ?? (room.width / 2))));
+      room.edgeDepth = Math.max(0.2, Math.min(room.depth - 0.2, Number(room.edgeDepth ?? (room.depth / 2))));
     });
 
     normalized.walls ||= [];
@@ -798,7 +800,9 @@ export class FloorplanDocument {
       shape: normalizeRoomShape(partialRoom.shape),
       floorId: partialRoom.floorId || this.floorplan.currentFloorId,
       locked: !!partialRoom.locked,
-      wallIds: {}
+      wallIds: {},
+      edgeWidth: Math.max(0.2, Math.min(width - 0.2, Number(partialRoom.edgeWidth ?? (width / 2)))),
+      edgeDepth: Math.max(0.2, Math.min(depth - 0.2, Number(partialRoom.edgeDepth ?? (depth / 2))))
     };
     this.floorplan.floor.rooms.push(room);
     this.syncRoomWalls(room, true);
@@ -828,9 +832,11 @@ export class FloorplanDocument {
       rotation: room.rotation || 0
     };
     Object.assign(room, patch);
-    room.width = Math.max(1.2, Number(room.width));
-    room.depth = Math.max(1.2, Number(room.depth));
+    room.width = Math.max(1.0, Number(room.width));
+    room.depth = Math.max(1.0, Number(room.depth));
     room.shape = normalizeRoomShape(room.shape);
+    room.edgeWidth = Math.max(0.2, Math.min(room.width - 0.2, Number(room.edgeWidth ?? (room.width / 2))));
+    room.edgeDepth = Math.max(0.2, Math.min(room.depth - 0.2, Number(room.edgeDepth ?? (room.depth / 2))));
 
     const dx = room.x - previous.x;
     const dz = room.z - previous.z;

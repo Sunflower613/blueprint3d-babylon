@@ -51,3 +51,39 @@ for (const shape of ROOM_SHAPES) {
     assert.equal(pointInRoom(room, room.x + room.width, room.z + room.depth), false);
   });
 }
+
+test('room minimum size is constrained to 1.0m instead of 1.2m', () => {
+  const room = {
+    x: 0,
+    z: 0,
+    width: 0.5,
+    depth: 0.5,
+    shape: 'square'
+  };
+  const vertices = getRoomVertices(room);
+  assert.equal(vertices[0].x, -0.5);
+  assert.equal(vertices[0].z, -0.5);
+  assert.equal(vertices[2].x, 0.5);
+  assert.equal(vertices[2].z, 0.5);
+});
+
+test('l-shape respects custom edgeWidth and edgeDepth', () => {
+  const room = {
+    x: 0,
+    z: 0,
+    width: 4,
+    depth: 4,
+    shape: 'l-shape',
+    edgeWidth: 1.5,
+    edgeDepth: 1.2
+  };
+  const vertices = getRoomVertices(room);
+  assert.deepEqual(vertices, [
+    { x: -2, z: -2 },
+    { x: 2, z: -2 },
+    { x: 2, z: 0.8 },
+    { x: 0.5, z: 0.8 },
+    { x: 0.5, z: 2 },
+    { x: -2, z: 2 }
+  ]);
+});

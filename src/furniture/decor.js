@@ -1385,7 +1385,7 @@ export const luxuryMetalGlassScreenFurniture = {
 
 export const japaneseShojiScreenFurniture = {
   type: 'japanese_shoji_screen',
-  name: '障子屏风',
+  name: '障纸屏风',
   defaultSize: { width: 64, depth: 6, height: 64 },
   components: [
     { id: 'frame', label: '黑胡桃木框', defaultColor: '#2b221a' },

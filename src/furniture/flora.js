@@ -770,8 +770,8 @@ export const landscapeCherryTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'cherry-trunk', label: '屈曲老干', defaultColor: CHERRY_TREE_SEASONS.spring.trunk },
-    { id: 'cherry-blossoms', label: '粉粉樱花', defaultColor: CHERRY_TREE_SEASONS.spring.blossoms }
+    { id: 'cherry-blossoms', label: '粉粉樱花', defaultColor: CHERRY_TREE_SEASONS.spring.blossoms },
+    { id: 'cherry-trunk', label: '屈曲老干', defaultColor: CHERRY_TREE_SEASONS.spring.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = CHERRY_TREE_SEASONS[item.season] ? item.season : 'spring';

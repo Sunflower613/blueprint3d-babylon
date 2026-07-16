@@ -9,6 +9,8 @@ import {
 } from '../src/furniture/index.js';
 
 const applianceTypes = [
+  'air_conditioner_wall',
+  'air_conditioner_floor',
   'washing_machine',
   'tv',
   'computer',

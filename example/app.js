@@ -592,11 +592,11 @@ let entityManager = new EntityManager({
   activePointers: activePointers,
   pointerDistance: (a, b) => pointerDistance(a, b),
   pointerAngle: (a, b) => pointerAngle(a, b),
-  canPlaceOnTable: (item, def) => canPlaceOnTable(item, def),
-  findTableBelow: (item) => findTableBelow(item),
-  findNearestSeat: (item) => findNearestSeat(item),
-  findBookshelfNearby: (item) => findBookshelfNearby(item),
-  snapToBookshelf: (item, bookshelf) => snapToBookshelf(item, bookshelf),
+  canPlaceOnTable: (item, def) => Topology.canPlaceOnTable(item, def),
+  findTableBelow: (item) => Topology.findTableBelow(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  findNearestSeat: (item) => Topology.findNearestSeat(item, testMap.floorplan.items, (type) => testMap.getFurnitureDefinition(type)),
+  findBookshelfNearby: (item) => Topology.findBookshelfNearby(item, testMap.floorplan.items, testMap.floorplan.currentFloorId, (type) => testMap.getFurnitureDefinition(type)),
+  snapToBookshelf: (item, bookshelf) => Topology.snapToBookshelf(item, bookshelf, (type) => testMap.getFurnitureDefinition(type)),
   getDrag3DState: () => drag3DState
 });
 
@@ -1054,6 +1054,7 @@ function setView(nextView) {
   }
 
   if (nextView === '3d') {
+    camera.attachControl(canvas, true, false, 1);
     viewer3d.prepareFor3D();
     updateSkyboxFromCurrentFloor();
     testMap.enableRendering();
@@ -1064,6 +1065,7 @@ function setView(nextView) {
       scene.render();
     });
   } else {
+    camera.detachControl(canvas);
     clear3DEditHandles();
     clear3DGrid();
     clearDrawWallPreview();

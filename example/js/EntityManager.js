@@ -519,10 +519,23 @@ export class EntityManager {
       this.itemGestureState.historyPushed = true;
     }
 
-    this.opts.testMap.updateItem(item.id, {
+    const definition = this.opts.testMap.getFurnitureDefinition(item.type);
+    const isMeterDef = definition.unit === 'm';
+    const defW = isMeterDef ? definition.defaultSize.width : (definition.defaultSize.width / 39.37);
+    const defD = isMeterDef ? definition.defaultSize.depth : (definition.defaultSize.depth / 39.37);
+    const defH = isMeterDef ? definition.defaultSize.height : (definition.defaultSize.height / 39.37);
+    const patch = {
       rotation: nextRotation,
-      scale: Number(nextScale.toFixed(3))
-    });
+      width: Number((defW * nextScale).toFixed(3)),
+      depth: Number((defD * nextScale).toFixed(3)),
+      height: Number((defH * nextScale).toFixed(3)),
+      scale: 1.0
+    };
+    if (definition.placeType === 'ceiling') {
+      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
+    }
+
+    this.opts.testMap.updateItem(item.id, patch);
     this.opts.refreshShadows();
     this.opts.updateEditor();
     this.opts.renderPlan();
@@ -736,9 +749,18 @@ export class EntityManager {
     this.opts.pushHistory();
     const scale = Math.max(0.5, Math.min(4, Number(scaleValue) || 1));
     
-    let patch = { scale };
+    const isMeterDef = definition.unit === 'm';
+    const defW = isMeterDef ? definition.defaultSize.width : (definition.defaultSize.width / 39.37);
+    const defD = isMeterDef ? definition.defaultSize.depth : (definition.defaultSize.depth / 39.37);
+    const defH = isMeterDef ? definition.defaultSize.height : (definition.defaultSize.height / 39.37);
+    const patch = {
+      width: Number((defW * scale).toFixed(3)),
+      depth: Number((defD * scale).toFixed(3)),
+      height: Number((defH * scale).toFixed(3)),
+      scale: 1.0
+    };
     if (definition.placeType === 'ceiling') {
-      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - item.height * scale;
+      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
     }
     
     this.opts.testMap.updateItem(itemId, patch);

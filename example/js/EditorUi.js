@@ -415,10 +415,11 @@ export function updateEditor() {
     const rotationDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
     document.getElementById('item-rotation').value = rotationDegrees;
     document.getElementById('item-rotation-range').value = rotationDegrees;
-    document.getElementById('item-scale').value = Number((item.scale || 1).toFixed(2));
-    document.getElementById('item-scale-range').value = item.scale || 1;
-    document.getElementById('item-locked').checked = !!item.locked;
     const def = testMap.getFurnitureDefinition(item.type);
+    const currentScale = item.width && def.defaultSize?.width ? (item.width / def.defaultSize.width) : 1;
+    document.getElementById('item-scale').value = Number(currentScale.toFixed(2));
+    document.getElementById('item-scale-range').value = currentScale;
+    document.getElementById('item-locked').checked = !!item.locked;
 
     const poseField = document.getElementById('item-pose-field');
     if (item.type === 'mannequin') {

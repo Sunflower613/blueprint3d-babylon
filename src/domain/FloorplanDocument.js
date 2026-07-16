@@ -616,7 +616,39 @@ export class FloorplanDocument {
 
   refreshItemRoomLinks() {
     this.floorplan.items.forEach((item) => {
-      const room = this.floorplan.floor.rooms.find((candidate) => candidate.floorId === item.floorId && pointInRoom(candidate, item.x, item.z));
+      let room = this.floorplan.floor.rooms.find((candidate) => candidate.floorId === item.floorId && pointInRoom(candidate, item.x, item.z));
+      
+      if (!room) {
+        const floorRooms = this.floorplan.floor.rooms.filter(candidate => candidate.floorId === item.floorId);
+        let minEdgeDist = Infinity;
+        let closestRoom = null;
+        for (const candidate of floorRooms) {
+          const vertices = getRoomVertices(candidate);
+          for (let i = 0; i < vertices.length; i++) {
+            const a = vertices[i];
+            const b = vertices[(i + 1) % vertices.length];
+            const dx = b.x - a.x;
+            const dz = b.z - a.z;
+            const l2 = dx * dx + dz * dz;
+            let dist;
+            if (l2 === 0) {
+              dist = Math.hypot(item.x - a.x, item.z - a.z);
+            } else {
+              let t = ((item.x - a.x) * dx + (item.z - a.z) * dz) / l2;
+              t = Math.max(0, Math.min(1, t));
+              dist = Math.hypot(item.x - (a.x + t * dx), item.z - (a.z + t * dz));
+            }
+            if (dist < minEdgeDist) {
+              minEdgeDist = dist;
+              closestRoom = candidate;
+            }
+          }
+        }
+        if (closestRoom && minEdgeDist <= 0.35) {
+          room = closestRoom;
+        }
+      }
+      
       item.roomId = room ? room.id : null;
     });
   }

@@ -475,3 +475,66 @@ export const gardenSideTableFurniture = {
     });
   }
 };
+
+export const ovalTableFurniture = {
+  type: 'oval_table',
+  name: '椭圆桌',
+  defaultSize: { width: 50, depth: 32, height: 30 },
+  components: [
+    { id: 'top', label: '椭圆桌面', defaultColor: '#ffffff' },
+    { id: 'legs', label: '桌腿', defaultColor: '#c7c1b7' }
+  ],
+  build(registry, item, node, size) {
+    const topH = 0.04;
+    cylinderComponent(registry, item, ovalTableFurniture, 'top', {
+      diameterTop: 1, diameterBottom: 1, height: topH, tessellation: 32
+    }, {
+      position: { x: 0, y: size.height - topH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
+    }, { parent: node });
+
+    const legH = size.height - topH;
+    const legW = 0.04;
+    const xOffset = size.width * 0.3;
+    const zOffset = size.depth * 0.3;
+
+    [-1, 1].forEach((x) => {
+      [-1, 1].forEach((z) => {
+        boxComponent(registry, item, ovalTableFurniture, 'legs', {
+          width: legW, height: legH, depth: legW
+        }, { position: { x: x * xOffset, y: legH / 2, z: z * zOffset } }, { parent: node });
+      });
+    });
+  }
+};
+
+
+export const triangularRoundCoffeeTableFurniture = {
+  type: 'triangular_round_coffee_table',
+  name: '三角圆茶几',
+  defaultSize: { width: 28, depth: 28, height: 16 },
+  components: [
+    { id: 'top', label: '几面', defaultColor: '#e5e0d8' },
+    { id: 'legs', label: '三脚架', defaultColor: '#5c544a' }
+  ],
+  build(registry, item, node, size) {
+    const topH = 0.03;
+    cylinderComponent(registry, item, triangularRoundCoffeeTableFurniture, 'top', {
+      diameterTop: size.width, diameterBottom: size.width, height: topH, tessellation: 32
+    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+
+    const legH = size.height - topH;
+    const legD = 0.024;
+    const r = (size.width / 2) * 0.6;
+    
+    const angles = [Math.PI / 2, (7 * Math.PI) / 6, (11 * Math.PI) / 6];
+    angles.forEach((angle) => {
+      const x = r * Math.cos(angle);
+      const z = r * Math.sin(angle);
+      cylinderComponent(registry, item, triangularRoundCoffeeTableFurniture, 'legs', {
+        diameterTop: legD, diameterBottom: legD, height: legH, tessellation: 12
+      }, { position: { x, y: legH / 2, z } }, { parent: node });
+    });
+  }
+};
+

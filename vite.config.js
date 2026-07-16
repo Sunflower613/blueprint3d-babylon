@@ -65,7 +65,42 @@ function handleSaveImage(req, res, next) {
   });
 }
 
+
+function copyFurnitureImagesPlugin() {
+  let outDir = '';
+  return {
+    name: 'copy-furniture-images',
+    configResolved(resolvedConfig) {
+      outDir = path.resolve(resolvedConfig.root, resolvedConfig.build.outDir);
+    },
+    closeBundle() {
+      const srcDir = path.resolve(__dirname, 'src/furniture/image');
+      const destDir = path.resolve(outDir, 'src/furniture/image');
+      console.log(`[copy-furniture-images] Copying from ${srcDir} to ${destDir}`);
+      function copyDir(src, dest) {
+        if (!fs.existsSync(src)) return;
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
+        }
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const entry of entries) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+          if (entry.isDirectory()) {
+            copyDir(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      }
+      copyDir(srcDir, destDir);
+      console.log('[copy-furniture-images] Successfully copied furniture images.');
+    }
+  };
+}
+
 export default defineConfig(({ command }) => ({
+  plugins: [copyFurnitureImagesPlugin()],
   root: 'example',
   base: command === 'serve' ? '/' : '/blueprint3d-babylon/example/',
   optimizeDeps: {

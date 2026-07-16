@@ -673,3 +673,86 @@ export const pairMugsFurniture = {
     }, { position: { x: size.width * 0.44, y: size.height / 2, z: 0 } }, { parent: node });
   }
 };
+
+export const sinkCabinetFurniture = {
+  type: 'sink_cabinet',
+  name: '带柜水槽',
+  defaultSize: { width: 32, depth: 22, height: 36 },
+  components: [
+    { id: 'cabinet', label: '柜体', defaultColor: '#ebe7db' },
+    { id: 'door', label: '柜门', defaultColor: '#d7cec1' },
+    { id: 'handle', label: '拉手', defaultColor: '#546e7a' },
+    { id: 'counter', label: '台面', defaultColor: '#ffffff' },
+    { id: 'tub', label: '水槽', defaultColor: '#b3bdc4' },
+    { id: 'faucet', label: '龙头', defaultColor: '#ffffff' }
+  ],
+  build(registry, item, node, size) {
+    const counterTopH = 0.04;
+    const bodyH = size.height - counterTopH;
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'cabinet', {
+      width: size.width, height: bodyH, depth: size.depth
+    }, { position: { x: 0, y: bodyH / 2, z: 0 } }, { parent: node });
+
+    const doorW = size.width * 0.46;
+    const doorH = bodyH * 0.85;
+    const doorThick = 0.015;
+    const doorY = bodyH * 0.48;
+    
+    boxComponent(registry, item, sinkCabinetFurniture, 'door', {
+      width: doorW, height: doorH, depth: doorThick
+    }, { position: { x: -doorW / 2 - 0.002, y: doorY, z: size.depth / 2 + doorThick / 2 } }, { parent: node });
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'door', {
+      width: doorW, height: doorH, depth: doorThick
+    }, { position: { x: doorW / 2 + 0.002, y: doorY, z: size.depth / 2 + doorThick / 2 } }, { parent: node });
+
+    const handleW = 0.015;
+    const handleH = 0.06;
+    const handleD = 0.015;
+    
+    boxComponent(registry, item, sinkCabinetFurniture, 'handle', {
+      width: handleW, height: handleH, depth: handleD
+    }, { position: { x: -0.02, y: doorY, z: size.depth / 2 + doorThick + handleD / 2 } }, { parent: node });
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'handle', {
+      width: handleW, height: handleH, depth: handleD
+    }, { position: { x: 0.02, y: doorY, z: size.depth / 2 + doorThick + handleD / 2 } }, { parent: node });
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'counter', {
+      width: size.width + 0.01, height: counterTopH, depth: size.depth + 0.01
+    }, { position: { x: 0, y: size.height - counterTopH / 2, z: 0 } }, { parent: node });
+
+    const tubW = size.width * 0.72;
+    const tubD = size.depth * 0.68;
+    const rimH = 0.03;
+    const t = 0.015;
+    const bottomT = 0.005;
+    const centerY = size.height;
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
+      width: tubW - 2 * t, height: bottomT, depth: tubD - 2 * t
+    }, { position: { x: 0, y: centerY + bottomT / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
+      width: t, height: rimH, depth: tubD
+    }, { position: { x: -tubW / 2 + t / 2, y: centerY + rimH / 2, z: 0 } }, { parent: node });
+    
+    boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
+      width: t, height: rimH, depth: tubD
+    }, { position: { x: tubW / 2 - t / 2, y: centerY + rimH / 2, z: 0 } }, { parent: node });
+    
+    boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
+      width: tubW - 2 * t, height: rimH, depth: t
+    }, { position: { x: 0, y: centerY + rimH / 2, z: tubD / 2 - t / 2 } }, { parent: node });
+    
+    boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
+      width: tubW - 2 * t, height: rimH, depth: t
+    }, { position: { x: 0, y: centerY + rimH / 2, z: -tubD / 2 + t / 2 } }, { parent: node });
+
+    cylinderComponent(registry, item, sinkCabinetFurniture, 'faucet', {
+      diameterTop: 0.012, diameterBottom: 0.012, height: 0.15, tessellation: 8
+    }, { position: { x: 0, y: size.height + 0.075, z: -size.depth * 0.38 } }, { parent: node });
+  }
+};
+

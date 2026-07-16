@@ -325,3 +325,53 @@ export const stereoSpeakerFurniture = {
     }, { position: { x: size.width * 0.36, y: size.height * 0.12, z: size.depth * 0.57 } }, { parent: node });
   }
 };
+
+export const airConditionerWallFurniture = {
+  type: 'air_conditioner_wall',
+  name: '挂式空调',
+  defaultSize: { width: 32, depth: 8, height: 10 },
+  components: [
+    { id: 'body', label: '机身', defaultColor: '#f5f5f5' },
+    { id: 'vent', label: '导风板', defaultColor: '#cfd8dc' },
+    { id: 'display', label: '温度显示屏', defaultColor: '#81d4fa' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, airConditionerWallFurniture, 'body', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, airConditionerWallFurniture, 'vent', {
+      width: size.width * 0.9, height: size.height * 0.12, depth: size.depth * 0.2
+    }, { position: { x: 0, y: size.height * 0.1, z: size.depth / 2 - size.depth * 0.1 } }, { parent: node });
+
+    boxComponent(registry, item, airConditionerWallFurniture, 'display', {
+      width: size.width * 0.12, height: size.height * 0.18, depth: 0.01
+    }, { position: { x: size.width * 0.3, y: size.height * 0.5, z: size.depth / 2 + 0.005 } }, { parent: node });
+  }
+};
+
+
+export const airConditionerFloorFurniture = {
+  type: 'air_conditioner_floor',
+  name: '立式空调',
+  defaultSize: { width: 14, depth: 14, height: 68 },
+  components: [
+    { id: 'body', label: '机身', defaultColor: '#f8f9fa' },
+    { id: 'vent', label: '出风栅格', defaultColor: '#37474f' },
+    { id: 'display', label: '操作面板', defaultColor: '#263238' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, airConditionerFloorFurniture, 'body', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, airConditionerFloorFurniture, 'vent', {
+      width: size.width * 0.72, height: size.height * 0.42, depth: 0.02
+    }, { position: { x: 0, y: size.height * 0.68, z: size.depth / 2 + 0.01 } }, { parent: node });
+
+    boxComponent(registry, item, airConditionerFloorFurniture, 'display', {
+      width: size.width * 0.38, height: size.height * 0.12, depth: 0.015
+    }, { position: { x: 0, y: size.height * 0.42, z: size.depth / 2 + 0.008 } }, { parent: node });
+  }
+};
+

@@ -95,10 +95,28 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   water_dispenser: { label: '饮水机', glowComponents: ['bottle', 'outlet'], color: '#4dd0e1', pulse: true },
   rice_cooker: { label: '电饭煲', glowComponents: ['panel'], color: '#69f0ae', pulse: true },
   air_fryer: { label: '空气炸锅', glowComponents: ['display'], color: '#40c4ff', pulse: true },
-  blender: { label: '搅拌机', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' }
+  blender: { label: '搅拌机', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' },
+  air_conditioner_wall: { label: '挂式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true },
+  air_conditioner_floor: { label: '立式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true }
 });
 
 export const FURNITURE_DEFINITIONS = {};
+
+
+const KITCHEN_APPLIANCES = [
+  'fridge',
+  'microwave',
+  'stove',
+  'range_hood',
+  'coffee_maker',
+  'toaster',
+  'electric_kettle',
+  'dishwasher',
+  'water_dispenser',
+  'rice_cooker',
+  'air_fryer',
+  'blender'
+];
 
 const furnitureModules = [
   { module: seatingModule, category: 'seating' },
@@ -123,7 +141,11 @@ for (const { module, category } of furnitureModules) {
   for (const item of Object.values(module)) {
     if (!item || typeof item !== 'object' || !item.type) continue;
 
-    item.category = category;
+    let targetCategory = category;
+    if (category === 'kitchen' && KITCHEN_APPLIANCES.includes(item.type)) {
+      targetCategory = 'appliances';
+    }
+    item.category = targetCategory;
 
     if (APPLIANCE_POWER_EFFECTS[item.type]) {
       item.isSwitchable = true;

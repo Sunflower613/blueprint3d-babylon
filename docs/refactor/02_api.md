@@ -91,6 +91,9 @@ example/js/* 全部通过 facade 调库
 第四批：迁移 Runtime 预览
 第五批：收缩 app.js
 
+- 当前仅保留既有的大 chunk 警告；该问题属于后续性能和打包策略，不影响第三阶段架构验收。
+// TODO: 继续性能优化
+
 第四阶段：再决定是否拆包
 
 如果后面真要做 npm 库，建议再拆成：@blueprint3d/core
@@ -108,3 +111,66 @@ renderer.mount(doc);
 renderer.setCurrentFloor('floor_2');
 
 const file = exportBuildingFile(doc);
+
+---
+
+## 5. 重构后系统技术架构与分层设计
+
+在第三阶段完成之后，系统彻底理顺了数据、渲染、交互以及 API 暴露的职责关系，确立了以下分层架构：
+
+### 5.1 核心库分层设计 (`src`)
+
+重构后的核心库分为以下五个核心层，各层边界清晰，职责明确：
+
+*   **API 门面层 (`src/api`, `src/index.js`)**：
+    *   整个库的**唯一稳定 API 门面**。
+    *   统一拦截和暴露公共 API，防止内部类直接暴露。
+*   **交互控制层 (`src/editor`)**：
+    *   提供面向编辑器操作的控制器 `EditorFacade`，并封装选中与高亮管理服务 `SelectionController`。
+*   **只读数据域模型 (`src/domain`)**：
+    *   纯户型数据规则与模型处理核心（如 `FloorplanDocument`），管理 floors/walls/rooms/items 等实体的数据拓扑，**绝对不直接依赖任何 Babylon.js 渲染引擎的 API**。
+*   **运行时渲染层 (`src/runtime`)**：
+    *   专注 Babylon.js 的 3D 渲染表现（如 `BabylonSceneRenderer`），从 `FloorplanDocument` 消费数据并转换为 3D Mesh，动态处理 CSG 挖洞与反射渲染。
+*   **文件与转换服务层 (`src/services`)**：
+    *   纯数据转换与文件字节流处理服务（如 `ExportService`），负责 `b3dbuilding` 格式的序列化/反序列化，以及 CAD (DXF)、3MF 二进制大对象的生成。
+
+```
+src/
+├── api/                   # 公开 API 门面出口，管理稳定公开 API
+│   └── index.js           # 对外导出的核心聚合出口
+├── domain/                # 户型数据域模型（业务规则计算，独立于 Babylon）
+│   ├── FloorplanDocument.js  # 数据核心模型（Floorplan 状态、层级、CRUD、楼层）
+│   └── MaterialResolver.js   # 材质信息归一化与解析服务
+├── runtime/               # 渲染逻辑层（专注于 Babylon.js 渲染表现）
+│   ├── BabylonSceneRenderer.js # 三维渲染生成器（Mesh生命周期、CSG开洞、动态反射）
+│   └── PinkCastleGenerator.js  # 粉色城堡示例场景生成器
+├── editor/                # 编辑器交互与控制器层
+│   ├── EditorFacade.js    # 统一 Consumer Facade 门面（核心控制器）
+│   ├── SelectionController.js # 选中态与高亮控制
+│   ├── DragHandler.js     # 拖拽交互控制器
+│   └── Topology.js        # 拓扑几何工具
+├── services/              # 数据加载与导出器服务
+│   └── ExportService.js   # 负责工程数据序列化、反序列化、3MF 导出及 DXF 导出
+└── core/                  # 基础设施和底层转换器（内部私有包）
+```
+
+> **🔒 依赖隔离规则 (Dependency Isolation Rules)**:
+> 外部集成组件（如 `example/app.js` 或第三方包）**禁止越权直接导入** `src/core/*`、`src/presets/*`、`src/rooms/*`、`src/furniture/*` 等内部私有目录下的文件。
+> **所有外部依赖必须统一从 `src/index.js` 解构引入。**
+
+### 5.2 演示示例架构 (`example`)
+
+演示项目已被改造为**真正的 API 消费者**，其内部同样经历了模块化状态重构：
+
+```
+example/
+├── type/                  # JSDoc 静态类型声明层 (AppState JSDoc Type)
+├── store/                 # 运行时状态管理层 (ui, selection, editor 单例 Store)
+│   ├── index.js           
+│   └── proxyHelper.js     # [优化] 运行时动态反射状态分流桥接助手
+├── js/                    # 业务逻辑处理器层 (DragHandler, MaterialManager, TargetHandler 等)
+└── app.js                 # 引擎初始化、3D 主循环与业务调度器（纯 API Facade 消费者）
+```
+
+*   **状态与逻辑解耦**：所有的 UI 状态和选中状态保存在独立 Store 中，业务处理器（如 `DragHandler`）利用代理助手 `proxyHelper.js` 进行低耦合的状态分流读写，无硬编码。
+*   **Facade 消费**：`app.js` 不再直接操作底层几何，完全通过 `createEditor` 返回的门面接口进行全部业务编排。

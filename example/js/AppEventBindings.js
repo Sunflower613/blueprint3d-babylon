@@ -225,12 +225,32 @@ function bindFileAndPanelControls(Context) {
 
   const fileButton = document.getElementById('btn-file-menu');
   const fileMenu = document.getElementById('file-menu-content');
+  const exportButton = document.getElementById('btn-export-menu');
+  const exportSubmenu = fileMenu?.querySelector('.submenu-content');
+
   fileButton?.addEventListener('click', (event) => {
     event.stopPropagation();
     fileMenu?.classList.toggle('hidden');
+    exportSubmenu?.classList.add('hidden');
   });
+
+  exportButton?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    exportSubmenu?.classList.toggle('hidden');
+  });
+
   fileMenu?.addEventListener('click', (event) => {
-    if (event.target.id !== 'btn-export-menu') fileMenu.classList.add('hidden');
+    if (!exportButton?.contains(event.target)) {
+      fileMenu.classList.add('hidden');
+      exportSubmenu?.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!fileButton?.contains(event.target) && !fileMenu?.contains(event.target)) {
+      fileMenu?.classList.add('hidden');
+      exportSubmenu?.classList.add('hidden');
+    }
   });
 
   bindPanelToggle(Context, 'btn-toggle-right', '#right-panel', '<', '>');

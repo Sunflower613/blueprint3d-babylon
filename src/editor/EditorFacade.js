@@ -339,15 +339,19 @@ export class EditorFacade {
       case 'setCurrentFloor':
         result = this._document.setCurrentFloor(args.floorId);
         break;
-      case 'changeFloorHideSettings':
-        result = this._document.changeFloorHideSettings(args.floorId, args.hideRoof, args.hideWall, args.skyboxEnabled);
+      case 'changeFloorHideSettings': {
+        const skyboxEnabled = args.skybox !== undefined ? args.skybox : args.skyboxEnabled;
+        result = this._document.changeFloorHideSettings(args.floorId, args.hideRoof, args.hideWall, skyboxEnabled);
         break;
+      }
       case 'changeFloorHeight':
         result = this._document.changeFloorHeight(args.floorId, args.height);
         break;
-      case 'changeFloorDefaultFloorHeight':
-        result = this._document.changeFloorDefaultFloorHeight(args.floorId, args.floorHeight);
+      case 'changeFloorDefaultFloorHeight': {
+        const floorHeight = args.floorHeight !== undefined ? args.floorHeight : args.height;
+        result = this._document.changeFloorDefaultFloorHeight(args.floorId, floorHeight);
         break;
+      }
 
       // 2. 房间命令
       case 'addRoom':

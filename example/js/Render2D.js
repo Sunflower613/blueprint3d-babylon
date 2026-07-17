@@ -154,6 +154,61 @@ export function renderRoom(room) {
     ctx.selectRoom(room.id);
   });
   ctx.svg.appendChild(polygon);
+
+  // 计算房间几何中心点
+  let sumX = 0;
+  let sumZ = 0;
+  const vertices = getRoomVertices(room);
+  vertices.forEach((v) => {
+    sumX += v.x;
+    sumZ += v.z;
+  });
+  const centerX = sumX / vertices.length;
+  const centerZ = sumZ / vertices.length;
+  const svgCenter = worldToSvg(centerX, centerZ);
+
+  // 动态计算多边形房间的实际面积
+  let area = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const next = vertices[(i + 1) % vertices.length];
+    area += vertices[i].x * next.z - next.x * vertices[i].z;
+  }
+  area = Math.abs(area / 2);
+  const formattedArea = Number(area.toFixed(2));
+  const labelGroup = createSvgElement('g', {
+    class: 'room-area-label',
+    style: 'pointer-events: none;'
+  });
+
+  // 第一行：房间名称（超级加粗 800，极淡的 slate 灰水印质感）
+  const nameNode = createSvgElement('text', {
+    x: svgCenter.x,
+    y: svgCenter.y - 5,
+    fill: 'rgba(15, 23, 42, 0.18)',
+    'font-size': '12px',
+    'font-family': 'Inter, system-ui, -apple-system, sans-serif',
+    'font-weight': '800',
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle'
+  });
+  nameNode.textContent = room.name || '房间';
+
+  // 第二行：面积数值（超级加粗 800，极淡水印，隐藏无效小数零）
+  const areaNode = createSvgElement('text', {
+    x: svgCenter.x,
+    y: svgCenter.y + 8,
+    fill: 'rgba(15, 23, 42, 0.14)',
+    'font-size': '10px',
+    'font-family': 'Inter, system-ui, -apple-system, sans-serif',
+    'font-weight': '800',
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle'
+  });
+  areaNode.textContent = `${formattedArea} ㎡`;
+
+  labelGroup.appendChild(nameNode);
+  labelGroup.appendChild(areaNode);
+  ctx.svg.appendChild(labelGroup);
 }
 
 export function renderRoomHandles(room, a, b) {

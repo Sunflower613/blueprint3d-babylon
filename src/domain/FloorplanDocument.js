@@ -152,6 +152,7 @@ export class FloorplanDocument {
       floor.level = Number.isFinite(Number(floor.level)) ? Number(floor.level) : index;
       floor.wallHeight = Number.isFinite(Number(floor.wallHeight)) ? Number(floor.wallHeight) : (normalized.wallHeight || 2.8);
       floor.floorHeight = Number.isFinite(Number(floor.floorHeight)) ? Number(floor.floorHeight) : (normalized.floorHeight || 0.2);
+      floor.skyboxEnabled = floor.skyboxEnabled === true;
     });
 
     if (!normalized.floors.length) {
@@ -1288,7 +1289,7 @@ export class FloorplanDocument {
   addFloor(partialFloor = {}) {
     const nextLevel = partialFloor.level ?? (Math.max(...this.floorplan.floors.map((floor) => Number(floor.level || 0))) + 1);
     const activeFloor = this.floorplan.floors[0];
-    const skyboxEnabled = activeFloor ? (activeFloor.skyboxEnabled !== false) : true;
+    const skyboxEnabled = activeFloor ? (activeFloor.skyboxEnabled === true) : false;
     const floor = {
       id: partialFloor.id || `floor_${Date.now()}`,
       name: partialFloor.name || `${nextLevel + 1}F`,
@@ -1401,7 +1402,7 @@ export class FloorplanDocument {
     currentFloor.hideWall = !!hideWall;
 
     // 不同楼层的天空盒开启状态保持一致：遍历所有楼层并广播更新 skyboxEnabled
-    const enabled = skyboxEnabled !== false;
+    const enabled = skyboxEnabled === true;
     this.floorplan.floors.forEach((f) => {
       f.skyboxEnabled = enabled;
     });

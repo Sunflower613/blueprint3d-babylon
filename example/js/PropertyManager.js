@@ -259,7 +259,7 @@ export function updateSkyboxFromCurrentFloor() {
   const currentFloorId = Context.testMap.getCurrentFloorId();
   const currentFloor = Context.testMap.getFloor(currentFloorId);
   if (currentFloor) {
-    const skyboxEnabled = currentFloor.skyboxEnabled !== false;
+    const skyboxEnabled = currentFloor.skyboxEnabled === true;
     Context.viewer3d.setSkyboxEnabled(skyboxEnabled);
   }
 }

@@ -804,7 +804,7 @@ export function extractMaterial(target, precise = true) {
       ctx.setDesignMode('select');
     }
   } else {
-    // 2. 全量吸取（右键菜单吸取）
+    // 2. 全量吸取（右键/长按菜单吸取）
     let materialsArray = [];
     materialsArray.sourceType = target.type;
 

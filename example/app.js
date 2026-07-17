@@ -491,6 +491,9 @@ let testMap = createEditor({
   floorplan: initialLocalSave.buildingData || BLUEPRINT3D_TEST_FLOORPLAN,
   options: { renderingEnabled: false }
 });
+window.testMap = testMap;
+testMap.editorFacade = testMap;
+window.appState = appState;
 dragHandler = new LibDragHandler(appState);
 viewer3DHandles = new LibViewer3DHandles(appState);
 

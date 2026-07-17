@@ -62,6 +62,7 @@ import {
   getItemsCountOnBookshelf,
   getSelectedStructure
 } from './EditorUiContext.js';
+import { getRoomVertices } from '../../src/index.js';
 
 let lastActiveRoomId = null;
 
@@ -316,7 +317,24 @@ export function updateEditor() {
     const currentFloorId = testMap.getCurrentFloorId();
     const currentFloor = testMap.getFloor(currentFloorId);
     if (currentFloor) {
-      document.getElementById('selected-floor-name').textContent = currentFloor.name || '楼层属性';
+      let totalArea = 0;
+      try {
+        const rooms = testMap.getSnapshot().floor?.rooms || testMap.getSnapshot().rooms || [];
+        const floorRooms = rooms.filter(r => r.floorId === currentFloorId);
+        floorRooms.forEach(room => {
+          const vertices = getRoomVertices(room);
+          let area = 0;
+          for (let i = 0; i < vertices.length; i++) {
+            const next = vertices[(i + 1) % vertices.length];
+            area += vertices[i].x * next.z - next.x * vertices[i].z;
+          }
+          totalArea += Math.abs(area / 2);
+        });
+      } catch (err) {
+        console.warn('Failed to calculate floor total area:', err);
+      }
+      const formattedTotalArea = Number(totalArea.toFixed(2));
+      document.getElementById('selected-floor-name').textContent = `${currentFloor.name || '楼层属性'} (${formattedTotalArea} ㎡)`;
       document.getElementById('floor-name').value = currentFloor.name || '';
       document.getElementById('floor-wall-height').value = Number((currentFloor.wallHeight ?? testMap.getSnapshot().wallHeight ?? 3.0).toFixed(2));
       document.getElementById('floor-height').value = Number((currentFloor.floorHeight ?? testMap.getSnapshot().floorHeight ?? 0.06).toFixed(2));
@@ -324,7 +342,7 @@ export function updateEditor() {
       document.getElementById('floor-hide-wall').checked = !!currentFloor.hideWall;
       const skyboxInput = document.getElementById('floor-skybox-enabled');
       if (skyboxInput) {
-        skyboxInput.checked = currentFloor.skyboxEnabled !== false;
+        skyboxInput.checked = currentFloor.skyboxEnabled === true;
       }
     }
   }
@@ -332,7 +350,21 @@ export function updateEditor() {
   document.getElementById('floor-color').value = room?.color || testMap.getSnapshot().floor?.color || '#f4efe6';
 
   if (room) {
-    document.getElementById('selected-room-name').textContent = room.name || '房间';
+    let areaVal = '0.00';
+    try {
+      const vertices = getRoomVertices(room);
+      let area = 0;
+      for (let i = 0; i < vertices.length; i++) {
+        const next = vertices[(i + 1) % vertices.length];
+        area += vertices[i].x * next.z - next.x * vertices[i].z;
+      }
+      area = Math.abs(area / 2);
+      areaVal = Number(area.toFixed(2)).toString();
+    } catch (err) {
+      console.warn('Failed to calculate room area:', err);
+    }
+
+    document.getElementById('selected-room-name').textContent = `${room.name || '房间'} (${areaVal} ㎡)`;
     document.getElementById('room-name').value = room.name || '';
     document.getElementById('room-width').value = Number(room.width.toFixed(2));
     document.getElementById('room-depth').value = Number(room.depth.toFixed(2));

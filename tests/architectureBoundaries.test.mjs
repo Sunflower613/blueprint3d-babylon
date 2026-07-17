@@ -158,3 +158,10 @@ test('example app entry remains orchestration-only', () => {
   assert.equal(runtimeNodeMaps.test(source), false, 'example/app.js must not access renderer node maps directly');
   assert.equal(/\.getEntityRenderNode\b/.test(source), false, 'example/app.js must not obtain raw renderer nodes');
 });
+
+test('3D pointer cancellation uses rollback rather than the pointer-up commit path', () => {
+  const controllerPath = path.resolve('example/js/Canvas3DController.js');
+  const source = fs.readFileSync(controllerPath, 'utf8');
+  assert.match(source, /addEventListener\('pointercancel',[\s\S]{0,160}cancel3DDrag\(event\)/);
+  assert.doesNotMatch(source, /addEventListener\('pointercancel',\s*end3DDrag\)/);
+});

@@ -115,6 +115,7 @@ export class EditorFacade {
    * @param {Object} data - 包含全属性 of JSON 数据结构
    */
   loadJSON(data) {
+    if (this._previewState !== 'idle') return false;
     this._exportService.loadJSON(data);
     this._selectionController.selectedItemId =
       this._selectionController.selectedItemId && this._document.getItem(this._selectionController.selectedItemId)
@@ -127,6 +128,7 @@ export class EditorFacade {
     if (typeof this._renderer.build === 'function') {
       this._renderer.build();
     }
+    return true;
   }
 
   /**
@@ -134,6 +136,7 @@ export class EditorFacade {
    * @param {ArrayBuffer|string} data - 待读取的工程序列化数据
    */
   loadBuildingFile(data) {
+    if (this._previewState !== 'idle') return false;
     this._exportService.loadBuildingFile(data);
     this._selectionController.selectedItemId =
       this._selectionController.selectedItemId && this._document.getItem(this._selectionController.selectedItemId)
@@ -146,6 +149,7 @@ export class EditorFacade {
     if (typeof this._renderer.build === 'function') {
       this._renderer.build();
     }
+    return true;
   }
 
   /**

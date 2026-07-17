@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as BABYLON from '@babylonjs/core';
-import { createEditor } from '../src/index.js';
+import { Blueprint3DTestMap, createEditor } from '../src/index.js';
+import { cancel3DDrag, initDrag3DContext } from '../example/js/Drag3DContext.js';
 
 function createFloorplan() {
   return {
@@ -266,6 +267,98 @@ test('preview lifecycle rejects replacement and requires both type and id to mat
   assertIdle(editor);
 
   await destroyHarness(harness);
+});
+
+test('full document loads are rejected while a preview is active through both public APIs', async () => {
+  const harness = createHarness();
+  const { editor } = harness;
+  const replacement = createFloorplan();
+  entity(replacement, 'items', 'chair1').x = 99;
+  const buildingFile = editor.stringifyBuildingFile();
+
+  assert.equal(editor.beginEntityPreview('item', 'chair1'), true);
+  assert.equal(editor.updateEntityPreview('item', 'chair1', { x: 2 }), true);
+  assert.equal(editor.loadJSON(replacement), false);
+  assert.equal(editor.loadBuildingFile(buildingFile), false);
+  assert.equal(editor.getEntity('item', 'chair1').x, 2);
+  assert.equal(await editor.cancelEntityPreview('item', 'chair1'), true);
+  assert.equal(editor.getEntity('item', 'chair1').x, 1);
+
+  assert.equal(editor.loadJSON(replacement), true);
+  assert.equal(editor.getEntity('item', 'chair1').x, 99);
+  await destroyHarness(harness);
+
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const map = new Blueprint3DTestMap(scene, { floorplan: createFloorplan(), renderingEnabled: false });
+  assert.equal(map.beginEntityPreview('item', 'chair1'), true);
+  assert.equal(map.updateEntityPreview('item', 'chair1', { x: 3 }), true);
+  assert.equal(map.loadJSON(replacement), false);
+  assert.equal(map.getItem('chair1').x, 3);
+  assert.equal(await map.cancelEntityPreview('item', 'chair1'), true);
+  assert.equal(map.getItem('chair1').x, 1);
+  await map.dispose();
+  engine.dispose();
+});
+
+test('3D pointer cancellation rolls back the active preview instead of committing it', async () => {
+  const previousDocument = globalThis.document;
+  let cancelled = null;
+  let commitCount = 0;
+  let releasedPointer = null;
+  let cameraAttached = false;
+  let editHandleState = 'active';
+  let refreshCount = 0;
+
+  globalThis.document = {
+    body: { classList: { remove() {} } }
+  };
+  try {
+    const context = {
+      drag3DState: { type: 'opening', openingId: 'door1', pointerId: 7 },
+      testMap: {
+        getEntityPreviewStatus: () => ({ state: 'active', type: 'openings', id: 'door1' }),
+        cancelEntityPreview: async (type, id) => {
+          cancelled = { type, id };
+          return true;
+        },
+        commitEntityPreview: async () => {
+          commitCount += 1;
+          return true;
+        }
+      },
+      canvas: {
+        releasePointerCapture(pointerId) {
+          releasedPointer = pointerId;
+        }
+      },
+      camera: {
+        attachControl() {
+          cameraAttached = true;
+        }
+      },
+      setEditHandleDragState(value) {
+        editHandleState = value;
+      },
+      refreshShadows() {
+        refreshCount += 1;
+      }
+    };
+    initDrag3DContext(context);
+
+    assert.equal(await cancel3DDrag({ pointerId: 8 }), false);
+    assert.notEqual(context.drag3DState, null);
+    assert.equal(await cancel3DDrag({ pointerId: 7 }), true);
+    assert.deepEqual(cancelled, { type: 'openings', id: 'door1' });
+    assert.equal(commitCount, 0);
+    assert.equal(context.drag3DState, null);
+    assert.equal(editHandleState, null);
+    assert.equal(releasedPointer, 7);
+    assert.equal(cameraAttached, true);
+    assert.equal(refreshCount, 1);
+  } finally {
+    globalThis.document = previousDocument;
+  }
 });
 
 test('an update exception aborts the transaction without leaving active state or temporary resources', async () => {

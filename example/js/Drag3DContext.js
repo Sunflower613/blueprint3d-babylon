@@ -216,3 +216,28 @@ export function end3DDrag(event) {
     Context.refresh3DEditHandles();
   }
 }
+
+export function cancel3DDrag(event) {
+  const dragState = Context.drag3DState;
+  if (!dragState) return Promise.resolve(false);
+  if (event?.pointerId !== undefined && dragState.pointerId !== event.pointerId) {
+    return Promise.resolve(false);
+  }
+
+  const { testMap, canvas, camera } = Context;
+  canvas.releasePointerCapture?.(dragState.pointerId);
+  Context.drag3DState = null;
+  Context.setEditHandleDragState(null);
+  document.body.classList.remove('is-dragging-3d');
+  camera.attachControl(canvas, true, false, 1);
+
+  const preview = testMap.getEntityPreviewStatus?.();
+  if (preview?.state !== 'active' || !preview.type || !preview.id) {
+    return Promise.resolve(false);
+  }
+
+  return Promise.resolve(testMap.cancelEntityPreview(preview.type, preview.id)).then((cancelled) => {
+    if (cancelled) Context.refreshShadows?.();
+    return cancelled;
+  });
+}

@@ -306,6 +306,10 @@ function end3DDrag(event) {
   Drag3DContext.end3DDrag(event);
 }
 
+function cancel3DDrag(event) {
+  return Drag3DContext.cancel3DDrag(event);
+}
+
 function getCanvasPickFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   return pickNearest3DTarget(event.clientX - rect.left, event.clientY - rect.top);
@@ -466,7 +470,11 @@ scene.onPointerObservable.add((pointerInfo) => {
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERUP) end3DDrag(pointerInfo.event);
 });
 
-canvas.addEventListener('pointercancel', end3DDrag);
+canvas.addEventListener('pointercancel', (event) => {
+  void cancel3DDrag(event).catch((error) => {
+    console.error('Failed to cancel 3D drag preview:', error);
+  });
+});
 window.addEventListener('pointerup', end3DDrag);
 
 // ==========================================
@@ -475,11 +483,12 @@ window.addEventListener('pointerup', end3DDrag);
 
 
 
-  API = { begin3DDrag, move3DDrag, end3DDrag, getCanvasPickFromEvent };
+  API = { begin3DDrag, move3DDrag, end3DDrag, cancel3DDrag, getCanvasPickFromEvent };
   return API;
 }
 
 export function begin3DDrag(pointerInfo) { return API?.begin3DDrag(pointerInfo); }
 export function move3DDrag(pointerInfo) { return API?.move3DDrag(pointerInfo); }
 export function end3DDrag(event) { return API?.end3DDrag(event); }
+export function cancel3DDrag(event) { return API?.cancel3DDrag(event); }
 export function getCanvasPickFromEvent(event) { return API?.getCanvasPickFromEvent(event); }

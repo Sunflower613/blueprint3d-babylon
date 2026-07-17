@@ -1402,10 +1402,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @param {ArrayBuffer} fileData - 待读取的工程二进制数据
    */
   loadBuildingFile(fileData) {
-    this.exportService.loadBuildingFile(fileData);
-    this.selectedItemId = this.selectedItemId && this.getItem(this.selectedItemId) ? this.selectedItemId : null;
-    this.selectedWallId = this.selectedWallId && this.getWall(this.selectedWallId) ? this.selectedWallId : null;
-    this.build();
+    return this.editorFacade.loadBuildingFile(fileData);
   }
 
   /**
@@ -1413,10 +1410,7 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
    * @param {Object} floorplan - 包含全属性的 JSON 数据结构
    */
   loadJSON(floorplan) {
-    this.exportService.loadJSON(floorplan);
-    this.selectedItemId = this.selectedItemId && this.getItem(this.selectedItemId) ? this.selectedItemId : null;
-    this.selectedWallId = this.selectedWallId && this.getWall(this.selectedWallId) ? this.selectedWallId : null;
-    this.build();
+    return this.editorFacade.loadJSON(floorplan);
   }
 
   // ----------------------------------------------------

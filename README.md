@@ -38,112 +38,40 @@ npm run dev
 
 ## 🌟 核心能力 (Core Features)
 
-*   🔄 **2D / 3D 双向实时同步与切换**：支持 2D SVG 户型图编辑与 3D 真实 Babylon 渲染场景的高效同步，支持多指/双指触控（旋转、平移、缩放），适配手机和平板端。
-*   🧱 **智能墙体与空间编辑 (Smart Wall & Room Topology)**：
-    *   提供**方形、L形、圆形、八角、四角、扇形、半圆、直角三角形** 8 种预置房间形状，拖入画布自动沿外轮廓逐边渲染物理墙体。
-    *   **拖拽临时锁机制**：拖动房间位移时，网格吸附与拓扑包含算法会自动启用临时锁，只联动该房间内部的关联家具，防止坐标临时重叠时将房间外的零散家具错误“吸入”网格。
-    *   完善的网格对齐与吸附（Grid Snapping）系统。
-*   ✂️ **无缝开洞与碰撞代理 (CSG Cutters & Pick Proxy)**：
-    *   **动态 CSG 开洞与缝合**：在墙体上拖拽门窗时，动态生成厚度 4 倍的 Cutter 实体进行 CSG 布尔相减，并在相交边界自动缝合生成封口网格与整体法线，彻底避免了光影破面与 Z-Fighting 穿模。
-    *   **隐藏态 pick 代理**：当右键菜单隐藏门板或窗户玻璃时，自动在原位置保留一个极低可见度（`visibility = 0.001`）但 `isPickable = true` 的包围碰撞代理，防止用户在 3D 视图下隐藏实体后因无法点选而不能复原。
-    *   **无闪白丝滑拖动（延迟开洞计算）**：在移动拖拽、旋转期间，为保证画面顺滑且无闪白卡顿，**不对墙体进行实时的重新分割构建**。期间仅动态更新墙体节点 (`TransformNode`) 及其子门窗节点的 `position` 与 `rotation`，直至用户**松手后（拖拽/旋转结束）**再触发全局 `build` 重新计算并开洞。
-*   🚪 **高级双开门对称动画**：
-    *   针对 `doubleDoor` 配置，自动在左右两侧建立相反角度的旋转铰链（Hinges），实现扇形对称同步开启。
-    *   底层顶点数据在 X 轴向左右两侧截半裁剪，**不经过布尔运算产生垃圾网格，渲染性能卓越**。
-*   🖌️ **智能材质刷与取色吸管 (Pipette & Paint System)**：
-    *   **吸管取色**：支持精准吸取（吸取目标子 SubMesh 的单材质）和全量吸取（吸取家具的所有材质包暂存为数组）。
-    *   **材质刷与油漆桶**：支持单组件涂刷，及基于 `roomId` 进行整间房间同类墙面/家具/门窗批量涂刷的“油漆桶”模式。光标指针会根据选定的单材质或渐变材质数组，在 CSS 样式层和 SVG 矢量层渲染高度同步的渐变/实色画笔指针。
-*   🔌 **家电开关状态与 3D 特效联动 (Appliance Control)**：
-    *   所有家电支持在 2D/3D 中进行逻辑开关，开启时动态触发材质自发光（Emissive glows）、呼吸灯（pulse 动效）、摆头旋转（oscillate 动效，如电风扇）或高频微震（vibrate 动效，如破壁机），并可在偏置处自动挂载/回收 Spotlight 光源。
-*   📐 **多楼层及工程级数据导出 (CAD & 3D Print IO)**：
-    *   支持**多楼层（Multi-floor）**数据树，支持一键保存为轻量级自定义 `*.b3dbuilding.json`。
-    *   **CAD (DXF) 导出**：自动将各楼层分离为标准的建筑图层集（`F01-A-WALL`, `F01-A-DOOR` 等），画出墙体双线面、门开启弧线、尺寸标注与面积注释。
-    *   **3MF 模型导出**：完美导出 3MF 格式三维制造文件，各楼层与家具组件作为独立命名实体导出，并支持导出家具带有基材的高清 RGB 颜色数据，可直接供 3D 打印软件进行切片打印。
-    
-    | CAD 导出图纸预览 | 3MF 3D打印导出预览 |
+本项目具备完整的现代 2D/3D 家装与户型设计能力。详细的技术实现、算法细节与日常操控说明，请参阅 **[花花家园零基础上手用户指南](docs/features/README.md)**。
+
+主要核心能力概览：
+
+*   🔄 **2D / 3D 双向实时同步**：支持 2D SVG 户型图绘制与 3D Babylon 渲染视口的高效双向同步，完美适配桌面与移动端触控。
+*   🧱 **智能墙体与空间拓扑 (Smart Wall & Room Topology)**：内置 8 种预置房间形状，自动计算并渲染封闭区域的物理墙面、地板与实际面积；提供网格吸附与拖拽临时锁。
+*   ✂️ **无缝 CSG 开洞与拾取代理 (CSG Cutters & Pick Proxy)**：拖拽门窗时动态生成 Cutter 进行 CSG 布尔挖洞并无缝缝合边缘；为隐藏的玻璃等保留极低可见度的碰撞拾取代理，支持拖拽延时开洞计算。
+*   🚪 **高级双开门对称动画**：自动建立相反角度的旋转铰链（Hinges），实现对称门扇的同步扇形开启，规避复杂的布尔网格运算，性能卓越。
+*   🖌️ **智能材质刷与取色吸管 (Pipette & Paint System)**：支持单表面或整包材质的高效吸取（吸管）；提供局部精细涂刷（材质刷）与房间内侧墙面、家具批量同步（油漆桶）功能。
+*   🔌 **家电状态与 3D 特效联动 (Appliance Control)**：可在 2D/3D 中开启/关闭家电状态，联动材质发光、自转摆头、物理微震以及局部 Spotlight 光源挂载回收。
+*   🪞 **多级反射与画面纯净化 (Multi-Level Reflection & Purifying)**：支持高级渲染模式下主/次镜面像素级平面反射（2048/1024 像素）与金属反射探针热切换；应用视差纠正精确对齐环境倒影，自动过滤坐标轴与辅助线等非渲染噪点。
+*   📐 **多楼层及工程级数据导出 (CAD & 3D Print IO)**：支持多楼层管理与 `*.b3dbuilding.json` 导出；一键输出分图层带尺寸线的 CAD (DXF) 建筑平面图，以及水密闭合可直接 3D 打印的 3MF 制造文件。
+
+    | CAD 导出图纸预览 | 3MF 3D打印模型预览 |
     | :---: | :---: |
     | ![CAD DXF 导出效果图](docs/images/cad_export.png) | ![3MF 导出模型效果图](docs/images/3mf_export.png) |
-*   🪞 **多级镜面与反射方案 (Multi-Level Reflection Strategy & Resolution Grading)**：
-    *   **开启高级渲染控制**：在 UI 侧集成了“开启高级渲染”控制开关，支持场景反射贴图与反射机制的**低延迟动态热切换**，在不重启地图渲染的前提下进行反射渲染类型的动态切换，并且自动管理底层贴图与观察者的生命周期，防止内存泄漏。
-    *   **平面反射材质 (`kind === 'mirror'`) 分级尺寸**：
-        *   **开启高级渲染**：
-            *   **主镜面**（如浴室镜等，`isMainMirror`）：升级为 **2048 像素** 高清实时平面反射，呈现细腻的无卡顿高保真镜像（取消低像素模式）。
-            *   **次要镜面**（其他镜子）：升级为 **1024 像素** 的高清晰平面反射，在提供清晰画质的同时保障帧率平稳。
-        *   **关闭高级渲染（普通模式）**：
-            *   **主镜面**：降级使用 **256 像素** 的低像素平面反射 `MirrorTexture`，确保低端设备流畅度。
-            *   **次要镜面**：降级为 **`ReflectionProbe` (区域反射探针)**，获取近似的环境倒影。
-    *   **金属反射材质 (`kind === 'metal'`) 分级**：
-        *   **开启高级渲染**：升级为 **`ReflectionProbe` (反射探针)**，提供具有物理倒影感的动态高光反射。
-        *   **关闭高级渲染（普通模式）**：自动还原并安全恢复金属最初的**静态 CubeMap**（从 `materials.js` 克隆源备份中还原），保留原有漫反射及高光色。
-    *   **氛围感与画质深度优化**：
-        *   **视差纠正探针**：为反射探针启用 `INVCUBIC_MODE` 视差纠正，并基于当前房间的 `RoomBounds` 动态计算其包围盒大小 (`boundingBoxSize`) 与位置，在探针渲染时使环境倒影精确对齐房间墙壁边界，解决无限远倒影漂移缺陷。
-        *   **反光纯净化（辅助线排除）**：在平面反射与反射探针的 `renderList` 渲染列表中，**自动排除并过滤 3D 辅助网格线（`grid_3d` / `floor_grid_3d`）、编辑手柄（`edit_handle`）、碰撞块（`move_handle_collision`）以及标有编辑手柄元数据的对象**，保证镜子中不会反射出虚线与坐标轴等编辑辅助信息。
-        *   **正则自反射排除**：支持使用基于 `/^(item|wall|floor|ceiling)_([\w\-]+)/` 的匹配机制提取自反射排除标识，对墙面等反光构件精准排除其自身以防多重采样闪烁，并完美兼容含有下划线的 ID。
 
 ---
 
 ## 🛠️ 项目重构状态与技术架构
 
-为了解决单一巨型 `app.js` 带来的代码高耦合与状态修改风险，本项目进行了一次现代化的**渐进式状态管理重构**：
+本项目已成功完成第三阶段重构，确立了职责清晰的分层架构（包括 `domain` 数据域、`runtime` 3D 渲染和 `editor` 交互Facade）以及严格的依赖隔离规则。
 
-```
-example/
-├── type/                  # JSDoc 静态类型声明层 (AppState JSDoc Type)
-├── store/                 # 运行时状态管理层 (Runtime Stores)
-│   ├── index.js           # 导出 ui, selection, editor 单例 Store
-│   └── proxyHelper.js     # [优化] 运行时动态反射状态分流桥接助手 (消除全部硬编码)
-├── js/                    # 业务逻辑处理器层 (Handler Processors)
-│   ├── DragHandler.js     # 2D 拖拽、房间旋转联动与吸附锁
-│   ├── MaterialManager.js # 取色、材质涂刷与锁定控制
-│   ├── TargetHandler.js   # 右键上下文菜单动作控制 (删除按钮高亮红)
-│   └── EditorUi.js        # 侧边控制面板 input 值对齐
-└── app.js                 # 引擎初始化、3D 主循环与声明式双向同步 (stateSyncMap 迭代同步)
-```
-
-### 1. 运行时反射代理 (`proxyHelper.js`)
-各业务 Handler（如 `DragHandler` 等）在读写上下文的 `ctx.mode` 或 `ctx.selectedItemId` 时，不再对属性名进行任何 `if-else` 的硬编码。代理助手使用运行时的 `Object.prototype.hasOwnProperty.call(store, prop)` 动态检索属性的子 Store 归属，并通过 O(1) 路由字典缓存 `storePropCache` 将属性存取精准分流至 `uiStore`、`selectionStore` 或 `editorStore`，实现了零维护成本的解耦。
-
-### 2. 声明式配置表双向同步 (`app.js`)
-在 `app.js` 与子 Store 之间建立了 `stateSyncMap` 配置映射表，利用闭包对齐局部顶级变量和 Store 属性。在 `syncLocalToStore` 内部，使用 `for...of` 循环动态遍历映射同步，彻底消除了冗长且易在开发中遗漏的赋值逻辑。
+详细的技术架构图谱、分层依赖关系与日常开发指南，请参阅：
+👉 **[项目重构技术架构文档](docs/refactor/02_api.md)**
 
 ---
 
 ## 📝 核心 API 示例
 
-以下为调用 `blueprint3d-babylon` 的快速入门范例：
+重构后的系统由统一封装的 `EditorFacade` 控制器提供外部服务，外部集成（例如 `example/app.js`）完全采用面向 Facade API 消费的开发方式。
 
-```javascript
-import {
-  Blueprint3DTestMap,
-  DEFAULT_MATERIAL_PACKS,
-  createTextureMaterialDescriptor
-} from './blueprint3d-babylon/src/index.js';
-
-// 1. 初始化 3D 地图实例
-const map = new Blueprint3DTestMap(scene);
-
-// 2. 动态调节和更新房间尺寸
-map.updateRoom('living_room_1', { x: 2.0, z: -1.5, width: 8.5, depth: 6.0 });
-
-// 3. 动态控制门窗的尺寸与高度 (panelHidden 可隐藏门板)
-map.updateOpening('door_main', { width: 1.2, height: 2.2, panelHidden: true });
-
-// 4. 精确调整墙段长度与着色
-map.updateWallLength('wall_east', 6.2);
-map.setWallColor('wall_east', '#f3eff2');
-
-// 5. 改变家具状态并涂刷自定义材质
-map.updateItemComponentColor('sofa_main', 'back_cushion', '#ff8fa3');
-map.updateItemComponentMaterial('sofa_main', 'base_frame', createTextureMaterialDescriptor({
-  name: '北欧木纹',
-  category: 'wood',
-  fileName: 'fine_wood.jpg',
-  src: 'data:image/jpeg;base64,...'
-}));
-
-// 6. 导出为工程描述文件
-const buildingJsonString = map.stringifyBuildingFile({ name: 'Castle-Pink' });
-```
+完整的 API 分类表、废弃路径与全新 `createEditor` 使用代码范例，请参阅：
+👉 **[Consumer API 使用指南](docs/refactor/consumer-api.md)**
 
 ---
 
@@ -167,7 +95,6 @@ npm run test
 ### 后续迭代与演进路线
 1. **智能飘窗结构 (REQ-14)**：支持在标准墙面上放置飘窗，实现墙体精确扣除窗体面积，飘窗凸出部分多网格动态合并与正常渲染。
 2. **可互动家具动画 (REQ-18)**：为秋千等特定家具提供点击交互支持，触发对应的物理摆动或动画状态机控制。
-3. **模特/人台穿衣换装 (REQ-23)**：支持场景模特模型的骨骼绑定与外载衣服资产的层级挂载，实现防穿模的换装表现。
-4. **3D第一人称漫游体验 (REQ-27)**：提供第一人称视角控制器切换，支持 WASD 键与鼠标视角游走，支持物理重力感应与防止穿透外墙的碰撞检测。
+3. **3D第一人称漫游体验 (REQ-27)**：提供第一人称视角控制器切换，支持 WASD 键与鼠标视角游走，支持物理重力感应与防止穿透外墙的碰撞检测。// TODO: 第一人称视角
 
 *版权所有 (c) MIT License.*

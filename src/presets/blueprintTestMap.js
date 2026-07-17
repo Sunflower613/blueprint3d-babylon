@@ -1417,11 +1417,13 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   // 7. 只读查询 API 代理（转发给 editorFacade，确保防篡改）
   // ----------------------------------------------------
   getSnapshot() { return this.editorFacade.getSnapshot(); }
+  getProjectMetadata() { return this.editorFacade.getProjectMetadata(); }
   getCurrentFloorId() { return this.editorFacade.getCurrentFloorId(); }
   getFloors() { return this.editorFacade.getFloors(); }
   getFloor(id) { return this.editorFacade.getFloor(id); }
   getEntities(type, options) { return this.editorFacade.getEntities(type, options); }
   getEntity(type, id) { return this.editorFacade.getEntity(type, id); }
+  getEntityElevationOffset(type, entityOrId) { return this.editorFacade.getEntityElevationOffset(type, entityOrId); }
   getCurrentFloorEntities(type) { return this.editorFacade.getCurrentFloorEntities(type); }
   getFurnitureDefinition(type) { return this.editorFacade.getFurnitureDefinition(type); }
   getFloorElevation(id) { return this.editorFacade.getFloorElevation(id); }
@@ -1440,6 +1442,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateEntityPreview(type, id, transform) { return this.editorFacade.updateEntityPreview(type, id, transform); }
   commitEntityPreview(type, id) { return this.editorFacade.commitEntityPreview(type, id); }
   cancelEntityPreview(type, id) { return this.editorFacade.cancelEntityPreview(type, id); }
+  get advancedRenderingEnabled() { return this.editorFacade.advancedRenderingEnabled; }
+  refreshRendering() { return this.editorFacade.refreshRendering(); }
+  requestReflectionUpdate() { return this.editorFacade.requestReflectionUpdate(); }
+  attachRuntimeOverlay(node) { return this.editorFacade.attachRuntimeOverlay(node); }
+  populateShadowGenerator(shadowGenerator, floorId) { return this.editorFacade.populateShadowGenerator(shadowGenerator, floorId); }
   dispose() { return this.editorFacade.dispose(); }
 }
 

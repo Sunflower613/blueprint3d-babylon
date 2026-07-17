@@ -52,7 +52,7 @@ export class DragHandler {
       this.ctx.selectRoom(roomId);
     }
     this.ctx.testMap.refreshItemRoomLinks();
-    const room = this.ctx.testMap.getRoom(roomId);
+    const room = this.ctx.testMap.getEntity('room', roomId);
     if (!room || room.locked) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);
@@ -78,7 +78,7 @@ export class DragHandler {
     if (this.ctx.selectedRoomId !== roomId) {
       this.ctx.selectRoom(roomId);
     }
-    const room = this.ctx.testMap.getRoom(roomId);
+    const room = this.ctx.testMap.getEntity('room', roomId);
     if (!room || room.locked) return;
 
     const original = {
@@ -129,7 +129,7 @@ export class DragHandler {
 
   moveRoomDrag(event) {
     if (!this.states.roomDrag) return;
-    const room = this.ctx.testMap.getRoom(this.states.roomDrag.roomId);
+    const room = this.ctx.testMap.getEntity('room', this.states.roomDrag.roomId);
     if (!room || room.locked) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);
@@ -149,7 +149,7 @@ export class DragHandler {
 
   moveRoomResize(event) {
     if (!this.states.roomResize) return;
-    const room = this.ctx.testMap.getRoom(this.states.roomResize.roomId);
+    const room = this.ctx.testMap.getEntity('room', this.states.roomResize.roomId);
     if (!room || room.locked) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);
@@ -261,7 +261,7 @@ export class DragHandler {
     if (this.ctx.selectedWallId !== wallId) {
       this.ctx.selectWall(wallId);
     }
-    const wall = this.ctx.testMap.getWall(wallId);
+    const wall = this.ctx.testMap.getEntity('wall', wallId);
     if (!wall) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);
@@ -291,7 +291,7 @@ export class DragHandler {
   }
 
   moveWallBy(wallId, dx, dz) {
-    const wall = this.ctx.testMap.getWall(wallId);
+    const wall = this.ctx.testMap.getEntity('wall', wallId);
     if (!wall) return;
     
     let nextFromX = this.states.wallDrag.originalFrom[0] + dx;
@@ -342,7 +342,7 @@ export class DragHandler {
     if (this.ctx.selectedOpeningId !== openingId) {
       this.ctx.selectOpening(openingId);
     }
-    const opening = this.ctx.testMap.getOpening(openingId);
+    const opening = this.ctx.testMap.getEntity('opening', openingId);
     if (this.ctx.mode === 'delete-wall') {
       if (opening?.locked) return;
       this.ctx.pushHistory();
@@ -353,7 +353,7 @@ export class DragHandler {
       return;
     }
     if (this.ctx.mode !== 'select') return;
-    const wall = opening ? this.ctx.testMap.getWall(opening.wallId) : null;
+    const wall = opening ? this.ctx.testMap.getEntity('wall', opening.wallId) : null;
     if (!opening || opening.locked || !wall) return;
     this.states.openingDrag = {
       openingId,
@@ -371,7 +371,7 @@ export class DragHandler {
   }
 
   moveOpeningToWorld(openingId, world, dragMeta) {
-    const opening = this.ctx.testMap.getOpening(openingId);
+    const opening = this.ctx.testMap.getEntity('opening', openingId);
     if (!opening || opening.locked) return;
     
     const walls = this.ctx.currentWalls();
@@ -456,7 +456,7 @@ export class DragHandler {
     if (this.ctx.selectedFenceId !== fenceId) {
       this.ctx.selectFence(fenceId);
     }
-    const fence = this.ctx.testMap.getFence(fenceId);
+    const fence = this.ctx.testMap.getEntity('fence', fenceId);
     if (!fence || fence.locked) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);
@@ -486,7 +486,7 @@ export class DragHandler {
   }
 
   moveFenceBy(fenceId, dx, dz) {
-    const fence = this.ctx.testMap.getFence(fenceId);
+    const fence = this.ctx.testMap.getEntity('fence', fenceId);
     if (!fence || fence.locked) return;
     
     let nextFromX = this.states.fenceDrag.originalFrom[0] + dx;
@@ -538,7 +538,7 @@ export class DragHandler {
     if (this.ctx.selectedFenceGateId !== gateId) {
       this.ctx.selectFenceGate(gateId);
     }
-    const gate = this.ctx.testMap.getFenceGate(gateId);
+    const gate = this.ctx.testMap.getEntity('fence_gate', gateId);
     if (!gate || gate.locked) return;
 
     const point = this.ctx.svgPointFromEvent(event);
@@ -566,7 +566,7 @@ export class DragHandler {
   }
 
   moveFenceGateToWorld(gateId, world, dragMeta) {
-    const gate = this.ctx.testMap.getFenceGate(gateId);
+    const gate = this.ctx.testMap.getEntity('fence_gate', gateId);
     if (!gate || gate.locked) return;
 
     const dx = world.x - dragMeta.startX;
@@ -583,7 +583,7 @@ export class DragHandler {
     let projectionT = 0.5;
 
     if (wasAttached) {
-      const originalFence = this.ctx.testMap.getFence(dragMeta.originalFenceId);
+      const originalFence = this.ctx.testMap.getEntity('fence', dragMeta.originalFenceId);
       if (originalFence) {
         const { t, distance } = Topology.projectPointToFence(world, originalFence, this.ctx.snapEnabled, this.ctx.snapSize);
         if (distance < 0.6) {
@@ -595,7 +595,7 @@ export class DragHandler {
     }
 
     if (!nearestFence) {
-      const fences = this.ctx.testMap.floorplan.fences.filter(f => f.floorId === gate.floorId);
+      const fences = this.ctx.testMap.getEntities('fence', { floorId: gate.floorId });
       const nearest = Topology.findNearestFenceTrack(world, fences, this.ctx.snapEnabled, this.ctx.snapSize);
       if (nearest.fence) {
         nearestFence = nearest.fence;
@@ -659,7 +659,7 @@ export class DragHandler {
     if (this.ctx.selectedFenceId !== fenceId) {
       this.ctx.selectFence(fenceId);
     }
-    const fence = this.ctx.testMap.getFence(fenceId);
+    const fence = this.ctx.testMap.getEntity('fence', fenceId);
     if (!fence || fence.locked) return;
     const point = this.ctx.svgPointFromEvent(event);
     const world = this.ctx.svgToWorld(point.x, point.y);

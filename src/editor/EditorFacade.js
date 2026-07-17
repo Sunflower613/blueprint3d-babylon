@@ -24,11 +24,13 @@ export class EditorFacade {
   }
 
   /** @returns {Object} 户型平面图数据结构 */
+  /** @deprecated Use getSnapshot/getProjectMetadata/getEntities instead. */
   get floorplan() {
     return this._document.floorplan;
   }
 
   /** @param {Object} val - 设置新的户型数据 */
+  /** @deprecated Use loadJSON instead. */
   set floorplan(val) {
     this._document.floorplan = val;
   }
@@ -161,6 +163,21 @@ export class EditorFacade {
   }
 
   /**
+   * Return lightweight document-level settings without exposing the mutable document.
+   */
+  getProjectMetadata() {
+    const floorplan = this._document.floorplan;
+    return JSON.parse(JSON.stringify({
+      name: floorplan.name || '',
+      unit: floorplan.unit || 'm',
+      wallHeight: floorplan.wallHeight ?? 2.8,
+      wallThickness: floorplan.wallThickness ?? 0.18,
+      floorHeight: floorplan.floorHeight ?? 0.2,
+      currentFloorId: floorplan.currentFloorId || 'floor_1'
+    }));
+  }
+
+  /**
    * 获取当前楼层的 ID
    * @returns {string} 楼层 ID
    */
@@ -226,6 +243,16 @@ export class EditorFacade {
     return entity ? JSON.parse(JSON.stringify(entity)) : null;
   }
 
+  /** Return the room containing a world-space X/Z coordinate. */
+  getRoomAt(x, z, options = {}) {
+    const room = this._document.getRoomAt(x, z, options.floorId || this.getCurrentFloorId());
+    return room ? JSON.parse(JSON.stringify(room)) : null;
+  }
+
+  getWallLength(wallId) {
+    return this._document.getWallLength(wallId);
+  }
+
   /**
    * 获取当前楼层下特定类型的实体只读深拷贝列表
    * @param {string} type - 实体类型
@@ -270,6 +297,19 @@ export class EditorFacade {
    */
   getStairsAutoHeight(stairs) {
     return this._document.getStairsAutoHeight(stairs);
+  }
+
+  getEntityElevationOffset(type, entityOrId) {
+    const entity = typeof entityOrId === 'string'
+      ? this.getEntity(type, entityOrId)
+      : entityOrId;
+    if (!entity) return 0;
+    const normType = this._normalizeEntityType(type);
+    if (normType === 'openings') return this._document.getOpeningElevationOffset(entity);
+    if (normType === 'fences') return this._document.getFenceElevationOffset(entity);
+    if (normType === 'stairs') return this._document.getStairsElevationOffset(entity);
+    if (normType === 'items') return this._document.getItemRoomElevationOffset(entity);
+    return 0;
   }
 
   /**
@@ -496,6 +536,83 @@ export class EditorFacade {
     return result;
   }
 
+  // Command conveniences. These keep consumers on the facade while preserving
+  // readable call sites; all mutations still pass through executeCommand().
+  addFloor(partialFloor = {}) { return this.executeCommand('addFloor', partialFloor); }
+  deleteFloor(floorId) { return this.executeCommand('deleteFloor', { floorId }); }
+  moveFloor(floorId, direction) { return this.executeCommand('moveFloor', { floorId, direction }); }
+  renameFloor(floorId, name) { return this.executeCommand('renameFloor', { floorId, name }); }
+  setCurrentFloor(floorId) { return this.executeCommand('setCurrentFloor', { floorId }); }
+  addRoom(partialRoom = {}) { return this.executeCommand('addRoom', partialRoom); }
+  updateRoom(roomId, patch, options = {}) { return this.executeCommand('updateRoom', { roomId, patch, options, rebuild: options.rebuild }); }
+  deleteRoom(roomId) { return this.executeCommand('deleteRoom', { roomId }); }
+  setRoomFloorMaterial(roomId, material) { return this.executeCommand('setRoomFloorMaterial', { roomId, material }); }
+  addWall(from, to) { return this.executeCommand('addWall', { from, to }); }
+  updateWall(wallId, patch, rebuild = true) { return this.executeCommand('updateWall', { wallId, patch, rebuild }); }
+  deleteWall(wallId) { return this.executeCommand('deleteWall', { wallId }); }
+  setWallLength(wallId, length) { return this.executeCommand('updateWallLength', { wallId, length }); }
+  addOpening(wallId, type = 'door', t = 0.5, shape = 'square') { return this.executeCommand('addOpening', { wallId, type, t, shape }); }
+  updateOpening(openingId, patch, rebuild = true) { return this.executeCommand('updateOpening', { openingId, patch, rebuild }); }
+  deleteOpening(openingId) { return this.executeCommand('deleteOpening', { openingId }); }
+  addItem(partialItem = {}) { return this.executeCommand('addItem', partialItem); }
+  updateItem(itemId, patch, rebuild = true) { return this.executeCommand('updateItem', { itemId, patch, rebuild }); }
+  deleteItem(itemId) { return this.executeCommand('deleteItem', { itemId }); }
+  assignItemToRoom(itemId, roomId) { return this.executeCommand('assignItemToRoom', { itemId, roomId }); }
+  refreshItemRoomLinks() { return this.executeCommand('refreshItemRoomLinks', { rebuild: false }); }
+  addRoof(partialRoof = {}) { return this.executeCommand('addRoof', partialRoof); }
+  updateRoof(roofId, patch, rebuild = true) { return this.executeCommand('updateRoof', { roofId, patch, rebuild }); }
+  deleteRoof(roofId) { return this.executeCommand('deleteRoof', { roofId }); }
+  addStairs(partialStairs = {}) { return this.executeCommand('addStairs', partialStairs); }
+  updateStairs(stairsId, patch, rebuild = true) { return this.executeCommand('updateStairs', { stairsId, patch, rebuild }); }
+  deleteStairs(stairsId) { return this.executeCommand('deleteStairs', { stairsId }); }
+  addFence(partialFence = {}) { return this.executeCommand('addFence', partialFence); }
+  updateFence(fenceId, patch, rebuild = true) { return this.executeCommand('updateFence', { fenceId, patch, rebuild }); }
+  deleteFence(fenceId) { return this.executeCommand('deleteFence', { fenceId }); }
+  addFenceGate(partialFenceGate = {}) { return this.executeCommand('addFenceGate', partialFenceGate); }
+  updateFenceGate(gateId, patch, rebuild = true) { return this.executeCommand('updateFenceGate', { gateId, patch, rebuild }); }
+  deleteFenceGate(gateId) { return this.executeCommand('deleteFenceGate', { gateId }); }
+  setFloorColor(color) { return this.executeCommand('setFloorColor', { color }); }
+
+  get advancedRenderingEnabled() {
+    return !!this._renderer.enableAdvancedRendering;
+  }
+
+  setAdvancedRendering(enabled) {
+    this._renderer.setAdvancedRendering(enabled);
+  }
+
+  refreshRendering() {
+    if (this._previewState !== 'idle') return false;
+    this._renderer.build();
+    return true;
+  }
+
+  requestReflectionUpdate() {
+    this._renderer.requestReflectionTexturesUpdate();
+  }
+
+  attachRuntimeOverlay(node) {
+    if (!node || this._previewState === 'disposed') return false;
+    node.parent = this._renderer.root;
+    return true;
+  }
+
+  populateShadowGenerator(shadowGenerator, floorId = this.getCurrentFloorId()) {
+    const shadowMap = shadowGenerator?.getShadowMap?.();
+    if (!shadowMap) return false;
+    shadowMap.renderList = [];
+    for (const mesh of this._renderer.shadowCasters || []) {
+      let current = mesh;
+      let meshFloorId = null;
+      while (current && !meshFloorId) {
+        meshFloorId = current.metadata?.floorId || null;
+        current = current.parent;
+      }
+      if (!meshFloorId || meshFloorId === floorId) shadowGenerator.addShadowCaster(mesh);
+    }
+    return true;
+  }
+
   /** @private */
   _syncSelectionAfterChange() {
     if (!this._selectionController) return;
@@ -617,6 +734,7 @@ export class EditorFacade {
   // ==========================================
   // 12. 语义化拖拽预览接口
   // ==========================================
+  /** @deprecated Runtime nodes are not part of the stable Consumer API. */
   getEntityRenderNode(type, id) {
     const normType = this._normalizeEntityType(type);
     return normType ? this._renderer.getEntityNode(normType, id) : null;

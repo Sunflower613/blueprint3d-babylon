@@ -39,9 +39,9 @@ export class Viewer3DHandles {
   }
 
   getStructure(type, id) {
-    if (type === 'roof') return this.ctx.testMap.getRoof?.(id);
-    if (type === 'stairs') return this.ctx.testMap.getStairs?.(id);
-    if (type === 'fence') return this.ctx.testMap.getFence?.(id);
+    if (type === 'roof') return this.ctx.testMap.getEntity('roof', id);
+    if (type === 'stairs') return this.ctx.testMap.getEntity('stairs', id);
+    if (type === 'fence') return this.ctx.testMap.getEntity('fence', id);
     return null;
   }
 
@@ -68,7 +68,7 @@ export class Viewer3DHandles {
 
   get3DEditTargetBounds(type, id) {
     if (type === 'wall') {
-      const wall = this.ctx.testMap.getWall(id);
+      const wall = this.ctx.testMap.getEntity('wall', id);
       if (!wall) return null;
       return {
         target: wall,
@@ -85,7 +85,7 @@ export class Viewer3DHandles {
       };
     }
     if (type === 'fence') {
-      const fence = this.ctx.testMap.getFence(id);
+      const fence = this.ctx.testMap.getEntity('fence', id);
       if (!fence) return null;
       return {
         target: fence,
@@ -101,7 +101,7 @@ export class Viewer3DHandles {
         floorId: fence.floorId || this.ctx.testMap.getCurrentFloorId()
       };
     }
-    const target = type === 'room' ? this.ctx.testMap.getRoom(id) : this.getStructure(type, id);
+    const target = type === 'room' ? this.ctx.testMap.getEntity('room', id) : this.getStructure(type, id);
     if (!target) return null;
     return {
       target,
@@ -119,29 +119,30 @@ export class Viewer3DHandles {
     if (type === 'wall') return floorY + 1.2;
     
     if (type === 'fence') {
-      const fenceOffset = (this.ctx.testMap.getFenceElevationOffset ? this.ctx.testMap.getFenceElevationOffset(bounds.target) : 0) + (bounds.target.yOffset || 0);
+      const fenceOffset = this.ctx.testMap.getEntityElevationOffset('fence', bounds.target) + (bounds.target.yOffset || 0);
       return floorY + fenceOffset + (bounds.height || 1.1) + 0.18;
     }
     
     if (type === 'roof') {
       const floor = this.ctx.testMap.getFloor(bounds.floorId);
-      const roofWallHeight = floor ? (floor.wallHeight ?? this.ctx.testMap.floorplan.wallHeight ?? 3.0) : (this.ctx.testMap.floorplan.wallHeight ?? 3.0);
+      const defaultWallHeight = this.ctx.testMap.getProjectMetadata().wallHeight;
+      const roofWallHeight = floor ? (floor.wallHeight ?? defaultWallHeight) : defaultWallHeight;
       return floorY + roofWallHeight + bounds.height + 0.18;
     }
     
     if (type === 'stairs') {
-      const stairsOffset = this.ctx.testMap.getStairsElevationOffset ? this.ctx.testMap.getStairsElevationOffset(bounds.target) : 0;
+      const stairsOffset = this.ctx.testMap.getEntityElevationOffset('stairs', bounds.target);
       return floorY + stairsOffset + Math.max(0.18, Math.min(bounds.height || 1, 1.4));
     }
     
     if (type === 'opening') {
-      const openingOffset = this.ctx.testMap.getOpeningElevationOffset ? this.ctx.testMap.getOpeningElevationOffset(bounds.target) : 0;
+      const openingOffset = this.ctx.testMap.getEntityElevationOffset('opening', bounds.target);
       return floorY + openingOffset + 0.18;
     }
     
     if (type === 'item') {
       const item = bounds.target;
-      const roomOffset = this.ctx.testMap.getItemRoomElevationOffset ? this.ctx.testMap.getItemRoomElevationOffset(item) : 0;
+      const roomOffset = this.ctx.testMap.getEntityElevationOffset('item', item);
       return floorY + roomOffset + (item.elevation || 0) / this.INCHES_PER_UNIT + 0.18;
     }
     
@@ -426,7 +427,7 @@ export class Viewer3DHandles {
   findRoofIdFromNode(node) {
     const id = findMetadataFromNode(node, 'blueprintRoofId');
     if (id) {
-      const roof = this.ctx.testMap.getRoof?.(id);
+      const roof = this.ctx.testMap.getEntity('roof', id);
       if (roof) {
         const floor = this.ctx.testMap.getFloor(roof.floorId);
         if (floor && floor.hideRoof) {
@@ -621,7 +622,7 @@ export class Viewer3DHandles {
     }
 
     if (state.type === 'wall') {
-      const wall = this.ctx.testMap.getWall(state.id);
+      const wall = this.ctx.testMap.getEntity('wall', state.id);
       if (!wall) return;
       let nextFrom = [...original.from];
       let nextTo = [...original.to];
@@ -668,7 +669,7 @@ export class Viewer3DHandles {
       return;
     }
     if (state.type === 'fence') {
-      const fence = this.ctx.testMap.getFence(state.id);
+      const fence = this.ctx.testMap.getEntity('fence', state.id);
       if (!fence) return;
       let nextFrom = [...original.from];
       let nextTo = [...original.to];

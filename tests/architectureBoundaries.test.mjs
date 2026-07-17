@@ -138,6 +138,7 @@ test('架构防腐守卫：限制 example 直接访问 .document / .renderer / .
           /\.getEntityRenderNode\b/g,
           /(?:testMap|editorApi)(?:\.|\?\.)floorplan\b/g,
           /(?:testMap|editorApi)(?:\.|\?\.)root\b/g,
+          /\b(?:testMap|editorApi|map)(?:\.|\?\.)(?:getRoom|getWall|getOpening|getWindow|getDoor|getItem|getRoof|getStairs|getStair|getFence|getFenceGate)\??\s*\(/g,
           /Blueprint3DTestMap\b/g
         ];
         for (const pattern of forbiddenPatterns) {

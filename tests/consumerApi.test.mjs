@@ -277,7 +277,7 @@ test('静态方法调用分析测试: 确保 example 调用的方法全部存在
   }
 
   const jsFiles = walkDir(exampleDir);
-  const methodCallRegex = /testMap(?:\.|\?\.)([a-zA-Z0-9_]+)\(/g;
+  const methodCallRegex = /\b(testMap|editorApi|map)(?:\.|\?\.)([a-zA-Z0-9_]+)\(/g;
 
   const getPrototypeMethods = (proto) => {
     let methods = [];
@@ -297,11 +297,12 @@ test('静态方法调用分析测试: 确保 example 调用的方法全部存在
     const content = fs.readFileSync(filePath, 'utf8');
     let match;
     while ((match = methodCallRegex.exec(content)) !== null) {
-      const methodName = match[1];
+      const receiverName = match[1];
+      const methodName = match[2];
       const exists = testMapAvailableMethods.has(methodName) || allowedOverrides.has(methodName);
       if (!exists) {
         const relativePath = path.relative(process.cwd(), filePath);
-        assert.fail(`未定义的方法调用: 文件 [${relativePath}] 调用了未定义的方法 [testMap.${methodName}()], 这将导致运行时崩溃！`);
+        assert.fail(`未定义的方法调用: 文件 [${relativePath}] 调用了未定义的方法 [${receiverName}.${methodName}()], 这将导致运行时崩溃！`);
       }
     }
   }
@@ -370,6 +371,11 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
 
   editor.executeCommand('updateOpening', { openingId: opening.id, patch: { width: 1.2 } });
   assert.equal(editor.getEntity('opening', opening.id).width, 1.2, '应该成功执行 updateOpening 命令');
+
+  editor.executeCommand('updateOpeningMaterial', { openingId: opening.id, componentKey: 'frame', materialDescriptor: '#123456' });
+  assert.equal(editor.getEntity('opening', opening.id).frameMaterial?.color, '#123456', '应该成功修改开口组件材质');
+  editor.executeCommand('resetOpeningMaterial', { openingId: opening.id });
+  assert.equal(editor.getEntity('opening', opening.id).frameMaterial, undefined, '应该通过通用命令重置开口组件材质');
 
   const windowOpening = editor.executeCommand('addOpening', { wallId: wall.id, type: 'window', t: 0.75, shape: 'square' });
   assert.equal(editor.getEntity('opening', windowOpening.id).type, 'window', '门窗 API 应同时覆盖窗户');

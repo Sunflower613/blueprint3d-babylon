@@ -87,37 +87,37 @@ export function getPickedColorFromTarget(target) {
   let descriptor = null;
 
   if (target.type === 'room') {
-    const room = map.getRoom(target.id);
+    const room = map.getEntity('room', target.id);
     descriptor = room?.material || room?.color;
   } else if (target.type === 'wall') {
-    const wall = map.getWall(target.id);
+    const wall = map.getEntity('wall', target.id);
     const side = target.pick
       ? Context.findWallSideFromNode(target.pick.pickedMesh)
       : (target.point ? Context.get2DWallSideFromPoint(wall, target.point) : null);
     const suffix = side ? `${side[0].toUpperCase()}${side.slice(1)}` : '';
     descriptor = wall?.[`material${suffix}`] || wall?.[`color${suffix}`] || wall?.material || wall?.color;
   } else if (target.type === 'item') {
-    const item = map.getItem(target.id);
+    const item = map.getEntity('item', target.id);
     let componentId = target.pick ? Context.findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
     const definition = item ? map.getFurnitureDefinition?.(item.type) : null;
     componentId ||= definition?.components?.[0]?.id;
     descriptor = item?.materials?.[componentId] || item?.colors?.[componentId];
     if (!descriptor) descriptor = definition?.components?.find((component) => component.id === componentId)?.defaultColor;
   } else if (target.type === 'fence' || target.type === 'fence_gate') {
-    const entity = target.type === 'fence' ? map.getFence(target.id) : map.getFenceGate(target.id);
+    const entity = map.getEntity(target.type, target.id);
     const componentId = target.pick ? Context.findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
     descriptor = readComponentMaterial(entity, componentId, componentId === 'frame' || componentId === 'panel' ? componentId : '');
   } else if (target.type === 'opening') {
-    const opening = map.getOpening(target.id);
+    const opening = map.getEntity('opening', target.id);
     const componentId = target.pick ? Context.findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
     descriptor = componentId ? opening?.[`${componentId}Material`] : opening?.material;
     descriptor ||= opening?.color;
   } else if (target.type === 'roof') {
-    const roof = map.getRoof?.(target.id);
+    const roof = map.getEntity('roof', target.id);
     const componentId = target.pick ? Context.findRoofComponentIdFromNode(target.pick.pickedMesh) : null;
     descriptor = readComponentMaterial(roof, componentId, componentId === 'side' || componentId === 'bottom' ? componentId : '');
   } else if (target.type === 'stairs') {
-    const stairs = map.getStairs(target.id);
+    const stairs = map.getEntity('stairs', target.id);
     const componentId = target.pick ? Context.findMetadataFromNode(target.pick.pickedMesh, 'blueprintStairsComponentId') : null;
     descriptor = readComponentMaterial(stairs, componentId, componentId === 'side' ? 'side' : '');
   }
@@ -152,7 +152,7 @@ export function executeDesignTool(target) {
       material: Context.DEFAULT_MATERIAL_PACKS.find((material) => material.id === 'wood-light-fine')
     });
   } else if (target.type === 'wall') {
-    const wall = map.getWall(target.id);
+    const wall = map.getEntity('wall', target.id);
     const side = target.pick
       ? Context.findWallSideFromNode(target.pick.pickedMesh)
       : (target.point ? Context.get2DWallSideFromPoint(wall, target.point) : null);
@@ -163,7 +163,7 @@ export function executeDesignTool(target) {
         : { material: '#f9fbff', color: '#f9fbff', materialFront: null, colorFront: null, materialBack: null, colorBack: null };
     map.executeCommand('updateWall', { wallId: target.id, patch });
   } else if (target.type === 'item') {
-    const item = map.getItem(target.id);
+    const item = map.getEntity('item', target.id);
     const componentId = target.pick
       ? Context.findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId')
       : map.getFurnitureDefinition?.(item?.type)?.components?.[0]?.id;
@@ -179,7 +179,7 @@ export function executeDesignTool(target) {
   } else if (target.type === 'fence_gate') {
     map.updateFenceGate(target.id, { material: null, color: null, frameMaterial: null, frameColor: null, panelMaterial: null, panelColor: null });
   } else if (target.type === 'opening') {
-    map.resetOpeningMaterial(target.id);
+    map.executeCommand('resetOpeningMaterial', { openingId: target.id });
   } else if (target.type === 'roof') {
     map.updateRoof(target.id, { material: null, color: null });
   } else if (target.type === 'stairs') {

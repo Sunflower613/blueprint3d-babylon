@@ -53,7 +53,7 @@ export function resetCurrentMaterial() {
   const map = Context.testMap;
   if (Context.selectedItemId) return Context.entityManager.resetItemMaterial(Context.selectedItemId);
   if (Context.selectedWallId) {
-    const wall = map.getWall(Context.selectedWallId);
+    const wall = map.getEntity('wall', Context.selectedWallId);
     if (!wall || wall.locked) return;
     Context.pushHistory();
     map.executeCommand('updateWall', {
@@ -77,7 +77,7 @@ export function resetCurrentMaterial() {
     map.updateFence(Context.selectedFenceId, { material: '#8d6e63', color: '#8d6e63' });
   } else if (Context.selectedOpeningId) {
     Context.pushHistory();
-    map.resetOpeningMaterial(Context.selectedOpeningId);
+    map.executeCommand('resetOpeningMaterial', { openingId: Context.selectedOpeningId });
   } else {
     return;
   }

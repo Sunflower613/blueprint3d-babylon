@@ -83,7 +83,7 @@ export default function createFurniture({ boxComponent, cylinderComponent, spher
 - 任何组件的 ID 如果小写拼写中包含了 `'glass'`（如 `'cabinet_glass'`, `'wineglass'` 等），引擎材质管理器会自动向下兼容，将该部分默认应用为**半透明玻璃材质**。
 
 ### 5. 可开关的水容器（如水槽、浴缸）
-- 可以在 `build(registry, item, node, size)` 里面通过检查 **`item.waterEnabled !== false`** 动态控制是否生成水面网格，以支持用户在右键菜单中一键开关蓄水状态。
+- 可以在 `build(registry, item, node, size)` 里面通过检查 **`item.waterEnabled !== false`** 动态控制是否生成水面网格，以支持用户在右键/长按菜单中一键开关蓄水状态。
 
 ### 6. 可开关盖板的家具（如马桶）
 - 可以在 `build(registry, item, node, size)` 里面通过检查 **`item.lidOpen === true`** 动态控制马桶盖板网格（Lid Mesh）的旋转 (`rotation.x`) 和位置偏移，从而在 3D 场景中渲染出开盖与合盖的姿态。

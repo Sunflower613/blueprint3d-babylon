@@ -10,8 +10,8 @@
  */
 (async () => {
   // 过滤截图的分类（数组形式）
-  // 匹配规则：若包含 'all' 则为全部；若匹配到 category（如 'seating'）则拍摄该目录；若匹配到 type 或 name 则拍摄该具体家具
-  const CAPTURE_CATEGORIES = ['all'];
+  // 匹配规则：若包含 'all' 则为全部；若包含 'missing' 则自动检测并只截缺失缩略图的家具；若匹配到 category（如 'seating'）则拍摄该目录；若匹配到 type 或 name 则拍摄该具体家具
+  const CAPTURE_CATEGORIES = ['missing'];
 
   // 内置的默认最佳 3D 视角数据（旋转 180 度以纠正视角至对面正面）
   const DEFAULT_CAMERA = {
@@ -105,13 +105,31 @@
   }
 
   // 6. 根据新的数组匹配规则筛选需要拍照的家具列表
-  const itemsToCapture = CAPTURE_CATEGORIES.includes('all')
-    ? FURNITURE_LIST
-    : FURNITURE_LIST.filter(def => 
-        CAPTURE_CATEGORIES.includes(def.category) || 
-        CAPTURE_CATEGORIES.includes(def.type) || 
-        CAPTURE_CATEGORIES.includes(def.name)
-      );
+  let itemsToCapture = [];
+  if (CAPTURE_CATEGORIES.includes('all')) {
+    itemsToCapture = FURNITURE_LIST;
+  } else if (CAPTURE_CATEGORIES.includes('missing')) {
+    console.log("正在检测缺失缩略图的家具...");
+    const checkPromises = FURNITURE_LIST.map(async (def) => {
+      try {
+        const response = await fetch(`../src/furniture/image/${def.type}.png`, { method: 'HEAD' });
+        const contentType = response.headers.get('content-type') || '';
+        const exists = response.ok && contentType.startsWith('image/');
+        return { def, exists };
+      } catch (err) {
+        return { def, exists: false };
+      }
+    });
+    const results = await Promise.all(checkPromises);
+    itemsToCapture = results.filter(r => !r.exists).map(r => r.def);
+    console.log(`检测完成。共有 ${itemsToCapture.length} 个家具缺少缩略图。`);
+  } else {
+    itemsToCapture = FURNITURE_LIST.filter(def => 
+      CAPTURE_CATEGORIES.includes(def.category) || 
+      CAPTURE_CATEGORIES.includes(def.type) || 
+      CAPTURE_CATEGORIES.includes(def.name)
+    );
+  }
 
   console.log(`符合筛选条件的待拍照家具数量: ${itemsToCapture.length}`);
 

@@ -897,9 +897,9 @@ export class BabylonSceneRenderer {
       parent: group,
       material: ceilingMaterial,
       receiveShadows: true,
-      shadowCaster: false
+      shadowCaster: true
     });
-    ceilingPiece.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
+    ceilingPiece.metadata = { blueprintRoomId: room.id, crossFloorShadowOnly: true, locked: !!room.locked };
   }
 
   buildRoomPolygonMesh(group, room, material, height, centerY, suffix) {
@@ -968,7 +968,7 @@ export class BabylonSceneRenderer {
 
       const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
       group.position.set(room.x, floorY - currentFloorHeight / 2, room.z);
-      group.metadata = { blueprintRoomId: room.id, locked: !!room.locked, originalWidth: room.width, originalDepth: room.depth };
+      group.metadata = { blueprintRoomId: room.id, floorId: room.floorId, locked: !!room.locked, originalWidth: room.width, originalDepth: room.depth };
       this.add(group, { shadowCaster: false });
 
       if (normalizeRoomShape(room.shape) === 'square') {
@@ -997,7 +997,11 @@ export class BabylonSceneRenderer {
         }
       } else {
         this.buildRoomPolygonMesh(group, room, floorMaterial, currentFloorHeight, room.elevation || 0, 'shape');
-        this.buildRoomPolygonMesh(group, room, ceilingMaterial, 0.002, -currentFloorHeight / 2 - 0.001, 'ceiling');
+        const ceilingMesh = this.buildRoomPolygonMesh(group, room, ceilingMaterial, 0.002, -currentFloorHeight / 2 - 0.001, 'ceiling');
+        if (ceilingMesh) {
+          ceilingMesh.metadata.crossFloorShadowOnly = true;
+          this.shadowCasters.push(ceilingMesh);
+        }
       }
 
       this.floorNodes.set(room.id, group);

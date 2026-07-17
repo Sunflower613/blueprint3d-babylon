@@ -59,6 +59,11 @@ export {
 } from '../core/BlueprintRegistry.js';
 
 export {
+  getShadowCasterContext,
+  shouldIncludeShadowCaster
+} from '../runtime/shadowCasterFilter.js';
+
+export {
   FloorplanDocument
 } from '../domain/FloorplanDocument.js';
 

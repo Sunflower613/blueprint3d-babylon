@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL } from '../../src/index.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
@@ -169,8 +169,7 @@ export class Viewer3D {
   refreshShadowCasters(getShadowCasters, currentFloorId) {
     this.shadowGenerator.getShadowMap().renderList = [];
     getShadowCasters().forEach((mesh) => {
-      const floorId = this.getMeshFloorId(mesh);
-      if (!floorId || floorId === currentFloorId) {
+      if (shouldIncludeShadowCaster(mesh, currentFloorId)) {
         this.shadowGenerator.addShadowCaster(mesh);
       }
     });

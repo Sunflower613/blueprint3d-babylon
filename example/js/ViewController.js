@@ -103,6 +103,7 @@ export function setView(nextView) {
     Context.viewer3d.prepareFor3D();
     Context.updateSkyboxFromCurrentFloor();
     Context.testMap.enableRendering();
+    refreshShadows();
     refresh3DGrid();
     requestAnimationFrame(() => {
       Context.engine.resize();

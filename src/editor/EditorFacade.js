@@ -3,6 +3,7 @@ import { BabylonSceneRenderer } from '../runtime/BabylonSceneRenderer.js';
 import { SelectionController } from './SelectionController.js';
 import { ExportService } from '../services/ExportService.js';
 import { getFurnitureDefinition } from '../furniture/index.js';
+import { shouldIncludeShadowCaster } from '../runtime/shadowCasterFilter.js';
 
 export class EditorFacade {
   /**
@@ -606,13 +607,7 @@ export class EditorFacade {
     if (!shadowMap) return false;
     shadowMap.renderList = [];
     for (const mesh of this._renderer.shadowCasters || []) {
-      let current = mesh;
-      let meshFloorId = null;
-      while (current && !meshFloorId) {
-        meshFloorId = current.metadata?.floorId || null;
-        current = current.parent;
-      }
-      if (!meshFloorId || meshFloorId === floorId) shadowGenerator.addShadowCaster(mesh);
+      if (shouldIncludeShadowCaster(mesh, floorId)) shadowGenerator.addShadowCaster(mesh);
     }
     return true;
   }

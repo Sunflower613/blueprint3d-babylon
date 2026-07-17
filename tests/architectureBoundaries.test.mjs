@@ -171,3 +171,14 @@ test('3D pointer cancellation uses rollback rather than the pointer-up commit pa
   assert.match(source, /addEventListener\('pointercancel',[\s\S]{0,160}cancel3DDrag\(event\)/);
   assert.doesNotMatch(source, /addEventListener\('pointercancel',\s*end3DDrag\)/);
 });
+
+test('entering 3D refreshes shadows after rendering is enabled', () => {
+  const source = fs.readFileSync(path.resolve('example/js/ViewController.js'), 'utf8');
+  const branch = source.match(/if \(nextView === '3d'\) \{([\s\S]*?)\n  \} else \{/);
+
+  assert.ok(branch, 'setView should contain a 3D entry branch');
+  const enableIndex = branch[1].indexOf('Context.testMap.enableRendering()');
+  const refreshIndex = branch[1].indexOf('refreshShadows()');
+  assert.ok(enableIndex >= 0, '3D entry should enable rendering');
+  assert.ok(refreshIndex > enableIndex, 'shadow casters must refresh after 3D meshes are built');
+});

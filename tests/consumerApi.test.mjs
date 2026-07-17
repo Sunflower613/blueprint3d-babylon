@@ -3,7 +3,13 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as BABYLON from '@babylonjs/core';
-import { createEditor, Blueprint3DTestMap, EditorFacade } from '../src/index.js';
+import { createEditor, Blueprint3DTestMap, EditorFacade, getFurnitureThumbnailUrl, SKY_TEXTURE_URL } from '../src/index.js';
+
+test('Consumer API: public asset URLs do not require source-directory imports', () => {
+  assert.equal(getFurnitureThumbnailUrl('chair'), './src/furniture/image/chair.png');
+  assert.equal(getFurnitureThumbnailUrl('../unsafe'), './src/furniture/image/unsafe.png');
+  assert.match(SKY_TEXTURE_URL, /sky\.png$/);
+});
 
 test('Consumer API: 独立创建、保存、加载与导出流程验证', () => {
   const engine = new BABYLON.NullEngine();
@@ -31,7 +37,7 @@ test('Consumer API: 独立创建、保存、加载与导出流程验证', () => 
   // 1. 验证通过 createEditor 创建
   const editor = createEditor({ scene, floorplan: mockPlan });
   assert.ok(editor, '应成功创建 editor 实例');
-  assert.equal(editor.floorplan.currentFloorId, 'floor_1');
+  assert.equal(editor.getCurrentFloorId(), 'floor_1');
   assert.equal(editor.renderingEnabled, true);
 
   // 2. 验证 exportJSON
@@ -60,11 +66,11 @@ test('Consumer API: 独立创建、保存、加载与导出流程验证', () => 
     floors: [{ id: 'floor_2', name: '2F', level: 1 }]
   };
   editor.loadJSON(newPlan);
-  assert.equal(editor.floorplan.currentFloorId, 'floor_2');
+  assert.equal(editor.getCurrentFloorId(), 'floor_2');
 
   // 7. 验证 loadBuildingFile
   editor.loadBuildingFile(bFileStr);
-  assert.equal(editor.floorplan.currentFloorId, 'floor_1'); // 重新加载了原来的文件
+  assert.equal(editor.getCurrentFloorId(), 'floor_1'); // 重新加载了原来的文件
 
   scene.dispose();
   engine.dispose();
@@ -143,6 +149,10 @@ test('Consumer API: 只读 Query API 及数据防篡改特性验证', () => {
 
   // 1. getCurrentFloorId
   assert.equal(editor.getCurrentFloorId(), 'floor_1');
+  const metadata = editor.getProjectMetadata();
+  const originalWallHeight = metadata.wallHeight;
+  metadata.wallHeight = 99;
+  assert.equal(editor.getProjectMetadata().wallHeight, originalWallHeight, '项目元数据查询必须返回防篡改副本');
 
   // 2. getFloors & getFloor
   const floors = editor.getFloors();
@@ -207,6 +217,7 @@ test('架构防腐守卫: 验证 example 下的所有 js 文件没有越权直�
   function walkDir(dir, files = []) {
     const list = fs.readdirSync(dir);
     for (const file of list) {
+      if (file === 'dist' || file === 'dist-temp' || file === 'node_modules') continue;
       const fullPath = path.join(dir, file);
       const stat = fs.statSync(fullPath);
       if (stat.isDirectory()) {
@@ -219,15 +230,16 @@ test('架构防腐守卫: 验证 example 下的所有 js 文件没有越权直�
   }
 
   const jsFiles = walkDir(exampleDir);
-  const illegalImportRegex = /import\s+[\s\S]*?\s+from\s+['"](?:\.\.\/)*src\/(core|presets|rooms|furniture|geometry|domain|openings|runtime|services|audio|textures)\/.*?['"]/g;
+  const sourceImportRegex = /import\s+[\s\S]*?\s+from\s+['"]([^'"]*src\/[^'"]+)['"]/g;
 
   for (const filePath of jsFiles) {
     const content = fs.readFileSync(filePath, 'utf8');
     let match;
-    while ((match = illegalImportRegex.exec(content)) !== null) {
-      const illegalPath = match[0];
+    while ((match = sourceImportRegex.exec(content)) !== null) {
+      const importedPath = match[1].replace(/\\/g, '/');
+      if (importedPath.endsWith('/src/index.js')) continue;
       const relativePath = path.relative(process.cwd(), filePath);
-      assert.fail(`越权导入错误: 文件 [${relativePath}] 直接导入了私有目录 [${illegalPath}]。所有外部依赖必须统一从 'src/index.js' 引入。`);
+      assert.fail(`越权导入错误: 文件 [${relativePath}] 直接导入了 [${importedPath}]；example 只能从 src/index.js 导入库能力。`);
     }
   }
 });
@@ -246,12 +258,13 @@ test('接口一致性自动反射测试: 确保 Blueprint3DTestMap 实现了 Edi
   }
 });
 
-test('静态方法调用分析测试: 确保 example 调用的所有 testMap 方法在原型链上都是存在的', () => {
+test('静态方法调用分析测试: 确保 example 调用的方法全部存在于通用 EditorFacade', () => {
   const exampleDir = path.resolve('example');
 
   function walkDir(dir, files = []) {
     const list = fs.readdirSync(dir);
     for (const file of list) {
+      if (file === 'dist' || file === 'dist-temp' || file === 'node_modules') continue;
       const fullPath = path.join(dir, file);
       const stat = fs.statSync(fullPath);
       if (stat.isDirectory()) {
@@ -264,7 +277,7 @@ test('静态方法调用分析测试: 确保 example 调用的所有 testMap 方
   }
 
   const jsFiles = walkDir(exampleDir);
-  const methodCallRegex = /(?:ctx\.)?testMap\.([a-zA-Z0-9_]+)\(/g;
+  const methodCallRegex = /testMap(?:\.|\?\.)([a-zA-Z0-9_]+)\(/g;
 
   const getPrototypeMethods = (proto) => {
     let methods = [];
@@ -276,17 +289,9 @@ test('静态方法调用分析测试: 确保 example 调用的所有 testMap 方
     return new Set(methods);
   };
 
-  const testMapAvailableMethods = getPrototypeMethods(Blueprint3DTestMap.prototype);
+  const testMapAvailableMethods = getPrototypeMethods(EditorFacade.prototype);
 
-  const allowedOverrides = new Set([
-    'on', 'off', 'emit',
-    'build', 'clearBuiltMeshes',
-    'renderingDirty',
-    'getFurnitureDefinition',
-    'getFloorElevation',
-    'getFloorLevel',
-    'getStairsAutoHeight'
-  ]);
+  const allowedOverrides = new Set(['on', 'off', 'emit']);
 
   for (const filePath of jsFiles) {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -366,6 +371,9 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
   editor.executeCommand('updateOpening', { openingId: opening.id, patch: { width: 1.2 } });
   assert.equal(editor.getEntity('opening', opening.id).width, 1.2, '应该成功执行 updateOpening 命令');
 
+  const windowOpening = editor.executeCommand('addOpening', { wallId: wall.id, type: 'window', t: 0.75, shape: 'square' });
+  assert.equal(editor.getEntity('opening', windowOpening.id).type, 'window', '门窗 API 应同时覆盖窗户');
+
   // 4. 房间命令测试
   const room = editor.executeCommand('addRoom', { x: 2, z: 2, name: '主卧' });
   assert.ok(room, '应该成功执行 addRoom 命令');
@@ -417,6 +425,8 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
   // 8. 各种删除命令测试
   editor.executeCommand('deleteOpening', { openingId: opening.id });
   assert.equal(editor.getEntity('opening', opening.id), null, '应该成功删除开口');
+  editor.executeCommand('deleteOpening', { openingId: windowOpening.id });
+  assert.equal(editor.getEntity('opening', windowOpening.id), null, '应该成功删除窗户');
 
   editor.executeCommand('deleteWall', { wallId: wall.id });
   assert.equal(editor.getEntity('wall', wall.id), null, '应该成功删除墙体');
@@ -442,4 +452,3 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
   scene.dispose();
   engine.dispose();
 });
-

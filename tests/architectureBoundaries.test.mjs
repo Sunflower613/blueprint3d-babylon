@@ -135,7 +135,10 @@ test('架构防腐守卫：限制 example 直接访问 .document / .renderer / .
           /\._renderer\b/g,
           /\._selectionController\b/g,
           /(?:\.|\?\.)[A-Za-z_$][\w$]*Nodes\b(?!\s*\()/g,
-          /\.getEntityRenderNode\b/g
+          /\.getEntityRenderNode\b/g,
+          /(?:testMap|editorApi)(?:\.|\?\.)floorplan\b/g,
+          /(?:testMap|editorApi)(?:\.|\?\.)root\b/g,
+          /Blueprint3DTestMap\b/g
         ];
         for (const pattern of forbiddenPatterns) {
           if (pattern.test(content)) {
@@ -157,6 +160,8 @@ test('example app entry remains orchestration-only', () => {
   const runtimeNodeMaps = /(?:\.|\?\.)[A-Za-z_$][\w$]*Nodes\b(?!\s*\()/g;
   assert.equal(runtimeNodeMaps.test(source), false, 'example/app.js must not access renderer node maps directly');
   assert.equal(/\.getEntityRenderNode\b/.test(source), false, 'example/app.js must not obtain raw renderer nodes');
+  assert.match(source, /\bcreateEditor\s*\(/, 'example/app.js must instantiate the public editor factory');
+  assert.doesNotMatch(source, /\bnew\s+Blueprint3DTestMap\b/, 'example/app.js must not instantiate the legacy preset');
 });
 
 test('3D pointer cancellation uses rollback rather than the pointer-up commit path', () => {

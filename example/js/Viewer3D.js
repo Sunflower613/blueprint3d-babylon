@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture } from '../../src/index.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
@@ -432,8 +432,7 @@ export class Viewer3D {
         skyboxMaterial.disableLighting = true;
         
         // 加载本地 sky.png 天空背景贴图
-        const skyTextureUrl = new URL('../../src/textures/sky.png', import.meta.url).href;
-        skyboxMaterial.emissiveTexture = new BABYLON.Texture(skyTextureUrl, this.scene);
+        skyboxMaterial.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene);
         
         if (this._skyboxColor) {
           skyboxMaterial.emissiveColor = BABYLON.Color3.FromHexString(this._skyboxColor);

@@ -7,9 +7,9 @@ let Context = null;
 export function initInteractionHelpers(appState) { Context = appState; }
 
 export function getStructure(type, id) {
-  if (type === 'roof') return Context.testMap.getRoof?.(id);
-  if (type === 'stairs') return Context.testMap.getStairs?.(id);
-  if (type === 'fence') return Context.testMap.getFence?.(id);
+  if (type === 'roof') return Context.testMap.getEntity('roof', id);
+  if (type === 'stairs') return Context.testMap.getEntity('stairs', id);
+  if (type === 'fence') return Context.testMap.getEntity('fence', id);
   return null;
 }
 
@@ -61,7 +61,7 @@ export function beginRoofResize(event, roofId, side) {
   event.preventDefault();
   event.stopPropagation();
   Context.selectRoof(roofId);
-  const roof = Context.testMap.getRoof?.(roofId);
+  const roof = Context.testMap.getEntity('roof', roofId);
   if (!roof || roof.locked) return;
   const original = { x: roof.x || 0, z: roof.z || 0, width: roof.width || 6, depth: roof.depth || 6 };
   const point = svgPointFromEvent(event);
@@ -78,7 +78,7 @@ export function beginRoofResize(event, roofId, side) {
 export function moveRoofResize(event) {
   const state = Context.roofResizeState;
   if (!state) return;
-  const roof = Context.testMap.getRoof?.(state.roofId);
+  const roof = Context.testMap.getEntity('roof', state.roofId);
   if (!roof || roof.locked) return;
   const point = svgPointFromEvent(event);
   const world = svgToWorld(point.x, point.y);
@@ -148,7 +148,7 @@ export const findFenceIdFromNode = (node) => findMetadataFromNode(node, 'bluepri
 export const findFenceGateIdFromNode = (node) => findMetadataFromNode(node, 'blueprintFenceGateId');
 export function findRoofIdFromNode(node) {
   const id = findMetadataFromNode(node, 'blueprintRoofId');
-  const roof = id ? Context.testMap.getRoof?.(id) : null;
+  const roof = id ? Context.testMap.getEntity('roof', id) : null;
   return roof && Context.testMap.getFloor(roof.floorId)?.hideRoof ? null : id;
 }
 export function groundPointFromPointer() { return Context.viewer3d.groundPointFromPointer(Context.testMap.getFloorElevation?.(Context.testMap.getCurrentFloorId()) || 0); }

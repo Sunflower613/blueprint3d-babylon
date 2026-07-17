@@ -135,7 +135,7 @@ export class EntityManager {
    * @param {number} z - 目标世界坐标 Z
    */
   moveItemTo(itemId, x, z, isFinished = false) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
@@ -155,7 +155,7 @@ export class EntityManager {
         x,
         z,
         snapSize,
-        wallThickness: this.opts.testMap.floorplan.wallThickness || 0.18,
+        wallThickness: this.opts.testMap.getProjectMetadata().wallThickness,
         walls: this.opts.getWalls(),
         shouldSnapToEdge: this.shouldSnapToEdge(item.type),
         inchesToWorld: this.opts.inchesToWorld.bind(this.opts)
@@ -189,11 +189,11 @@ export class EntityManager {
       let bestWinWall = null;
 
       if (isCurtain) {
-        const floorplan = this.opts.testMap.floorplan;
-        if (floorplan && floorplan.openings) {
-          floorplan.openings.forEach((opening) => {
+        const openings = this.opts.testMap.getEntities('opening');
+        if (openings.length) {
+          openings.forEach((opening) => {
             if (opening.type === 'door') return; // 排除门，只吸附窗户
-            const wall = (floorplan.walls || []).find(w => w.id === opening.wallId);
+            const wall = this.opts.getWalls().find(w => w.id === opening.wallId);
             if (!wall) return;
             
             // 计算该窗户在墙体上的实际世界坐标
@@ -246,7 +246,7 @@ export class EntityManager {
       }
 
       if (bestWall) {
-        const wallThickness = this.opts.testMap.floorplan.wallThickness || 0.18;
+        const wallThickness = this.opts.testMap.getProjectMetadata().wallThickness;
         const itemScale = Number(item.scale || 1);
         const itemDepth = (item.depth ?? (definition.defaultSize.depth / INCHES_PER_UNIT)) * itemScale;
 
@@ -289,7 +289,7 @@ export class EntityManager {
       // 天花板物体逻辑
       patch.x = snapped.x;
       patch.z = snapped.z;
-      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - (item.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (item.scale || 1);
+      patch.elevation = this.opts.testMap.getProjectMetadata().wallHeight - (item.height ?? (definition.defaultSize.height / INCHES_PER_UNIT)) * (item.scale || 1);
     } else {
       // 普通地板物体逻辑
       patch.x = snapped.x;
@@ -392,7 +392,7 @@ export class EntityManager {
       this.opts.testMap.executeCommand('assignItemToRoom', { itemId: item.id, roomId: room.id, rebuild: false });
     }
 
-    if (requiresRuntimeRebuild) this.opts.testMap.build();
+    if (requiresRuntimeRebuild) this.opts.testMap.refreshRendering();
     else this.opts.testMap.syncEntityPreview('item', item.id);
     this.updateChildrenOnBookshelf({ ...item, x: updatedX, z: updatedZ, rotation: updatedRotation, elevation: updatedElevation }, beforeState);
     this.opts.renderPlan();
@@ -410,7 +410,7 @@ export class EntityManager {
     event.stopPropagation();
     this.opts.rememberPointer(event);
     this.selectItem(itemId);
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     if (this.maybeBeginItemGesture(itemId)) {
@@ -465,7 +465,7 @@ export class EntityManager {
    * @returns {boolean} 是否成功开启手势
    */
   maybeBeginItemGesture(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     const pointers = this.getItemGesturePointers(itemId);
     if (!item || pointers.length < 2) return false;
 
@@ -485,7 +485,7 @@ export class EntityManager {
    */
   moveItemGesture() {
     if (!this.itemGestureState) return;
-    const item = this.opts.testMap.getItem(this.itemGestureState.itemId);
+    const item = this.opts.testMap.getEntity('item', this.itemGestureState.itemId);
     const pointers = this.getItemGesturePointers(this.itemGestureState.itemId);
     if (!item || item.locked || pointers.length < 2) return;
 
@@ -510,7 +510,7 @@ export class EntityManager {
       scale: 1.0
     };
     if (definition.placeType === 'ceiling') {
-      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
+      patch.elevation = this.opts.testMap.getProjectMetadata().wallHeight - patch.height;
     }
 
     this.opts.testMap.executeCommand('updateItem', { itemId: item.id, patch });
@@ -524,7 +524,7 @@ export class EntityManager {
    * @param {string} itemId - 家具物品ID
    */
   toggleItemWater(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const isWaterOn = item.waterEnabled !== false;
@@ -537,7 +537,7 @@ export class EntityManager {
    * @param {string} itemId - 马桶物品ID
    */
   toggleItemLid(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const isLidOpen = item.lidOpen === true;
@@ -551,7 +551,7 @@ export class EntityManager {
    * @returns {object|null} 复制后的新物体数据
    */
   copyItem(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item) return null;
     this.opts.pushHistory();
     const copyX = (item.x || 0) + 0.4;
@@ -564,7 +564,7 @@ export class EntityManager {
       x: copyX,
       z: copyZ,
       roomId: targetRoom?.id,
-      floorId: this.opts.testMap.floorplan.currentFloorId
+      floorId: this.opts.testMap.getCurrentFloorId()
     });
     this.opts.refreshShadows();
     this.selectItem(copy.id);
@@ -576,7 +576,7 @@ export class EntityManager {
    * @param {string} itemId - 家具物品ID
    */
   rotateItem(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const currentDegrees = Math.round(((item.rotation || 0) * 180 / Math.PI + 360) % 360);
@@ -594,7 +594,7 @@ export class EntityManager {
    * @param {string} itemId - 家具物品ID
    */
   toggleItemPower(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     const def = this.opts.testMap.getFurnitureDefinition(item.type);
     if (def && (def.category === 'lighting' || def.lightSource)) {
@@ -611,7 +611,7 @@ export class EntityManager {
    * @param {boolean} locked - 是否锁定
    */
   setItemLocked(itemId, locked) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item) return;
     this.opts.pushHistory();
 
@@ -632,7 +632,7 @@ export class EntityManager {
    * @param {string} itemId - 家具物品ID
    */
   toggleItemLock(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item) return;
     this.setItemLocked(itemId, !item.locked);
   }
@@ -642,7 +642,7 @@ export class EntityManager {
    * @param {string} itemId - 家具物品ID
    */
   deleteItem(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('deleteItem', { itemId });
@@ -657,7 +657,7 @@ export class EntityManager {
    * 属性面板：更新家具尺寸和高度
    */
   updateItemSize(itemId, widthInches, depthInches, heightInches, elevationInches) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
@@ -672,7 +672,7 @@ export class EntityManager {
       const inputElev = Number((elevationInches || 0).toFixed(2));
       if (curElev === inputElev) {
         // 天花板家具自适应高度计算
-        elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - heightInches * (item.scale || 1);
+        elevation = this.opts.testMap.getProjectMetadata().wallHeight - heightInches * (item.scale || 1);
       }
     }
 
@@ -697,7 +697,7 @@ export class EntityManager {
    * 属性面板：更新家具旋转角度
    */
   updateItemRotation(itemId, degrees) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
@@ -716,7 +716,7 @@ export class EntityManager {
    * 属性面板：更新家具缩放值
    */
   updateItemScale(itemId, scaleValue) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
     this.opts.pushHistory();
@@ -733,7 +733,7 @@ export class EntityManager {
       scale: 1.0
     };
     if (definition.placeType === 'ceiling') {
-      patch.elevation = (this.opts.testMap.floorplan.wallHeight || 2.8) - patch.height;
+      patch.elevation = this.opts.testMap.getProjectMetadata().wallHeight - patch.height;
     }
     
     this.opts.testMap.executeCommand('updateItem', { itemId, patch });
@@ -746,7 +746,7 @@ export class EntityManager {
    * 属性面板：更新人偶动作姿势
    */
   updateItemPose(itemId, newPose) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked || item.type !== 'mannequin') return;
     this.opts.pushHistory();
     
@@ -773,7 +773,7 @@ export class EntityManager {
    * 属性面板：更新发光状态
    */
   setItemSeason(itemId, season) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     const def = this.opts.testMap.getFurnitureDefinition(item.type);
     const seasonOptions = def?.seasonOptions || [];
@@ -790,7 +790,7 @@ export class EntityManager {
   }
 
   cycleItemSeason(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     const def = this.opts.testMap.getFurnitureDefinition(item.type);
     const seasonOptions = def?.seasonOptions || [];
@@ -802,7 +802,7 @@ export class EntityManager {
   }
 
   updateItemLight(itemId, lightOn) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { lightOn } });
@@ -815,7 +815,7 @@ export class EntityManager {
    * Set a non-light appliance power state.
    */
   setItemPower(itemId, isOn) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { isOn: !!isOn } });
@@ -831,7 +831,7 @@ export class EntityManager {
    * @param {number} dz - Z 方向偏移量（米）
    */
   nudgeItem(itemId, dx, dz) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
@@ -852,7 +852,7 @@ export class EntityManager {
    * @param {number} deltaInches - 高度增量（英寸）
    */
   adjustItemElevation(itemId, deltaInches) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
@@ -874,7 +874,7 @@ export class EntityManager {
    * @param {number} delta - 缩放步长 (正为放大，负为缩小)
    */
   adjustItemScale(itemId, delta) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const nextScale = Math.max(0.5, Math.min(4.0, (item.scale || 1) + delta));
@@ -890,7 +890,7 @@ export class EntityManager {
    * @param {number} deltaDeg - 旋转步长度数 (正为顺时针，负为逆时针)
    */
   adjustItemRotation(itemId, deltaDeg) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const radStep = deltaDeg * Math.PI / 180;
@@ -937,10 +937,10 @@ export class EntityManager {
 
     let itemsOnShelf;
     if (isDraggingThis && initialChildrenIds) {
-      itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => initialChildrenIds.includes(item.id));
+      itemsOnShelf = this.opts.testMap.getEntities('item').filter(item => initialChildrenIds.includes(item.id));
     } else {
       if (isMannequin) {
-        itemsOnShelf = this.opts.testMap.floorplan.items.filter(item => {
+        itemsOnShelf = this.opts.testMap.getEntities('item').filter(item => {
           if (item.id === bookshelf.id) return false;
           if (!item.type.startsWith('clothing_') || item.type.includes('mannequin')) return false;
 
@@ -957,7 +957,7 @@ export class EntityManager {
       } else {
         itemsOnShelf = getItemsOnBookshelf(
           beforeState, 
-          this.opts.testMap.floorplan.items, 
+          this.opts.testMap.getEntities('item'),
           (type) => this.opts.testMap.getFurnitureDefinition(type)
         );
       }
@@ -1046,7 +1046,7 @@ export class EntityManager {
    * @param {string} itemId
    */
   resetItemMaterial(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
@@ -1071,7 +1071,7 @@ export class EntityManager {
    * @param {string} itemId
    */
   resetItemPose(itemId) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item) return;
     if (item.pose && item.pose !== 'stand') {
       this.opts.testMap.executeCommand('updateItem', { itemId, patch: { pose: 'stand', elevation: 0 } });
@@ -1088,7 +1088,7 @@ export class EntityManager {
    * @param {string} color
    */
   updateItemComponentColor(itemId, componentId, color) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('updateItemComponentColor', { itemId, componentId, color });
@@ -1104,7 +1104,7 @@ export class EntityManager {
    * @param {object} material
    */
   updateItemComponentMaterial(itemId, componentId, material) {
-    const item = this.opts.testMap.getItem(itemId);
+    const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('updateItemComponentMaterial', { itemId, componentId, material });

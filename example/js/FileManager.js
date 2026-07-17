@@ -13,6 +13,10 @@ import { createStoreProxy } from '../store/proxyHelper.js';
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
 
+function getProjectName(fallback = 'blueprint-building') {
+  return ctx.testMap.getProjectMetadata().name || fallback;
+}
+
 /**
  * 初始化并配置 FileManager。绑定相关下载/加载按钮的点击事件。
  * @param {Object} appContext 依赖的上下文环境对象
@@ -75,12 +79,12 @@ export function initFileManager(appContext) {
  * 导出并下载 .json 格式建筑存档
  */
 export function downloadBuildingFile() {
-  const json = ctx.testMap.stringifyBuildingFile({ name: ctx.testMap.floorplan.name || 'blueprint-building' });
+  const json = ctx.testMap.stringifyBuildingFile({ name: getProjectName() });
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = createBuildingFileName(ctx.testMap.floorplan.name || 'blueprint-building');
+  link.download = createBuildingFileName(getProjectName());
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -96,7 +100,7 @@ export function downloadDXFFile() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = createDXFFileName(ctx.testMap.floorplan.name || 'blueprint-building');
+  link.download = createDXFFileName(getProjectName());
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -126,7 +130,7 @@ export async function download3MFFile() {
     const link = document.createElement('a');
     link.href = url;
     
-    const baseName = ctx.testMap.floorplan.name || 'blueprint-building';
+    const baseName = getProjectName();
     let exportName = baseName;
     if (category === 'building') {
       exportName = `${baseName}-building`;
@@ -190,7 +194,7 @@ async function onFileInputChange(event) {
  * 保存当前项目到浏览器本地 LocalStorage 存储库中
  */
 export async function saveToLocalStorage() {
-  const defaultName = ctx.store.getCurrentProjectName() || ctx.testMap.floorplan.name || '';
+  const defaultName = ctx.store.getCurrentProjectName() || getProjectName('');
   const name = await ctx.showCustomPrompt('保存到本地', '请为项目命名：', defaultName || '我的蓝图');
   if (!name) return;
 
@@ -205,7 +209,7 @@ export async function saveToLocalStorage() {
         }
         return m;
       }),
-    uiState: { currentFloorId: ctx.testMap.floorplan.currentFloorId, currentView: ctx.currentView },
+    uiState: { currentFloorId: ctx.testMap.getCurrentFloorId(), currentView: ctx.currentView },
   });
   if (ok) {
     updateLocalProjectCount();
@@ -371,7 +375,7 @@ export async function downloadBuildingZIP() {
     const zip = new JSZip();
 
     // 1. 获取主建筑数据结构
-    const buildingFileObj = ctx.testMap.exportBuildingFile({ name: ctx.testMap.floorplan.name || 'blueprint-building' });
+    const buildingFileObj = ctx.testMap.exportBuildingFile({ name: getProjectName() });
     
     const usedCustomMaterials = [];
     const zipMaterialsFolder = zip.folder('materials');
@@ -433,7 +437,7 @@ export async function downloadBuildingZIP() {
     }
 
     // 4. 将主场景数据写入 b3dbuilding.json
-    const safeName = String(ctx.testMap.floorplan.name || 'blueprint-building')
+    const safeName = String(getProjectName())
       .trim()
       .replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'blueprint-building';

@@ -18,7 +18,7 @@ export function initSelectionManager(appState) {
 export function selectTarget(type, id, isUserInteraction = false) {
   Context.clear3DEditHandles();
   if (isUserInteraction && type === TARGET_TYPES.ITEM && id) {
-    const item = Context.testMap.getItem(id);
+    const item = Context.testMap.getEntity('item', id);
     if (item && item.type === 'wind_chime') {
       Context.playWindChimeSound();
     }

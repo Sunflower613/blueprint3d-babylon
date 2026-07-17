@@ -68,8 +68,8 @@ export function handleHotkeys(event, ctx) {
       if (key === 'arrowright') dx = step;
       ctx.entityManager.nudgeItem(ctx.selectedItemId, dx, dz);
     } else if (ctx.selectedOpeningId && ['arrowleft', 'arrowright'].includes(key)) {
-      const opening = ctx.testMap.getOpening(ctx.selectedOpeningId);
-      const wall = opening ? ctx.testMap.getWall(opening.wallId) : null;
+      const opening = ctx.testMap.getEntity('opening', ctx.selectedOpeningId);
+      const wall = opening ? ctx.testMap.getEntity('wall', opening.wallId) : null;
       if (opening && !opening.locked && wall) {
         const wallLength = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]) || 1;
         const step = 0.05; // 每次左右平移 5 厘米
@@ -97,7 +97,7 @@ export function handleHotkeys(event, ctx) {
       const delta = event.key === 'PageUp' ? step : -step;
       ctx.entityManager.adjustItemElevation(ctx.selectedItemId, delta);
     } else if (ctx.selectedOpeningId) {
-      const opening = ctx.testMap.getOpening(ctx.selectedOpeningId);
+      const opening = ctx.testMap.getEntity('opening', ctx.selectedOpeningId);
       if (opening && !opening.locked && opening.type === 'window') {
         ctx.pushHistory();
         const step = 0.05; // 0.05 米
@@ -143,7 +143,7 @@ export function handleHotkeys(event, ctx) {
     }
     if (ctx.selectedOpeningId) {
       event.preventDefault();
-      if (ctx.testMap.getOpening(ctx.selectedOpeningId)?.locked) return;
+      if (ctx.testMap.getEntity('opening', ctx.selectedOpeningId)?.locked) return;
       ctx.pushHistory();
       ctx.testMap.deleteOpening(ctx.selectedOpeningId);
       ctx.clearSelection();
@@ -160,7 +160,7 @@ export function handleHotkeys(event, ctx) {
     }
     if (ctx.selectedRoomId) {
       event.preventDefault();
-      if (ctx.testMap.getRoom(ctx.selectedRoomId)?.locked) return;
+      if (ctx.testMap.getEntity('room', ctx.selectedRoomId)?.locked) return;
       ctx.showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
         if (confirmed) {
           ctx.pushHistory();
@@ -173,7 +173,7 @@ export function handleHotkeys(event, ctx) {
     }
     if (ctx.selectedRoofId) {
       event.preventDefault();
-      if (ctx.testMap.getRoof?.(ctx.selectedRoofId)?.locked) return;
+      if (ctx.testMap.getEntity('roof', ctx.selectedRoofId)?.locked) return;
       ctx.pushHistory();
       ctx.testMap.deleteRoof(ctx.selectedRoofId);
       ctx.clearSelection();
@@ -182,7 +182,7 @@ export function handleHotkeys(event, ctx) {
     }
     if (ctx.selectedStairsId) {
       event.preventDefault();
-      if (ctx.testMap.getStairs?.(ctx.selectedStairsId)?.locked) return;
+      if (ctx.testMap.getEntity('stairs', ctx.selectedStairsId)?.locked) return;
       ctx.pushHistory();
       ctx.testMap.deleteStairs(ctx.selectedStairsId);
       ctx.clearSelection();
@@ -191,7 +191,7 @@ export function handleHotkeys(event, ctx) {
     }
     if (ctx.selectedFenceId) {
       event.preventDefault();
-      if (ctx.testMap.getFence(ctx.selectedFenceId)?.locked) return;
+      if (ctx.testMap.getEntity('fence', ctx.selectedFenceId)?.locked) return;
       ctx.pushHistory();
       ctx.testMap.deleteFence(ctx.selectedFenceId);
       ctx.clearSelection();
@@ -257,7 +257,7 @@ export function handleHotkeys(event, ctx) {
 
   // 5.5. 选中的灯具开关灯快捷键 (L 键)
   if (key === 'l' && ctx.selectedItemId) {
-    const item = ctx.testMap.getItem(ctx.selectedItemId);
+    const item = ctx.testMap.getEntity('item', ctx.selectedItemId);
     const definition = item ? ctx.testMap.getFurnitureDefinition(item.type) : null;
     if (item && (definition?.category === 'lighting' || definition?.lightSource)) {
       event.preventDefault();

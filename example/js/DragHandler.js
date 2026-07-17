@@ -1,5 +1,5 @@
 // 这是一个向下兼容的平面图拖拽处理器转发门面
-import * as Topology from '../../src/editor/Topology.js';
+import { Topology } from '../../src/index.js';
 
 let activeInstance = null;
 

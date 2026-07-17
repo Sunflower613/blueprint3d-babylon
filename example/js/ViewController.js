@@ -23,7 +23,7 @@ export function updateHistoryButtons() {
 export function getMeshFloorId(mesh) { return Context.viewer3d.getMeshFloorId(mesh); }
 
 export function refreshShadows() {
-  Context.viewer3d.refreshShadowCasters(() => Context.testMap.getShadowCasters(), Context.testMap.getCurrentFloorId());
+  Context.testMap.populateShadowGenerator(Context.viewer3d.shadowGenerator, Context.testMap.getCurrentFloorId());
   refresh3DGrid();
 }
 

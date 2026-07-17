@@ -5,31 +5,23 @@ import {
   FURNITURE_DEFINITIONS,
   FURNITURE_LIST,
   FURNITURE_CATEGORIES,
-  MATERIAL_CATEGORIES
+  MATERIAL_CATEGORIES,
+  getFurnitureThumbnailUrl
 } from '../../src/index.js';
 
 let Context = null;
 const FURNITURE_IMAGE_PROXY_PREFIX = '/__furniture-images__/';
-const fallbackFurnitureImagePath = '../src/furniture/image/custom_cube.png';
+const fallbackFurnitureType = 'custom_cube';
 const transparentGIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-let furnitureImageLoadersPromise = null;
 
 function getFurnitureImageProxyUrl(path) {
   const fileName = path.split('/').pop() || 'custom_cube.png';
   return `${FURNITURE_IMAGE_PROXY_PREFIX}${encodeURIComponent(fileName)}`;
 }
 
-async function getFurnitureImageLoaders() {
-  if (import.meta.env.DEV) return null;
-  furnitureImageLoadersPromise ||= import('./furnitureThumbnailLoaders.js').then((module) => module.furnitureImageLoaders);
-  return furnitureImageLoadersPromise;
-}
-
-async function resolveFurnitureThumbnailUrl(path) {
-  if (import.meta.env.DEV) return getFurnitureImageProxyUrl(path);
-  const loaders = await getFurnitureImageLoaders();
-  const loader = loaders?.[path] || loaders?.[fallbackFurnitureImagePath];
-  return loader ? await loader() : null;
+async function resolveFurnitureThumbnailUrl(type) {
+  if (import.meta.env.DEV) return getFurnitureImageProxyUrl(`${type}.png`);
+  return getFurnitureThumbnailUrl(type);
 }
 
 const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
@@ -38,7 +30,7 @@ const furnitureThumbnailObserver = typeof IntersectionObserver === 'undefined' ?
     const img = entry.target;
     furnitureThumbnailObserver.unobserve(img);
     try {
-      const thumbnailUrl = await resolveFurnitureThumbnailUrl(img.dataset.thumbnailPath || fallbackFurnitureImagePath);
+      const thumbnailUrl = await resolveFurnitureThumbnailUrl(img.dataset.thumbnailType || fallbackFurnitureType);
       if (!thumbnailUrl) {
         img.dispatchEvent(new Event('error'));
         return;
@@ -279,7 +271,7 @@ export function renderFurnitureGrid() {
       button.className = 'furniture-item-btn';
 
       const img = document.createElement('img');
-      const imgPath = `../src/furniture/image/${definition.type}.png`;
+      const imageType = definition.type;
       img.alt = definition.name;
       img.loading = 'lazy';
       img.decoding = 'async';
@@ -292,7 +284,7 @@ export function renderFurnitureGrid() {
       img.onerror = async () => {
         img.onerror = null;
         try {
-          const fallbackUrl = await resolveFurnitureThumbnailUrl(fallbackFurnitureImagePath);
+          const fallbackUrl = await resolveFurnitureThumbnailUrl(fallbackFurnitureType);
           if (!fallbackUrl) throw new Error('No fallback loader');
           img.onerror = () => {
             img.onerror = null;
@@ -311,10 +303,10 @@ export function renderFurnitureGrid() {
       if (definition.thumbnail) {
         img.src = definition.thumbnail;
       } else if (furnitureThumbnailObserver) {
-        img.dataset.thumbnailPath = imgPath;
+        img.dataset.thumbnailType = imageType;
         furnitureThumbnailObserver.observe(img);
       } else {
-        loadFurnitureThumbnail(img, imgPath).catch(() => img.dispatchEvent(new Event('error')));
+        loadFurnitureThumbnail(img, imageType).catch(() => img.dispatchEvent(new Event('error')));
       }
 
       const label = document.createElement('span');

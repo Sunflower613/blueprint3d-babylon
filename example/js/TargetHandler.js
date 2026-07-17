@@ -16,14 +16,14 @@ export function isAllowedTarget(target) {
 
 export function getTargetObject(target) {
   if (!target) return null;
-  if (target.type === TARGET_TYPES.ITEM) return ctx.testMap.getItem(target.id);
-  if (target.type === TARGET_TYPES.WALL) return ctx.testMap.getWall(target.id);
-  if (target.type === TARGET_TYPES.OPENING) return ctx.testMap.getOpening(target.id);
-  if (target.type === TARGET_TYPES.ROOF) return ctx.testMap.getRoof?.(target.id);
-  if (target.type === TARGET_TYPES.STAIRS) return ctx.testMap.getStairs?.(target.id);
-  if (target.type === TARGET_TYPES.ROOM) return ctx.testMap.getRoom(target.id);
-  if (target.type === TARGET_TYPES.FENCE) return ctx.testMap.getFence?.(target.id);
-  if (target.type === TARGET_TYPES.FENCE_GATE) return ctx.testMap.getFenceGate?.(target.id);
+  if (target.type === TARGET_TYPES.ITEM) return ctx.testMap.getEntity('item', target.id);
+  if (target.type === TARGET_TYPES.WALL) return ctx.testMap.getEntity('wall', target.id);
+  if (target.type === TARGET_TYPES.OPENING) return ctx.testMap.getEntity('opening', target.id);
+  if (target.type === TARGET_TYPES.ROOF) return ctx.testMap.getEntity('roof', target.id);
+  if (target.type === TARGET_TYPES.STAIRS) return ctx.testMap.getEntity('stairs', target.id);
+  if (target.type === TARGET_TYPES.ROOM) return ctx.testMap.getEntity('room', target.id);
+  if (target.type === TARGET_TYPES.FENCE) return ctx.testMap.getEntity('fence', target.id);
+  if (target.type === TARGET_TYPES.FENCE_GATE) return ctx.testMap.getEntity('fence_gate', target.id);
   return null;
 }
 
@@ -38,19 +38,19 @@ export function setTargetLocked(target, locked) {
 
 export function getTargetFloorId(target) {
   if (!target) return null;
-  if (target.type === TARGET_TYPES.ROOM) return ctx.testMap.getRoom(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.WALL) return ctx.testMap.getWall(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.OPENING) return ctx.testMap.getOpening(target.id)?.floorId || ctx.testMap.getWall(ctx.testMap.getOpening(target.id)?.wallId)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.ITEM) return ctx.testMap.getItem(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.ROOF) return ctx.testMap.getRoof?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.STAIRS) return ctx.testMap.getStairs?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.FENCE) return ctx.testMap.getFence?.(target.id)?.floorId || 'floor_1';
-  if (target.type === TARGET_TYPES.FENCE_GATE) return ctx.testMap.getFenceGate?.(target.id)?.floorId || 'floor_1';
-  return ctx.testMap.floorplan.currentFloorId;
+  if (target.type === TARGET_TYPES.ROOM) return ctx.testMap.getEntity('room', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.WALL) return ctx.testMap.getEntity('wall', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.OPENING) return ctx.testMap.getEntity('opening', target.id)?.floorId || ctx.testMap.getEntity('wall', ctx.testMap.getEntity('opening', target.id)?.wallId)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.ITEM) return ctx.testMap.getEntity('item', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.ROOF) return ctx.testMap.getEntity('roof', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.STAIRS) return ctx.testMap.getEntity('stairs', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.FENCE) return ctx.testMap.getEntity('fence', target.id)?.floorId || 'floor_1';
+  if (target.type === TARGET_TYPES.FENCE_GATE) return ctx.testMap.getEntity('fence_gate', target.id)?.floorId || 'floor_1';
+  return ctx.testMap.getCurrentFloorId();
 }
 
 export function isTargetOnCurrentFloor(target) {
-  return getTargetFloorId(target) === ctx.testMap.floorplan.currentFloorId;
+  return getTargetFloorId(target) === ctx.testMap.getCurrentFloorId();
 }
 
 export function get2DTargetFromElement(element) {
@@ -79,7 +79,7 @@ export function isSwitchableTarget(target) {
   if (!target) return false;
   if (target.type === 'opening' || target.type === 'fence_gate') return true;
   if (target.type === 'item') {
-    const item = ctx.testMap.getItem(target.id);
+    const item = ctx.testMap.getEntity('item', target.id);
     if (!item) return false;
     const def = ctx.testMap.getFurnitureDefinition(item.type);
     return !!(def && (def.category === 'lighting' || def.lightSource || def.powerEffect || def.isSwitchable || item.isOn !== undefined || item.lightOn !== undefined));
@@ -89,7 +89,7 @@ export function isSwitchableTarget(target) {
 
 export function isLightingTarget(target) {
   if (!target || target.type !== 'item') return false;
-  const item = ctx.testMap.getItem(target.id);
+  const item = ctx.testMap.getEntity('item', target.id);
   if (!item) return false;
   const def = ctx.testMap.getFurnitureDefinition(item.type);
   return !!(def && (def.category === 'lighting' || def.lightSource));
@@ -97,7 +97,7 @@ export function isLightingTarget(target) {
 
 function getSeasonalItemMeta(target) {
   if (!target || target.type !== 'item') return null;
-  const item = ctx.testMap.getItem(target.id);
+  const item = ctx.testMap.getEntity('item', target.id);
   if (!item) return null;
   const def = ctx.testMap.getFurnitureDefinition(item.type);
   const seasonOptions = def?.seasonOptions || [];
@@ -122,15 +122,15 @@ export function showObjectContextMenu(target, clientX, clientY) {
   const seasonalMeta = getSeasonalItemMeta(target);
   const isLocked = isTargetLocked(target);
 
-  const isDoorLike = (target.type === 'fence_gate') || (target.type === 'opening' && ctx.testMap.getOpening(target.id)?.type === 'door');
+  const isDoorLike = (target.type === 'fence_gate') || (target.type === 'opening' && ctx.testMap.getEntity('opening', target.id)?.type === 'door');
   const isDouble = target.type === 'opening'
-    ? !!ctx.testMap.getOpening(target.id)?.doubleDoor
-    : (target.type === 'fence_gate' ? !!ctx.testMap.getFenceGate(target.id)?.doubleDoor : false);
+    ? !!ctx.testMap.getEntity('opening', target.id)?.doubleDoor
+    : (target.type === 'fence_gate' ? !!ctx.testMap.getEntity('fence_gate', target.id)?.doubleDoor : false);
   
   let isWaterContainer = false;
   let isWaterOn = true;
   if (target.type === 'item') {
-    const item = ctx.testMap.getItem(target.id);
+    const item = ctx.testMap.getEntity('item', target.id);
     if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom', 'birdbath', 'garden_fountain'].includes(item.type)) {
       isWaterContainer = true;
       isWaterOn = item.waterEnabled !== false;
@@ -140,7 +140,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
   let isToilet = false;
   let isLidOpen = false;
   if (target.type === 'item') {
-    const item = ctx.testMap.getItem(target.id);
+    const item = ctx.testMap.getEntity('item', target.id);
     if (item && item.type === 'toilet') {
       isToilet = true;
       isLidOpen = item.lidOpen === true;
@@ -154,7 +154,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
   let isGlassHidden = false;
 
   if (isOpening) {
-    const opening = ctx.testMap.getOpening(target.id);
+    const opening = ctx.testMap.getEntity('opening', target.id);
     if (opening) {
       isDoor = opening.type === 'door';
       isWindow = opening.type === 'window';
@@ -169,7 +169,7 @@ export function showObjectContextMenu(target, clientX, clientY) {
     isRotatable && {
       icon: 'rotate',
       title: '旋转',
-      disabled: isLocked || (target.type === 'fence_gate' && !!ctx.testMap.getFenceGate(target.id)?.fenceId),
+      disabled: isLocked || (target.type === 'fence_gate' && !!ctx.testMap.getEntity('fence_gate', target.id)?.fenceId),
       onClick: () => rotateTarget(target)
     },
     isMirrorable && { icon: 'flip', title: '镜像', disabled: isLocked, onClick: () => mirrorTarget(target) },
@@ -266,14 +266,14 @@ export function toggleTarget(target) {
   }
   ctx.pushHistory();
   if (target.type === 'opening') {
-    const opening = ctx.testMap.getOpening(target.id);
+    const opening = ctx.testMap.getEntity('opening', target.id);
     if (!opening) return;
     ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { isOpen: !opening.isOpen } });
     if (selection.selectedOpeningId === target.id) {
       ctx.updateEditor();
     }
   } else if (target.type === 'fence_gate') {
-    const gate = ctx.testMap.getFenceGate(target.id);
+    const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;
     ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isOpen: !gate.isOpen } });
     if (selection.selectedFenceGateId === target.id) {
@@ -293,7 +293,7 @@ export function rotateTarget(target) {
   }
   ctx.pushHistory();
   if (target.type === 'wall') {
-    const wall = ctx.testMap.getWall(target.id);
+    const wall = ctx.testMap.getEntity('wall', target.id);
     if (wall) {
       const cx = (wall.from[0] + wall.to[0]) / 2;
       const cz = (wall.from[1] + wall.to[1]) / 2;
@@ -317,7 +317,7 @@ export function rotateTarget(target) {
       ctx.updateEditor();
     }
   } else if (target.type === 'room') {
-    const room = ctx.testMap.getRoom(target.id);
+    const room = ctx.testMap.getEntity('room', target.id);
     if (!room) return;
     const currentDegrees = Math.round(((-room.rotation || 0) * 180 / Math.PI + 360) % 360);
     const nextDegrees = (currentDegrees + 90) % 360;
@@ -326,7 +326,7 @@ export function rotateTarget(target) {
       ctx.updateEditor();
     }
   } else if (target.type === 'opening') {
-    const opening = ctx.testMap.getOpening(target.id);
+    const opening = ctx.testMap.getEntity('opening', target.id);
     if (!opening) return;
     const lr = !!opening.isFlippedLR;
     const io = !!opening.isFlippedIO;
@@ -350,7 +350,7 @@ export function rotateTarget(target) {
       ctx.updateEditor();
     }
   } else if (target.type === 'fence_gate') {
-    const gate = ctx.testMap.getFenceGate(target.id);
+    const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;
     const cx = (gate.from[0] + gate.to[0]) / 2;
     const cz = (gate.from[1] + gate.to[1]) / 2;
@@ -369,7 +369,7 @@ export function rotateTarget(target) {
       ctx.updateEditor();
     }
   } else if (target.type === 'fence') {
-    const fence = ctx.testMap.getFence(target.id);
+    const fence = ctx.testMap.getEntity('fence', target.id);
     if (!fence) return;
     const cx = (fence.from[0] + fence.to[0]) / 2;
     const cz = (fence.from[1] + fence.to[1]) / 2;
@@ -423,32 +423,32 @@ export function mirrorTarget(target) {
   if (isTargetLocked(target)) return;
   ctx.pushHistory();
   if (target.type === 'item') {
-    const item = ctx.testMap.getItem(target.id);
+    const item = ctx.testMap.getEntity('item', target.id);
     if (item) {
       ctx.testMap.executeCommand('updateItem', { itemId: target.id, patch: { mirrored: !item.mirrored } });
     }
   } else if (target.type === 'opening') {
-    const opening = ctx.testMap.getOpening(target.id);
+    const opening = ctx.testMap.getEntity('opening', target.id);
     if (opening) {
       ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { isFlippedLR: !opening.isFlippedLR } });
     }
   } else if (target.type === 'fence_gate') {
-    const gate = ctx.testMap.getFenceGate(target.id);
+    const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (gate) {
       ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isFlippedLR: !gate.isFlippedLR } });
     }
   } else if (target.type === 'roof') {
-    const roof = ctx.testMap.getRoof?.(target.id);
+    const roof = ctx.testMap.getEntity('roof', target.id);
     if (roof) {
       ctx.testMap.executeCommand('updateRoof', { roofId: target.id, patch: { mirrored: !roof.mirrored } });
     }
   } else if (target.type === 'stairs') {
-    const stairs = ctx.testMap.getStairs?.(target.id);
+    const stairs = ctx.testMap.getEntity('stairs', target.id);
     if (stairs) {
       ctx.testMap.executeCommand('updateStairs', { stairsId: target.id, patch: { mirrored: !stairs.mirrored } });
     }
   } else if (target.type === 'fence') {
-    const fence = ctx.testMap.getFence(target.id);
+    const fence = ctx.testMap.getEntity('fence', target.id);
     if (fence) {
       ctx.testMap.executeCommand('updateFence', {
         fenceId: target.id,
@@ -473,7 +473,7 @@ export function copyTarget(target) {
   ctx.pushHistory();
   let nextSelection = null;
   if (target.type === 'wall') {
-    const wall = ctx.testMap.getWall(target.id);
+    const wall = ctx.testMap.getEntity('wall', target.id);
     if (wall) {
       const copy = ctx.testMap.executeCommand('addWall', {
         from: [wall.from[0] + 1.0, wall.from[1] + 1.0],
@@ -501,7 +501,7 @@ export function copyTarget(target) {
             wainscotColorFront: wall.wainscotColorFront,
             wainscotMaterialBack: wall.wainscotMaterialBack,
             wainscotColorBack: wall.wainscotColorBack,
-            floorId: ctx.testMap.floorplan.currentFloorId,
+            floorId: ctx.testMap.getCurrentFloorId(),
             locked: false
           }
         });
@@ -509,8 +509,8 @@ export function copyTarget(target) {
       }
     }
   } else if (target.type === 'opening') {
-    const opening = ctx.testMap.getOpening(target.id);
-    const sourceWall = opening ? ctx.testMap.getWall(opening.wallId) : null;
+    const opening = ctx.testMap.getEntity('opening', target.id);
+    const sourceWall = opening ? ctx.testMap.getEntity('wall', opening.wallId) : null;
     if (!opening || !sourceWall) return;
     const sourcePoint = ctx.wallPointAt(sourceWall, opening.t ?? 0.5);
     const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
@@ -534,49 +534,49 @@ export function copyTarget(target) {
           isFlippedIO: opening.isFlippedIO,
           panelHidden: opening.panelHidden,
           glassHidden: opening.glassHidden,
-          floorId: ctx.testMap.floorplan.currentFloorId
+          floorId: ctx.testMap.getCurrentFloorId()
         }
       });
       nextSelection = { type: 'opening', id: next.id };
     }
   } else if (target.type === 'roof') {
-    const roof = ctx.testMap.getRoof?.(target.id);
+    const roof = ctx.testMap.getEntity('roof', target.id);
     if (!roof) return;
     const copy = ctx.testMap.executeCommand('addRoof', {
       ...JSON.parse(JSON.stringify(roof)),
       id: undefined,
       x: (roof.x || 0) + 0.5,
       z: (roof.z || 0) + 0.5,
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       locked: false
     });
     nextSelection = { type: 'roof', id: copy.id };
   } else if (target.type === 'stairs') {
-    const stairs = ctx.testMap.getStairs?.(target.id);
+    const stairs = ctx.testMap.getEntity('stairs', target.id);
     if (!stairs) return;
     const copy = ctx.testMap.executeCommand('addStairs', {
       ...JSON.parse(JSON.stringify(stairs)),
       id: undefined,
       x: (stairs.x || 0) + 0.5,
       z: (stairs.z || 0) + 0.5,
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       locked: false
     });
     nextSelection = { type: 'stairs', id: copy.id };
   } else if (target.type === 'fence') {
-    const fence = ctx.testMap.getFence?.(target.id);
+    const fence = ctx.testMap.getEntity('fence', target.id);
     if (!fence) return;
     const copy = ctx.testMap.executeCommand('addFence', {
       ...JSON.parse(JSON.stringify(fence)),
       id: undefined,
       from: [(fence.from?.[0] || 0) + 0.5, (fence.from?.[1] || 0) + 0.5],
       to: [(fence.to?.[0] || 0) + 0.5, (fence.to?.[1] || 0) + 0.5],
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       locked: false
     });
     nextSelection = { type: 'fence', id: copy.id };
   } else if (target.type === 'room') {
-    const room = ctx.testMap.getRoom(target.id);
+    const room = ctx.testMap.getEntity('room', target.id);
     if (!room) return;
     const copy = ctx.testMap.executeCommand('addRoom', {
       ...JSON.parse(JSON.stringify(room)),
@@ -584,12 +584,12 @@ export function copyTarget(target) {
       name: room.name,
       x: room.x + 0.5,
       z: room.z + 0.5,
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       locked: false
     });
     nextSelection = { type: 'room', id: copy.id };
   } else if (target.type === 'fence_gate') {
-    const gate = ctx.testMap.getFenceGate(target.id);
+    const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;
     const copy = ctx.testMap.executeCommand('addFenceGate', {
       ...JSON.parse(JSON.stringify(gate)),
@@ -597,7 +597,7 @@ export function copyTarget(target) {
       fenceId: null,
       from: [(gate.from?.[0] || 0) + 0.5, (gate.from?.[1] || 0) + 0.5],
       to: [(gate.to?.[0] || 0) + 0.5, (gate.to?.[1] || 0) + 0.5],
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       locked: false
     });
     nextSelection = { type: 'fence_gate', id: copy.id };

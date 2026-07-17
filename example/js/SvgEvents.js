@@ -213,7 +213,7 @@ function onPointermove(event) {
     if (stairsEl) {
       ctx.clear2DFloorEdgeRailingPreview();
       const stairsId = stairsEl.dataset.stairsId;
-      const stairs = ctx.testMap.getStairs(stairsId);
+      const stairs = ctx.testMap.getEntity('stairs', stairsId);
       if (stairs) {
         ctx.update2DStairsRailingPreview(stairs, ctx.mode.replace('draw-fence-', '') || 'picket_wood');
       }
@@ -289,7 +289,7 @@ function onPointerup(event) {
   if (ctx.entityManager.itemGestureState && ctx.activePointers.size < 2) ctx.entityManager.itemGestureState = null;
   if (ctx.entityManager.dragState) {
     const ds = ctx.entityManager.dragState;
-    const item = ctx.testMap.getItem(ds.itemId);
+    const item = ctx.testMap.getEntity('item', ds.itemId);
     if (item) {
       ctx.entityManager.moveItemTo(ds.itemId, item.x, item.z, true);
     }
@@ -315,7 +315,7 @@ function onPointercancel(event) {
   if (ctx.entityManager.itemGestureState && ctx.activePointers.size < 2) ctx.entityManager.itemGestureState = null;
   if (ctx.entityManager.dragState) {
     const ds = ctx.entityManager.dragState;
-    const item = ctx.testMap.getItem(ds.itemId);
+    const item = ctx.testMap.getEntity('item', ds.itemId);
     if (item) {
       ctx.entityManager.moveItemTo(ds.itemId, item.x, item.z, true);
     }
@@ -382,8 +382,8 @@ function onClick(event) {
   } else if (ctx.mode.startsWith('add-roof')) {
     ctx.pushHistory();
     const subtype = ctx.mode.replace('add-roof-', '') || 'gable';
-    const room = ctx.selectedRoomId ? ctx.testMap.getRoom(ctx.selectedRoomId) : ctx.testMap.getRoomAt(snapped[0], snapped[1]);
-    const wallThickness = ctx.testMap.floorplan.wallThickness || 0.15;
+    const room = ctx.selectedRoomId ? ctx.testMap.getEntity('room', ctx.selectedRoomId) : ctx.testMap.getRoomAt(snapped[0], snapped[1]);
+    const wallThickness = ctx.testMap.getProjectMetadata().wallThickness;
     const roofBounds = Topology.calculateAutoRoofBounds(room, { x: snapped[0], z: snapped[1] }, wallThickness);
     const roof = ctx.testMap.addRoof({
       x: roofBounds.x,
@@ -431,7 +431,7 @@ function onClick(event) {
       const subtype = ctx.mode.replace('draw-fence-', '') || 'picket_wood';
       
       const fence = ctx.testMap.addFence({
-        floorId: ctx.testMap.floorplan.currentFloorId,
+        floorId: ctx.testMap.getCurrentFloorId(),
         from: [fromX, fromZ],
         to: [toX, toZ],
         subtype: subtype
@@ -468,7 +468,7 @@ function onClick(event) {
     ctx.pushHistory();
     const subtype = ctx.mode.replace('add-fence-gate-', '') || 'picket_wood';
     const gate = ctx.testMap.addFenceGate({
-      floorId: ctx.testMap.floorplan.currentFloorId,
+      floorId: ctx.testMap.getCurrentFloorId(),
       from: [snapped[0] - 0.5, snapped[1]],
       to: [snapped[0] + 0.5, snapped[1]],
       width: 1.0,

@@ -142,7 +142,7 @@ import {
   TransformNode,
   Vector3,
   Tools,
-  Blueprint3DTestMap,
+  createEditor,
   BLUEPRINT3D_TEST_FLOORPLAN,
   DragHandler as LibDragHandler,
   Viewer3DHandles as LibViewer3DHandles,
@@ -486,9 +486,10 @@ let viewer3DHandles = null;
 
 const initialLocalSave = readLocalSave();
 if (initialLocalSave.buildingData) restoreFloorplanMaterials(initialLocalSave.buildingData);
-let testMap = new Blueprint3DTestMap(scene, {
+let testMap = createEditor({
+  scene,
   floorplan: initialLocalSave.buildingData || BLUEPRINT3D_TEST_FLOORPLAN,
-  renderingEnabled: false
+  options: { renderingEnabled: false }
 });
 dragHandler = new LibDragHandler(appState);
 viewer3DHandles = new LibViewer3DHandles(appState);
@@ -748,13 +749,13 @@ const store = new Store({
     testMap.loadJSON(data);
     FloorManager.ensureVisibleCurrentFloor({ reason: 'snapshot-restore', silent: true });
     FloorManager.syncFloorControls();
-    selectedRoomId = selectedRoomId && testMap.getRoom(selectedRoomId) ? selectedRoomId : null;
-    selectedWallId = selectedWallId && testMap.getWall(selectedWallId) ? selectedWallId : null;
-    selectedItemId = selectedItemId && testMap.getItem(selectedItemId) ? selectedItemId : null;
-    selectedOpeningId = selectedOpeningId && testMap.getOpening(selectedOpeningId) ? selectedOpeningId : null;
-    selectedRoofId = selectedRoofId && testMap.getRoof?.(selectedRoofId) ? selectedRoofId : null;
-    selectedStairsId = selectedStairsId && testMap.getStairs?.(selectedStairsId) ? selectedStairsId : null;
-    selectedFenceId = selectedFenceId && testMap.getFence?.(selectedFenceId) ? selectedFenceId : null;
+    selectedRoomId = selectedRoomId && testMap.getEntity('room', selectedRoomId) ? selectedRoomId : null;
+    selectedWallId = selectedWallId && testMap.getEntity('wall', selectedWallId) ? selectedWallId : null;
+    selectedItemId = selectedItemId && testMap.getEntity('item', selectedItemId) ? selectedItemId : null;
+    selectedOpeningId = selectedOpeningId && testMap.getEntity('opening', selectedOpeningId) ? selectedOpeningId : null;
+    selectedRoofId = selectedRoofId && testMap.getEntity('roof', selectedRoofId) ? selectedRoofId : null;
+    selectedStairsId = selectedStairsId && testMap.getEntity('stairs', selectedStairsId) ? selectedStairsId : null;
+    selectedFenceId = selectedFenceId && testMap.getEntity('fence', selectedFenceId) ? selectedFenceId : null;
     testMap.setSelectedItem(selectedItemId);
     testMap.setSelectedWall(selectedWallId);
     testMap.setSelectedFence?.(selectedFenceId);
@@ -774,20 +775,20 @@ store.on('historyChanged', updateHistoryButtons);
 
 // 监听手动保存完成，重新渲染反射探针
 store.on('saved', () => {
-  if (window.testMap && typeof window.testMap.requestReflectionProbesUpdate === 'function') {
-    window.testMap.requestReflectionProbesUpdate();
-  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionProbesUpdate === 'function') {
-    testMap.requestReflectionProbesUpdate();
+  if (window.testMap && typeof window.testMap.requestReflectionUpdate === 'function') {
+    window.testMap.requestReflectionUpdate();
+  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionUpdate === 'function') {
+    testMap.requestReflectionUpdate();
   }
 });
 
 // 监听自动保存完成，显示 toast 提示并更新反射探针
 store.on('autoSaved', () => {
   showToast('已自动保存');
-  if (window.testMap && typeof window.testMap.requestReflectionProbesUpdate === 'function') {
-    window.testMap.requestReflectionProbesUpdate();
-  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionProbesUpdate === 'function') {
-    testMap.requestReflectionProbesUpdate();
+  if (window.testMap && typeof window.testMap.requestReflectionUpdate === 'function') {
+    window.testMap.requestReflectionUpdate();
+  } else if (typeof testMap !== 'undefined' && testMap && typeof testMap.requestReflectionUpdate === 'function') {
+    testMap.requestReflectionUpdate();
   }
 });
 
@@ -870,7 +871,7 @@ function currentFences() {
 
 function updateSelectedFenceGatePreview(patch) {
   if (!selectedFenceGateId) return;
-  if (testMap.getFenceGate(selectedFenceGateId)?.locked && !('locked' in patch)) return;
+  if (testMap.getEntity('fence_gate', selectedFenceGateId)?.locked && !('locked' in patch)) return;
   testMap.updateFenceGate(selectedFenceGateId, patch, false);
   refreshShadows();
   updateEditor();
@@ -879,7 +880,7 @@ function updateSelectedFenceGatePreview(patch) {
 
 function updateSelectedFenceGate(patch) {
   if (!selectedFenceGateId) return;
-  if (testMap.getFenceGate(selectedFenceGateId)?.locked && !('locked' in patch)) return;
+  if (testMap.getEntity('fence_gate', selectedFenceGateId)?.locked && !('locked' in patch)) return;
   pushHistory();
   testMap.updateFenceGate(selectedFenceGateId, patch);
   refreshShadows();
@@ -889,7 +890,7 @@ function updateSelectedFenceGate(patch) {
 
 function deleteSelectedFenceGate() {
   if (!selectedFenceGateId) return;
-  if (testMap.getFenceGate(selectedFenceGateId)?.locked) return;
+  if (testMap.getEntity('fence_gate', selectedFenceGateId)?.locked) return;
   pushHistory();
   testMap.deleteFenceGate(selectedFenceGateId);
   clearSelection();
@@ -927,8 +928,8 @@ function revealRightPanelIfNeeded(hasSelection) {
 }
 
 function getSelectedStructure() {
-  if (selectedRoofId) return { type: 'roof', id: selectedRoofId, value: testMap.getRoof?.(selectedRoofId) };
-  if (selectedStairsId) return { type: 'stairs', id: selectedStairsId, value: testMap.getStairs?.(selectedStairsId) };
+  if (selectedRoofId) return { type: 'roof', id: selectedRoofId, value: testMap.getEntity('roof', selectedRoofId) };
+  if (selectedStairsId) return { type: 'stairs', id: selectedStairsId, value: testMap.getEntity('stairs', selectedStairsId) };
   return null;
 }
 

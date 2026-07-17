@@ -182,7 +182,7 @@ function begin3DDrag(pointerInfo) {
           selectRoom(room.id);
         } else if (Context.mode.startsWith('add-roof')) {
           const subtype = Context.mode.replace('add-roof-', '') || 'gable';
-          const room = Context.selectedRoomId ? testMap.getRoom(Context.selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
+          const room = Context.selectedRoomId ? testMap.getEntity('room', Context.selectedRoomId) : testMap.getRoomAt(snapped.x, snapped.z);
           const wallThickness = testMap.getSnapshot().wallThickness || 0.15;
           const roofBounds = Topology.calculateAutoRoofBounds(room, { x: snapped.x, z: snapped.z }, wallThickness);
           const roof = testMap.executeCommand('addRoof', {
@@ -214,7 +214,7 @@ function begin3DDrag(pointerInfo) {
   if (Context.mode.startsWith('add-fence-gate')) {
     const target = pickNearest3DTarget();
     if (target && target.type === 'fence') {
-      const fence = testMap.getFence(target.id);
+      const fence = testMap.getEntity('fence', target.id);
       const pt = target.pick.pickedPoint;
       if (fence && pt) {
         pushHistory();
@@ -259,7 +259,7 @@ function begin3DDrag(pointerInfo) {
     const target = pickNearest3DTarget();
     if (target && target.type === 'wall' && isTargetOnCurrentFloor(target)) {
       const wallId = target.id;
-      const wall = testMap.getWall(wallId);
+      const wall = testMap.getEntity('wall', wallId);
       if (wall && target.pick.pickedPoint) {
         pushHistory();
         const pt = target.pick.pickedPoint;

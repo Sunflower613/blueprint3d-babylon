@@ -92,7 +92,7 @@ export function ensure3DGridControls() {
   const advInput = document.createElement('input');
   advInput.id = 'show-advanced-rendering';
   advInput.type = 'checkbox';
-  advInput.checked = testMap ? !!testMap.enableAdvancedRendering : false;
+  advInput.checked = testMap ? testMap.advancedRenderingEnabled : false;
   const advSpan = document.createElement('span');
   advSpan.textContent = '开启高级渲染';
   advLabel.append(advInput, advSpan);
@@ -1003,16 +1003,16 @@ export function initUiEventListeners() {
     
     let room = null;
     if (selection.selectedRoomId) {
-      room = testMap.getRoom(selection.selectedRoomId);
+      room = testMap.getEntity('room', selection.selectedRoomId);
     } else if (selection.selectedItemId) {
-      const selectedItem = testMap.getItem(selection.selectedItemId);
+      const selectedItem = testMap.getEntity('item', selection.selectedItemId);
       if (selectedItem && selectedItem.roomId) {
-        room = testMap.getRoom(selectedItem.roomId);
+        room = testMap.getEntity('room', selectedItem.roomId);
       }
     }
     
     if (!room && lastActiveRoomId) {
-      room = testMap.getRoom(lastActiveRoomId);
+      room = testMap.getEntity('room', lastActiveRoomId);
     }
     
     if (!room) {
@@ -1279,7 +1279,7 @@ export function initUiEventListeners() {
 
   document.getElementById('item-light-on').addEventListener('change', (event) => {
     if (!selection.selectedItemId) return;
-    const item = testMap.getItem(selection.selectedItemId);
+    const item = testMap.getEntity('item', selection.selectedItemId);
     if (!item) return;
     const def = testMap.getFurnitureDefinition(item.type);
     if (def.category === 'lighting' || def.lightSource) {
@@ -1326,7 +1326,7 @@ export function initUiEventListeners() {
   });
 
   document.getElementById('opening-content-hidden').addEventListener('change', (event) => {
-    const opening = selection.selectedOpeningId ? testMap.getOpening(selection.selectedOpeningId) : null;
+    const opening = selection.selectedOpeningId ? testMap.getEntity('opening', selection.selectedOpeningId) : null;
     if (!opening) return;
     updateSelectedOpening(opening.type === 'door'
       ? { panelHidden: event.target.checked }
@@ -1443,7 +1443,7 @@ export function initUiEventListeners() {
 
   document.getElementById('fence-rotation-range').addEventListener('input', (event) => {
     if (selection.selectedFenceId) {
-      const fence = testMap.getFence(selection.selectedFenceId);
+      const fence = testMap.getEntity('fence', selection.selectedFenceId);
       if (fence && !fence.locked) {
         const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', event.target.value);
         const preview = getRotatedWallEndpoints(fence, normalized);
@@ -1480,7 +1480,7 @@ export function initUiEventListeners() {
 
   document.getElementById('btn-delete-opening').addEventListener('click', () => {
     if (!selection.selectedOpeningId) return;
-    if (testMap.getOpening(selection.selectedOpeningId)?.locked) return;
+    if (testMap.getEntity('opening', selection.selectedOpeningId)?.locked) return;
     pushHistory();
     testMap.deleteOpening(selection.selectedOpeningId);
     clearSelection();
@@ -1489,7 +1489,7 @@ export function initUiEventListeners() {
 
   document.getElementById('btn-delete-room').addEventListener('click', () => {
     if (!selection.selectedRoomId) return;
-    if (testMap.getRoom(selection.selectedRoomId)?.locked) return;
+    if (testMap.getEntity('room', selection.selectedRoomId)?.locked) return;
     showCustomConfirm('提示', '确定要删除整个房间吗？房间内的家具都会移除').then((confirmed) => {
       if (confirmed) {
         pushHistory();
@@ -1535,7 +1535,7 @@ export function initUiEventListeners() {
 
 function updateSelectedFenceRotation(degrees) {
   if (!selection.selectedFenceId) return;
-  const fence = testMap.getFence(selection.selectedFenceId);
+  const fence = testMap.getEntity('fence', selection.selectedFenceId);
   if (!fence || fence.locked) return;
   pushHistory();
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', degrees);

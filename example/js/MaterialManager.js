@@ -400,7 +400,7 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
   } else if (type === 'roof') {
     defaultColor = '#b75b54';
   } else if (type === 'fence' || type === 'fence_gate') {
-    const item = type === 'fence' ? ctx.testMap.getFence(id) : ctx.testMap.getFenceGate(id);
+    const item = type === 'fence' ? ctx.testMap.getEntity('fence', id) : ctx.testMap.getEntity('fence_gate', id);
     const subtype = item ? item.subtype : 'picket_wood';
     const defaults = FENCE_SUBTYPE_DEFAULTS[subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
     if (part === 'frame') {
@@ -660,13 +660,13 @@ export function extractMaterial(target, precise = true) {
     let pickedColor = null;
 
     if (target.type === 'room') {
-      const room = ctx.testMap.getRoom(target.id);
+      const room = ctx.testMap.getEntity('room', target.id);
       if (room) {
         pickedMaterial = room.material;
         pickedColor = room.color;
       }
     } else if (target.type === 'wall') {
-      const wall = ctx.testMap.getWall(target.id);
+      const wall = ctx.testMap.getEntity('wall', target.id);
       if (wall) {
         const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
         const component = target.pick ? findWallComponentFromNode(target.pick.pickedMesh) : 'main';
@@ -680,7 +680,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'item') {
-      const item = ctx.testMap.getItem(target.id);
+      const item = ctx.testMap.getEntity('item', target.id);
       if (item) {
         let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
         if (!componentId) {
@@ -704,7 +704,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'fence') {
-      const fence = ctx.testMap.getFence(target.id);
+      const fence = ctx.testMap.getEntity('fence', target.id);
       if (fence) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
         if (componentId === 'frame') {
@@ -719,7 +719,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'fence_gate') {
-      const gate = ctx.testMap.getFenceGate(target.id);
+      const gate = ctx.testMap.getEntity('fence_gate', target.id);
       if (gate) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFenceComponentId') : null;
         if (componentId === 'frame') {
@@ -734,7 +734,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'opening') {
-      const opening = ctx.testMap.getOpening(target.id);
+      const opening = ctx.testMap.getEntity('opening', target.id);
       if (opening) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
         if (componentId === 'frame') {
@@ -752,7 +752,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'roof') {
-      const roof = ctx.testMap.getRoof(target.id);
+      const roof = ctx.testMap.getEntity('roof', target.id);
       if (roof) {
         const componentId = target.pick ? findRoofComponentIdFromNode(target.pick.pickedMesh) : null;
         if (componentId === 'side') {
@@ -767,7 +767,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'stairs') {
-      const stairs = ctx.testMap.getStairs(target.id);
+      const stairs = ctx.testMap.getEntity('stairs', target.id);
       if (stairs) {
         const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintStairsComponentId') : null;
         if (componentId === 'side') {
@@ -809,7 +809,7 @@ export function extractMaterial(target, precise = true) {
     materialsArray.sourceType = target.type;
 
     if (target.type === 'room') {
-      const room = ctx.testMap.getRoom(target.id);
+      const room = ctx.testMap.getEntity('room', target.id);
       if (room) {
         const rawMat = room.material || null;
         const rawCol = room.color || '#ffffff';
@@ -820,7 +820,7 @@ export function extractMaterial(target, precise = true) {
         });
       }
     } else if (target.type === 'wall') {
-      const wall = ctx.testMap.getWall(target.id);
+      const wall = ctx.testMap.getEntity('wall', target.id);
       if (wall) {
         const frontMain = getWallSurfaceValue(wall, 'front', 'main');
         const backMain = getWallSurfaceValue(wall, 'back', 'main');
@@ -864,7 +864,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'item') {
-      const item = ctx.testMap.getItem(target.id);
+      const item = ctx.testMap.getEntity('item', target.id);
       if (item) {
         materialsArray.sourceItemType = item.type;
         const definition = ctx.testMap.getFurnitureDefinition?.(item.type);
@@ -894,7 +894,7 @@ export function extractMaterial(target, precise = true) {
         }
       }
     } else if (target.type === 'fence') {
-      const fence = ctx.testMap.getFence(target.id);
+      const fence = ctx.testMap.getEntity('fence', target.id);
       if (fence) {
         const rawMatFrame = fence.frameMaterial || fence.material || null;
         const rawColFrame = fence.frameColor || fence.color || getFenceDefaultColor(fence.subtype, 'frame');
@@ -912,7 +912,7 @@ export function extractMaterial(target, precise = true) {
         });
       }
     } else if (target.type === 'fence_gate') {
-      const gate = ctx.testMap.getFenceGate(target.id);
+      const gate = ctx.testMap.getEntity('fence_gate', target.id);
       if (gate) {
         const rawMatFrame = gate.frameMaterial || gate.material || null;
         const rawColFrame = gate.frameColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame');
@@ -930,7 +930,7 @@ export function extractMaterial(target, precise = true) {
         });
       }
     } else if (target.type === 'opening') {
-      const opening = ctx.testMap.getOpening(target.id);
+      const opening = ctx.testMap.getEntity('opening', target.id);
       if (opening) {
         const rawMatFrame = opening.frameMaterial || opening.material || null;
         const rawColFrame = opening.color || getOpeningDefaultColor(opening.type, 'frame');
@@ -955,7 +955,7 @@ export function extractMaterial(target, precise = true) {
         });
       }
     } else if (target.type === 'roof') {
-      const roof = ctx.testMap.getRoof(target.id);
+      const roof = ctx.testMap.getEntity('roof', target.id);
       if (roof) {
         const rawMatTop = roof.material || null;
         const rawColTop = roof.color || '#b75b54';
@@ -980,7 +980,7 @@ export function extractMaterial(target, precise = true) {
         });
       }
     } else if (target.type === 'stairs') {
-      const stairs = ctx.testMap.getStairs(target.id);
+      const stairs = ctx.testMap.getEntity('stairs', target.id);
       if (stairs) {
         const rawMatTop = stairs.material || null;
         const rawColTop = stairs.color || '#d8c0a0';
@@ -1035,7 +1035,7 @@ export function applyMaterial(target, designMode) {
       ctx.pushHistory();
 
       if (target.type === 'item') {
-        const targetItem = ctx.testMap.getItem(target.id);
+        const targetItem = ctx.testMap.getEntity('item', target.id);
         if (targetItem) {
           const definition = ctx.testMap.getFurnitureDefinition?.(targetItem.type);
           const targetComponents = definition?.components || [];
@@ -1082,7 +1082,7 @@ export function applyMaterial(target, designMode) {
       } else if (target.type === 'wall') {
         // 墙全量粉刷
         const frontEntry = activeMaterialArray.find(e => e.componentId === 'front') || activeMaterialArray[0];
-        const wall = ctx.testMap.getWall(target.id);
+        const wall = ctx.testMap.getEntity('wall', target.id);
         if (wall) {
           const backEntry = activeMaterialArray.find(e => e.componentId === 'back') || activeMaterialArray[1] || frontEntry;
           const patch = {
@@ -1191,7 +1191,7 @@ export function applyMaterial(target, designMode) {
         ctx.updateEditor();
         ctx.renderPlan();
       } else if (target.type === 'wall') {
-        const wall = ctx.testMap.getWall(target.id);
+        const wall = ctx.testMap.getEntity('wall', target.id);
         if (wall) {
           const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
           const component = target.pick ? findWallComponentFromNode(target.pick.pickedMesh) : 'main';
@@ -1204,7 +1204,7 @@ export function applyMaterial(target, designMode) {
           }
         }
       } else if (target.type === 'item') {
-        const item = ctx.testMap.getItem(target.id);
+        const item = ctx.testMap.getEntity('item', target.id);
         let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintFurnitureComponentId') : null;
         if (!componentId && item) {
           const definition = ctx.testMap.getFurnitureDefinition?.(item.type);
@@ -1285,7 +1285,7 @@ export function applyMaterial(target, designMode) {
         ctx.showToast('请在面板中选择新材质以修改地板材质');
       }
     } else if (target.type === 'wall') {
-      const wall = ctx.testMap.getWall(target.id);
+      const wall = ctx.testMap.getEntity('wall', target.id);
       if (!wall) return;
       const side = target.pick ? findWallSideFromNode(target.pick.pickedMesh) : (target.point ? get2DWallSideFromPoint(wall, target.point) : null);
       if (!side) return;
@@ -1335,7 +1335,7 @@ export function applyMaterial(target, designMode) {
       const roomWallIds = Object.values(room.wallIds || {});
       let count = 0;
       roomWallIds.forEach(wallId => {
-        const w = ctx.testMap.getWall(wallId);
+        const w = ctx.testMap.getEntity('wall', wallId);
         if (!w || w.locked) return;
 
         const [wx1, wz1] = w.from;
@@ -1379,7 +1379,7 @@ export function applyMaterial(target, designMode) {
       ctx.updateEditor();
       ctx.renderPlan();
     } else if (target.type === 'item') {
-      const updatedItem = ctx.testMap.getItem(target.id);
+      const updatedItem = ctx.testMap.getEntity('item', target.id);
       if (updatedItem) {
         ctx.pushHistory();
         if (ctx.testMap.refreshItemRoomLinks) {
@@ -1387,7 +1387,7 @@ export function applyMaterial(target, designMode) {
         }
         const currentRoomId = updatedItem.roomId;
 
-        const items = ctx.testMap.floorplan?.items || ctx.testMap.items || [];
+        const items = ctx.testMap.getEntities('item');
         let count = 0;
         items.forEach(it => {
           const isSameRoom = (currentRoomId && it.roomId === currentRoomId) || (!currentRoomId && !it.roomId);
@@ -1409,7 +1409,7 @@ export function applyMaterial(target, designMode) {
         ctx.renderPlan();
       }
     } else if (target.type === 'fence') {
-      const fence = ctx.testMap.getFence(target.id);
+      const fence = ctx.testMap.getEntity('fence', target.id);
       if (fence) {
         ctx.pushHistory();
 
@@ -1425,7 +1425,7 @@ export function applyMaterial(target, designMode) {
           if (room) fenceRoomId = room.id;
         }
 
-        const fences = ctx.testMap.floorplan.fences || [];
+        const fences = ctx.testMap.getEntities('fence');
         let count = 0;
         fences.forEach(f => {
           if (f.floorId === fence.floorId && f.subtype === fence.subtype && f.id !== fence.id && !isTargetLocked({ type: 'fence', id: f.id })) {
@@ -1459,7 +1459,7 @@ export function applyMaterial(target, designMode) {
         ctx.renderPlan();
       }
     } else if (target.type === 'fence_gate') {
-      const gate = ctx.testMap.getFenceGate(target.id);
+      const gate = ctx.testMap.getEntity('fence_gate', target.id);
       if (gate) {
         ctx.pushHistory();
 
@@ -1475,7 +1475,7 @@ export function applyMaterial(target, designMode) {
           if (room) gateRoomId = room.id;
         }
 
-        const gates = ctx.testMap.floorplan.fenceGates || [];
+        const gates = ctx.testMap.getEntities('fence_gate');
         let count = 0;
         gates.forEach(g => {
           if (g.floorId === gate.floorId && g.subtype === gate.subtype && g.id !== gate.id && !isTargetLocked({ type: 'fence_gate', id: g.id })) {
@@ -1507,7 +1507,7 @@ export function applyMaterial(target, designMode) {
         ctx.renderPlan();
       }
     } else if (target.type === 'opening') {
-      const opening = ctx.testMap.getOpening(target.id);
+      const opening = ctx.testMap.getEntity('opening', target.id);
       if (opening) {
         ctx.pushHistory();
 
@@ -1518,7 +1518,7 @@ export function applyMaterial(target, designMode) {
           if (room) opRoomId = room.id;
         }
         if (!opRoomId) {
-          const wall = opening ? ctx.testMap.getWall(opening.wallId) : null;
+          const wall = opening ? ctx.testMap.getEntity('wall', opening.wallId) : null;
           if (wall) {
             const mx = (wall.from[0] + wall.to[0]) / 2;
             const mz = (wall.from[1] + wall.to[1]) / 2;
@@ -1527,12 +1527,12 @@ export function applyMaterial(target, designMode) {
           }
         }
 
-        const openings = ctx.testMap.floorplan.openings || [];
+        const openings = ctx.testMap.getEntities('opening');
         let count = 0;
 
         let roomWallSet = new Set();
         if (opRoomId) {
-          const roomObj = ctx.testMap.getRoom(opRoomId);
+          const roomObj = ctx.testMap.getEntity('room', opRoomId);
           const roomWallIds = roomObj ? Object.values(roomObj.wallIds || {}) : [];
           roomWallSet = new Set(roomWallIds);
         }
@@ -1551,7 +1551,7 @@ export function applyMaterial(target, designMode) {
                 count++;
               }
             } else {
-              const opWall = ctx.testMap.getWall(op.wallId);
+              const opWall = ctx.testMap.getEntity('wall', op.wallId);
               let opWallRoomId = null;
               if (opWall) {
                 const opmx = (opWall.from[0] + opWall.to[0]) / 2;
@@ -1583,7 +1583,7 @@ export function applyMaterial(target, designMode) {
         ctx.renderPlan();
       }
     } else if (target.type === 'roof') {
-      const roof = ctx.testMap.getRoof(target.id);
+      const roof = ctx.testMap.getEntity('roof', target.id);
       if (roof) {
         ctx.pushHistory();
 
@@ -1594,7 +1594,7 @@ export function applyMaterial(target, designMode) {
           if (room) roofRoomId = room.id;
         }
 
-        const roofs = ctx.testMap.floorplan.roofs || [];
+        const roofs = ctx.testMap.getEntities('roof');
         let count = 0;
         roofs.forEach(r => {
           if (r.floorId === roof.floorId && r.id !== roof.id && !isTargetLocked({ type: 'roof', id: r.id })) {
@@ -1626,7 +1626,7 @@ export function applyMaterial(target, designMode) {
         ctx.renderPlan();
       }
     } else if (target.type === 'stairs') {
-      const stairs = ctx.testMap.getStairs(target.id);
+      const stairs = ctx.testMap.getEntity('stairs', target.id);
       if (stairs) {
         ctx.pushHistory();
 
@@ -1637,7 +1637,7 @@ export function applyMaterial(target, designMode) {
           if (room) stairsRoomId = room.id;
         }
 
-        const stairsList = ctx.testMap.floorplan.stairs || [];
+        const stairsList = ctx.testMap.getEntities('stairs');
         let count = 0;
         stairsList.forEach(st => {
           if (st.floorId === stairs.floorId && st.id !== stairs.id && !isTargetLocked({ type: 'stairs', id: st.id })) {

@@ -135,7 +135,7 @@ export function update3DStairsRailingPreview(stairsId, fenceSubtype) {
   }
   clear3DStairsRailingPreview();
 
-  const stairs = Context.testMap.getStairs(stairsId);
+  const stairs = Context.testMap.getEntity('stairs', stairsId);
   if (!stairs) return;
 
   Context.currentPreviewStairsId = stairsId;
@@ -143,7 +143,7 @@ export function update3DStairsRailingPreview(stairsId, fenceSubtype) {
 
   const floorId = stairs.floorId;
   const floorY = Context.testMap.getFloorElevation ? Context.testMap.getFloorElevation(floorId) : 0;
-  const stairsOffset = Context.testMap.getStairsElevationOffset ? Context.testMap.getStairsElevationOffset(stairs) : 0;
+  const stairsOffset = Context.testMap.getEntityElevationOffset('stairs', stairs);
 
   const railsData = Topology.getStairsRailingSegments(stairs, Context.testMap);
 
@@ -191,11 +191,11 @@ export function update3DStairsRailingPreview(stairsId, fenceSubtype) {
     });
   });
 
-  Context.stairsRailingPreview3DGroup.parent = Context.testMap.root;
+  Context.testMap.attachRuntimeOverlay(Context.stairsRailingPreview3DGroup);
 }
 
 export function addRailingToStairs(stairsId, fenceSubtype) {
-  const stairs = Context.testMap.getStairs(stairsId);
+  const stairs = Context.testMap.getEntity('stairs', stairsId);
   if (!stairs) return;
 
   const segments = Topology.getStairsRailingSegments(stairs, Context.testMap);

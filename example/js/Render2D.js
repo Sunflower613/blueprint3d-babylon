@@ -132,11 +132,11 @@ export function renderPlan() {
     return 0;
   });
   sortedItems.forEach((item) => renderPlanItem(item));
-  const selectedRoom = ctx.selectedRoomId ? ctx.testMap.getRoom(ctx.selectedRoomId) : null;
+  const selectedRoom = ctx.selectedRoomId ? ctx.testMap.getEntity('room', ctx.selectedRoomId) : null;
   if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
-  const selectedRoof = ctx.selectedRoofId ? ctx.testMap.getRoof?.(ctx.selectedRoofId) : null;
+  const selectedRoof = ctx.selectedRoofId ? ctx.testMap.getEntity('roof', ctx.selectedRoofId) : null;
   if (selectedRoof) renderSelectedRoofHandles(selectedRoof);
-  const selectedFence = ctx.selectedFenceId ? ctx.testMap.getFence(ctx.selectedFenceId) : null;
+  const selectedFence = ctx.selectedFenceId ? ctx.testMap.getEntity('fence', ctx.selectedFenceId) : null;
   if (selectedFence) renderSelectedFenceHandles(selectedFence);
 }
 
@@ -345,7 +345,7 @@ export function renderWall(wall) {
 }
 
 export function renderOpening(opening) {
-  const wall = ctx.testMap.getWall(opening.wallId);
+  const wall = ctx.testMap.getEntity('wall', opening.wallId);
   if (!wall) return;
   const [x1, z1] = wall.from;
   const [x2, z2] = wall.to;

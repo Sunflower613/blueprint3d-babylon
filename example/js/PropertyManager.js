@@ -113,7 +113,7 @@ export function getRotatedWallEndpoints(wall, degrees) {
 
 export function previewSelectedWallRotation(degrees) {
   if (!Context.selectedWallId) return;
-  const wall = Context.testMap.getWall(Context.selectedWallId);
+  const wall = Context.testMap.getEntity('wall', Context.selectedWallId);
   if (!wall) return;
   const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', degrees);
   const preview = getRotatedWallEndpoints(wall, normalized);
@@ -123,7 +123,7 @@ export function previewSelectedWallRotation(degrees) {
 
 export function previewSelectedFenceRotation(degrees) {
   if (!Context.selectedFenceId) return;
-  const fence = Context.testMap.getFence(Context.selectedFenceId);
+  const fence = Context.testMap.getEntity('fence', Context.selectedFenceId);
   if (!fence || fence.locked) return;
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', degrees);
   const preview = getRotatedWallEndpoints(fence, normalized);
@@ -186,7 +186,7 @@ export function deleteSelectedStructure() {
 
 export function updateSelectedRoom() {
   if (!Context.selectedRoomId) return;
-  const room = Context.testMap.getRoom(Context.selectedRoomId);
+  const room = Context.testMap.getEntity('room', Context.selectedRoomId);
   if (room?.locked) return;
 
   const roomFloor = Context.testMap.getFloor(room.floorId);
@@ -241,7 +241,7 @@ export function updateSelectedFloor() {
   Context.testMap.executeCommand('changeFloorHideSettings', { floorId: currentFloorId, hideRoof: hideRoofInput, hideWall: hideWallInput, skybox: skyboxInput });
 
   if (hideRoofInput && Context.selectedRoofId) {
-    const roof = Context.testMap.getRoof?.(Context.selectedRoofId);
+    const roof = Context.testMap.getEntity('roof', Context.selectedRoofId);
     if (roof && roof.floorId === currentFloorId) {
       Context.clearSelection();
     }
@@ -266,7 +266,7 @@ export function updateSkyboxFromCurrentFloor() {
 
 export function updateSelectedFenceSubtype() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   Context.pushHistory();
   Context.testMap.executeCommand('updateFence', { fenceId: Context.selectedFenceId, patch: { subtype: document.getElementById('fence-subtype').value } });
   Context.refreshShadows();
@@ -276,12 +276,12 @@ export function updateSelectedFenceSubtype() {
 
 export function updateSelectedFenceLength() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   const len = Number(document.getElementById('fence-length').value);
   if (len <= 0.05) return;
   Context.pushHistory();
   
-  const fence = Context.testMap.getFence(Context.selectedFenceId);
+  const fence = Context.testMap.getEntity('fence', Context.selectedFenceId);
   if (fence) {
     const [x1, z1] = fence.from;
     const [x2, z2] = fence.to;
@@ -315,7 +315,7 @@ export function updateSelectedFenceLength() {
 export function updateSelectedFenceRotation(deg) {
   if (!Context.selectedFenceId) return;
   const fenceId = Context.selectedFenceId;
-  const fence = Context.testMap.getFence(fenceId);
+  const fence = Context.testMap.getEntity('fence', fenceId);
   if (!fence || fence.locked) return;
   const normalized = syncRotationInputs('fence-rotation', 'fence-rotation-range', deg);
   const preview = getRotatedWallEndpoints(fence, normalized);
@@ -334,7 +334,7 @@ export function updateSelectedFenceRotation(deg) {
 
 export function updateSelectedFenceHeight() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   Context.pushHistory();
   Context.testMap.executeCommand('updateFence', { fenceId: Context.selectedFenceId, patch: { height: Number(document.getElementById('fence-height').value) } });
   Context.refreshShadows();
@@ -344,7 +344,7 @@ export function updateSelectedFenceHeight() {
 
 export function updateSelectedFenceYOffset() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   Context.pushHistory();
   Context.testMap.executeCommand('updateFence', { fenceId: Context.selectedFenceId, patch: { yOffset: Number(document.getElementById('fence-yoffset').value) } });
   Context.refreshShadows();
@@ -354,7 +354,7 @@ export function updateSelectedFenceYOffset() {
 
 export function updateSelectedFenceColor() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   Context.pushHistory();
   const col = document.getElementById('fence-color').value;
   Context.testMap.executeCommand('updateFence', { fenceId: Context.selectedFenceId, patch: { color: col, material: col } });
@@ -365,7 +365,7 @@ export function updateSelectedFenceColor() {
 
 export function deleteSelectedFence() {
   if (!Context.selectedFenceId) return;
-  if (Context.testMap.getFence(Context.selectedFenceId)?.locked) return;
+  if (Context.testMap.getEntity('fence', Context.selectedFenceId)?.locked) return;
   Context.pushHistory();
   Context.testMap.executeCommand('deleteFence', { fenceId: Context.selectedFenceId });
   Context.clearSelection();
@@ -385,7 +385,7 @@ export function updateSelectedWallLength() {
 export function updateSelectedWallRotation(deg) {
   if (!Context.selectedWallId) return;
   const wallId = Context.selectedWallId;
-  const wall = Context.testMap.getWall(wallId);
+  const wall = Context.testMap.getEntity('wall', wallId);
   if (!wall) return;
   const normalized = syncRotationInputs('wall-rotation', 'wall-rotation-range', deg);
   const preview = getRotatedWallEndpoints(wall, normalized);
@@ -430,7 +430,7 @@ export function updateSelectedPose() {
 
 export function updateSelectedOpening(patch) {
   if (!Context.selectedOpeningId) return;
-  if (Context.testMap.getOpening(Context.selectedOpeningId)?.locked && !('locked' in patch)) return;
+  if (Context.testMap.getEntity('opening', Context.selectedOpeningId)?.locked && !('locked' in patch)) return;
   Context.pushHistory();
   Context.testMap.executeCommand('updateOpening', { openingId: Context.selectedOpeningId, patch });
   Context.refreshShadows();

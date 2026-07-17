@@ -19,10 +19,10 @@ export function onDrag3DDown(target, event) {
 
   if (target.type === 'opening') {
     Context.selectOpening(target.id);
-    const opening = testMap.getOpening(target.id);
+    const opening = testMap.getEntity('opening', target.id);
     const groundPoint = Context.groundPointFromPointer();
     if (!opening || opening.locked || !groundPoint) return;
-    testMap.beginOpeningDragPreview(target.id);
+    testMap.beginEntityPreview('opening', target.id);
     Context.drag3DState = {
       type: 'opening',
       openingId: target.id,
@@ -80,7 +80,7 @@ export function onDrag3DDown(target, event) {
   }
   if (target.type === 'fence_gate') {
     Context.selectFenceGate(target.id);
-    const gate = testMap.getFenceGate(target.id);
+    const gate = testMap.getEntity('fence_gate', target.id);
     const groundPoint = Context.groundPointFromPointer();
     if (!gate || gate.locked || !groundPoint) return;
     Context.drag3DState = {
@@ -95,7 +95,7 @@ export function onDrag3DDown(target, event) {
       startZ: groundPoint.z,
       historyPushed: false
     };
-    testMap.beginFenceGateDragPreview(target.id);
+    testMap.beginEntityPreview('fence_gate', target.id);
     document.body.classList.add('is-dragging-3d');
     canvas.setPointerCapture?.(event.pointerId);
     camera.detachControl(canvas);
@@ -105,7 +105,7 @@ export function onDrag3DDown(target, event) {
 
   const itemId = target.id;
   Context.selectItem(itemId, true);
-  const item = testMap.getItem(itemId);
+  const item = testMap.getEntity('item', itemId);
   if (!item || item.locked) return;
   const groundPoint = Context.groundPointFromPointer();
   if (!groundPoint) return;
@@ -169,7 +169,7 @@ export function end3DDrag(event) {
   const camera = Context.camera;
 
   if (dragState.type === 'item') {
-    const item = testMap.getItem(dragState.itemId);
+    const item = testMap.getEntity('item', dragState.itemId);
     if (item) {
       Context.entityManager.moveItemTo(dragState.itemId, item.x, item.z, true);
     }

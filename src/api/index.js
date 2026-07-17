@@ -254,3 +254,11 @@ export * as Topology from '../editor/Topology.js';
 export { DragHandler } from '../editor/DragHandler.js';
 export { Viewer3DHandles } from '../editor/Viewer3DHandles.js';
 
+/** Build the public URL used by the example's copied furniture image directory. */
+export function getFurnitureThumbnailUrl(type, basePath = './src/furniture/image') {
+  const safeType = String(type || 'custom_cube').replace(/[^a-zA-Z0-9_-]/g, '') || 'custom_cube';
+  return `${String(basePath).replace(/\/$/, '')}/${safeType}.png`;
+}
+
+/** Bundler-safe URL for the default sky texture. */
+export const SKY_TEXTURE_URL = new URL('../textures/sky.png', import.meta.url).href;

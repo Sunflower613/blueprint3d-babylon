@@ -28,6 +28,7 @@ const TEXTURE_MAP = {
   'stone_rock.jpg': new URL('../textures/stone_rock.jpg', import.meta.url).href,
   'stone_terrazzo.jpg': new URL('../textures/stone_terrazzo.jpg', import.meta.url).href,
   'stone_white_sand.jpg': new URL('../textures/stone_white_sand.jpg', import.meta.url).href,
+  'stone_grass.jpg': new URL('../textures/stone_grass.jpg', import.meta.url).href,
   'fabric_rope_cable_beige.jpg': new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href,
   'fabric_knit_cable_grey.jpg': new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href,
   'fabric_knit_cable_white.jpg': new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href,

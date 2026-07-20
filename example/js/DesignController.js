@@ -1,3 +1,5 @@
+import { MaterialResolver } from '../../src/index.js';
+
 let Context = null;
 
 export function initDesignController(appState) {
@@ -60,7 +62,7 @@ export function setDesignMode(newMode, lockBrush = false) {
     if (button.dataset.designMode !== 'brush') return;
     button.classList.toggle('locked', Context.designModeBrushLocked);
     const shortcut = button.querySelector('.mode-shortcut');
-    if (shortcut) shortcut.textContent = isActive ? (Context.designModeBrushLocked ? 'B / Locked' : 'B / Click again to lock') : 'B';
+    if (shortcut) shortcut.textContent = isActive ? (Context.designModeBrushLocked ? 'B / 已锁定' : 'B / 点击锁定') : 'B';
   });
 
   document.body.classList.remove(
@@ -122,8 +124,8 @@ export function getPickedColorFromTarget(target) {
     descriptor = readComponentMaterial(stairs, componentId, componentId === 'side' ? 'side' : '');
   }
 
-  if (typeof descriptor === 'string') return descriptor;
-  return descriptor?.color || null;
+  if (!descriptor) return null;
+  return MaterialResolver.getRepresentativeColor(descriptor);
 }
 
 export function executeDesignTool(target) {

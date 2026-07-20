@@ -16,6 +16,7 @@ const stoneRoadUrl = new URL('../textures/stone_road.jpg', import.meta.url).href
 const stoneRockUrl = new URL('../textures/stone_rock.jpg', import.meta.url).href;
 const stoneTerrazzoUrl = new URL('../textures/stone_terrazzo.jpg', import.meta.url).href;
 const stoneWhiteSandUrl = new URL('../textures/stone_white_sand.jpg', import.meta.url).href;
+const stoneGrassUrl = new URL('../textures/stone_grass.jpg', import.meta.url).href;
 
 // 新加砖块 (分类: brick)
 const brickBlackWhiteUrl = new URL('../textures/brick_black_white.jpg', import.meta.url).href;
@@ -103,6 +104,7 @@ const COMMON_WALLPAPER_MATERIALS = [
 }));
 
 const COMMON_STONE_MATERIALS = [
+  { id: 'stone-grass', name: '草地', src: stoneGrassUrl, scale: 2.0, color: '#ffffff' },
   { id: 'stone-earth', name: '泥土', src: stoneEarthUrl, scale: 1.5, color: '#ffffff' },
   { id: 'stone-sand', name: '黄沙', src: stoneSandUrl, scale: 2.0, color: '#ffffff' },
   { id: 'stone-sand-stone', name: '沙石', src: stoneSandStoneUrl, scale: 1.8, color: '#ffffff' },

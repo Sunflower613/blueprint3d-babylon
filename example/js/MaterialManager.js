@@ -1211,16 +1211,11 @@ export function applyMaterial(target, designMode) {
           componentId = definition?.components?.[0]?.id;
         }
         if (componentId) {
-          ctx.pushHistory();
-          const oldId = selection.selectedItemId;
-          selection.selectedItemId = target.id;
-          ctx.syncLocalToStore?.();
-          applyMaterialToItemComponent(componentId, activeMaterialDescriptor);
-          selection.selectedItemId = oldId;
-          ctx.syncLocalToStore?.();
-          ctx.refreshShadows();
-          ctx.updateEditor();
-          ctx.renderPlan();
+          if (isTargetLocked({ type: 'item', id: target.id })) {
+            ctx.showToast('该物体已锁定');
+            return;
+          }
+          ctx.entityManager.updateItemComponentMaterial(target.id, componentId, activeMaterialDescriptor);
         } else {
           ctx.showToast('无法确定点击的家具组件');
         }

@@ -62,7 +62,7 @@ import {
   getItemsCountOnBookshelf,
   getSelectedStructure
 } from './EditorUiContext.js';
-import { getRoomVertices } from '../../src/index.js';
+import { getRoomVertices, MaterialResolver } from '../../src/index.js';
 
 let lastActiveRoomId = null;
 
@@ -730,53 +730,37 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
   if (room) {
     const group = document.createElement('div');
     group.className = 'component-material-row';
-    if (floorColorField) {
-      group.appendChild(floorColorField);
-    }
+    group.appendChild(createColorField('地板材质', room.color || '#f4efe6', (color) => {
+      updateComponentMaterial('room', room.id, 'floor', color);
+    }, getMaterialFriendlyName(room.material), room.material));
     group.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('room', room.id, 'floor', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(group);
     return;
   }
 
   if (wall) {
-    const appendWallRow = (label, colorValue, part, materialName) => {
+    const appendWallRow = (label, colorValue, part, materialName, materialDescriptor = null) => {
       const group = document.createElement('div');
       group.className = 'component-material-row';
       group.appendChild(createColorField(label, colorValue || '#f9fbff', (color) => {
         updateComponentMaterial('wall', wall.id, part, color);
-      }, materialName));
+      }, materialName, materialDescriptor));
       group.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, part, activeMaterialDescriptor)));
       designSelectionPanel.appendChild(group);
     };
 
-    appendWallRow('墙正面材质', wall.colorFront || wall.color || '#f9fbff', 'front', getMaterialFriendlyName(wall.materialFront));
-    appendWallRow('墙背面材质', wall.colorBack || wall.color || '#f9fbff', 'back', getMaterialFriendlyName(wall.materialBack));
+    appendWallRow('墙正面材质', wall.colorFront || wall.color || '#f9fbff', 'front', getMaterialFriendlyName(wall.materialFront), wall.materialFront);
+    appendWallRow('墙背面材质', wall.colorBack || wall.color || '#f9fbff', 'back', getMaterialFriendlyName(wall.materialBack), wall.materialBack);
 
     if (wall.baseboardEnabled) {
-      appendWallRow('正面踢脚线', wall.baseboardColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-baseboard', getMaterialFriendlyName(wall.baseboardMaterialFront || wall.materialFront));
-      appendWallRow('背面踢脚线', wall.baseboardColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-baseboard', getMaterialFriendlyName(wall.baseboardMaterialBack || wall.materialBack));
+      appendWallRow('正面踢脚线', wall.baseboardColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-baseboard', getMaterialFriendlyName(wall.baseboardMaterialFront || wall.materialFront), wall.baseboardMaterialFront || wall.materialFront);
+      appendWallRow('背面踢脚线', wall.baseboardColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-baseboard', getMaterialFriendlyName(wall.baseboardMaterialBack || wall.materialBack), wall.baseboardMaterialBack || wall.materialBack);
     }
 
     if (wall.wainscotEnabled) {
-      appendWallRow('正面护墙板', wall.wainscotColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-wainscot', getMaterialFriendlyName(wall.wainscotMaterialFront || wall.materialFront));
-      appendWallRow('背面护墙板', wall.wainscotColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-wainscot', getMaterialFriendlyName(wall.wainscotMaterialBack || wall.materialBack));
+      appendWallRow('正面护墙板', wall.wainscotColorFront || wall.colorFront || wall.color || '#f9fbff', 'front-wainscot', getMaterialFriendlyName(wall.wainscotMaterialFront || wall.materialFront), wall.wainscotMaterialFront || wall.materialFront);
+      appendWallRow('背面护墙板', wall.wainscotColorBack || wall.colorBack || wall.color || '#f9fbff', 'back-wainscot', getMaterialFriendlyName(wall.wainscotMaterialBack || wall.materialBack), wall.wainscotMaterialBack || wall.materialBack);
     }
-    return;
-    const groupFront = document.createElement('div');
-    groupFront.className = 'component-material-row';
-    groupFront.appendChild(createColorField('墙正面材质', wall.colorFront || wall.color || '#f9fbff', (color) => {
-      updateComponentMaterial('wall', wall.id, 'front', color);
-    }, getMaterialFriendlyName(wall.materialFront)));
-    groupFront.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, 'front', activeMaterialDescriptor)));
-    designSelectionPanel.appendChild(groupFront);
-
-    const groupBack = document.createElement('div');
-    groupBack.className = 'component-material-row';
-    groupBack.appendChild(createColorField('墙背面材质', wall.colorBack || wall.color || '#f9fbff', (color) => {
-      updateComponentMaterial('wall', wall.id, 'back', color);
-    }, getMaterialFriendlyName(wall.materialBack)));
-    groupBack.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial('wall', wall.id, 'back', activeMaterialDescriptor)));
-    designSelectionPanel.appendChild(groupBack);
     return;
   }
 
@@ -792,7 +776,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const labelTop = structureType === 'roof' ? '瓦片' : '踏步材质';
     groupTop.appendChild(createColorField(labelTop, structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0'), (color) => {
       updateComponentMaterial(structureType, structure.id, 'top', color);
-    }, getMaterialFriendlyName(structure.material)));
+    }, getMaterialFriendlyName(structure.material), structure.material));
     groupTop.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'top', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupTop);
 
@@ -802,7 +786,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     const labelSide = structureType === 'roof' ? '墙面' : '侧面材质';
     groupSide.appendChild(createColorField(labelSide, structure.sideColor || (structure.color || (structureType === 'roof' ? '#b75b54' : '#d8c0a0')), (color) => {
       updateComponentMaterial(structureType, structure.id, 'side', color);
-    }, getMaterialFriendlyName(structure.sideMaterial || structure.material)));
+    }, getMaterialFriendlyName(structure.sideMaterial || structure.material), structure.sideMaterial || structure.material));
     groupSide.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'side', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupSide);
 
@@ -812,7 +796,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       groupBottom.className = 'component-material-row';
       groupBottom.appendChild(createColorField('天花板', structure.bottomColor || '#ffffff', (color) => {
         updateComponentMaterial(structureType, structure.id, 'bottom', color);
-      }, getMaterialFriendlyName(structure.bottomMaterial || structure.bottomColor || '#ffffff')));
+      }, getMaterialFriendlyName(structure.bottomMaterial || structure.bottomColor || '#ffffff'), structure.bottomMaterial));
       groupBottom.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'bottom', activeMaterialDescriptor)));
       designSelectionPanel.appendChild(groupBottom);
     }
@@ -834,7 +818,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
           return;
         }
         entityManager.updateItemComponentColor(item.id, component.id, color);
-      }, getMaterialFriendlyName(item.materials?.[component.id])));
+      }, getMaterialFriendlyName(item.materials?.[component.id]), item.materials?.[component.id]));
       group.appendChild(createApplyMaterialButton('应用当前材质', () => applyMaterialToItemComponent(component.id, activeMaterialDescriptor)));
       designSelectionPanel.appendChild(group);
     });
@@ -882,7 +866,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupFrame.className = 'component-material-row';
     groupFrame.appendChild(createColorField(frameLabel, fence.frameColor || fence.color || '#8d6e63', (color) => {
       updateComponentMaterial('fence', fence.id, 'frame', color);
-    }, getMaterialFriendlyName(fence.frameMaterial)));
+    }, getMaterialFriendlyName(fence.frameMaterial), fence.frameMaterial));
     groupFrame.appendChild(createApplyMaterialButton(`应用当前材质`, () => updateComponentMaterial('fence', fence.id, 'frame', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupFrame);
 
@@ -891,7 +875,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupPanel.className = 'component-material-row';
     groupPanel.appendChild(createColorField(panelLabel, fence.panelColor || fence.color || '#8d6e63', (color) => {
       updateComponentMaterial('fence', fence.id, 'panel', color);
-    }, getMaterialFriendlyName(fence.panelMaterial)));
+    }, getMaterialFriendlyName(fence.panelMaterial), fence.panelMaterial));
     groupPanel.appendChild(createApplyMaterialButton(`应用当前材质`, () => updateComponentMaterial('fence', fence.id, 'panel', activeMaterialDescriptor)));
     designSelectionPanel.appendChild(groupPanel);
     return;
@@ -909,7 +893,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupFrame.className = 'component-material-row';
     groupFrame.appendChild(createColorField(isDoor ? '门框材质' : '窗框材质', opening.frameMaterial || '#ffffff', (color) => {
       updateComponentMaterial('opening', opening.id, 'frame', color);
-    }, getMaterialFriendlyName(opening.frameMaterial)));
+    }, getMaterialFriendlyName(opening.frameMaterial), opening.frameMaterial));
     groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => {
       updateComponentMaterial('opening', opening.id, 'frame', activeMaterialDescriptor);
     }));
@@ -919,7 +903,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupContent.className = 'component-material-row';
     groupContent.appendChild(createColorField(isDoor ? '门板材质' : '玻璃材质', isDoor ? (opening.panelMaterial || '#ffffff') : (opening.glassMaterial || '#e0f7fa'), (color) => {
       updateComponentMaterial('opening', opening.id, isDoor ? 'panel' : 'glass', color);
-    }, getMaterialFriendlyName(isDoor ? opening.panelMaterial : opening.glassMaterial)));
+    }, getMaterialFriendlyName(isDoor ? opening.panelMaterial : opening.glassMaterial), isDoor ? opening.panelMaterial : opening.glassMaterial));
     groupContent.appendChild(createApplyMaterialButton('应用当前材质', () => {
       updateComponentMaterial('opening', opening.id, isDoor ? 'panel' : 'glass', activeMaterialDescriptor);
     }));
@@ -936,7 +920,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupFrame.className = 'component-material-row';
     groupFrame.appendChild(createColorField('门框材质', fenceGate.frameMaterial || '#ffffff', (color) => {
       updateComponentMaterial('fence_gate', fenceGate.id, 'frame', color);
-    }, getMaterialFriendlyName(fenceGate.frameMaterial)));
+    }, getMaterialFriendlyName(fenceGate.frameMaterial), fenceGate.frameMaterial));
     groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => {
       updateComponentMaterial('fence_gate', fenceGate.id, 'frame', activeMaterialDescriptor);
     }));
@@ -946,7 +930,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     groupContent.className = 'component-material-row';
     groupContent.appendChild(createColorField('门板材质', fenceGate.panelMaterial || '#ffffff', (color) => {
       updateComponentMaterial('fence_gate', fenceGate.id, 'panel', color);
-    }, getMaterialFriendlyName(fenceGate.panelMaterial)));
+    }, getMaterialFriendlyName(fenceGate.panelMaterial), fenceGate.panelMaterial));
     groupContent.appendChild(createApplyMaterialButton('应用当前材质', () => {
       updateComponentMaterial('fence_gate', fenceGate.id, 'panel', activeMaterialDescriptor);
     }));
@@ -980,7 +964,7 @@ export function getMaterialFriendlyName(material) {
   return '自定义材质';
 }
 
-export function createColorField(label, value, onChange, currentMaterialName = '') {
+export function createColorField(label, value, onChange, currentMaterialName = '', materialDescriptor = null) {
   const container = document.createElement('label');
   container.className = 'field';
   
@@ -1004,6 +988,7 @@ export function createColorField(label, value, onChange, currentMaterialName = '
 
   const input = document.createElement('input');
   input.type = 'color';
+  input.style.display = 'none';
   
   let hexColor = '#ffffff';
   if (typeof value === 'string') {
@@ -1015,7 +1000,37 @@ export function createColorField(label, value, onChange, currentMaterialName = '
   input.value = hexColor;
   input.addEventListener('change', (e) => onChange(e.target.value));
   
-  container.append(span, input);
+  const colorBtn = document.createElement('div');
+  colorBtn.className = 'color-preview-btn';
+  colorBtn.style.cssText = 'width: 100%; height: 30px; border: 1px solid rgba(42, 65, 92, 0.2); border-radius: 6px; cursor: pointer; box-sizing: border-box;';
+  
+  const descriptor = materialDescriptor || value;
+  let normalized = null;
+  if (descriptor) {
+    try {
+      normalized = MaterialResolver.normalizeMaterialDescriptor(descriptor);
+    } catch (e) {}
+  }
+  
+  if (normalized && normalized.kind === 'texture' && normalized.src) {
+    colorBtn.style.backgroundImage = `url(${normalized.src})`;
+    colorBtn.style.backgroundSize = 'cover';
+    colorBtn.style.backgroundPosition = 'center';
+  } else {
+    colorBtn.style.backgroundColor = hexColor;
+  }
+  
+  colorBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    input.click();
+  });
+  
+  input.addEventListener('input', (e) => {
+    colorBtn.style.backgroundImage = '';
+    colorBtn.style.backgroundColor = e.target.value;
+  });
+  
+  container.append(span, input, colorBtn);
   return container;
 }
 
@@ -1626,8 +1641,8 @@ export function updateDesignCursor(customColor) {
   const formatSvgColor = (col) => (col.startsWith('#') ? '%23' + col.slice(1) : col);
 
   let color = '#2a415c'; // 默认取色器颜色
-  if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
-    color = activeMaterialDescriptor.color;
+  if (activeMaterialDescriptor) {
+    color = MaterialResolver.getRepresentativeColor(activeMaterialDescriptor, '#2a415c');
   }
 
   // 转换 HEX 颜色值以保证 SVG 在 CSS URL 中能够被正确解析（例如将 # 转换为 %23）
@@ -1641,8 +1656,9 @@ export function updateDesignCursor(customColor) {
     if (customColor) {
       pickerStrokeColor = formatSvgColor(customColor);
       pickerOpacity = '1.0';
-    } else if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
-      pickerStrokeColor = formatSvgColor(activeMaterialDescriptor.color);
+    } else if (activeMaterialDescriptor) {
+      const repColor = MaterialResolver.getRepresentativeColor(activeMaterialDescriptor, '#64748b');
+      pickerStrokeColor = formatSvgColor(repColor);
       pickerOpacity = '1.0';
     }
     const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${pickerStrokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='${pickerOpacity}'%3E%3Cpath d='m12 9-8.414 8.414A2 2 0 0 0 3 18.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 3.828 21h1.344a2 2 0 0 0 1.414-.586L15 12'/%3E%3Cpath d='m18 9 .4.4a1 1 0 1 1-3 3l-3.8-3.8a1 1 0 1 1 3-3l.4.4 3.4-3.4a1 1 0 1 1 3 3z'/%3E%3Cpath d='m2 22 .414-.414'/%3E%3C/svg%3E`;
@@ -1653,10 +1669,10 @@ export function updateDesignCursor(customColor) {
     let colorsList = [];
     if (editor.activeMaterialArray && editor.activeMaterialArray.length > 0) {
       colorsList = editor.activeMaterialArray
-        .map(entry => entry.color)
+        .map(entry => MaterialResolver.getRepresentativeColor(entry.material || entry.color || entry))
         .filter(c => typeof c === 'string' && c.trim() !== '');
-    } else if (activeMaterialDescriptor && activeMaterialDescriptor.color) {
-      colorsList = [activeMaterialDescriptor.color];
+    } else if (activeMaterialDescriptor) {
+      colorsList = [MaterialResolver.getRepresentativeColor(activeMaterialDescriptor)];
     }
     const uniqueColors = Array.from(new Set(colorsList.map(c => c.trim().toLowerCase())));
 
@@ -1682,6 +1698,11 @@ export function updateDesignCursor(customColor) {
     document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 4 28, auto`, 'important');
   } else if (designMode === 'bucket') {
     // 2px 描边油漆桶，热点 5 26，包裹 transform 镜像翻转以和 HTML 图标保持一致
+    let bucketColor = color;
+    if (activeMaterialDescriptor) {
+      bucketColor = MaterialResolver.getRepresentativeColor(activeMaterialDescriptor, color);
+    }
+    const strokeColor = formatSvgColor(bucketColor);
     const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='${strokeColor}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='translate(24, 0) scale(-1, 1)'%3E%3Cpath d='M11 7 6 2'/%3E%3Cpath d='M18.992 12H2.041'/%3E%3Cpath d='M21.145 18.38A3.34 3.34 0 0 1 20 16.5a3.3 3.3 0 0 1-1.145 1.88c-.575.46-.855 1.02-.855 1.595A2 2 0 0 0 20 22a2 2 0 0 0 2-2.025c0-.58-.285-1.13-.855-1.595'/%3E%3Cpath d='m8.5 4.5 2.148-2.148a1.205 1.205 0 0 1 1.704 0l7.296 7.296a1.205 1.205 0 0 1 0 1.704l-7.592 7.592a3.615 3.615 0 0 1-5.112 0l-3.888-3.888a3.615 3.615 0 0 1 0-5.112L5.67 7.33'/%3E%3C/g%3E%3C/svg%3E`;
     document.body.style.setProperty('cursor', `url("data:image/svg+xml;utf-8,${cursorSvg}") 5 26, auto`, 'important');
   } else if (designMode === 'eraser') {

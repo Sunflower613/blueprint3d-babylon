@@ -44,6 +44,61 @@ export class MaterialResolver {
     return DEFAULT_WALL_WAINSCOT_HEIGHT;
   }
 
+  static getRepresentativeColor(descriptor, fallbackColor = '#ffffff') {
+    if (!descriptor) return fallbackColor;
+    let colorVal = typeof descriptor === 'string' ? descriptor : descriptor.color;
+    if (!colorVal || colorVal === '#ffffff') {
+      const id = descriptor.id || '';
+      const category = descriptor.category || '';
+      const name = descriptor.name || '';
+      
+      const idMap = {
+        'stone-grass': '#4e7c2c',
+        'stone-earth': '#8b5a2b',
+        'stone-sand': '#d2b48c',
+        'stone-sand-stone': '#bcaaa4',
+        'stone-fine-sand': '#e5c185',
+        'stone-natural': '#795548',
+        'stone-joint': '#90a4ae',
+        'stone-road': '#78909c',
+        'stone-rock': '#546e7a',
+        'stone-terrazzo': '#b0bec5',
+        'stone-white-sand': '#cfd8dc',
+        
+        'brick-marble-warm': '#efebe9',
+        'brick-grey-gloss-marble': '#cfd8dc',
+        'brick-marble-tiles': '#eceff1',
+        'brick-light': '#cfd8dc',
+        'brick-red': '#b71c1c',
+        'brick-cube': '#efebe9',
+        'brick-diamond': '#cfd8dc',
+        'brick-square': '#b0bec5',
+        'brick-stone': '#78909c',
+        'brick-mosaic': '#b0bec5',
+        'brick-black-white': '#37474f',
+        'brick-small-black': '#263238',
+
+        'fabric-rope-cable-beige': '#f5f5dc',
+        'fabric-knit-cable-grey': '#e0e0e0',
+        'fabric-knit-cable-white': '#fafafa',
+        'fabric-knit-chevron-cream': '#fdf5e6',
+        'fabric-weave-dark': '#424242'
+      };
+
+      if (id && idMap[id]) return idMap[id];
+      
+      if (id.includes('grass') || name.includes('草')) return '#4e7c2c';
+      if (id.includes('earth') || id.includes('mud') || name.includes('泥土') || name.includes('土')) return '#8b5a2b';
+      if (id.includes('sand') || name.includes('砂') || name.includes('沙')) return '#e5c185';
+      if (id.includes('wood') || name.includes('木')) return '#dcc09a';
+      if (id.includes('brick') || name.includes('砖')) return '#b71c1c';
+      if (id.includes('stone') || name.includes('石')) return '#78909c';
+      if (category === 'fabric' || name.includes('布') || name.includes('织')) return '#e0e0e0';
+      if (category === 'wallpaper' || name.includes('墙纸') || name.includes('纸')) return '#dfd2bc';
+    }
+    return colorVal || fallbackColor;
+  }
+
   static normalizeMaterialDescriptor(value, fallbackColor = '#ffffff') {
     if (!value) return { id: undefined, kind: 'color', color: fallbackColor };
     if (typeof value === 'string') return { id: undefined, kind: 'color', color: value };

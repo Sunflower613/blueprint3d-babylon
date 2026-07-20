@@ -59,10 +59,11 @@ test('catalog exposes eight common wood textures and no flat wood color', () => 
 test('catalog exposes tintable stone textures and no flat stone color', () => {
   const stoneMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'stone');
 
-  assert.equal(stoneMaterials.length, 10);
+  assert.equal(stoneMaterials.length, 11);
   assert.deepEqual(
     stoneMaterials.map((entry) => entry.id),
     [
+      'stone-grass',
       'stone-earth',
       'stone-sand',
       'stone-sand-stone',
@@ -88,7 +89,8 @@ test('catalog exposes tintable stone textures and no flat stone color', () => {
       String(material.src).includes('stone_road') ||
       String(material.src).includes('stone_rock') ||
       String(material.src).includes('stone_terrazzo') ||
-      String(material.src).includes('stone_white_sand')
+      String(material.src).includes('stone_white_sand') ||
+      String(material.src).includes('stone_grass')
     );
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
   });

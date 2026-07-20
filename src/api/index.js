@@ -267,3 +267,6 @@ export function getFurnitureThumbnailUrl(type, basePath = './src/furniture/image
 
 /** Bundler-safe URL for the default sky texture. */
 export const SKY_TEXTURE_URL = new URL('../textures/sky.png', import.meta.url).href;
+
+/** Bundler-safe URL for the default grass texture. */
+export const GRASS_TEXTURE_URL = new URL('../textures/stone_grass.jpg', import.meta.url).href;

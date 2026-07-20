@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, shouldIncludeShadowCaster } from '../../src/index.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
@@ -447,7 +447,10 @@ export class Viewer3D {
         // 创建 1 楼 grassLawn 草坪，大小从 1000 减小为 120
         this.grassLawn = BABYLON.MeshBuilder.CreateGround('grassLawn', { width: 120, height: 120 }, this.scene);
         const groundMaterial = new BABYLON.StandardMaterial('grassLawnMat', this.scene);
-        groundMaterial.diffuseColor = new BABYLON.Color3(0.33, 0.55, 0.18); // 经典草地绿 #558b2f
+        groundMaterial.diffuseColor = new BABYLON.Color3(1.0, 1.0, 1.0);
+        groundMaterial.diffuseTexture = new BABYLON.Texture(GRASS_TEXTURE_URL, this.scene);
+        groundMaterial.diffuseTexture.uScale = 40.0;
+        groundMaterial.diffuseTexture.vScale = 40.0;
         groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // 无反射高光
         this.grassLawn.material = groundMaterial;
         this.grassLawn.receiveShadows = true; // 允许草地接收阴影

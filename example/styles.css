@@ -998,8 +998,8 @@ select {
 
 .component-material-row {
   display: grid;
-  gap: 4px;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
   border-bottom: 1px solid rgba(42, 65, 92, 0.1);
 }
 

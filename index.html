@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>blueprint3d-babylon 测试地图</title>
-    <script type="module" crossorigin src="/blueprint3d-babylon/assets/index-2Hzjsa97.js"></script>
-    <link rel="stylesheet" crossorigin href="/blueprint3d-babylon/assets/index-BVrNkalk.css">
+    <script type="module" crossorigin src="/blueprint3d-babylon/assets/index-BZQGHDwd.js"></script>
+    <link rel="stylesheet" crossorigin href="/blueprint3d-babylon/assets/index-DpXcrzfB.css">
   </head>
   <body>
     <div class="app-shell">
@@ -405,6 +405,13 @@
               </div>
             </div>
             <div class="control-group-right">
+              <button id="btn-first-person" type="button" class="btn-icon" title="第一人称模式 (F11)">
+                <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 21a6 6 0 0 0-12 0"/>
+                  <circle cx="12" cy="10" r="4"/>
+                  <path d="M12 2v2"/>
+                </svg>
+              </button>
               <button id="btn-take-photo" type="button" class="btn-icon" title="拍照 (F12)">
                 <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -475,6 +482,10 @@
               <label class="check-field">
                 <input id="floor-skybox-enabled" type="checkbox" />
                 <span>开启天空盒</span>
+              </label>
+              <label class="check-field">
+                <input id="show-advanced-rendering" type="checkbox" />
+                <span>开启高级渲染</span>
               </label>
               <button id="btn-delete-floor" type="button" class="danger">删除楼层</button>
             </div>
@@ -679,7 +690,14 @@
                 <input id="item-light-on" type="checkbox" />
                 <span id="item-power-label">开启灯光</span>
               </label>
-              <button id="btn-delete-item" type="button" class="danger">删除家具</button>
+              <label id="item-water-field" class="check-field hidden">
+                <input id="item-water-enabled" type="checkbox" />
+                <span id="item-water-label">蓄水</span>
+              </label>
+              <button id="btn-control-mannequin" type="button">
+                进入操控
+              </button>
+              <button id="btn-delete-item" type="button" class="danger" style="margin-top: 4px;">删除家具</button>
             </div>
 
             <div id="opening-editor" class="editor hidden">

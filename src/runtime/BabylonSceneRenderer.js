@@ -41,9 +41,9 @@ function resolveWallSurfaceDescriptor(wall, side, component = 'main') {
   return MaterialResolver.resolveWallSurfaceDescriptor(wall, side, component);
 }
 
-function getWallFaceBands(wall, wallHeight) {
+function getWallFaceBands(wall, wallHeight, floorHeight = 0) {
   const bands = [];
-  let cursor = 0;
+  let cursor = -floorHeight;
 
   if (wall.baseboardEnabled) {
     const baseboardEnd = Math.min(wallHeight, Math.max(0, Number(wall.baseboardHeight) || 0));
@@ -1064,7 +1064,7 @@ export class BabylonSceneRenderer {
       const floorY = this.document.getFloorElevation(wall.floorId);
       const wallBaseY = floorY + this.document.getWallElevationOffset(wall.id);
       const FH = Number(wallFloor ? (wallFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.2) : (this.floorplan.floorHeight ?? 0.2));
-      const wallFaceBands = getWallFaceBands(wall, H);
+      const wallFaceBands = getWallFaceBands(wall, H, Math.max(0, FH - 0.01));
       const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
       const materialCache = new Map();
       const getWallFaceMaterial = (side, component) => {

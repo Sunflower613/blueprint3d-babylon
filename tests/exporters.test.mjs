@@ -443,19 +443,19 @@ test('Wall render height dynamically adapts to floor height changes to eliminate
 
   const doc = new FloorplanDocument(multiFloorplan);
   
-  // 1楼墙体拉伸高度：3.0 + 0.1 - 0.15 = 2.95
-  assert.equal(doc.getFloorWallRenderHeight('ground').toFixed(4), '2.9500');
+  // 1楼墙体拉伸高度：3.0 + 0.15 = 3.15
+  assert.equal(doc.getFloorWallRenderHeight('ground').toFixed(4), '3.1500');
   
-  // 2楼墙体拉伸高度：2.8 + 0.15 - 0.2 = 2.75
-  assert.equal(doc.getFloorWallRenderHeight('upper').toFixed(4), '2.7500');
+  // 2楼墙体拉伸高度：2.8 + 0.2 = 3.00
+  assert.equal(doc.getFloorWallRenderHeight('upper').toFixed(4), '3.0000');
   
   // 3楼是顶层，墙体渲染高度为 2.6
   assert.equal(doc.getFloorWallRenderHeight('top').toFixed(4), '2.6000');
 
   const xml = create3MFModelXml(getNorm(multiFloorplan));
-  // 验证在导出的3MF中，2楼的墙体顶点最高处应在 3.25 + 2.75 = 6.00 (其中地坪 3.25)
+  // 验证在导出的3MF中，2楼的墙体顶点最高处应在 3.25 + 3.00 = 6.25 (其中地坪 3.25)
   // 3楼底板（Building - Top）下底面顶点也在 6.25 - 0.2 = 6.05
-  assert.match(xml, /y="6\.00000"/);
+  assert.match(xml, /y="6\.25000"/);
 });
 
 

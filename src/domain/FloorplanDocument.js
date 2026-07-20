@@ -424,9 +424,8 @@ export class FloorplanDocument {
     const index = sortedFloors.findIndex((f) => f.id === floorId);
     if (index >= 0 && index < sortedFloors.length - 1) {
       const nextFloor = sortedFloors[index + 1];
-      const currentFH = Number(floor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
       const nextFH = Number(nextFloor.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
-      return baseHeight + currentFH - nextFH;
+      return baseHeight + nextFH;
     }
     return baseHeight;
   }

@@ -2,6 +2,7 @@ import { TARGET_TYPES } from './types.js';
 import { selection } from '../store/index.js';
 import { createStoreProxy } from '../store/proxyHelper.js';
 import { extractMaterial } from './MaterialManager.js';
+import { toggleFirstPerson } from './FirstPersonController.js';
 
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
@@ -152,6 +153,12 @@ export function showObjectContextMenu(target, clientX, clientY) {
   let isWindow = false;
   let isPanelHidden = false;
   let isGlassHidden = false;
+  let isMannequin = false;
+
+  if (target.type === 'item') {
+    const item = ctx.testMap.getEntity('item', target.id);
+    isMannequin = item && item.type === 'mannequin';
+  }
 
   if (isOpening) {
     const opening = ctx.testMap.getEntity('opening', target.id);
@@ -163,6 +170,11 @@ export function showObjectContextMenu(target, clientX, clientY) {
     }
   }
   
+  // 判定物体是否是具有交互点位（如椅子、床）的家具，获取其交互姿态类型
+  const definition = target.type ? ctx.testMap.getFurnitureDefinition(target.type) : null;
+  const hasInteraction = definition && definition.interaction && typeof definition.interaction.getInteractionPoints === 'function';
+  const interactionType = hasInteraction ? (definition.interaction.type || 'sit') : 'sit';
+
   ctx.showIconMenu(clientX, clientY, [
     { icon: 'copy', title: '复制', onClick: () => copyTarget(target) },
     { icon: 'pipette', title: '取色', onClick: () => pickColorFromContextMenu(target) },
@@ -206,6 +218,24 @@ export function showObjectContextMenu(target, clientX, clientY) {
       title: '开关', 
       disabled: isLocked,
       onClick: () => toggleTarget(target) 
+    },
+    window.firstPersonActive && hasInteraction && {
+      icon: 'power',
+      title: interactionType === 'lie' ? '躺下' : '坐下',
+      onClick: () => {
+        document.querySelector('.icon-menu')?.remove();
+        if (typeof window.firstPersonSitOnSeat === 'function') {
+          window.firstPersonSitOnSeat(target.id);
+        }
+      }
+    },
+    isMannequin && {
+      icon: 'power',
+      title: '进入操控',
+      onClick: () => {
+        document.querySelector('.icon-menu')?.remove();
+        toggleFirstPerson(rawCtx, target.id);
+      }
     },
     seasonalMeta && {
       icon: { name: 'season', active: seasonalMeta.currentSeason },

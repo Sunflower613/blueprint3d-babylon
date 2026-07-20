@@ -33,6 +33,9 @@ export class Viewer3D {
     this.camera.attachControl(canvas, true, false, 1);
     // 彻底移除相机自带的键盘输入移动模块，防止其默认的键盘行为（包含旋转和方向键监听）干扰自定义操作
     this.camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
+    // 调低普通编辑模式视角的旋转灵敏度（通过将阻尼系数从默认的 1000 调高至 2500）
+    this.camera.angularSensibilityX = 2500;
+    this.camera.angularSensibilityY = 2500;
     this.camera.lowerRadiusLimit = 0.5;
     this.camera.upperRadiusLimit = 100;
     this.camera.wheelDeltaPercentage = 0.02;

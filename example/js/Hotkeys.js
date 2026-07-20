@@ -4,6 +4,16 @@ export function handleHotkeys(event, ctx) {
     ctx.takePhoto();
     return;
   }
+  if (event.key === 'F11') {
+    event.preventDefault();
+    document.getElementById('btn-first-person')?.click();
+    return;
+  }
+
+  // 如果处于第一人称状态，拦截其他所有的场景快捷键，避免干扰行走与交互
+  if (window.firstPersonActive) {
+    return;
+  }
 
   // 输入焦点拦截器，防止打字时触发快捷键
   const activeEl = document.activeElement;

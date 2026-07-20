@@ -62,6 +62,7 @@ import {
   getItemsCountOnBookshelf,
   getSelectedStructure
 } from './EditorUiContext.js';
+import { toggleFirstPerson } from './FirstPersonController.js';
 import { getRoomVertices, MaterialResolver } from '../../src/index.js';
 
 let lastActiveRoomId = null;
@@ -457,6 +458,15 @@ export function updateEditor() {
       }
     } else {
       poseField.classList.add('hidden');
+    }
+
+    const controlMannequinBtn = document.getElementById('btn-control-mannequin');
+    if (controlMannequinBtn) {
+      if (item.type === 'mannequin') {
+        controlMannequinBtn.classList.remove('hidden');
+      } else {
+        controlMannequinBtn.classList.add('hidden');
+      }
     }
 
     const seasonField = document.getElementById('item-season-field');
@@ -1590,6 +1600,18 @@ export function initUiEventListeners() {
     }
     updateEditor();
     renderPlan();
+  });
+
+  document.getElementById('btn-control-mannequin')?.addEventListener('click', () => {
+    if (selection.selectedItemId) {
+      const item = testMap.getEntity('item', selection.selectedItemId);
+      if (item && item.type === 'mannequin') {
+        clearSelection();
+        updateEditor();
+        renderPlan();
+        toggleFirstPerson(appState, item.id);
+      }
+    }
   });
 }
 

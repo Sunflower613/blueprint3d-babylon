@@ -460,7 +460,7 @@ export function findNearestSeat(mannequinItem, items, getFurnitureDefinition) {
   const allItems = items || [];
   allItems.forEach((other) => {
     const definition = getFurnitureDefinition(other.type);
-    if (!definition || !definition.interaction) return;
+    if (!definition || !definition.interaction || typeof definition.interaction.getInteractionPoints !== 'function') return;
     
     const otherSize = getItemSizeInMetres(other, definition);
     

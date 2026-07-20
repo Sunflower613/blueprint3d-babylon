@@ -18,6 +18,7 @@ export { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera.js';
 export { Color3, Color4 } from '@babylonjs/core/Maths/math.color.js';
 export { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 export { Plane } from '@babylonjs/core/Maths/math.plane.js';
+export { Ray } from '@babylonjs/core/Culling/ray.js';
 export { Material } from '@babylonjs/core/Materials/material.js';
 export { MaterialPluginBase } from '@babylonjs/core/Materials/materialPluginBase.js';
 export { ShaderLanguage } from '@babylonjs/core/Materials/shaderLanguage.js';

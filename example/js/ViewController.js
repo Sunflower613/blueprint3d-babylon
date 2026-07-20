@@ -87,6 +87,11 @@ export function resetCurrentMaterial() {
 }
 
 export function setView(nextView) {
+  // 如果切换至 2D 视图且当前处于第一人称状态，自动触发退出第一人称并返回正常的 2D 编辑模式
+  if (nextView === '2d' && window.firstPersonActive && typeof window.exitFirstPerson === 'function') {
+    window.exitFirstPerson();
+  }
+
   Context.currentView = nextView;
   document.body.classList.remove('cursor-hover-erasable');
   const stage = document.getElementById('stage');

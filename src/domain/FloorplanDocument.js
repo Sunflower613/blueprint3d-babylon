@@ -515,6 +515,7 @@ export class FloorplanDocument {
   }
 
   isFloorVisible(floorId, currentFloorId) {
+    if (window.firstPersonActive) return true;
     return this.getFloorLevel(floorId) <= this.getFloorLevel(currentFloorId || this.floorplan.currentFloorId);
   }
 

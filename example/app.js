@@ -961,6 +961,7 @@ function resetInteractionState() {
   end3DDrag();
 }
 
+window.Context = appState;
 initAppEventBindings(appState);
 
 function getSnapEnabled() {

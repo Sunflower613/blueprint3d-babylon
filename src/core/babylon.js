@@ -20,6 +20,7 @@ export {
   PointerEventTypes,
   PointLight,
   RenderTargetTexture,
+  Ray,
   ReflectionProbe,
   Scene,
   ShaderLanguage,

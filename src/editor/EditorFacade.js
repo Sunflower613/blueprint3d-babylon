@@ -270,7 +270,12 @@ export class EditorFacade {
    */
   getFurnitureDefinition(type) {
     const def = getFurnitureDefinition(type);
-    return def ? JSON.parse(JSON.stringify(def)) : null;
+    if (!def) return null;
+    const copy = { ...def };
+    if (def.interaction) {
+      copy.interaction = { ...def.interaction };
+    }
+    return copy;
   }
 
   /**

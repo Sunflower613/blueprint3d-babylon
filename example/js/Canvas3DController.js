@@ -27,6 +27,7 @@ export function initCanvas3DController(Context) {
   const { selectFence, selectFenceGate, selectOpening, selectRoof, selectRoom, selectStairs } = Context;
 
 function begin3DDrag(pointerInfo) {
+  if (window.firstPersonActive) return;
   const event = pointerInfo.event;
   if (Context.currentView === '3d' && Context.designMode !== 'select') {
     if (event.button === 0 || event.pointerType === 'touch') {

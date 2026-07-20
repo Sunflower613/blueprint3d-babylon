@@ -2,6 +2,7 @@ import { createTextureMaterialDescriptor, BLUEPRINT3D_TEST_FLOORPLAN } from '../
 import { initUiEventListeners } from './EditorUi.js';
 import { handleHotkeys } from './Hotkeys.js';
 import { updateLocalProjectCount } from './FileManager.js';
+import { toggleFirstPerson } from './FirstPersonController.js';
 import {
   copyTarget,
   get2DTargetFromElement,
@@ -255,6 +256,10 @@ function bindFileAndPanelControls(Context) {
 
   bindPanelToggle(Context, 'btn-toggle-right', '#right-panel', '<', '>');
   bindPanelToggle(Context, 'btn-toggle-left', '.left-panel', '>', '<');
+
+  document.getElementById('btn-first-person')?.addEventListener('click', () => {
+    toggleFirstPerson(Context);
+  });
 }
 
 function bindPanelToggle(Context, buttonId, panelSelector, collapsedText, expandedText) {

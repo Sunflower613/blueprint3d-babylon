@@ -370,6 +370,27 @@ export function calculateSnappedPosition({
 }
 
 /**
+ * 统一获取家具物品的物理大小（米），已包含 scale 缩放
+ * @param {Object} item - 家具物品对象
+ * @param {Object} definition - 家具物品的规格定义
+ * @returns {{width: number, depth: number, height: number}} 物理大小
+ */
+function getItemSizeInMetres(item, definition) {
+  if (!definition) return { width: 0, depth: 0, height: 0 };
+  const scale = Number(item.scale || 1);
+  const isMeter = definition.unit === 'm';
+  const defW = isMeter ? definition.defaultSize.width : definition.defaultSize.width / INCHES_PER_UNIT;
+  const defD = isMeter ? definition.defaultSize.depth : definition.defaultSize.depth / INCHES_PER_UNIT;
+  const defH = isMeter ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT;
+  
+  return {
+    width: (item.width !== undefined ? item.width : defW) * scale,
+    depth: (item.depth !== undefined ? item.depth : defD) * scale,
+    height: (item.height !== undefined ? item.height : defH) * scale
+  };
+}
+
+/**
  * 寻找指定物品下方的桌子或储物柜
  * @param {Object} item 目标物品
  * @param {Array<Object>} items 全局物品列表
@@ -409,11 +430,12 @@ export function findTableBelow(item, items, currentFloorId, getFurnitureDefiniti
     const localX = dx * cos - dz * sin;
     const localZ = dx * sin + dz * cos;
     
-    const halfW = ((other.width || otherDef.defaultSize.width) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
-    const halfD = ((other.depth || otherDef.defaultSize.depth) * (other.scale || 1)) / (INCHES_PER_UNIT * 2);
+    const size = getItemSizeInMetres(other, otherDef);
+    const halfW = size.width / 2;
+    const halfD = size.depth / 2;
     
     if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
-      const surface = (other.elevation || 0) + (other.height || otherDef.defaultSize.height) * (other.scale || 1);
+      const surface = (other.elevation || 0) + size.height;
       if (surface > highestSurface) {
         highestSurface = surface;
         highestTable = other;
@@ -437,16 +459,10 @@ export function findNearestSeat(mannequinItem, items, getFurnitureDefinition) {
   
   const allItems = items || [];
   allItems.forEach((other) => {
-    if (other.id === mannequinItem.id) return;
     const definition = getFurnitureDefinition(other.type);
     if (!definition || !definition.interaction) return;
     
-    const otherScale = Number(other.scale || 1);
-    const otherSize = {
-      width: (other.width / INCHES_PER_UNIT) * otherScale,
-      depth: (other.depth / INCHES_PER_UNIT) * otherScale,
-      height: (other.height / INCHES_PER_UNIT) * otherScale
-    };
+    const otherSize = getItemSizeInMetres(other, definition);
     
     const localPoints = definition.interaction.getInteractionPoints(otherSize);
     localPoints.forEach((p, index) => {
@@ -455,7 +471,7 @@ export function findNearestSeat(mannequinItem, items, getFurnitureDefinition) {
       const sin = Math.sin(other.rotation || 0);
       const wx = other.x + p.x * cos + p.z * sin;
       const wz = other.z - p.x * sin + p.z * cos;
-      const wy = (other.elevation || 0) / INCHES_PER_UNIT + p.y;
+      const wy = (other.elevation || 0) + p.y;
       
       const dx = mannequinItem.x - wx;
       const dz = mannequinItem.z - wz;
@@ -807,12 +823,9 @@ export function findBookshelfNearby(item, items, currentFloorId, getFurnitureDef
     const localX = dx * cos - dz * sin;
     const localZ = dx * sin + dz * cos;
     
-    const otherScale = other.scale || 1;
-    const otherW = other.width || otherDef.defaultSize.width;
-    const otherD = other.depth || otherDef.defaultSize.depth;
-    
-    const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
-    const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+    const size = getItemSizeInMetres(other, otherDef);
+    const halfW = size.width / 2;
+    const halfD = size.depth / 2;
     
     // 如果小物体在储物架投影范围内（加上宽容裕量）
     if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
@@ -837,15 +850,15 @@ export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
   const bookshelfDef = getFurnitureDefinition(bookshelf.type);
   if (!bookshelfDef) return null;
   
-  const scale = bookshelf.scale || 1;
-  const bWidth = (bookshelf.width || bookshelfDef.defaultSize.width) / INCHES_PER_UNIT * scale; // 米
+  const bSize = getItemSizeInMetres(bookshelf, bookshelfDef);
+  const bWidth = bSize.width;
   
   // 换算为世界 y 高度（米）列表
   const worldShelvesY = getShelfLayerHeights(bookshelf, getFurnitureDefinition);
   if (worldShelvesY.length === 0) return null;
   
   // 小物体当前的世界 Y 坐标（米）
-  const itemYWorld = (item.elevation || 0) / INCHES_PER_UNIT;
+  const itemYWorld = item.elevation || 0;
   
   // 寻找最接近的搁板表面高度
   let closestShelfY = worldShelvesY[0];
@@ -874,6 +887,7 @@ export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
   let clampedLocalX = localX;
   let clampedLocalZ = 0.0; // 默认锁定在搁板深度正中线（局部Z = 0）
   
+  const scale = bookshelf.scale || 1;
   if (bookshelfDef.type === 'corner_shelf') {
     const maxLocalX = bWidth / 2 - 0.02 * scale;
     clampedLocalX = Math.max(-maxLocalX, Math.min(maxLocalX, localX));
@@ -896,7 +910,7 @@ export function snapToBookshelf(item, bookshelf, getFurnitureDefinition) {
   return {
     x: Number(worldX.toFixed(3)),
     z: Number(worldZ.toFixed(3)),
-    elevation: Number((worldY * INCHES_PER_UNIT).toFixed(2)), // 转换为英寸，保留两位小数
+    elevation: Number(worldY.toFixed(3)),
     rotation: angle
   };
 }
@@ -911,10 +925,11 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
   const bookshelfDef = getFurnitureDefinition(bookshelf.type);
   if (!bookshelfDef) return [];
   
-  const scale = bookshelf.scale || 1;
-  const bHeight = (bookshelf.height || bookshelfDef.defaultSize.height) / INCHES_PER_UNIT * scale; // 米
+  const bSize = getItemSizeInMetres(bookshelf, bookshelfDef);
+  const bHeight = bSize.height;
   
   let localShelvesY = [];
+  const scale = bookshelf.scale || 1;
   if (bookshelfDef.type === 'bookshelf') {
     // 实用书架：底座0.06m，隔板厚度0.03m（表面在其上方0.015m），比例 0.25, 0.50, 0.75，顶面1.0
     localShelvesY = [
@@ -962,7 +977,7 @@ export function getShelfLayerHeights(bookshelf, getFurnitureDefinition) {
     localShelvesY = [0, bHeight];
   }
   
-  const bElevationWorld = (bookshelf.elevation || 0) / INCHES_PER_UNIT; // 米
+  const bElevationWorld = bookshelf.elevation || 0; // 米
   return localShelvesY.map(y => bElevationWorld + y);
 }
 
@@ -983,12 +998,9 @@ export function getItemsCountOnBookshelf(bookshelf, items, getFurnitureDefinitio
   const cz = bookshelf.z;
   const angle = bookshelf.rotation || 0;
   
-  const otherScale = bookshelf.scale || 1;
-  const otherW = bookshelf.width || bookshelfDef.defaultSize.width;
-  const otherD = bookshelf.depth || bookshelfDef.defaultSize.depth;
-  
-  const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
-  const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+  const bSize = getItemSizeInMetres(bookshelf, bookshelfDef);
+  const halfW = bSize.width / 2;
+  const halfD = bSize.depth / 2;
   const snapMargin = 0.0; // 仅统计书架轮廓内部的物件，防止对隔壁贴拢的书架产生干扰
   
   for (const item of allItems) {
@@ -1029,16 +1041,12 @@ export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
   const cz = bookshelf.z;
   const angle = bookshelf.rotation || 0;
   
-  const otherScale = bookshelf.scale || 1;
-  const otherW = bookshelf.width || bookshelfDef.defaultSize.width;
-  const otherD = bookshelf.depth || bookshelfDef.defaultSize.depth;
-  
-  const halfW = (otherW * otherScale) / (INCHES_PER_UNIT * 2);
-  const halfD = (otherD * otherScale) / (INCHES_PER_UNIT * 2);
+  const bSize = getItemSizeInMetres(bookshelf, bookshelfDef);
+  const halfW = bSize.width / 2;
+  const halfD = bSize.depth / 2;
   const snapMargin = 0.0; // 仅联动属于本柜架轮廓内部的物件，决不连带隔壁柜架上的邻近物件
   
-  const bookshelfH = bookshelf.height || bookshelfDef.defaultSize.height;
-  const topElevation = (bookshelf.elevation || 0) + bookshelfH * otherScale;
+  const topElevation = (bookshelf.elevation || 0) + bSize.height;
   const bottomElevation = bookshelf.elevation || 0;
 
   for (const item of allItems) {

@@ -87,22 +87,6 @@ export function ensure3DGridControls() {
     viewer3d.show3DGrid = event.target.checked;
     refresh3DGrid();
   });
-
-  const advLabel = document.createElement('label');
-  advLabel.className = 'check-field';
-  const advInput = document.createElement('input');
-  advInput.id = 'show-advanced-rendering';
-  advInput.type = 'checkbox';
-  advInput.checked = testMap ? testMap.advancedRenderingEnabled : false;
-  const advSpan = document.createElement('span');
-  advSpan.textContent = '开启高级渲染';
-  advLabel.append(advInput, advSpan);
-  label.insertAdjacentElement('afterend', advLabel);
-  advInput.addEventListener('change', (event) => {
-    if (testMap && typeof testMap.setAdvancedRendering === 'function') {
-      testMap.setAdvancedRendering(event.target.checked);
-    }
-  });
 }
 
 export function createStructureField(labelText, inputId, attrs = {}) {
@@ -344,6 +328,10 @@ export function updateEditor() {
       if (skyboxInput) {
         skyboxInput.checked = currentFloor.skyboxEnabled === true;
       }
+      const advInput = document.getElementById('show-advanced-rendering');
+      if (advInput) {
+        advInput.checked = testMap ? testMap.advancedRenderingEnabled : false;
+      }
     }
   }
 
@@ -448,7 +436,9 @@ export function updateEditor() {
     document.getElementById('item-rotation').value = rotationDegrees;
     document.getElementById('item-rotation-range').value = rotationDegrees;
     const def = testMap.getFurnitureDefinition(item.type);
-    const currentScale = item.width && def.defaultSize?.width ? (item.width / def.defaultSize.width) : 1;
+    const isMeterDef = def && def.unit === 'm';
+    const defW = def && def.defaultSize?.width ? (isMeterDef ? def.defaultSize.width : def.defaultSize.width / 39.37) : 0;
+    const currentScale = item.width && defW ? (item.width / defW) : 1;
     document.getElementById('item-scale').value = Number(currentScale.toFixed(2));
     document.getElementById('item-scale-range').value = currentScale;
     document.getElementById('item-locked').checked = !!item.locked;
@@ -500,6 +490,18 @@ export function updateEditor() {
         if (powerLabel) powerLabel.textContent = `开启${def.powerEffect.label || '设备'}`;
       } else {
         lightField.classList.add('hidden');
+      }
+    }
+
+    const waterField = document.getElementById('item-water-field');
+    if (waterField) {
+      const waterInput = document.getElementById('item-water-enabled');
+      const isWaterContainer = ['bathtub', 'sink_kitchen', 'sink_bathroom', 'birdbath', 'garden_fountain'].includes(item.type);
+      if (isWaterContainer) {
+        waterField.classList.remove('hidden');
+        waterInput.checked = item.waterEnabled !== false;
+      } else {
+        waterField.classList.add('hidden');
       }
     }
   }
@@ -1082,7 +1084,7 @@ export function initUiEventListeners() {
         if (worldShelvesY && worldShelvesY.length > 0) {
           const layerIndex = count % worldShelvesY.length;
           const worldY = worldShelvesY[layerIndex];
-          elevation = Number((worldY * INCHES_PER_UNIT).toFixed(2));
+          elevation = Number(worldY.toFixed(3));
         } else {
           elevation = selectedItem.elevation || 0;
         }
@@ -1165,6 +1167,12 @@ export function initUiEventListeners() {
 
   ['floor-name', 'floor-wall-height', 'floor-height', 'floor-hide-roof', 'floor-hide-wall', 'floor-skybox-enabled'].forEach((id) => {
     document.getElementById(id).addEventListener('change', updateSelectedFloor);
+  });
+
+  document.getElementById('show-advanced-rendering')?.addEventListener('change', (event) => {
+    if (testMap && typeof testMap.setAdvancedRendering === 'function') {
+      testMap.setAdvancedRendering(event.target.checked);
+    }
   });
 
   ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-u-slot-width', 'structure-u-void-length', 'structure-curve', 'structure-elevation'].forEach((id) => {
@@ -1319,6 +1327,11 @@ export function initUiEventListeners() {
     } else if (def.powerEffect) {
       entityManager.setItemPower(selection.selectedItemId, event.target.checked);
     }
+  });
+
+  document.getElementById('item-water-enabled').addEventListener('change', (event) => {
+    if (!selection.selectedItemId) return;
+    entityManager.toggleItemWater(selection.selectedItemId);
   });
 
   document.getElementById('opening-position').addEventListener('change', (event) => {

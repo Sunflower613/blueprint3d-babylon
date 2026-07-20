@@ -529,6 +529,7 @@ export class EntityManager {
     this.opts.pushHistory();
     const isWaterOn = item.waterEnabled !== false;
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { waterEnabled: !isWaterOn } });
+    this.opts.updateEditor();
     this.opts.renderPlan();
   }
 

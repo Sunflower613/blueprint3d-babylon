@@ -134,13 +134,19 @@ export const roundTableFurniture = {
   build(registry, item, node, size) {
     const topH = 0.04;
     cylinderComponent(registry, item, roundTableFurniture, 'top', {
-      diameterTop: size.width, diameterBottom: size.width, height: topH, tessellation: 32
-    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+      diameterTop: 1, diameterBottom: 1, height: topH, tessellation: 32
+    }, {
+      position: { x: 0, y: size.height - topH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
+    }, { parent: node });
 
     const legH = size.height - topH;
     cylinderComponent(registry, item, roundTableFurniture, 'base', {
-      diameterTop: size.width * 0.18, diameterBottom: size.width * 0.28, height: legH, tessellation: 24
-    }, { position: { x: 0, y: legH / 2, z: 0 } }, { parent: node });
+      diameterTop: 0.18, diameterBottom: 0.28, height: legH, tessellation: 24
+    }, {
+      position: { x: 0, y: legH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
+    }, { parent: node });
   }
 };
 
@@ -386,46 +392,50 @@ export const bistroTableFurniture = {
     // 2. 顶层玻璃台面
     const topGlassH = 0.03;
     cylinderComponent(registry, item, bistroTableFurniture, 'glass', {
-      diameterTop: size.width,
-      diameterBottom: size.width,
+      diameterTop: 1,
+      diameterBottom: 1,
       height: topGlassH,
       tessellation: 24
     }, {
-      position: { x: 0, y: size.height - topGlassH / 2, z: 0 }
+      position: { x: 0, y: size.height - topGlassH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
     }, { parent: node });
 
     // 3. 顶层金属支撑环（托盘）
     const topSupportH = 0.02;
     cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
-      diameterTop: size.width * 0.94,
-      diameterBottom: size.width * 0.94,
+      diameterTop: 0.94,
+      diameterBottom: 0.94,
       height: topSupportH,
       tessellation: 24
     }, {
-      position: { x: 0, y: size.height - topGlassH - topSupportH / 2, z: 0 }
+      position: { x: 0, y: size.height - topGlassH - topSupportH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
     }, { parent: node });
 
     // 4. 底层玻璃层板
     const shelfGlassH = 0.025;
     const shelfY = size.height * 0.45;
     cylinderComponent(registry, item, bistroTableFurniture, 'glass', {
-      diameterTop: size.width * 0.8,
-      diameterBottom: size.width * 0.8,
+      diameterTop: 0.8,
+      diameterBottom: 0.8,
       height: shelfGlassH,
       tessellation: 24
     }, {
-      position: { x: 0, y: shelfY, z: 0 }
+      position: { x: 0, y: shelfY, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
     }, { parent: node });
 
     // 5. 底层金属支撑环
     const shelfSupportH = 0.02;
     cylinderComponent(registry, item, bistroTableFurniture, 'frame', {
-      diameterTop: size.width * 0.74,
-      diameterBottom: size.width * 0.74,
+      diameterTop: 0.74,
+      diameterBottom: 0.74,
       height: shelfSupportH,
       tessellation: 24
     }, {
-      position: { x: 0, y: shelfY - shelfGlassH / 2 - shelfSupportH / 2, z: 0 }
+      position: { x: 0, y: shelfY - shelfGlassH / 2 - shelfSupportH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
     }, { parent: node });
   }
 };
@@ -520,17 +530,21 @@ export const triangularRoundCoffeeTableFurniture = {
   build(registry, item, node, size) {
     const topH = 0.03;
     cylinderComponent(registry, item, triangularRoundCoffeeTableFurniture, 'top', {
-      diameterTop: size.width, diameterBottom: size.width, height: topH, tessellation: 32
-    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+      diameterTop: 1, diameterBottom: 1, height: topH, tessellation: 32
+    }, {
+      position: { x: 0, y: size.height - topH / 2, z: 0 },
+      scaling: { x: size.width, y: 1, z: size.depth }
+    }, { parent: node });
 
     const legH = size.height - topH;
     const legD = 0.024;
-    const r = (size.width / 2) * 0.6;
+    const rx = (size.width / 2) * 0.6;
+    const rz = (size.depth / 2) * 0.6;
     
     const angles = [Math.PI / 2, (7 * Math.PI) / 6, (11 * Math.PI) / 6];
     angles.forEach((angle) => {
-      const x = r * Math.cos(angle);
-      const z = r * Math.sin(angle);
+      const x = rx * Math.cos(angle);
+      const z = rz * Math.sin(angle);
       cylinderComponent(registry, item, triangularRoundCoffeeTableFurniture, 'legs', {
         diameterTop: legD, diameterBottom: legD, height: legH, tessellation: 12
       }, { position: { x, y: legH / 2, z } }, { parent: node });

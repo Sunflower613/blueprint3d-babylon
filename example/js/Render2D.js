@@ -91,7 +91,8 @@ export function renderPlan() {
   ctx.currentRooms().forEach((room) => renderRoomInteraction(room));
   ctx.currentOpenings().forEach((opening) => renderOpening(opening));
 
-  ctx.currentRoofs().forEach((roof) => renderRoof(roof));
+  // 2D 模式下不渲染屋顶，避免遮挡编辑房间内的其他物品
+  // ctx.currentRoofs().forEach((roof) => renderRoof(roof));
   ctx.currentStairs().forEach((stairs) => renderStairs(stairs));
   ctx.currentFences().forEach((fence) => renderFence(fence));
   ctx.testMap.getCurrentFloorEntities('fenceGate').forEach(gate => renderFenceGate(gate));

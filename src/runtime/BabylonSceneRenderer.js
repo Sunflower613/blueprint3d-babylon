@@ -725,18 +725,44 @@ export class BabylonSceneRenderer {
     }
   }
 
-  build() {
+  build(options = {}) {
     if (!this.renderingEnabled || this._disposed) {
       return;
     }
-    this.clearBuiltMeshes();
-    this.buildFloors();
-    this.buildWalls();
-    this.buildOpenings();
-    this.buildRoofs();
-    this.buildStairs();
-    this.buildFences();
-    this.buildFenceGates();
+    const rebuildType = options.rebuildType || 'all';
+
+    if (rebuildType === 'all') {
+      this.clearBuiltMeshes();
+      this.buildFloors();
+      this.buildWalls();
+      this.buildOpenings();
+      this.buildRoofs();
+      this.buildStairs();
+      this.buildFences();
+      this.buildFenceGates();
+    } else if (rebuildType === 'items') {
+      this.itemNodes.forEach((node) => node.dispose(false, true));
+      this.itemNodes.clear();
+
+      this.shadowCasters = this.shadowCasters.filter((mesh) => {
+        let curr = mesh;
+        while (curr) {
+          if (curr.metadata?.blueprintItemId) return false;
+          curr = curr.parent;
+        }
+        return true;
+      });
+
+      this.colliders = this.colliders.filter((mesh) => {
+        let curr = mesh;
+        while (curr) {
+          if (curr.metadata?.blueprintItemId) return false;
+          curr = curr.parent;
+        }
+        return true;
+      });
+    }
+
     this.floorplan.items.filter((item) => this.document.isFloorVisible(item.floorId)).forEach((item) => this.buildItem(item));
 
     void this.executeWhenReady(() => {
@@ -1042,6 +1068,13 @@ export class BabylonSceneRenderer {
 
     const wallsToBuild = wallIds ? visibleWalls.filter((wall) => wallIds.has(wall.id)) : visibleWalls;
     wallsToBuild.forEach((wall) => {
+      // 销毁并移除已经存在的旧墙体节点，防止网格局部重建时重叠共存
+      const oldGroup = this.wallNodes.get(wall.id);
+      if (oldGroup) {
+        oldGroup.dispose(false, true);
+        this.wallNodes.delete(wall.id);
+      }
+
       const [x1, z1] = wall.from;
       const [x2, z2] = wall.to;
       const dx = x2 - x1;
@@ -1136,6 +1169,30 @@ export class BabylonSceneRenderer {
       });
 
       intervals.sort((a, b) => a.left - b.left);
+
+      // 合并重叠或包含的开洞区间，避免拼图算法生成重叠或错位的墙体块
+      const mergedIntervals = [];
+      intervals.forEach((inter) => {
+        if (mergedIntervals.length === 0) {
+          mergedIntervals.push({ ...inter });
+        } else {
+          const last = mergedIntervals[mergedIntervals.length - 1];
+          if (inter.left < last.right - 0.001) {
+            const newLeft = Number(Math.min(last.left, inter.left).toFixed(3));
+            const newRight = Number(Math.max(last.right, inter.right).toFixed(3));
+            const minSill = Number(Math.min(last.sillHeight, inter.sillHeight).toFixed(3));
+            const maxTop = Math.max(last.sillHeight + last.height, inter.sillHeight + inter.height);
+            last.left = newLeft;
+            last.right = newRight;
+            last.sillHeight = minSill;
+            last.height = Number((maxTop - minSill).toFixed(3));
+          } else {
+            mergedIntervals.push({ ...inter });
+          }
+        }
+      });
+      intervals.length = 0;
+      intervals.push(...mergedIntervals);
 
       const subBoxes = [];
       let curX = X_min;

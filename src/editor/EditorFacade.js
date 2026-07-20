@@ -531,7 +531,8 @@ export class EditorFacade {
 
     // 默认触发 3D 渲染更新
     if (args.rebuild !== false && this._renderer && typeof this._renderer.build === 'function') {
-      this._renderer.build();
+      const isItemCommand = ['addItem', 'updateItem', 'deleteItem'].includes(name);
+      this._renderer.build({ rebuildType: isItemCommand ? 'items' : 'all' });
     }
 
     // 深拷贝返回快照，确保不直接暴露可变的数据层引用，而如果是基础类型/void直接返回
@@ -848,7 +849,8 @@ export class EditorFacade {
           const finished = await this._selectionController.finishFenceGateDragPreview(id);
           if (!finished) this._renderer.build();
         } else if (this._renderer && typeof this._renderer.build === 'function') {
-          this._renderer.build();
+          const rebuildType = normType === 'items' ? 'items' : 'all';
+          this._renderer.build({ rebuildType });
         }
         return true;
       } finally {
@@ -877,7 +879,8 @@ export class EditorFacade {
           const finished = await this._selectionController.finishFenceGateDragPreview(id);
           if (!finished) this._renderer.build();
         } else if (this._renderer && typeof this._renderer.build === 'function') {
-          this._renderer.build();
+          const rebuildType = normType === 'items' ? 'items' : 'all';
+          this._renderer.build({ rebuildType });
         }
         return true;
       } finally {

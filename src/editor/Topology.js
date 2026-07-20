@@ -43,14 +43,14 @@ export function snapToGridSegmentCenter(point, snapEnabled, snapSize) {
   const x = point.x;
   const z = point.z;
 
-  // 候选 1：对齐到横向线段中点 (x 落在 (k+0.5)*S，z 落在 j*S)
-  const x1 = (Math.round(x / S - 0.5) + 0.5) * S;
+  // 候选 1：对齐到横向网格的半格位置 (z 落在 j*S，x 落在以 0.5*S 为步长的位置，可对齐中点和格子交点)
+  const x1 = Math.round(x / (0.5 * S)) * (0.5 * S);
   const z1 = Math.round(z / S) * S;
   const d1 = (x - x1) * (x - x1) + (z - z1) * (z - z1);
 
-  // 候选 2：对齐到纵向线段中点 (x 落在 k*S，z 落在 (j+0.5)*S)
+  // 候选 2：对齐到纵向网格的半格位置 (x 落在 k*S，z 落在以 0.5*S 为步长的位置，可对齐中点和格子交点)
   const x2 = Math.round(x / S) * S;
-  const z2 = (Math.round(z / S - 0.5) + 0.5) * S;
+  const z2 = Math.round(z / (0.5 * S)) * (0.5 * S);
   const d2 = (x - x2) * (x - x2) + (z - z2) * (z - z2);
 
   if (d1 < d2) {

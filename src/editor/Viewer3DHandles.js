@@ -459,8 +459,8 @@ export class Viewer3DHandles {
         || !!this.findRoomIdFromNode(mesh)
         || !!this.findRoofIdFromNode(mesh)
         || !!this.findStairsIdFromNode(mesh)
-        || !!this.findFenceIdFromNode(mesh)
         || !!this.findFenceGateIdFromNode(mesh)
+        || !!this.findFenceIdFromNode(mesh)
       );
     });
     const mesh = pick?.pickedMesh;
@@ -475,10 +475,10 @@ export class Viewer3DHandles {
     if (roofId) return { type: 'roof', id: roofId, pick };
     const stairsId = this.findStairsIdFromNode(mesh);
     if (stairsId) return { type: 'stairs', id: stairsId, pick };
-    const fenceId = this.findFenceIdFromNode(mesh);
-    if (fenceId) return { type: 'fence', id: fenceId, pick };
     const fenceGateId = this.findFenceGateIdFromNode(mesh);
     if (fenceGateId) return { type: 'fence_gate', id: fenceGateId, pick };
+    const fenceId = this.findFenceIdFromNode(mesh);
+    if (fenceId) return { type: 'fence', id: fenceId, pick };
     const roomId = this.findRoomIdFromNode(mesh);
     if (roomId) return { type: 'room', id: roomId, pick };
     return null;

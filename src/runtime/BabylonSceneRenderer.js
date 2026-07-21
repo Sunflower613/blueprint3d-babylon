@@ -11,6 +11,7 @@ import { getRoofGeometryData } from '../geometry/roofGeometry.js';
 import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
 import { buildFenceGateGeometry } from '../geometry/fenceGateGeometry.js';
+import { shouldIncludeShadowCaster } from './shadowCasterFilter.js';
 import {
   normalizeRoomShape,
   getRoomVertices,
@@ -678,21 +679,21 @@ export class BabylonSceneRenderer {
     if (this.materialCache) {
       this.materialCache.forEach((mat) => {
         if (mat && !mat.isDisposed) {
-          mat.dispose(true, true);
+          mat.dispose(false, false);
         }
       });
       this.materialCache.clear();
     }
     this.openingDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.fenceGateDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
-    this.itemNodes.forEach((node) => node.dispose(false, true));
-    this.wallNodes.forEach((node) => node.dispose(false, true));
-    this.floorNodes.forEach((node) => node.dispose(false, true));
-    this.openingNodes.forEach((node) => node.dispose(false, true));
-    this.roofNodes.forEach((node) => node.dispose(false, true));
-    this.stairNodes.forEach((node) => node.dispose(false, true));
-    this.fenceNodes.forEach((node) => node.dispose(false, true));
-    this.fenceGateNodes.forEach((node) => node.dispose(false, true));
+    this.itemNodes.forEach((node) => node.dispose(false, false));
+    this.wallNodes.forEach((node) => node.dispose(false, false));
+    this.floorNodes.forEach((node) => node.dispose(false, false));
+    this.openingNodes.forEach((node) => node.dispose(false, false));
+    this.roofNodes.forEach((node) => node.dispose(false, false));
+    this.stairNodes.forEach((node) => node.dispose(false, false));
+    this.fenceNodes.forEach((node) => node.dispose(false, false));
+    this.fenceGateNodes.forEach((node) => node.dispose(false, false));
     this.itemNodes.clear();
     this.wallNodes.clear();
     this.floorNodes.clear();
@@ -705,7 +706,7 @@ export class BabylonSceneRenderer {
     this.fenceGateDragPreviews.clear();
     this.shadowCasters.length = 0;
     this.colliders.length = 0;
-    this.root.getChildren().forEach((child) => child.dispose(false, true));
+    this.root.getChildren().forEach((child) => child.dispose(false, false));
   }
 
   dispose() {
@@ -714,13 +715,127 @@ export class BabylonSceneRenderer {
     this.cancelReadyWork();
     this.clearBuiltMeshes();
     if (this.root) {
-      this.root.dispose(false, true);
+      this.root.dispose(false, false);
     }
     if (this.materials) {
       Object.values(this.materials).forEach((mat) => {
         if (mat && !mat.isDisposed) {
-          mat.dispose(true, true);
+          mat.dispose(false, false);
         }
+      });
+    }
+  }
+
+  deleteSingleItemNode(itemId) {
+    const node = this.itemNodes.get(itemId);
+    if (node) {
+      node.dispose(false, false);
+      this.itemNodes.delete(itemId);
+    }
+    this.shadowCasters = this.shadowCasters.filter((mesh) => {
+      let curr = mesh;
+      while (curr) {
+        if (curr.metadata?.blueprintItemId === itemId) return false;
+        curr = curr.parent;
+      }
+      return true;
+    });
+    this.colliders = this.colliders.filter((mesh) => {
+      let curr = mesh;
+      while (curr) {
+        if (curr.metadata?.blueprintItemId === itemId) return false;
+        curr = curr.parent;
+      }
+      return true;
+    });
+  }
+
+  updateWallSurfaceMaterial(wallId, patch) {
+    const wallNode = this.wallNodes.get(wallId);
+    const wall = this.floorplan.walls.find((w) => w.id === wallId);
+    if (!wallNode || !wall) return;
+
+    if (patch) {
+      Object.assign(wall, patch);
+    }
+
+    const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
+    const materialCache = new Map();
+    const getWallFaceMaterial = (side, component) => {
+      const cacheKey = `${side}:${component}`;
+      if (materialCache.has(cacheKey)) return materialCache.get(cacheKey);
+      const { descriptor, color } = resolveWallSurfaceDescriptor(wall, side, component);
+      const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}_${Date.now()}`, descriptor, {
+        ...wallMaterialOptions,
+        fallbackColor: color || wall.color || DEFAULT_WALL_COLOR
+      });
+      materialCache.set(cacheKey, material);
+      return material;
+    };
+
+    const meshes = wallNode.getChildMeshes ? wallNode.getChildMeshes() : [];
+    meshes.forEach((mesh) => {
+      if (mesh.metadata && mesh.metadata.blueprintWallId === wallId) {
+        const side = mesh.metadata.side || 'front';
+        const component = mesh.metadata.wallComponent || 'wall';
+        const newMat = getWallFaceMaterial(side, component);
+        const oldMat = mesh.material;
+        mesh.material = newMat;
+        if (oldMat && oldMat !== newMat && !oldMat.isDisposed) {
+          oldMat.dispose(false, false);
+        }
+      }
+    });
+  }
+
+  syncActiveShadowGenerator() {
+    if (!this.activeShadowGenerator) return;
+    const shadowMap = this.activeShadowGenerator.getShadowMap?.();
+    if (!shadowMap) return;
+    shadowMap.renderList = [];
+    const floorId = this.activeShadowFloorId || this.floorplan.currentFloorId;
+    for (const mesh of this.shadowCasters || []) {
+      if (mesh && !mesh.isDisposed() && shouldIncludeShadowCaster(mesh, floorId)) {
+        this.activeShadowGenerator.addShadowCaster(mesh);
+      }
+    }
+  }
+
+  addSingleItemShadowCaster(itemId) {
+    if (!this.activeShadowGenerator) return;
+    const node = this.itemNodes.get(itemId);
+    if (!node || node.isDisposed()) return;
+    const floorId = this.activeShadowFloorId || this.floorplan.currentFloorId;
+    const meshes = node.getChildMeshes ? node.getChildMeshes() : [node];
+    meshes.forEach((mesh) => {
+      if (mesh && !mesh.isDisposed() && shouldIncludeShadowCaster(mesh, floorId)) {
+        this.activeShadowGenerator.addShadowCaster(mesh);
+      }
+    });
+  }
+
+  removeSingleItemShadowCaster(itemId) {
+    if (!this.activeShadowGenerator) return;
+    const shadowMap = this.activeShadowGenerator.getShadowMap?.();
+    if (!shadowMap || !shadowMap.renderList) return;
+    if (typeof this.activeShadowGenerator.removeShadowCaster === 'function') {
+      const targetMeshes = shadowMap.renderList.filter((mesh) => {
+        let curr = mesh;
+        while (curr) {
+          if (curr.metadata?.blueprintItemId === itemId) return true;
+          curr = curr.parent;
+        }
+        return false;
+      });
+      targetMeshes.forEach((m) => this.activeShadowGenerator.removeShadowCaster(m));
+    } else {
+      shadowMap.renderList = shadowMap.renderList.filter((mesh) => {
+        let curr = mesh;
+        while (curr) {
+          if (curr.metadata?.blueprintItemId === itemId) return false;
+          curr = curr.parent;
+        }
+        return true;
       });
     }
   }
@@ -730,6 +845,39 @@ export class BabylonSceneRenderer {
       return;
     }
     const rebuildType = options.rebuildType || 'all';
+    const targetItemId = options.itemId || options.targetItemId;
+
+    if (rebuildType === 'item_add' && targetItemId) {
+      const item = this.floorplan.items.find((i) => i.id === targetItemId);
+      if (item && this.document.isFloorVisible(item.floorId)) {
+        this.deleteSingleItemNode(targetItemId);
+        this.buildItem(item);
+        this.addSingleItemShadowCaster(targetItemId);
+      }
+      return;
+    }
+
+    if (rebuildType === 'item_delete' && targetItemId) {
+      this.removeSingleItemShadowCaster(targetItemId);
+      this.deleteSingleItemNode(targetItemId);
+      return;
+    }
+
+    if (rebuildType === 'item_update' && targetItemId) {
+      const item = this.floorplan.items.find((i) => i.id === targetItemId);
+      if (item && this.document.isFloorVisible(item.floorId)) {
+        this.removeSingleItemShadowCaster(targetItemId);
+        this.deleteSingleItemNode(targetItemId);
+        this.buildItem(item);
+        this.addSingleItemShadowCaster(targetItemId);
+      }
+      return;
+    }
+
+    if (rebuildType === 'wall_material' && options.wallId) {
+      this.updateWallSurfaceMaterial(options.wallId, options.patch);
+      return;
+    }
 
     if (rebuildType === 'all') {
       this.clearBuiltMeshes();
@@ -741,7 +889,7 @@ export class BabylonSceneRenderer {
       this.buildFences();
       this.buildFenceGates();
     } else if (rebuildType === 'items') {
-      this.itemNodes.forEach((node) => node.dispose(false, true));
+      this.itemNodes.forEach((node) => node.dispose(false, false));
       this.itemNodes.clear();
 
       this.shadowCasters = this.shadowCasters.filter((mesh) => {
@@ -777,6 +925,7 @@ export class BabylonSceneRenderer {
           }
         }
       });
+      this.syncActiveShadowGenerator();
     });
   }
 
@@ -1469,7 +1618,13 @@ export class BabylonSceneRenderer {
         const floorY = this.document.getFloorElevation(opening.floorId || wall.floorId);
         const openingOffset = this.document.getOpeningElevationOffset(opening);
 
+        const oldNode = this.openingNodes.get(opening.id);
+        if (oldNode && !oldNode.isDisposed()) {
+          oldNode.dispose(false, false);
+        }
+
         const openingGroup = new BABYLON.TransformNode(`opening_group_${opening.id}`, this.scene);
+        openingGroup.parent = this.root;
         openingGroup.position.set(pos.x, floorY + localY + openingOffset, pos.z);
         openingGroup.rotation.y = angle;
         openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, shape: opening.shape, wallId: opening.wallId, floorId: opening.floorId, locked: !!opening.locked };
@@ -1720,6 +1875,13 @@ export class BabylonSceneRenderer {
           );
         });
 
+        group.getChildMeshes().forEach(m => {
+          m.metadata ||= {};
+          m.metadata.blueprintFenceId = fence.id;
+          m.metadata.floorId = fence.floorId;
+          m.metadata.locked = !!fence.locked;
+        });
+
         this.fenceNodes.set(fence.id, group);
       });
   }
@@ -1730,8 +1892,14 @@ export class BabylonSceneRenderer {
     this.floorplan.fenceGates
       .filter((gate) => this.document.isFloorVisible(gate.floorId) && (!gateIds || gateIds.has(gate.id)))
       .forEach((gate) => {
+        const oldNode = this.fenceGateNodes.get(gate.id);
+        if (oldNode && !oldNode.isDisposed()) {
+          oldNode.dispose(false, false);
+        }
+
         const floorY = this.document.getFloorElevation(gate.floorId);
         const group = new BABYLON.TransformNode(`gate_${gate.id}`, this.scene);
+        group.parent = this.root;
 
         let [x1, z1] = gate.from || [0, 0];
         let [x2, z2] = gate.to || [1, 0];
@@ -1790,6 +1958,13 @@ export class BabylonSceneRenderer {
         }
 
         buildFenceGateGeometry(this, group, gate, material, renderLength, gate.height || 1.1, gate.thickness || 0.08);
+
+        group.getChildMeshes().forEach(m => {
+          m.metadata ||= {};
+          m.metadata.blueprintFenceGateId = gate.id;
+          m.metadata.floorId = gate.floorId;
+          m.metadata.locked = !!gate.locked;
+        });
 
         this.fenceGateNodes.set(gate.id, group);
       });

@@ -299,18 +299,13 @@ export function toggleTarget(target) {
     const opening = ctx.testMap.getEntity('opening', target.id);
     if (!opening) return;
     ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { isOpen: !opening.isOpen } });
-    if (selection.selectedOpeningId === target.id) {
-      ctx.updateEditor();
-    }
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;
     ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isOpen: !gate.isOpen } });
-    if (selection.selectedFenceGateId === target.id) {
-      ctx.updateEditor();
-    }
   }
   ctx.refreshShadows();
+  ctx.updateEditor();
   ctx.renderPlan();
 }
 

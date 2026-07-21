@@ -729,8 +729,8 @@ export function extractMaterial(target, precise = true) {
           pickedMaterial = gate.panelMaterial || gate.material;
           pickedColor = gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'panel');
         } else {
-          pickedMaterial = gate.material;
-          pickedColor = gate.color || getFenceDefaultColor(gate.subtype, 'color');
+          pickedMaterial = gate.frameMaterial || gate.panelMaterial || gate.material;
+          pickedColor = gate.frameColor || gate.panelColor || gate.color || getFenceDefaultColor(gate.subtype, 'frame');
         }
       }
     } else if (target.type === 'opening') {

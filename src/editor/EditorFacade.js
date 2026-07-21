@@ -536,8 +536,28 @@ export class EditorFacade {
 
     // 默认触发 3D 渲染更新
     if (args.rebuild !== false && this._renderer && typeof this._renderer.build === 'function') {
-      const isItemCommand = ['addItem', 'updateItem', 'deleteItem'].includes(name);
-      this._renderer.build({ rebuildType: isItemCommand ? 'items' : 'all' });
+      if (name === 'addItem') {
+        const itemId = result?.id || args.itemId || args.id;
+        this._renderer.build({ rebuildType: 'item_add', targetItemId: itemId });
+      } else if (name === 'deleteItem') {
+        const itemId = args.itemId || args.id;
+        this._renderer.build({ rebuildType: 'item_delete', targetItemId: itemId });
+      } else if (name === 'updateItem' || name === 'updateItemComponentColor' || name === 'updateItemComponentMaterial') {
+        const itemId = args.itemId || args.id;
+        this._renderer.build({ rebuildType: 'item_update', targetItemId: itemId });
+      } else if (name === 'updateWall') {
+        const patchKeys = Object.keys(args.patch || {});
+        const isPureMaterialPatch = patchKeys.length > 0 && patchKeys.every((k) =>
+          ['material', 'color', 'front', 'back', 'skirting', 'dado', 'crown'].includes(k)
+        );
+        if (isPureMaterialPatch) {
+          this._renderer.build({ rebuildType: 'wall_material', wallId: args.wallId, patch: args.patch });
+        } else {
+          this._renderer.build({ rebuildType: 'all' });
+        }
+      } else {
+        this._renderer.build({ rebuildType: 'all' });
+      }
     }
 
     // 深拷贝返回快照，确保不直接暴露可变的数据层引用，而如果是基础类型/void直接返回
@@ -609,6 +629,10 @@ export class EditorFacade {
   }
 
   populateShadowGenerator(shadowGenerator, floorId = this.getCurrentFloorId()) {
+    if (this._renderer) {
+      this._renderer.activeShadowGenerator = shadowGenerator;
+      this._renderer.activeShadowFloorId = floorId;
+    }
     const shadowMap = shadowGenerator?.getShadowMap?.();
     if (!shadowMap) return false;
     shadowMap.renderList = [];

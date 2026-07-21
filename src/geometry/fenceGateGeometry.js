@@ -499,8 +499,17 @@ export function buildFenceGateGeometry(registry, group, gate, material, length, 
     });
   }
 
-  // 保证大门所有构件可点击（供 3D 粉刷精确点中）
+  // 保证大门所有构件可点击（供 3D 粉刷精确点中），并标注组件 ID ('frame' | 'panel')
   group.getChildMeshes().forEach(mesh => {
     mesh.isPickable = true;
+    mesh.metadata ||= {};
+    if (!mesh.metadata.blueprintFenceComponentId) {
+      const name = mesh.name ? mesh.name.toLowerCase() : '';
+      if (mesh.material === frameMat || name.includes('post') || name.includes('pillar') || name.includes('frame') || name.includes('clip') || name.includes('handle')) {
+        mesh.metadata.blueprintFenceComponentId = 'frame';
+      } else {
+        mesh.metadata.blueprintFenceComponentId = 'panel';
+      }
+    }
   });
 }

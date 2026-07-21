@@ -1,15 +1,28 @@
 import { pointInRoom, Ray } from '../../src/index.js';
 
+let cachedGroundY = 0;
+let fpRayOrigin = null;
+let fpRayDirection = null;
+
 // 使用向下射线探测贴地高度以支持上下楼梯与抬高地板
-function getGroundYByRaycast(Context, x, z, currentY, isGrounded = true) {
+function getGroundYByRaycast(Context, x, z, currentY, isGrounded = true, isMoving = true) {
+  // 当处于地面且未位移时，无需每帧进行昂贵的全场景 Raycast
+  if (isGrounded && !isMoving) {
+    return cachedGroundY;
+  }
+
   const scene = Context.scene;
   const BABYLON = Context.BABYLON || window.BABYLON;
+
+  if (!fpRayOrigin) {
+    fpRayOrigin = new BABYLON.Vector3(0, 0, 0);
+    fpRayDirection = new BABYLON.Vector3(0, -1, 0);
+  }
   
   // 处于空中下坠时探测深度拉长到 15.0 米，保证半空跨度中也能打中一楼地面/泳池
   const rayLength = isGrounded ? 2.5 : 15.0;
-  const origin = new BABYLON.Vector3(x, currentY + 0.5, z);
-  const direction = new BABYLON.Vector3(0, -1, 0);
-  const ray = new Ray(origin, direction, rayLength);
+  fpRayOrigin.set(x, currentY + 0.5, z);
+  const ray = new Ray(fpRayOrigin, fpRayDirection, rayLength);
 
   const hit = scene.pickWithRay(ray, (mesh) => {
     if (puppetItemId && (mesh.name.includes(puppetItemId) || mesh.id.includes(puppetItemId))) return false;
@@ -18,11 +31,13 @@ function getGroundYByRaycast(Context, x, z, currentY, isGrounded = true) {
   });
 
   if (hit && hit.hit && hit.pickedPoint) {
-    return hit.pickedPoint.y;
+    cachedGroundY = hit.pickedPoint.y;
+    return cachedGroundY;
   }
   
   // 降级回退
-  return getPuppetFloorY(Context, x, z);
+  cachedGroundY = getPuppetFloorY(Context, x, z);
+  return cachedGroundY;
 }
 
 // 根据木偶的 Y 轴高度来推断其目前位于的楼层 ID
@@ -182,6 +197,20 @@ function injectStyles() {
       box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
     }
 
+    .fp-action-btn.detected {
+      background: rgba(0, 229, 255, 0.3);
+      border-color: rgba(0, 229, 255, 0.7);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+      color: #ffffff;
+    }
+
+    .fp-action-btn.locked {
+      background: rgba(255, 59, 48, 0.35) !important;
+      border-color: rgba(255, 59, 48, 0.85) !important;
+      box-shadow: 0 0 16px rgba(255, 59, 48, 0.5) !important;
+      color: #ffffff !important;
+    }
+
     .fp-action-btn svg {
       width: 24px;
       height: 24px;
@@ -329,7 +358,63 @@ function getPuppetFloorY(Context, x, z) {
   return floorElevation;
 }
 
-// 辅助方法：沿着祖先节点向上递归查找可交互实体（家具、门窗、栅栏门）并识别出其 ID 和类别
+// 辅助方法：获取门窗更精细的中文名称（如：方形门、圆拱窗、圆形窗等）
+function getOpeningDisplayName(opening) {
+  if (!opening) return '门窗';
+  if (opening.name && opening.name !== '门' && opening.name !== '窗' && opening.name !== '门窗') {
+    return opening.name;
+  }
+  const isDoor = opening.type === 'door';
+  const typeName = isDoor ? '门' : '窗户';
+  const shapeMap = {
+    'square': '方形',
+    'round-arch': '圆拱',
+    'pointed-arch': '尖拱',
+    'circle': '圆形',
+    'semicircle': '半圆',
+    'diamond': '菱形',
+    'quarter-sector': '扇形',
+    'right-triangle': '三角'
+  };
+  const shapeName = shapeMap[opening.shape] || '方形';
+  return `${shapeName}${typeName}`;
+}
+
+// 辅助方法：获取栅栏精细的中文名称（如：木栅栏、铁艺栅栏、玻璃护栏等）
+function getFenceDisplayName(fence) {
+  if (!fence) return '栅栏';
+  if (fence.name && fence.name !== '栅栏') return fence.name;
+  const subtypeMap = {
+    'picket_wood': '木栅栏',
+    'iron_ornamental': '铁艺栅栏',
+    'wire_mesh': '金属网栅栏',
+    'stone_masonry': '石砌矮墙',
+    'bamboo': '竹篱笆',
+    'glass_rail': '玻璃护栏',
+    'concrete': '混凝土矮墙',
+    'rope': '麻绳护栏'
+  };
+  return subtypeMap[fence.subtype] || '栅栏';
+}
+
+// 辅助方法：获取栅栏门精细的中文名称（如：木栅栏门、铁艺栅栏门等）
+function getFenceGateDisplayName(gate) {
+  if (!gate) return '栅栏门';
+  if (gate.name && gate.name !== '栅栏门') return gate.name;
+  const subtypeMap = {
+    'picket_wood': '木栅栏门',
+    'iron_ornamental': '铁艺栅栏门',
+    'wire_mesh': '金属网栅栏门',
+    'stone_masonry': '石砌栅栏门',
+    'bamboo': '竹栅栏门',
+    'glass_rail': '玻璃栅栏门',
+    'concrete': '混凝土栅栏门',
+    'rope': '麻绳栅栏门'
+  };
+  return subtypeMap[gate.subtype] || '栅栏门';
+}
+
+// 辅助方法：沿着祖先节点向上递归查找可交互实体（家具、门窗、栅栏门、栅栏）并识别出其 ID 和类别
 function findInteractionParent(mesh, puppetItemId) {
   let curr = mesh;
   while (curr) {
@@ -337,29 +422,167 @@ function findInteractionParent(mesh, puppetItemId) {
     if (puppetItemId && (curr.name.includes(puppetItemId) || curr.id?.includes(puppetItemId))) {
       return null;
     }
+
+    // 1. 优先从 metadata 提取
     if (curr.metadata?.blueprintItemId || curr.metadata?.itemId) {
       return { id: curr.metadata.blueprintItemId || curr.metadata.itemId, type: 'item', node: curr };
     }
-    if (curr.metadata?.openingId) {
-      return { id: curr.metadata.openingId, type: 'opening', node: curr };
+    if (curr.metadata?.blueprintOpeningId || curr.metadata?.openingId) {
+      return { id: curr.metadata.blueprintOpeningId || curr.metadata.openingId, type: 'opening', node: curr };
     }
-    if (curr.metadata?.gateId) {
-      return { id: curr.metadata.gateId, type: 'fence_gate', node: curr };
+    if (curr.metadata?.blueprintFenceGateId || curr.metadata?.blueprintGateId || curr.metadata?.gateId) {
+      return { id: curr.metadata.blueprintFenceGateId || curr.metadata.blueprintGateId || curr.metadata.gateId, type: 'fence_gate', node: curr };
     }
+    if (curr.metadata?.blueprintFenceId || curr.metadata?.fenceId) {
+      return { id: curr.metadata.blueprintFenceId || curr.metadata.fenceId, type: 'fence', node: curr };
+    }
+
+    // 2. 从 Name 中以正则表达式精准匹配实体 ID
     if (curr.name) {
       if (curr.name.startsWith('item_')) {
         return { id: curr.name.replace('item_', ''), type: 'item', node: curr };
       }
+      if (curr.name.startsWith('opening_group_')) {
+        return { id: curr.name.replace('opening_group_', ''), type: 'opening', node: curr };
+      }
       if (curr.name.startsWith('opening_')) {
         return { id: curr.name.replace('opening_', ''), type: 'opening', node: curr };
       }
-      if (curr.name.startsWith('fence_gate_')) {
-        return { id: curr.name.replace('fence_gate_', ''), type: 'fence_gate', node: curr };
+
+      // 栅栏门（Fence Gate）: 优先判定。提取以 gate- 或 gate_ 开头的真正 UUID
+      if (curr.name.includes('gate')) {
+        const match = curr.name.match(/(gate[-_][a-zA-Z0-9]+)/);
+        if (match) {
+          return { id: match[1], type: 'fence_gate', node: curr };
+        }
+      }
+
+      // 栅栏（Fence）: 提取以 fence- 或 fence_ 开头的 UUID
+      if (curr.name.includes('fence')) {
+        const match = curr.name.match(/(fence[-_][a-zA-Z0-9]+)/);
+        if (match) {
+          return { id: match[1], type: 'fence', node: curr };
+        }
       }
     }
     curr = curr.parent;
   }
   return null;
+}
+
+// 判断家具是否具备实际物理/功能交互（坐/躺点位、家电/灯具开关、水槽放水、马桶开盖、窗帘拉合等）
+function isItemInteractive(item, def) {
+  if (!item || !def) return false;
+  const hasInteraction = def.interaction && typeof def.interaction.getInteractionPoints === 'function';
+  const isLighting = def.category === 'lighting' || def.lightSource;
+  const isAppliance = def.category === 'appliances';
+  const isLightingEntity = !!item.lightId;
+  const isSwitchable = !!(isLighting || isAppliance || isLightingEntity || def.powerEffect || def.isSwitchable);
+  const isWaterContainer = item.type.includes('sink') || item.type.includes('bathtub') || item.type.includes('washbasin') || item.type.includes('faucet');
+  const isToilet = item.type.includes('toilet');
+  const isCurtain = item.type.toLowerCase().includes('curtain') || item.type.toLowerCase().includes('blind') || item.type.toLowerCase().includes('noren') || item.type.toLowerCase().includes('valance');
+
+  return hasInteraction || isSwitchable || isWaterContainer || isToilet || isCurtain;
+}
+
+// 实时检测射线视向 2.5m 内的可交互目标，将交互按钮文案修改为物体名称（如椅子、电视机、水槽、门窗等）
+function updateInteractionTargetButton(Context) {
+  const btnInteract = document.getElementById('fp-btn-interact');
+  if (!btnInteract) return;
+  const btnSpan = btnInteract.querySelector('span');
+  if (!btnSpan) return;
+
+  if (currentPose !== 'stand') {
+    btnSpan.textContent = '起立';
+    btnInteract.classList.remove('locked');
+    btnInteract.classList.add('detected');
+    return;
+  }
+
+  const scene = Context.scene;
+  const canvas = Context.canvas;
+  const BABYLON = Context.BABYLON || window.BABYLON;
+  if (!scene || !canvas || !BABYLON) return;
+
+  const ray = scene.createPickingRay(
+    canvas.clientWidth / 2,
+    canvas.clientHeight / 2,
+    BABYLON.Matrix?.Identity ? BABYLON.Matrix.Identity() : window.BABYLON?.Matrix?.Identity(),
+    Context.camera
+  );
+
+  const forwardDir = Context.camera.getDirection(new BABYLON.Vector3(0, 0, 1));
+  ray.origin.addInPlace(forwardDir.scale(0.4));
+
+  const hit = scene.pickWithRay(ray, (mesh) => {
+    if (!mesh.isPickable) return false;
+    const interInfo = findInteractionParent(mesh, puppetItemId);
+    return !!interInfo;
+  });
+
+  if (hit && hit.hit && hit.pickedMesh && hit.distance <= 2.5) {
+    const interInfo = findInteractionParent(hit.pickedMesh, puppetItemId);
+    if (interInfo) {
+      let objectName = null;
+      let isInteractive = false;
+      let isLocked = false;
+
+      if (interInfo.type === 'item') {
+        const item = Context.testMap.getEntity('item', interInfo.id);
+        if (item) {
+          const def = Context.testMap.getFurnitureDefinition(item.type);
+          objectName = def ? def.name : item.type;
+          isInteractive = isItemInteractive(item, def);
+          const hasInteraction = def && def.interaction && typeof def.interaction.getInteractionPoints === 'function';
+          // 椅/床等坐姿交互类家具不吃锁定限制
+          isLocked = hasInteraction ? false : !!item.locked;
+        }
+      } else if (interInfo.type === 'opening') {
+        const opening = Context.testMap.getEntity('opening', interInfo.id);
+        if (opening) {
+          objectName = getOpeningDisplayName(opening);
+          isInteractive = true;
+          isLocked = !!opening.locked;
+        }
+      } else if (interInfo.type === 'fence_gate') {
+        const gate = Context.testMap.getEntity('fence_gate', interInfo.id);
+        if (gate) {
+          objectName = getFenceGateDisplayName(gate);
+          isInteractive = true;
+          isLocked = !!gate.locked;
+        }
+      } else if (interInfo.type === 'fence') {
+        const fence = Context.testMap.getEntity('fence', interInfo.id);
+        if (fence) {
+          objectName = getFenceDisplayName(fence);
+          isInteractive = false;
+          isLocked = !!fence.locked;
+        }
+      }
+
+      if (objectName) {
+        btnSpan.textContent = objectName;
+        if (!isInteractive) {
+          // 普通非功能物体：白色呈现（移除蓝光与红光）
+          btnInteract.classList.remove('detected');
+          btnInteract.classList.remove('locked');
+        } else if (isLocked) {
+          // 可操控但被锁定：红色警示
+          btnInteract.classList.remove('detected');
+          btnInteract.classList.add('locked');
+        } else {
+          // 可操控且未锁定：蓝色高亮
+          btnInteract.classList.remove('locked');
+          btnInteract.classList.add('detected');
+        }
+        return;
+      }
+    }
+  }
+
+  btnSpan.textContent = '交互';
+  btnInteract.classList.remove('detected');
+  btnInteract.classList.remove('locked');
 }
 
 // 射线交互：可开关附近的门窗、家电与栅栏门 (限制实际物理交互距离在 2.5m 内)
@@ -409,38 +632,47 @@ function executeInteraction(Context) {
     }
 
     const { id, type, node: rootMesh } = interInfo;
+    let itemName = '';
+
+    const showLockedWarning = (name) => {
+      showInteractToast(`${name}已锁定`);
+      if (rootMesh) {
+        const highlightMeshes = rootMesh.getChildMeshes ? rootMesh.getChildMeshes() : [rootMesh];
+        highlightMeshes.forEach(m => {
+          m.renderOutline = true;
+          m.outlineColor = new (Context.BABYLON?.Color3 || window.BABYLON?.Color3)(1.0, 0.15, 0.15);
+          m.outlineWidth = 0.035;
+          setTimeout(() => { m.renderOutline = false; }, 1000);
+        });
+      }
+    };
 
     if (type === 'item' && id) {
       const item = Context.testMap.getEntity('item', id);
       if (item) {
         const def = Context.testMap.getFurnitureDefinition(item.type);
-        const itemName = def ? def.name : item.type;
+        itemName = def ? def.name : item.type;
 
         // 判定是否是有点位的家具（如椅子、床等）
         const hasInteraction = def && def.interaction && typeof def.interaction.getInteractionPoints === 'function';
 
-        // 如果家具被锁定了，且它不是可以交互坐下/躺下的椅子或床，则直接提示已锁定并亮红光警告，不执行任何操控
+        // 锁定检查（坐具类豁免）
         if (item.locked && !hasInteraction) {
-          showInteractToast(`${itemName}已锁定`);
-          if (rootMesh) {
-            const highlightMeshes = rootMesh.getChildMeshes ? rootMesh.getChildMeshes() : [rootMesh];
-            highlightMeshes.forEach(m => {
-              m.renderOutline = true;
-              m.outlineColor = new (Context.BABYLON?.Color3 || window.BABYLON?.Color3)(1.0, 0.15, 0.15); // 警告红光
-              m.outlineWidth = 0.035;
-              setTimeout(() => {
-                m.renderOutline = false;
-              }, 1000);
-            });
-          }
+          showLockedWarning(itemName);
           return;
         }
         
-        // 区分家电和地毯等普通家具：是否是可开关设备 (灯具 category==='lighting'、家电 category==='appliances'、包含光源或带有 lightId)
+        // 区分家电、窗帘和地毯等普通家具：是否是可开关/拉合设备
         const isLighting = def && (def.category === 'lighting' || def.lightSource);
         const isAppliance = def && def.category === 'appliances';
         const isLightingEntity = !!item.lightId;
-        const isSwitchable = !!(isLighting || isAppliance || isLightingEntity);
+        const isCurtain = def && (
+          item.type.toLowerCase().includes('curtain') ||
+          item.type.toLowerCase().includes('blind') ||
+          item.type.toLowerCase().includes('noren') ||
+          item.type.toLowerCase().includes('valance')
+        );
+        const isSwitchable = !!(isLighting || isAppliance || isLightingEntity || isCurtain || def?.powerEffect || def?.isSwitchable);
 
         // 区分水槽凹槽放水与马桶开合盖
         const isWaterContainer = def && (
@@ -451,26 +683,22 @@ function executeInteraction(Context) {
         );
         const isToilet = def && item.type.includes('toilet');
 
-        if (isSwitchable) {
-          if (Context.entityManager && typeof Context.entityManager.toggleItemPower === 'function') {
-            Context.entityManager.toggleItemPower(id);
+        if (isSwitchable || isToilet) {
+          const prevOn = isToilet ? (item.lidOpen === true) : (item.isOn !== false);
+          const targetState = !prevOn;
+          if (isToilet) {
+            if (Context.entityManager && typeof Context.entityManager.toggleItemLid === 'function') {
+              Context.entityManager.toggleItemLid(id);
+            }
+          } else {
+            if (Context.entityManager && typeof Context.entityManager.toggleItemPower === 'function') {
+              Context.entityManager.toggleItemPower(id);
+            } else {
+              Context.testMap.executeCommand('updateItem', { itemId: id, patch: { isOn: targetState } });
+            }
           }
-          showInteractToast(`已开关：${itemName}`);
+          showInteractToast(targetState ? `已开启：${itemName}` : `已关闭：${itemName}`);
         } else if (isWaterContainer) {
-          // 水槽、浴缸、洗脸台放水/排水开关
-          if (Context.entityManager && typeof Context.entityManager.toggleItemWater === 'function') {
-            Context.entityManager.toggleItemWater(id);
-          }
-          const isWaterOn = item.waterEnabled !== false;
-          showInteractToast(isWaterOn ? `已关闭放水` : `已开启放水`);
-        } else if (isToilet) {
-          // 马桶开盖/合盖
-          if (Context.entityManager && typeof Context.entityManager.toggleItemLid === 'function') {
-            Context.entityManager.toggleItemLid(id);
-          }
-          const isLidOpen = item.lidOpen === true;
-          showInteractToast(isLidOpen ? `已合上马桶盖` : `已打开马桶盖`);
-        } else if (hasInteraction) {
           // 椅子、床等可坐下/躺下交互的家具：直接坐下/躺下
           interactSitOnSeat(Context, id);
         } else {
@@ -481,26 +709,48 @@ function executeInteraction(Context) {
     } else if (type === 'opening' && id) {
       const opening = Context.testMap.getEntity('opening', id);
       if (opening) {
+        itemName = getOpeningDisplayName(opening);
+        if (opening.locked) {
+          showLockedWarning(itemName);
+          return;
+        }
+        const targetState = !opening.isOpen;
         if (typeof Context.pushHistory === 'function') Context.pushHistory();
         Context.testMap.executeCommand('updateOpening', {
           openingId: id,
-          patch: { isOpen: !opening.isOpen }
+          patch: { isOpen: targetState }
         });
         if (typeof Context.refreshShadows === 'function') Context.refreshShadows();
         if (typeof Context.renderPlan === 'function') Context.renderPlan();
-        showInteractToast(opening.isOpen ? "已关闭门窗" : "已开启门窗");
+        showInteractToast(targetState ? `已开启：${itemName}` : `已关闭：${itemName}`);
       }
     } else if (type === 'fence_gate' && id) {
       const gate = Context.testMap.getEntity('fence_gate', id);
       if (gate) {
+        itemName = getFenceGateDisplayName(gate);
+        if (gate.locked) {
+          showLockedWarning(itemName);
+          return;
+        }
+        const targetState = !gate.isOpen;
         if (typeof Context.pushHistory === 'function') Context.pushHistory();
         Context.testMap.executeCommand('updateFenceGate', {
           gateId: id,
-          patch: { isOpen: !gate.isOpen }
+          patch: { isOpen: targetState }
         });
         if (typeof Context.refreshShadows === 'function') Context.refreshShadows();
         if (typeof Context.renderPlan === 'function') Context.renderPlan();
-        showInteractToast(gate.isOpen ? "已关闭栅栏门" : "已开启栅栏门");
+        showInteractToast(targetState ? `已开启：${itemName}` : `已关闭：${itemName}`);
+      }
+    } else if (type === 'fence' && id) {
+      const fence = Context.testMap.getEntity('fence', id);
+      if (fence) {
+        itemName = getFenceDisplayName(fence);
+        if (fence.locked) {
+          showLockedWarning(itemName);
+          return;
+        }
+        showInteractToast(itemName);
       }
     }
 
@@ -619,21 +869,15 @@ function enterFirstPerson(Context, targetPuppetId = null) {
     spawnZ = spawn.z;
     spawnY = spawn.y;
 
-    const definition = Context.testMap.getFurnitureDefinition('mannequin');
-    const INCHES_PER_UNIT = Context.INCHES_PER_UNIT || 39.3700787;
-    
-    // 通过 executeCommand 纯净添加，不触发 selectItem 高亮框
-    const addedItem = Context.testMap.executeCommand('addItem', {
-      type: 'mannequin',
-      width: (definition?.defaultSize?.width || 14) / INCHES_PER_UNIT,
-      depth: (definition?.defaultSize?.depth || 14) / INCHES_PER_UNIT,
-      height: (definition?.defaultSize?.height || 68) / INCHES_PER_UNIT,
-      x: spawnX,
-      z: spawnZ,
-      floorId: Context.testMap.getCurrentFloorId()
-    });
+    const BABYLON = Context.BABYLON || window.BABYLON;
+    puppetItemId = `fp_temp_puppet_${Date.now()}`;
+    puppetNode = new BABYLON.TransformNode(`item_${puppetItemId}`, scene);
+    puppetNode.position.set(spawnX, spawnY, spawnZ);
 
-    puppetItemId = addedItem.id;
+    const bodyMesh = BABYLON.MeshBuilder.CreateBox(`mesh_${puppetItemId}`, { width: 0.35, height: 1.7, depth: 0.35 }, scene);
+    bodyMesh.position.y = 0.85;
+    bodyMesh.setParent(puppetNode);
+    bodyMesh.visibility = 0;
   }
 
   // 挂载全局操控木偶 ID 与坐下、站起交互接口，方便右键菜单系统等跨组件安全调用
@@ -641,25 +885,21 @@ function enterFirstPerson(Context, targetPuppetId = null) {
   window.firstPersonSitOnSeat = (seatItemId) => interactSitOnSeat(Context, seatItemId);
   window.firstPersonStandUp = () => checkStandUp(Context);
 
-  puppetNode = null;
-
-  // 轮询等待 3D 节点加载完成
-  let checkCount = 0;
-  const checkInterval = setInterval(() => {
-    puppetNode = scene.getTransformNodeByName(`item_${puppetItemId}`);
-    if (puppetNode) {
-      clearInterval(checkInterval);
-      
-      // 初始化木偶在三维中的实际位置
-      puppetNode.position.set(spawnX, spawnY, spawnZ);
-    }
-    
-    // 超时保护
-    if (++checkCount > 100) {
-      clearInterval(checkInterval);
-      console.warn("未能在场景中找到木偶的3D节点");
-    }
-  }, 50);
+  if (!isTemporaryPuppet) {
+    puppetNode = null;
+    let checkCount = 0;
+    const checkInterval = setInterval(() => {
+      puppetNode = scene.getTransformNodeByName(`item_${puppetItemId}`);
+      if (puppetNode) {
+        clearInterval(checkInterval);
+        puppetNode.position.set(spawnX, spawnY, spawnZ);
+      }
+      if (++checkCount > 100) {
+        clearInterval(checkInterval);
+        console.warn("未能在场景中找到木偶的3D节点");
+      }
+    }, 50);
+  }
 
   // 5. 设置相机为第一人称模式
   camera.detachControl(Context.canvas);
@@ -772,6 +1012,8 @@ function enterFirstPerson(Context, targetPuppetId = null) {
   beforeRenderObserver = scene.onBeforeRenderObservable.add(() => {
     const dt = scene.getEngine().getDeltaTime() / 1000;
     if (dt <= 0) return;
+
+    updateInteractionTargetButton(Context);
 
     // 如果木偶 3D 节点未捕获、或者已被场景销毁（因姿势/数据变更 updateItem 触发了重建），自动实时重新捕获它
     if (puppetItemId && (!puppetNode || puppetNode.isDisposed())) {
@@ -940,17 +1182,13 @@ function enterFirstPerson(Context, targetPuppetId = null) {
     }
   });
 
-  // 强制全量重绘三维场景，使全部高低楼层 Mesh 突破过滤完全显现
-  if (Context.testMap && typeof Context.testMap.refreshRendering === 'function') {
-    Context.testMap.refreshRendering();
-  }
-
   showInteractToast("已进入第一人称模式 (F11退出)");
 }
 
 // 退出第一人称
 function exitFirstPerson(Context) {
   if (!window.firstPersonActive) return;
+  currentPose = 'stand';
   window.firstPersonActive = false;
   window.firstPersonPuppetId = null;
   window.firstPersonSitOnSeat = null;
@@ -1003,10 +1241,8 @@ function exitFirstPerson(Context) {
 
     // 区分临时创建的木偶与摆放的木偶
     if (isTemporaryPuppet) {
-      // 自动生成的临时木偶，在退出时彻底销毁删除
-      Context.testMap.executeCommand('deleteItem', {
-        itemId: puppetItemId
-      });
+      // 自动生成的临时木偶，纯 3D 节点直接销毁，不写户型文档
+      puppetNode?.dispose();
     } else {
       // 场景中本来就有的木偶家具，同步其行走后的最终位置，不予删除
       Context.testMap.executeCommand('updateItem', {
@@ -1050,11 +1286,6 @@ function exitFirstPerson(Context) {
 
   // 从当前层状态还原天空盒
   Context.updateSkyboxFromCurrentFloor();
-
-  // 强制全量重绘三维场景，使超出当前楼层的 meshes 重新隐藏，恢复编辑器的分层隔离编辑模式
-  if (Context.testMap && typeof Context.testMap.refreshRendering === 'function') {
-    Context.testMap.refreshRendering();
-  }
 
   // 重置视口
   setTimeout(() => Context.engine?.resize(), 300);
@@ -1199,6 +1430,8 @@ function getItemSizeInMetres(item, definition) {
   };
 }
 
+let currentPose = 'stand';
+
 // 让木偶直接坐下或躺在指定的家具椅子/床上，并相应下调第一人称相机视点高度
 function interactSitOnSeat(Context, seatItemId) {
   if (!window.firstPersonActive || !puppetItemId) return;
@@ -1225,7 +1458,6 @@ function interactSitOnSeat(Context, seatItemId) {
   const wz = seatItem.z - p.x * sin + p.z * cos;
   const wy = (seatItem.elevation || 0) + p.y;
   
-  // 获取床/椅子所在楼层的海拔高度，计算木偶的绝对物理世界高度，防止高层躺下时掉落至一楼
   const floorElevation = Context.testMap.getFloorElevation?.(seatItem.floorId) || 0;
   const absoluteWy = wy + floorElevation;
 
@@ -1234,20 +1466,39 @@ function interactSitOnSeat(Context, seatItemId) {
     Context.selectItem(null);
   }
 
-  // 2. 将数据层的木偶属性更新为对应的姿势、位置与同步的楼层ID
-  Context.testMap.executeCommand('updateItem', {
-    itemId: puppetItemId,
-    patch: {
-      x: wx,
-      z: wz,
-      elevation: wy,
-      rotation: seatItem.rotation + (p.rot || 0),
-      pose: interactionType,
-      floorId: seatItem.floorId
-    }
-  });
+  currentPose = interactionType;
 
-  // 3. 同步更新控制器内部的绝对世界位置状态
+  // 2. 真实更新 3D 节点的位置与旋转
+  if (puppetNode && !puppetNode.isDisposed()) {
+    puppetNode.position.set(wx, absoluteWy, wz);
+    puppetNode.rotation.y = (seatItem.rotation || 0) + (p.rot || 0);
+  }
+
+  // 3. 将第一人称相机焦点对准座椅位置，并按姿态下调视点眼睛高度
+  const camera = Context.camera;
+  if (camera) {
+    const eyeOffset = interactionType === 'lie' ? 0.35 : 0.85;
+    const camForward = camera.getDirection(new (Context.BABYLON?.Vector3 || window.BABYLON?.Vector3)(0, 0, 1));
+    const fNorm = new (Context.BABYLON?.Vector3 || window.BABYLON?.Vector3)(camForward.x, 0, camForward.z).normalize();
+    camera.target.set(wx + fNorm.x * 0.18, absoluteWy + eyeOffset, wz + fNorm.z * 0.18);
+  }
+
+  // 4. 如果是非临时木偶，同步更新数据层快照
+  if (!isTemporaryPuppet) {
+    Context.testMap.executeCommand('updateItem', {
+      itemId: puppetItemId,
+      patch: {
+        x: wx,
+        z: wz,
+        elevation: wy,
+        rotation: (seatItem.rotation || 0) + (p.rot || 0),
+        pose: interactionType,
+        floorId: seatItem.floorId
+      }
+    });
+  }
+
+  // 5. 同步更新控制器内部的绝对世界位置状态
   spawnX = wx;
   spawnZ = wz;
   spawnY = absoluteWy;
@@ -1261,16 +1512,23 @@ function interactSitOnSeat(Context, seatItemId) {
 function checkStandUp(Context) {
   if (!window.firstPersonActive || !puppetItemId) return;
 
-  const puppetItem = Context.testMap.getEntity('item', puppetItemId);
-  if (puppetItem && puppetItem.pose && puppetItem.pose !== 'stand') {
-    Context.testMap.executeCommand('updateItem', {
-      itemId: puppetItemId,
-      patch: { pose: 'stand', elevation: 0 }
-    });
+  if (currentPose !== 'stand') {
+    currentPose = 'stand';
 
-    spawnX = puppetItem.x || 0;
-    spawnZ = puppetItem.z || 0;
-    spawnY = getPuppetFloorY(Context, spawnX, spawnZ);
+    if (!isTemporaryPuppet) {
+      Context.testMap.executeCommand('updateItem', {
+        itemId: puppetItemId,
+        patch: { pose: 'stand', elevation: 0 }
+      });
+    }
+
+    const camera = Context.camera;
+    if (camera && puppetNode && !puppetNode.isDisposed()) {
+      const camForward = camera.getDirection(new (Context.BABYLON?.Vector3 || window.BABYLON?.Vector3)(0, 0, 1));
+      const fNorm = new (Context.BABYLON?.Vector3 || window.BABYLON?.Vector3)(camForward.x, 0, camForward.z).normalize();
+      camera.target.set(puppetNode.position.x + fNorm.x * 0.18, puppetNode.position.y + 1.6, puppetNode.position.z + fNorm.z * 0.18);
+    }
+
     isGrounded = true;
     velocityY = 0;
 

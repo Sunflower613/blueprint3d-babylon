@@ -249,11 +249,17 @@ async function loadFurnitureThumbnail(img, path) {
   if (thumbnailUrl) img.src = thumbnailUrl;
 }
 
+let gridScrollListener = null;
+
 export function renderFurnitureGrid() {
   const itemGrid = document.getElementById('item-grid');
   if (!itemGrid) return;
   furnitureThumbnailObserver?.disconnect();
   itemGrid.innerHTML = '';
+  if (gridScrollListener) {
+    itemGrid.removeEventListener('scroll', gridScrollListener);
+    gridScrollListener = null;
+  }
 
   const categorySelect = document.getElementById('furniture-category-select');
   const selectedCategory = categorySelect?.value || 'all';
@@ -261,10 +267,60 @@ export function renderFurnitureGrid() {
   const searchQuery = searchInput?.value.trim().toLowerCase() || '';
   document.getElementById('furniture-upload-actions')?.classList.toggle('hidden', selectedCategory !== 'custom');
 
-  FURNITURE_LIST
-    .filter((definition) => (selectedCategory === 'all' || definition.category === selectedCategory)
-      && (!searchQuery || definition.name.toLowerCase().includes(searchQuery)))
-    .forEach((definition) => {
+  const filtered = FURNITURE_LIST.filter((definition) =>
+    (selectedCategory === 'all' || definition.category === selectedCategory) &&
+    (!searchQuery || definition.name.toLowerCase().includes(searchQuery))
+  );
+
+  const ITEMS_PER_ROW = 3;
+  const ROW_HEIGHT = 88;
+  const totalRows = Math.ceil(filtered.length / ITEMS_PER_ROW);
+  const totalHeight = totalRows * ROW_HEIGHT;
+
+  itemGrid.style.position = 'relative';
+
+  const virtualSpacer = document.createElement('div');
+  virtualSpacer.style.height = `${totalHeight}px`;
+  virtualSpacer.style.width = '100%';
+  virtualSpacer.style.position = 'absolute';
+  virtualSpacer.style.top = '0';
+  virtualSpacer.style.left = '0';
+  virtualSpacer.style.pointerEvents = 'none';
+
+  const viewportContainer = document.createElement('div');
+  viewportContainer.style.position = 'absolute';
+  viewportContainer.style.top = '0';
+  viewportContainer.style.left = '0';
+  viewportContainer.style.right = '0';
+  viewportContainer.style.display = 'grid';
+  viewportContainer.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+  viewportContainer.style.gap = '6px';
+
+  itemGrid.append(virtualSpacer, viewportContainer);
+
+  let lastRenderedStart = -1;
+  let lastRenderedEnd = -1;
+
+  const updateVirtualList = () => {
+    const scrollTop = itemGrid.scrollTop;
+    const clientHeight = itemGrid.clientHeight || 400;
+
+    const startRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 1);
+    const endRow = Math.min(totalRows - 1, Math.ceil((scrollTop + clientHeight) / ROW_HEIGHT) + 1);
+
+    const startIndex = startRow * ITEMS_PER_ROW;
+    const endIndex = Math.min(filtered.length, (endRow + 1) * ITEMS_PER_ROW);
+
+    if (startIndex === lastRenderedStart && endIndex === lastRenderedEnd) return;
+    lastRenderedStart = startIndex;
+    lastRenderedEnd = endIndex;
+
+    furnitureThumbnailObserver?.disconnect();
+    viewportContainer.innerHTML = '';
+    viewportContainer.style.transform = `translateY(${startRow * ROW_HEIGHT}px)`;
+
+    const slice = filtered.slice(startIndex, endIndex);
+    slice.forEach((definition) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.addItem = definition.type;
@@ -312,8 +368,24 @@ export function renderFurnitureGrid() {
       const label = document.createElement('span');
       label.textContent = definition.name;
       button.append(img, label);
-      itemGrid.appendChild(button);
+      viewportContainer.appendChild(button);
     });
+  };
+
+  updateVirtualList();
+
+  let ticking = false;
+  gridScrollListener = () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateVirtualList();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+
+  itemGrid.addEventListener('scroll', gridScrollListener);
 }
 
 export function cleanFloorplanMaterials(obj) {

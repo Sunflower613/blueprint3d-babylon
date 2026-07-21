@@ -333,6 +333,10 @@ export function updateEditor() {
       if (advInput) {
         advInput.checked = testMap ? testMap.advancedRenderingEnabled : false;
       }
+      const showAllFloorsInput = document.getElementById('show-all-floors');
+      if (showAllFloorsInput) {
+        showAllFloorsInput.checked = Boolean(window.showAllFloors);
+      }
     }
   }
 
@@ -1197,6 +1201,13 @@ export function initUiEventListeners() {
   document.getElementById('show-advanced-rendering')?.addEventListener('change', (event) => {
     if (testMap && typeof testMap.setAdvancedRendering === 'function') {
       testMap.setAdvancedRendering(event.target.checked);
+    }
+  });
+
+  document.getElementById('show-all-floors')?.addEventListener('change', (event) => {
+    window.showAllFloors = event.target.checked;
+    if (testMap && typeof testMap.refreshRendering === 'function') {
+      testMap.refreshRendering();
     }
   });
 

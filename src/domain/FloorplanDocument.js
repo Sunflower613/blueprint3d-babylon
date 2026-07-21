@@ -515,7 +515,16 @@ export class FloorplanDocument {
   }
 
   isFloorVisible(floorId, currentFloorId) {
-    if (window.firstPersonActive) return true;
+    if (typeof window !== 'undefined' && window.showAllFloors) {
+      return true;
+    }
+    if (typeof window !== 'undefined' && window.firstPersonActive) {
+      const activeFloorId = window.activeFirstPersonFloorId || currentFloorId || this.floorplan.currentFloorId;
+      const targetLevel = this.getFloorLevel(floorId);
+      const activeLevel = this.getFloorLevel(activeFloorId);
+      return Math.abs(targetLevel - activeLevel) <= 5;
+      // 第一人称默认显示上下5层楼
+    }
     return this.getFloorLevel(floorId) <= this.getFloorLevel(currentFloorId || this.floorplan.currentFloorId);
   }
 

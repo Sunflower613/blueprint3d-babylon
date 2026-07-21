@@ -348,37 +348,42 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     }
 
     const invertY = normalized.invertY !== undefined ? normalized.invertY : (options.invertY !== undefined ? options.invertY : true);
-    const texture = new BABYLON.Texture(
-      normalized.src,
-      scene,
-      false,
-      invertY,
-      BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
-      () => {
-        if (material.isDisposed) {
-          texture.dispose();
-          return;
-        }
-        material.diffuseColor = resolvedFloorColor;
-        material.diffuseTexture = texture;
-      },
-      (message, exception) => {
-        console.warn(`Failed to load texture for ${name}: ${normalized.src}`, message, exception);
-        if (material.isDisposed) {
-          texture.dispose();
-          return;
-        }
-        material.diffuseTexture = null;
-        if (options.isFloor) {
-          material.diffuseColor = BABYLON.Color3.FromHexString('#d2b48c');
-        }
-      }
-    );
+    const textureKey = `${normalized.src}_invY_${invertY}`;
+    let baseTexture = scene._blueprintTextureCache?.get(textureKey);
+
+    if (!baseTexture || baseTexture.isDisposed) {
+      if (!scene._blueprintTextureCache) scene._blueprintTextureCache = new Map();
+      baseTexture = new BABYLON.Texture(
+        normalized.src,
+        scene,
+        false,
+        invertY,
+        BABYLON.Texture.TRILINEAR_SAMPLINGMODE
+      );
+      scene._blueprintTextureCache.set(textureKey, baseTexture);
+    }
+
+    const texture = baseTexture.clone();
     const textureScale = resolvePatternTextureScale(normalized, options, normalized.scale || 1);
     texture.uScale = textureScale.uScale;
     texture.vScale = textureScale.vScale;
     texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
     texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+
+    const applyTextureToMaterial = () => {
+      if (!material.isDisposed) {
+        material.diffuseColor = resolvedFloorColor;
+        material.diffuseTexture = texture;
+      }
+    };
+
+    if (baseTexture.isReady()) {
+      applyTextureToMaterial();
+    } else {
+      baseTexture.onLoadObservable.addOnce(() => {
+        applyTextureToMaterial();
+      });
+    }
 
     if (options.isFloor) {
       // 地板材质在开始加载时，先不赋给 diffuseTexture，避免加载完成前的白色或红色格子闪烁，直接渲染底色淡棕色

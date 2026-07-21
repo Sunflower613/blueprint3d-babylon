@@ -679,15 +679,74 @@ export class BabylonSceneRenderer {
     return collider;
   }
 
+  collectNodeMaterials(node) {
+    const materials = new Set();
+    if (!node || node.isDisposed?.()) return materials;
+    const meshes = node.getChildMeshes ? node.getChildMeshes(false) : [];
+    if (node.material) meshes.unshift(node);
+    meshes.forEach((mesh) => {
+      if (mesh?.material) materials.add(mesh.material);
+    });
+    return materials;
+  }
+
+  disposeMaterials(materials, { preserveCached = false, usedByOtherMeshes = null } = {}) {
+    const persistentMaterials = new Set(Object.values(this.materials || {}));
+    const cachedMaterials = preserveCached ? new Set(this.materialCache?.values?.() || []) : new Set();
+    materials.forEach((material) => {
+      if (!material || material.isDisposed || persistentMaterials.has(material) || cachedMaterials.has(material)) return;
+      if (usedByOtherMeshes?.has(material)) return;
+      // Material textures are per-material clones. Disposing the wrappers releases
+      // their GPU references while the scene-level base texture cache stays alive.
+      material.dispose(false, true);
+    });
+  }
+
+  disposeNodeMaterials(node, { preserveCached = true } = {}) {
+    const nodeMeshes = new Set(node?.getChildMeshes ? node.getChildMeshes(false) : []);
+    const materials = this.collectNodeMaterials(node);
+    const usedByOtherMeshes = new Set();
+    this.root?.getChildMeshes?.(false).forEach((mesh) => {
+      if (!nodeMeshes.has(mesh) && mesh.material) usedByOtherMeshes.add(mesh.material);
+    });
+    this.disposeMaterials(materials, { preserveCached, usedByOtherMeshes });
+  }
+
+  collectBuiltMaterials() {
+    const materials = this.collectNodeMaterials(this.root);
+    const nodeMaps = [
+      this.itemNodes,
+      this.wallNodes,
+      this.floorNodes,
+      this.openingNodes,
+      this.roofNodes,
+      this.stairNodes,
+      this.fenceNodes,
+      this.fenceGateNodes
+    ];
+    nodeMaps.forEach((nodeMap) => {
+      nodeMap?.forEach((node) => {
+        this.collectNodeMaterials(node).forEach((material) => materials.add(material));
+      });
+    });
+    this.openingDragPreviews.forEach((preview) => {
+      this.collectNodeMaterials(preview.root).forEach((material) => materials.add(material));
+    });
+    this.fenceGateDragPreviews.forEach((preview) => {
+      this.collectNodeMaterials(preview.root).forEach((material) => materials.add(material));
+    });
+    return materials;
+  }
+
   clearBuiltMeshes() {
+    const builtMaterials = this.collectBuiltMaterials();
     if (this.materialCache) {
       this.materialCache.forEach((mat) => {
-        if (mat && !mat.isDisposed) {
-          mat.dispose(false, false);
-        }
+        if (mat) builtMaterials.add(mat);
       });
       this.materialCache.clear();
     }
+    this.disposeMaterials(builtMaterials);
     this.openingDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.fenceGateDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.itemNodes.forEach((node) => node.dispose(false, false));
@@ -733,6 +792,7 @@ export class BabylonSceneRenderer {
   deleteSingleItemNode(itemId) {
     const node = this.itemNodes.get(itemId);
     if (node) {
+      this.disposeNodeMaterials(node);
       node.dispose(false, false);
       this.itemNodes.delete(itemId);
     }
@@ -777,6 +837,8 @@ export class BabylonSceneRenderer {
       return material;
     };
 
+    const oldMaterials = new Set();
+    const newMaterials = new Set();
     const meshes = wallNode.getChildMeshes ? wallNode.getChildMeshes() : [];
     meshes.forEach((mesh) => {
       if (mesh.metadata && mesh.metadata.blueprintWallId === wallId) {
@@ -785,11 +847,12 @@ export class BabylonSceneRenderer {
         const newMat = getWallFaceMaterial(side, component);
         const oldMat = mesh.material;
         mesh.material = newMat;
-        if (oldMat && oldMat !== newMat && !oldMat.isDisposed) {
-          oldMat.dispose(false, false);
-        }
+        if (oldMat && oldMat !== newMat) oldMaterials.add(oldMat);
+        newMaterials.add(newMat);
       }
     });
+    newMaterials.forEach((material) => oldMaterials.delete(material));
+    this.disposeMaterials(oldMaterials);
   }
 
   syncActiveShadowGenerator() {
@@ -893,7 +956,10 @@ export class BabylonSceneRenderer {
       this.buildFences();
       this.buildFenceGates();
     } else if (rebuildType === 'items') {
-      this.itemNodes.forEach((node) => node.dispose(false, false));
+      this.itemNodes.forEach((node) => {
+        this.disposeNodeMaterials(node);
+        node.dispose(false, false);
+      });
       this.itemNodes.clear();
 
       this.shadowCasters = this.shadowCasters.filter((mesh) => {

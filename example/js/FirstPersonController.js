@@ -78,6 +78,107 @@ let prevLeftPanelState = false;
 let prevRightPanelState = false;
 let beforeRenderObserver = null;
 let isTemporaryPuppet = true;
+let interactionProbeElapsed = 0;
+
+/**
+ * 创建仅存在于 Babylon 场景中的轻量第一人称角色。
+ * 角色不包含头部，避免相机进入模型；不可见碰撞体与可见模型保持分离。
+ */
+export function createTemporaryFirstPersonAvatar(Context, id, position = { x: 0, y: 0, z: 0 }) {
+  const BABYLON = Context.BABYLON || window.BABYLON;
+  const scene = Context.scene;
+  const root = new BABYLON.TransformNode(`item_${id}`, scene);
+  root.position.set(position.x, position.y, position.z);
+  root.metadata = { ...(root.metadata || {}), isTemporaryFirstPersonAvatar: true };
+
+  const material = new BABYLON.StandardMaterial(`fp_avatar_material_${id}`, scene);
+  material.diffuseColor = BABYLON.Color3.FromHexString('#c99563');
+  material.specularColor = new BABYLON.Color3(0.08, 0.08, 0.08);
+  root.metadata.avatarMaterial = material;
+
+  const attachVisiblePart = (mesh) => {
+    mesh.parent = root;
+    mesh.material = material;
+    mesh.isPickable = false;
+    mesh.receiveShadows = false;
+    mesh.metadata = { ...(mesh.metadata || {}), isFirstPersonAvatarPart: true };
+    return mesh;
+  };
+
+  // 该盒体只表达角色占用空间；实际防穿墙仍由移动控制器的射线完成。
+  const collider = BABYLON.MeshBuilder.CreateBox(`fp_avatar_collider_${id}`, {
+    width: 0.35,
+    height: 1.7,
+    depth: 0.35
+  }, scene);
+  collider.position.y = 0.85;
+  collider.parent = root;
+  collider.isVisible = false;
+  collider.isPickable = false;
+  collider.checkCollisions = false;
+  collider.metadata = { ...(collider.metadata || {}), isFirstPersonCollider: true };
+
+  const torso = attachVisiblePart(BABYLON.MeshBuilder.CreateCylinder(`fp_avatar_torso_${id}`, {
+    diameterTop: 0.28,
+    diameterBottom: 0.32,
+    height: 0.62,
+    tessellation: 8
+  }, scene));
+  torso.position.y = 1.12;
+
+  const shoulders = attachVisiblePart(BABYLON.MeshBuilder.CreateBox(`fp_avatar_shoulders_${id}`, {
+    width: 0.48,
+    height: 0.12,
+    depth: 0.2
+  }, scene));
+  shoulders.position.y = 1.39;
+
+  const hips = attachVisiblePart(BABYLON.MeshBuilder.CreateBox(`fp_avatar_hips_${id}`, {
+    width: 0.29,
+    height: 0.16,
+    depth: 0.2
+  }, scene));
+  hips.position.y = 0.76;
+
+  for (const side of [-1, 1]) {
+    const leg = attachVisiblePart(BABYLON.MeshBuilder.CreateCylinder(`fp_avatar_leg_${side}_${id}`, {
+      diameter: 0.1,
+      height: 0.7,
+      tessellation: 6
+    }, scene));
+    leg.position.set(side * 0.09, 0.37, 0);
+
+    const shoe = attachVisiblePart(BABYLON.MeshBuilder.CreateBox(`fp_avatar_shoe_${side}_${id}`, {
+      width: 0.12,
+      height: 0.08,
+      depth: 0.24
+    }, scene));
+    shoe.position.set(side * 0.09, 0.05, 0.06);
+
+    const arm = attachVisiblePart(BABYLON.MeshBuilder.CreateCylinder(`fp_avatar_arm_${side}_${id}`, {
+      diameter: 0.075,
+      height: 0.58,
+      tessellation: 6
+    }, scene));
+    arm.position.set(side * 0.23, 1.09, 0);
+
+    const hand = attachVisiblePart(BABYLON.MeshBuilder.CreateSphere(`fp_avatar_hand_${side}_${id}`, {
+      diameter: 0.09,
+      segments: 6
+    }, scene));
+    hand.position.set(side * 0.23, 0.78, 0);
+  }
+
+  return root;
+}
+
+export function disposeTemporaryFirstPersonAvatar(root) {
+  if (!root || root.isDisposed()) return;
+  const material = root.metadata?.avatarMaterial || null;
+  root.getChildMeshes(false).forEach((mesh) => mesh.dispose(false, false));
+  root.dispose(false);
+  material?.dispose(false, false);
+}
 
 // 物理状态
 let velocityY = 0;
@@ -871,13 +972,11 @@ function enterFirstPerson(Context, targetPuppetId = null) {
 
     const BABYLON = Context.BABYLON || window.BABYLON;
     puppetItemId = `fp_temp_puppet_${Date.now()}`;
-    puppetNode = new BABYLON.TransformNode(`item_${puppetItemId}`, scene);
-    puppetNode.position.set(spawnX, spawnY, spawnZ);
-
-    const bodyMesh = BABYLON.MeshBuilder.CreateBox(`mesh_${puppetItemId}`, { width: 0.35, height: 1.7, depth: 0.35 }, scene);
-    bodyMesh.position.y = 0.85;
-    bodyMesh.setParent(puppetNode);
-    bodyMesh.visibility = 0;
+    puppetNode = createTemporaryFirstPersonAvatar(Context, puppetItemId, {
+      x: spawnX,
+      y: spawnY,
+      z: spawnZ
+    });
   }
 
   // 挂载全局操控木偶 ID 与坐下、站起交互接口，方便右键菜单系统等跨组件安全调用
@@ -1010,11 +1109,17 @@ function enterFirstPerson(Context, targetPuppetId = null) {
   window._fpPointerUp = onPointerUp;
 
   // 9. 挂载物理运动主渲染循环
+  interactionProbeElapsed = 0;
   beforeRenderObserver = scene.onBeforeRenderObservable.add(() => {
     const dt = scene.getEngine().getDeltaTime() / 1000;
     if (dt <= 0) return;
 
-    updateInteractionTargetButton(Context);
+    // 交互提示无需跟随 60 FPS 刷新；10 Hz 足以保持响应，同时显著减少全场景拾取。
+    interactionProbeElapsed += dt;
+    if (interactionProbeElapsed >= 0.1) {
+      interactionProbeElapsed %= 0.1;
+      updateInteractionTargetButton(Context);
+    }
 
     // 如果木偶 3D 节点未捕获、或者已被场景销毁（因姿势/数据变更 updateItem 触发了重建），自动实时重新捕获它
     if (puppetItemId && (!puppetNode || puppetNode.isDisposed())) {
@@ -1102,8 +1207,15 @@ function enterFirstPerson(Context, targetPuppetId = null) {
       }
     }
 
-    // 采用高精度向下射线检测，获取当前位置实际的地板或楼梯面高度，将 isGrounded 传入以动态调整探针射线探测长度
-    const targetFloorY = getGroundYByRaycast(Context, currentX, currentZ, currentY, isGrounded);
+    // 采用高精度向下射线检测，获取当前位置实际的地板或楼梯面高度
+    const targetFloorY = getGroundYByRaycast(
+      Context,
+      currentX,
+      currentZ,
+      currentY,
+      isGrounded,
+      moveDir.length() > 0.001
+    );
 
     // 处于地面，但如果当前实际高度比测得的地面高度高出 0.25 米以上，说明踩空了阳台/平台，开启重力下坠
     if (isGrounded && currentY - targetFloorY > 0.25) {
@@ -1244,7 +1356,7 @@ export function exitFirstPerson(Context, { expandPanels = false } = {}) {
     // 区分临时创建的木偶与摆放的木偶
     if (isTemporaryPuppet) {
       // 自动生成的临时木偶，纯 3D 节点直接销毁，不写户型文档
-      puppetNode?.dispose();
+      disposeTemporaryFirstPersonAvatar(puppetNode);
     } else {
       // 场景中本来就有的木偶家具，同步其行走后的最终位置，不予删除
       Context.testMap.executeCommand('updateItem', {

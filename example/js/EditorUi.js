@@ -63,7 +63,7 @@ import {
   getSelectedStructure
 } from './EditorUiContext.js';
 import { toggleFirstPerson } from './FirstPersonController.js';
-import { getRoomVertices, MaterialResolver } from '../../src/index.js';
+import { getRoomVertices, MaterialResolver, resolveMaterialAssetDescriptor } from '../../src/index.js';
 
 let lastActiveRoomId = null;
 
@@ -1026,10 +1026,15 @@ export function createColorField(label, value, onChange, currentMaterialName = '
     } catch (e) {}
   }
   
-  if (normalized && normalized.kind === 'texture' && normalized.src) {
-    colorBtn.style.backgroundImage = `url(${normalized.src})`;
-    colorBtn.style.backgroundSize = 'cover';
-    colorBtn.style.backgroundPosition = 'center';
+  if (normalized && (normalized.kind === 'texture' || normalized.src)) {
+    const resolved = resolveMaterialAssetDescriptor(normalized);
+    if (resolved && resolved.src) {
+      colorBtn.style.backgroundImage = `url(${resolved.src})`;
+      colorBtn.style.backgroundSize = 'cover';
+      colorBtn.style.backgroundPosition = 'center';
+    } else {
+      colorBtn.style.backgroundColor = hexColor;
+    }
   } else {
     colorBtn.style.backgroundColor = hexColor;
   }

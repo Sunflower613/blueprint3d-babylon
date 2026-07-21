@@ -362,6 +362,10 @@ export class BabylonSceneRenderer {
       fences: this.fenceNodes,
       fencegate: this.fenceGateNodes,
       fencegates: this.fenceGateNodes,
+      fencegate: this.fenceGateNodes,
+      fencegates: this.fenceGateNodes,
+      fence_gate: this.fenceGateNodes,
+      fence_gates: this.fenceGateNodes,
     };
     return maps[normalized]?.get(id) || null;
   }
@@ -397,7 +401,7 @@ export class BabylonSceneRenderer {
     if (normalized === 'wall' || normalized === 'walls') return this._syncWallPreview(id);
     if (normalized === 'opening' || normalized === 'openings') return this._syncOpeningPreview(id);
     if (normalized === 'fence' || normalized === 'fences') return this._syncFencePreview(id);
-    if (normalized === 'fencegate' || normalized === 'fencegates') return this._syncFenceGatePreview(id);
+    if (normalized === 'fencegate' || normalized === 'fencegates' || normalized === 'fence_gate' || normalized === 'fence_gates') return this._syncFenceGatePreview(id);
     if (normalized === 'roof' || normalized === 'roofs') return this._syncRoofPreview(id);
     if (normalized === 'stair' || normalized === 'stairs') return this._syncStairsPreview(id);
     return false;

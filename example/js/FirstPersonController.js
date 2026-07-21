@@ -884,6 +884,7 @@ function enterFirstPerson(Context, targetPuppetId = null) {
   window.firstPersonPuppetId = puppetItemId;
   window.firstPersonSitOnSeat = (seatItemId) => interactSitOnSeat(Context, seatItemId);
   window.firstPersonStandUp = () => checkStandUp(Context);
+  window.exitFirstPerson = (options) => exitFirstPerson(Context, options);
 
   if (!isTemporaryPuppet) {
     puppetNode = null;
@@ -1186,13 +1187,14 @@ function enterFirstPerson(Context, targetPuppetId = null) {
 }
 
 // 退出第一人称
-function exitFirstPerson(Context) {
+export function exitFirstPerson(Context, { expandPanels = false } = {}) {
   if (!window.firstPersonActive) return;
   currentPose = 'stand';
   window.firstPersonActive = false;
   window.firstPersonPuppetId = null;
   window.firstPersonSitOnSeat = null;
   window.firstPersonStandUp = null;
+  window.exitFirstPerson = null;
 
   // 恢复按钮样式
   document.getElementById('btn-first-person')?.classList.remove('active');
@@ -1264,19 +1266,30 @@ function exitFirstPerson(Context) {
   }
   camera.attachControl(canvas, true, false, 1);
 
-  // 6. 还原侧栏与 3D 辅助网格
+  // 6. 还原/呼出侧栏与 3D 辅助网格
   const leftPanel = document.querySelector('.left-panel');
   const rightPanel = document.getElementById('right-panel');
   const btnToggleLeft = document.getElementById('btn-toggle-left');
   const btnToggleRight = document.getElementById('btn-toggle-right');
 
-  if (leftPanel && !prevLeftPanelState) {
-    leftPanel.classList.remove('collapsed');
-    if (btnToggleLeft) btnToggleLeft.textContent = '‹';
-  }
-  if (rightPanel && !prevRightPanelState) {
-    rightPanel.classList.remove('collapsed');
-    if (btnToggleRight) btnToggleRight.textContent = '›';
+  if (expandPanels) {
+    if (leftPanel) {
+      leftPanel.classList.remove('collapsed');
+      if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    }
+    if (rightPanel) {
+      rightPanel.classList.remove('collapsed');
+      if (btnToggleRight) btnToggleRight.textContent = '›';
+    }
+  } else {
+    if (leftPanel && !prevLeftPanelState) {
+      leftPanel.classList.remove('collapsed');
+      if (btnToggleLeft) btnToggleLeft.textContent = '‹';
+    }
+    if (rightPanel && !prevRightPanelState) {
+      rightPanel.classList.remove('collapsed');
+      if (btnToggleRight) btnToggleRight.textContent = '›';
+    }
   }
 
   Context.viewer3d.show3DGrid = prevGridState;

@@ -427,6 +427,11 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
 
   const fenceGate = editor.executeCommand('addFenceGate', { fenceId: fence.id, t: 0.5, subtype: 'picket' });
   assert.ok(fenceGate, '应该成功执行 addFenceGate 命令');
+  assert.ok(editor.getEntity('fence_gate', fenceGate.id), '应该能以 fence_gate 下划线类型成功获取实体');
+
+  editor.executeCommand('setTargetLocked', { type: 'fence_gate', id: fenceGate.id, locked: true });
+  assert.equal(editor.getEntity('fence_gate', fenceGate.id).locked, true, '应该成功执行 setTargetLocked 命令锁定 fence_gate');
+  editor.executeCommand('setTargetLocked', { type: 'fence_gate', id: fenceGate.id, locked: false });
 
   // 8. 各种删除命令测试
   editor.executeCommand('deleteOpening', { openingId: opening.id });

@@ -193,8 +193,10 @@ export function showObjectContextMenu(target, clientX, clientY) {
         ctx.pushHistory();
         if (target.type === 'opening') {
           ctx.testMap.executeCommand('updateOpening', { openingId: target.id, patch: { doubleDoor: !isDouble } });
+          if (selection.selectedOpeningId === target.id) ctx.updateEditor();
         } else if (target.type === 'fence_gate') {
           ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { doubleDoor: !isDouble } });
+          if (selection.selectedFenceGateId === target.id) ctx.updateEditor();
         }
         ctx.refreshShadows();
         ctx.updateEditor();
@@ -303,6 +305,7 @@ export function toggleTarget(target) {
     const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;
     ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isOpen: !gate.isOpen } });
+    if (selection.selectedFenceGateId === target.id) ctx.updateEditor();
   }
   ctx.refreshShadows();
   ctx.updateEditor();
@@ -461,6 +464,7 @@ export function mirrorTarget(target) {
     const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (gate) {
       ctx.testMap.executeCommand('updateFenceGate', { gateId: target.id, patch: { isFlippedLR: !gate.isFlippedLR } });
+      if (selection.selectedFenceGateId === target.id) ctx.updateEditor();
     }
   } else if (target.type === 'roof') {
     const roof = ctx.testMap.getEntity('roof', target.id);

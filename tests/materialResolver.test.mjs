@@ -63,3 +63,14 @@ test('pattern scaling remains deterministic after resolver extraction', () => {
     { uScale: 10, vScale: 2 }
   );
 });
+
+test('resolveMaterialAssetDescriptor correctly updates legacy hardcoded port URLs to current runtime asset path', () => {
+  const legacyPortUrl = 'http://localhost:3000/blueprint3d-babylon/src/textures/brick_diamond.jpg';
+  const resolved = resolveMaterialAssetDescriptor({
+    kind: 'texture',
+    src: legacyPortUrl
+  });
+
+  assert.notEqual(resolved.src, legacyPortUrl);
+  assert.match(resolved.src, /brick_diamond\.jpg/);
+});

@@ -1,4 +1,4 @@
-import { FENCE_SUBTYPE_DEFAULTS, MaterialResolver } from '../../src/index.js';
+import { FENCE_SUBTYPE_DEFAULTS, MaterialResolver, resolveMaterialAssetDescriptor } from '../../src/index.js';
 import { TARGET_TYPES } from './types.js';
 import { isTargetLocked } from './TargetHandler.js';
 import { selection, editor } from '../store/index.js';
@@ -80,7 +80,8 @@ function applySwatchStyle(button, material) {
 
   const color = material.color || '#ffffff';
   if (isTextureMaterial(material)) {
-    const src = material.src || material.url;
+    const resolved = resolveMaterialAssetDescriptor(material);
+    const src = resolved?.src || material.src || material.url;
     button.style.backgroundImage = `linear-gradient(${color}cc, ${color}cc), url(${src})`;
     button.style.backgroundBlendMode = 'multiply';
     button.style.backgroundPosition = 'center';
@@ -140,12 +141,20 @@ function upsertMaterialDescriptor(descriptor) {
   editor.materialLibrary = [descriptor, ...editor.materialLibrary];
 }
 
+function getBaseMaterialName(name) {
+  if (!name) return '纹理';
+  return name.replace(/(\s*\((?:Tintable|#[0-9a-fA-F]{3,8})\))+$/gi, '').trim();
+}
+
 function createTintedTextureDescriptor(material, color) {
   const sourceId = String(material.id || 'texture');
   const isCustomSource = sourceId.startsWith('custom_');
   const derivedId = isCustomSource
     ? sourceId
     : `derived_texture_${sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+  const baseName = getBaseMaterialName(material.name || (isCustomSource ? '自定义材质' : '纹理'));
+  const name = color ? `${baseName} (${color})` : baseName;
 
   return {
     ...material,
@@ -155,7 +164,7 @@ function createTintedTextureDescriptor(material, color) {
     src: material.src || material.url,
     color,
     derivedFrom: material.derivedFrom || material.id || null,
-    name: isCustomSource ? (material.name || 'Custom Texture') : `${material.name || 'Texture'} (Tintable)`
+    name
   };
 }
 

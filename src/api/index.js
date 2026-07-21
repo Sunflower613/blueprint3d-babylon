@@ -110,6 +110,10 @@ export {
 } from '../core/materialCatalog.js';
 
 export {
+  resolveMaterialAssetDescriptor
+} from '../core/materialAssets.js';
+
+export {
   isItemSnappedToBookshelfOrMannequin
 } from '../core/exporterUtils.js';
 

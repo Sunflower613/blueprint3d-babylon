@@ -6,6 +6,7 @@ import * as FloorManager from './FloorManager.js';
 import { showObjectContextMenu } from './TargetHandler.js';
 import { clear3DEditHandles } from './Viewer3DHandles.js';
 import { fitBoundsToViewport } from './ViewGeometry.js';
+import { exitFirstPerson } from './FirstPersonController.js';
 
 let Context = null;
 
@@ -87,9 +88,13 @@ export function resetCurrentMaterial() {
 }
 
 export function setView(nextView) {
-  // 如果切换至 2D 视图且当前处于第一人称状态，自动触发退出第一人称并返回正常的 2D 编辑模式
-  if (nextView === '2d' && window.firstPersonActive && typeof window.exitFirstPerson === 'function') {
-    window.exitFirstPerson();
+  // 如果切换至 2D 视图且当前处于第一人称状态，自动触发退出第一人称并呼出左右工具栏，进入正常的 2D 编辑模式
+  if (nextView === '2d' && window.firstPersonActive) {
+    if (typeof window.exitFirstPerson === 'function') {
+      window.exitFirstPerson({ expandPanels: true });
+    } else {
+      exitFirstPerson(Context, { expandPanels: true });
+    }
   }
 
   Context.currentView = nextView;

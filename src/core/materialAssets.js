@@ -48,9 +48,10 @@ const TEXTURE_MAP = {
 };
 
 export function resolveMaterialAssetDescriptor(descriptor) {
-  if (descriptor?.kind !== 'texture') return descriptor;
+  if (!descriptor || typeof descriptor !== 'object') return descriptor;
+  if (descriptor.kind !== 'texture' && !descriptor.src && !descriptor.url) return descriptor;
 
-  let src = descriptor.src;
+  let src = descriptor.src || descriptor.url;
   if (descriptor.id) {
     src = DEFAULT_MATERIAL_PACKS.find((pack) => pack.id === descriptor.id)?.src || src;
   }

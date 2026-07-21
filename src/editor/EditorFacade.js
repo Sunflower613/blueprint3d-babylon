@@ -471,7 +471,7 @@ export class EditorFacade {
         result = this._document.updateFenceGate(args.gateId, args.patch);
         break;
       case 'deleteFenceGate':
-        result = this._document.deleteFenceGate(args.gateId);
+        result = this._document.deleteFenceGate(args.gateId || args.id);
         break;
 
       // 10. 其它/通用/材质/锁定命令
@@ -493,7 +493,13 @@ export class EditorFacade {
             wall: 'updateWall',
             fence: 'updateFence',
             fencegate: 'updateFenceGate',
-            fenceGate: 'updateFenceGate'
+            fencegates: 'updateFenceGate',
+            fenceGate: 'updateFenceGate',
+            fenceGates: 'updateFenceGate',
+            fence_gate: 'updateFenceGate',
+            fence_gates: 'updateFenceGate',
+            'fence-gate': 'updateFenceGate',
+            'fence-gates': 'updateFenceGate'
           };
           const cmd = updateCmds[type];
           if (cmd) {
@@ -501,7 +507,7 @@ export class EditorFacade {
                              (type === 'room' ? 'roomId' : 
                              (type === 'wall' ? 'wallId' : 
                              (type === 'fence' ? 'fenceId' : 
-                             (type === 'fence_gate' || type === 'fenceGate' ? 'gateId' : 
+                             (type === 'fence_gate' || type === 'fence_gates' || type === 'fenceGate' || type === 'fenceGates' || type === 'fencegate' ? 'gateId' : 
                              (type === 'roof' ? 'roofId' : 'stairsId')))));
             result = this.executeCommand(cmd, { [patchKey]: id, patch: { locked: value }, rebuild: false });
           }
@@ -689,7 +695,11 @@ export class EditorFacade {
       fencegate: 'fenceGates',
       fencegates: 'fenceGates',
       fenceGate: 'fenceGates',
-      fenceGates: 'fenceGates'
+      fenceGates: 'fenceGates',
+      fence_gate: 'fenceGates',
+      fence_gates: 'fenceGates',
+      'fence-gate': 'fenceGates',
+      'fence-gates': 'fenceGates'
     };
     return typeMap[type.toLowerCase()] || typeMap[type] || null;
   }

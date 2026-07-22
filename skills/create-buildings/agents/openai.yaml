@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blueprint3D 建筑生成器"
+  short_description: "生成、修订并验证 Blueprint3D Babylon 建筑存档"
+  default_prompt: "Use $create-buildings to create and validate a Blueprint3D Babylon building archive."

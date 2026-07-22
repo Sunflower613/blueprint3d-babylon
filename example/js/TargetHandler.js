@@ -171,7 +171,15 @@ export function showObjectContextMenu(target, clientX, clientY) {
   }
   
   // 判定物体是否是具有交互点位（如椅子、床）的家具，获取其交互姿态类型
-  const definition = target.type ? ctx.testMap.getFurnitureDefinition(target.type) : null;
+  let definition = null;
+  if (target.type === 'item') {
+    const item = ctx.testMap.getEntity('item', target.id);
+    if (item) {
+      definition = ctx.testMap.getFurnitureDefinition(item.type);
+    }
+  } else if (target.type) {
+    definition = ctx.testMap.getFurnitureDefinition(target.type);
+  }
   const hasInteraction = definition && definition.interaction && typeof definition.interaction.getInteractionPoints === 'function';
   const interactionType = hasInteraction ? (definition.interaction.type || 'sit') : 'sit';
 

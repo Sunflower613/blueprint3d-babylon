@@ -690,8 +690,8 @@ function updateInteractionTargetButton(Context) {
 function executeInteraction(Context) {
   // 如果当前已经处于坐着/躺下状态，点击交互直接站起来 (起立永远是第一优先级)
   const puppetItem = puppetItemId ? Context.testMap.getEntity('item', puppetItemId) : null;
-  const currentPose = puppetItem?.pose || 'stand';
-  if (currentPose !== 'stand') {
+  const activePose = puppetItem?.pose || currentPose;
+  if (activePose !== 'stand') {
     checkStandUp(Context);
     return;
   }
@@ -799,9 +799,16 @@ function executeInteraction(Context) {
             }
           }
           showInteractToast(targetState ? `已开启：${itemName}` : `已关闭：${itemName}`);
-        } else if (isWaterContainer) {
+        } else if (hasInteraction) {
           // 椅子、床等可坐下/躺下交互的家具：直接坐下/躺下
           interactSitOnSeat(Context, id);
+        } else if (isWaterContainer) {
+          // 水槽、浴缸等水容器：开启/关闭放水
+          if (Context.entityManager && typeof Context.entityManager.toggleItemWater === 'function') {
+            Context.entityManager.toggleItemWater(id);
+          }
+          const waterOn = item.waterEnabled !== false;
+          showInteractToast(!waterOn ? `已开启放水：${itemName}` : `已停止放水：${itemName}`);
         } else {
           // 普通地毯、桌子、绿植等：直接气泡显示物体名字，不触发无意义的开关
           showInteractToast(itemName);
@@ -1160,45 +1167,90 @@ function enterFirstPerson(Context, targetPuppetId = null) {
       moveDir.addInPlace(forward.scale(joystickY));
     }
 
-     const speed = 2.5; // 水平行走速度 2.5m/s
-    if (moveDir.length() > 0.001) {
+// 多探针与多高度碰撞检测（防穿墙、防穿家具、防墙角穿透）
+function checkRayCollision(scene, posX, posY, posZ, dirX, dirZ, stepDist, puppetItemId) {
+  const BABYLON = scene.getEngine ? (scene.getEngine()._babylon || window.BABYLON) : window.BABYLON;
+  if (!BABYLON || !BABYLON.Ray || !BABYLON.Vector3) return false;
+  const Ray = BABYLON.Ray;
+  const Vector3 = BABYLON.Vector3;
+
+  const dirVector = new Vector3(dirX, 0, dirZ).normalize();
+  const radius = 0.38; // 角色身体物理碰撞安全半径 (38 厘米)
+  const probeDist = stepDist + radius;
+
+  // 在腰部 (0.4m) 与胸眼部 (1.2m) 两个核心高度探针探测
+  const heights = [posY + 0.4, posY + 1.2];
+  // 前向及左右偏转扇形探针 (0°, -25°, +25°)，全面防护墙角与侧门框穿透
+  const angles = [0, -0.44, 0.44];
+
+  for (const h of heights) {
+    const origin = new Vector3(posX, h, posZ);
+    for (const angle of angles) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const rayDir = new Vector3(
+        dirVector.x * cos - dirVector.z * sin,
+        0,
+        dirVector.x * sin + dirVector.z * cos
+      ).normalize();
+
+      const ray = new Ray(origin, rayDir, probeDist);
+      const hit = scene.pickWithRay(ray, (mesh) => {
+        if (!mesh || !mesh.isPickable || !mesh.isVisible) return false;
+
+        const name = mesh.name || '';
+        const parentName = mesh.parent?.name || '';
+
+        // 排除木偶角色本身 Mesh
+        if (puppetItemId && (name.includes(puppetItemId) || mesh.id?.includes(puppetItemId))) return false;
+        // 排除天空盒、草地、网格线、地板面
+        if (name === 'skyBox' || name === 'grassLawn' || name.startsWith('floor_grid_3d') || name.startsWith('room_floor')) return false;
+        if (parentName === 'skyBox' || parentName === 'grassLawn') return false;
+
+        return true;
+      });
+
+      if (hit && hit.hit && hit.distance < probeDist) {
+        return true; // 触发物理阻挡
+      }
+    }
+  }
+
+  return false;
+}
+
+    const speed = 2.5; // 水平行走速度 2.5m/s
+    const isMoving = moveDir.length() > 0.001;
+    if (isMoving) {
       // 正在行走移动，若当前木偶处于坐姿或躺姿，自动起立站好
       checkStandUp(Context);
 
       moveDir.normalize();
 
-      const nextX = currentX + moveDir.x * speed * dt;
-      const nextZ = currentZ + moveDir.z * speed * dt;
+      const dx = moveDir.x * speed * dt;
+      const dz = moveDir.z * speed * dt;
 
-      // 前向碰撞检测（防止穿墙和穿家具）
-      const BABYLON = Context.BABYLON || window.BABYLON;
-      // 从角色躯干中部（离地 0.8 米）朝移动方向发射探测射线
-      const collOrigin = new BABYLON.Vector3(currentX, currentY + 0.8, currentZ);
-      const collRay = new Ray(collOrigin, moveDir, 0.4); // 探测 0.4 米范围
+      let nextX = currentX;
+      let nextZ = currentZ;
 
-      const collHit = scene.pickWithRay(collRay, (mesh) => {
-        if (puppetItemId && (mesh.name.includes(puppetItemId) || mesh.id.includes(puppetItemId))) return false;
-        if (mesh.name === 'skyBox' || mesh.name === 'grassLawn' || mesh.name.startsWith('floor_grid_3d')) return false;
-        
-        // 探测墙壁、家具、围栏和门窗
-        return mesh.isPickable && (
-          mesh.name.startsWith('wall_') || 
-          mesh.name.startsWith('item_') ||
-          mesh.name.startsWith('fence_') ||
-          mesh.name.startsWith('opening_') ||
-          mesh.parent?.name?.startsWith('wall_') ||
-          mesh.parent?.name?.startsWith('item_') ||
-          mesh.parent?.name?.startsWith('fence_') ||
-          mesh.parent?.name?.startsWith('opening_')
-        );
-      });
-
-      if (collHit && collHit.hit) {
-        // 前方撞墙或家具，不更新水平位移，防止穿模
-      } else {
-        currentX = nextX;
-        currentZ = nextZ;
+      // X 轴独立移动物理碰撞检测（防止穿墙并支持沿墙滑动）
+      if (Math.abs(dx) > 0.00001) {
+        const hitX = checkRayCollision(scene, currentX, currentY, currentZ, Math.sign(dx), 0, Math.abs(dx), puppetItemId);
+        if (!hitX) {
+          nextX = currentX + dx;
+        }
       }
+
+      // Z 轴独立移动物理碰撞检测
+      if (Math.abs(dz) > 0.00001) {
+        const hitZ = checkRayCollision(scene, nextX, currentY, currentZ, 0, Math.sign(dz), Math.abs(dz), puppetItemId);
+        if (!hitZ) {
+          nextZ = currentZ + dz;
+        }
+      }
+
+      currentX = nextX;
+      currentZ = nextZ;
 
       // 旋转木偶躯干，使其面朝向走动方向
       if (puppetNode && !puppetNode.isDisposed()) {
@@ -1234,14 +1286,18 @@ function enterFirstPerson(Context, targetPuppetId = null) {
         isGrounded = true;
       }
     } else {
-      // 处于地面，自动贴合实际地面高度 (平滑上下楼梯与地板过渡)
-      currentY = currentY * 0.8 + targetFloorY * 0.2;
-      if (Math.abs(currentY - targetFloorY) < 0.005) {
-        currentY = targetFloorY;
+      // 只有处于站立姿态时才平滑贴合地面 (平滑上下楼梯与地板过渡)
+      const puppetItem = puppetItemId ? Context.testMap.getEntity('item', puppetItemId) : null;
+      const activePose = puppetItem?.pose || currentPose;
+      if (activePose === 'stand') {
+        currentY = currentY * 0.8 + targetFloorY * 0.2;
+        if (Math.abs(currentY - targetFloorY) < 0.005) {
+          currentY = targetFloorY;
+        }
       }
     }
 
-    // 写入最新位置到 3D 渲染节点，并同步写回全局变量，防止开关家电触发全局重绘时木偶瞬移回起点
+    // 写入最新位置到 3D 渲染节点，并同步写回全局变量
     if (puppetNode && !puppetNode.isDisposed()) {
       puppetNode.position.set(currentX, currentY, currentZ);
     }
@@ -1249,27 +1305,19 @@ function enterFirstPerson(Context, targetPuppetId = null) {
     spawnY = currentY;
     spawnZ = currentZ;
 
-    // 动态获取木偶头部 Mesh 真实的物理 Y 轴绝对坐标作为相机眼高；若未渲染完则安全降级估算
-    let absoluteEyeY = currentY + 1.6;
-    if (puppetItemId) {
-      const headMesh = scene.getMeshByName(`puppet_head_${puppetItemId}`);
-      if (headMesh) {
-        absoluteEyeY = headMesh.getAbsolutePosition().y;
-      } else {
-        const puppetItem = Context.testMap.getEntity('item', puppetItemId);
-        const currentPose = puppetItem?.pose || 'stand';
-        let eyeHeight = 1.6;
-        if (currentPose === 'sit') {
-          eyeHeight = 0.75;
-        } else if (currentPose === 'lie') {
-          eyeHeight = 0.15;
-        }
-        absoluteEyeY = currentY + eyeHeight;
-      }
-    }
+    // 严谨计算相机绝对眼高 (站立眼高为 1.6m；坐姿眼高为椅面+0.75m；躺姿眼高为床面+0.25m)
+    const puppetItem = puppetItemId ? Context.testMap.getEntity('item', puppetItemId) : null;
+    const activePose = puppetItem?.pose || currentPose;
 
-    // 将相机眼睛同步绑定在木偶头部实际物理坐标并稍微前置，避开头部穿模
-    // 允许 Y 轴随前向分量 forward.y 变化，以保持在抬头或低头时视线的正确解算投影
+    let eyeHeight = 1.6; // 站立模式标准眼高 1.6m
+    if (activePose === 'sit') {
+      eyeHeight = 0.75;  // 坐姿模式椅面以上 0.75m
+    } else if (activePose === 'lie') {
+      eyeHeight = 0.25;  // 躺姿模式床面以上 0.25m
+    }
+    const absoluteEyeY = currentY + eyeHeight;
+
+    // 将相机眼睛同步绑定在视线高程并稍微前置，避开头部穿模
     camera.target.set(
       currentX + forward.x * 0.18, 
       absoluteEyeY + forward.y * 0.18, 

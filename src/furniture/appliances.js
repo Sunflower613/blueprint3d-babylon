@@ -330,6 +330,7 @@ export const airConditionerWallFurniture = {
   type: 'air_conditioner_wall',
   name: '挂式空调',
   defaultSize: { width: 32, depth: 8, height: 10 },
+  placeType: 'wall',
   components: [
     { id: 'body', label: '机身', defaultColor: '#f5f5f5' },
     { id: 'vent', label: '导风板', defaultColor: '#cfd8dc' },

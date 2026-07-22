@@ -328,8 +328,11 @@ export function calculateSnappedPosition({
 
   if (shouldSnapToEdge) {
     // 贴墙家具：边缘对齐网格线，并对有墙体的地方向内侧偏移 wallThickness / 2 避免嵌进墙里
-    const w_world = inchesToWorld(item.width || definition.defaultSize.width) * (item.scale || 1);
-    const d_world = inchesToWorld(item.depth || definition.defaultSize.depth) * (item.scale || 1);
+    // item.width/depth 是 FloorplanDocument 规范化后的米制实例尺寸，不能再次按英寸换算。
+    // 仅当实例尺寸缺失时，才根据家具定义的 unit 解析默认值。
+    const itemSize = getItemSizeInMetres(item, definition);
+    const w_world = itemSize.width;
+    const d_world = itemSize.depth;
     const rotation = item.rotation || 0;
 
     // 根据当前旋转弧度，计算家具包围盒投影到世界坐标 X、Z 轴的实际半宽与半深尺寸

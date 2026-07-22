@@ -68,3 +68,13 @@ test('4. 厨房相关家电分类规范，理顺分类边界', () => {
   const knifeBlock = FURNITURE_LIST.find(item => item.type === 'knife_block');
   assert.equal(knifeBlock.category, 'kitchen', '刀架 category 应该保留在 kitchen');
 });
+
+test('5. 燃气灶统一为一米宽并内置烤箱组件', () => {
+  const stove = FURNITURE_LIST.find(item => item.type === 'stove');
+  assert.equal(stove.defaultSize.width, 39.37);
+
+  const componentIds = new Set(stove.components.map(component => component.id));
+  assert.ok(componentIds.has('oven_frame'));
+  assert.ok(componentIds.has('oven_glass'));
+  assert.ok(componentIds.has('oven_handle'));
+});

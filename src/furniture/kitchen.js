@@ -145,11 +145,14 @@ export const microwaveFurniture = {
 export const stoveFurniture = {
   type: 'stove',
   name: '燃气灶',
-  defaultSize: { width: 36, depth: 24, height: 36 },
+  defaultSize: { width: 39.37, depth: 24, height: 36 },
   components: [
     { id: 'cabinet', label: '底柜', defaultColor: '#ebe7db' },
     { id: 'cooktop', label: '灶具面板', defaultColor: '#1a1a1a' },
-    { id: 'burners', label: '灶圈灶眼', defaultColor: '#00a2ff' }
+    { id: 'burners', label: '灶圈灶眼', defaultColor: '#00a2ff' },
+    { id: 'oven_frame', label: '烤箱门框', defaultColor: '#30343a' },
+    { id: 'oven_glass', label: '烤箱玻璃', defaultColor: '#141a20' },
+    { id: 'oven_handle', label: '烤箱把手', defaultColor: '#b7bcc0' }
   ],
   build(registry, item, node, size) {
     const counterTopH = 0.03;
@@ -172,6 +175,21 @@ export const stoveFurniture = {
         diameterTop: burnerD, diameterBottom: burnerD, height: 0.006, tessellation: 12
       }, { position: { x: side * size.width * 0.22, y: size.height + 0.003, z: 0 } }, { parent: node });
     });
+
+    // 底柜正面的嵌入式烤箱
+    const ovenWidth = size.width * 0.76;
+    const ovenHeight = bodyH * 0.58;
+    const ovenCenterY = bodyH * 0.43;
+    const frontZ = size.depth / 2 + 0.006;
+    boxComponent(registry, item, stoveFurniture, 'oven_frame', {
+      width: ovenWidth, height: ovenHeight, depth: 0.018
+    }, { position: { x: 0, y: ovenCenterY, z: frontZ } }, { parent: node });
+    boxComponent(registry, item, stoveFurniture, 'oven_glass', {
+      width: ovenWidth * 0.86, height: ovenHeight * 0.7, depth: 0.01
+    }, { position: { x: 0, y: ovenCenterY - ovenHeight * 0.04, z: frontZ + 0.014 } }, { parent: node });
+    boxComponent(registry, item, stoveFurniture, 'oven_handle', {
+      width: ovenWidth * 0.72, height: 0.025, depth: 0.035
+    }, { position: { x: 0, y: ovenCenterY + ovenHeight * 0.34, z: frontZ + 0.035 } }, { parent: node });
   }
 };
 

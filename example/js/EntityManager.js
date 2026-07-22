@@ -3,6 +3,15 @@ const { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSn
 
 const INCHES_PER_UNIT = 39.37;
 
+function definitionSizeInMetres(definition, dimension) {
+  const value = Number(definition?.defaultSize?.[dimension] || 0);
+  return definition?.unit === 'm' ? value : value / INCHES_PER_UNIT;
+}
+
+function defaultWallElevation(itemHeight, wallHeight, preferredElevation = 0.85) {
+  return Math.max(0, Math.min(preferredElevation, Math.max(0, wallHeight - itemHeight)));
+}
+
 /**
  * EntityManager.js — blueprint3d-babylon 物体/家具管理器
  *
@@ -85,6 +94,11 @@ export class EntityManager {
 
     // 3. 厨卫家电及台盆 (kitchen-bath/kitchen/bathroom)：大件电器与台盆全部贴墙；排除小厨摆、餐具、皂液器等小摆件
     if (category === 'kitchen-bath' || category === 'kitchen' || category === 'bathroom') {
+      return isBigKitchenBathItem(type);
+    }
+
+    // 厨房大家电会在家具目录汇总时统一归入 appliances，仍应保持贴墙行为。
+    if (category === 'appliances') {
       return isBigKitchenBathItem(type);
     }
 
@@ -282,8 +296,13 @@ export class EntityManager {
         patch.z = snapped.z;
       }
 
-      if (item.elevation === undefined || item.elevation === 0) {
-        patch.elevation = 0.85;
+      const itemHeight = (item.height ?? definitionSizeInMetres(definition, 'height')) * Number(item.scale || 1);
+      const wallHeight = Number(this.opts.testMap.getProjectMetadata().wallHeight || 2.8);
+      if (isCurtain && nearWindow) {
+        const openingTop = Number(nearWindow.sillHeight ?? 1.05) + Number(nearWindow.height ?? 0.85);
+        patch.elevation = Math.max(0, Math.min(openingTop - itemHeight, Math.max(0, wallHeight - itemHeight)));
+      } else if (item.elevation === undefined || item.elevation === 0) {
+        patch.elevation = defaultWallElevation(itemHeight, wallHeight);
       }
     } else if (definition.placeType === 'ceiling') {
       // 天花板物体逻辑
@@ -675,6 +694,15 @@ export class EntityManager {
         // 天花板家具自适应高度计算
         elevation = this.opts.testMap.getProjectMetadata().wallHeight - heightInches * (item.scale || 1);
       }
+    } else if (definition.placeType === 'wall' && (item.type.includes('curtain') || item.type.includes('blind'))) {
+      const curElev = Number((item.elevation || 0).toFixed(2));
+      const inputElev = Number((elevationInches || 0).toFixed(2));
+      if (curElev === inputElev && Number.isFinite(heightInches)) {
+        // 窗帘修改垂直长度时保持顶部锚点不动，避免重新穿过窗顶或天花板。
+        const oldTop = (item.elevation || 0) + (item.height || 0) * Number(item.scale || 1);
+        const wallHeight = Number(this.opts.testMap.getProjectMetadata().wallHeight || 2.8);
+        elevation = Math.max(0, Math.min(oldTop - heightInches, Math.max(0, wallHeight - heightInches)));
+      }
     }
 
     this.opts.testMap.executeCommand('updateItem', {
@@ -1029,14 +1057,20 @@ export class EntityManager {
     if (!definition) return null;
     this.opts.pushHistory();
     const isMeterDef = definition.unit === 'm';
+    const height = isMeterDef ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT;
+    const resolvedExtraProps = { ...extraProps };
+    if (definition.placeType === 'wall' && resolvedExtraProps.elevation === undefined) {
+      const wallHeight = Number(this.opts.testMap.getProjectMetadata().wallHeight || 2.8);
+      resolvedExtraProps.elevation = defaultWallElevation(height, wallHeight);
+    }
     const item = this.opts.testMap.executeCommand('addItem', {
       type,
       width: isMeterDef ? definition.defaultSize.width : definition.defaultSize.width / INCHES_PER_UNIT,
       depth: isMeterDef ? definition.defaultSize.depth : definition.defaultSize.depth / INCHES_PER_UNIT,
-      height: isMeterDef ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT,
+      height,
       x,
       z,
-      ...extraProps
+      ...resolvedExtraProps
     });
     this.opts.refreshShadows();
     this.selectItem(item.id);

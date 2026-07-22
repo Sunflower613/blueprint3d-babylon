@@ -361,6 +361,7 @@ export const wallShelfFurniture = {
   type: 'wall_shelf',
   name: '墙壁搁板',
   defaultSize: { width: 30, depth: 8, height: 2 },
+  placeType: 'wall',
   components: [
     { id: 'board', label: '置物搁板', defaultColor: '#aa845d' }
   ],
@@ -676,4 +677,3 @@ export const drawerCabinetFurniture = {
     }
   }
 };
-

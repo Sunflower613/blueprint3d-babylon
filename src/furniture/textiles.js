@@ -141,33 +141,43 @@ export const singleBlackoutCurtainFurniture = {
   placeType: 'wall',
   isSwitchable: true,
   components: [
-    { id: 'rod', label: '窗帘轨杆', defaultColor: '#424242' },
-    { id: 'fabric', label: '侧拉单开帘', defaultColor: '#78909c' }
+    { id: 'rod', label: '木质窗轨', defaultColor: '#4b342b' },
+    { id: 'fabric', label: '单开帘布', defaultColor: '#59616f' }
   ],
   build(registry, item, node, size) {
-    const rodH = 0.03;
-    cylinderComponent(registry, item, singleBlackoutCurtainFurniture, 'rod', {
-      diameterTop: rodH, diameterBottom: rodH, height: size.width, tessellation: 8
-    }, { position: { x: 0, y: size.height - rodH / 2, z: 0 } }, { parent: node });
-    const rodMesh = node.getChildren().find(child => child.name.includes('rod'));
-    if (rodMesh) {
-      rodMesh.rotation.z = Math.PI * 0.5;
-    }
+    const railH = Math.min(0.055, size.height * 0.035);
+    const railDepth = Math.max(0.035, size.depth * 0.72);
+    const railWidth = size.width * 1.06;
+    boxComponent(registry, item, singleBlackoutCurtainFurniture, 'rod', {
+      width: railWidth, height: railH, depth: railDepth
+    }, { position: { x: 0, y: size.height - railH / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, singleBlackoutCurtainFurniture, 'rod', {
+      width: size.width, height: railH * 0.22, depth: railDepth * 0.46
+    }, { position: { x: 0, y: size.height - railH * 1.12, z: railDepth * 0.22 } }, { parent: node });
 
     const open = item.isOn !== false;
-    const fabricH = size.height - rodH;
+    const fabricH = size.height - railH * 1.25;
+    const visibleWidth = size.width * (open ? 0.62 : 0.96);
+    const startX = open ? -size.width * 0.48 : -visibleWidth / 2;
+    const pleatCount = Math.max(9, Math.round(visibleWidth / 0.075));
+    const pleatStep = visibleWidth / pleatCount;
+    const pleatWidth = pleatStep * 1.18;
+    const foldDepth = Math.max(0.012, size.depth * 0.2);
 
     const proxy = boxComponent(registry, item, singleBlackoutCurtainFurniture, 'fabric', {
-      width: size.width * 0.94, height: fabricH, depth: 0.012
-    }, { position: { x: 0, y: fabricH / 2, z: 0.01 } }, { parent: node });
+      width: size.width * 0.96, height: fabricH, depth: 0.004
+    }, { position: { x: 0, y: fabricH / 2, z: 0 } }, { parent: node });
+    proxy.visibility = 0.001;
 
-    if (open) {
-      proxy.visibility = 0.001;
+    for (let index = 0; index < pleatCount; index += 1) {
+      const x = startX + (index + 0.5) * pleatStep;
+      const z = foldDepth * (index % 2 === 0 ? 0.52 : -0.52);
       boxComponent(registry, item, singleBlackoutCurtainFurniture, 'fabric', {
-        width: size.width * 0.22, height: fabricH, depth: size.depth * 0.6
-      }, { position: { x: -size.width * 0.35, y: fabricH / 2, z: size.depth * 0.2 } }, { parent: node });
-    } else {
-      proxy.visibility = 1.0;
+        width: pleatWidth, height: fabricH, depth: 0.009
+      }, {
+        position: { x, y: fabricH / 2, z },
+        rotation: { x: 0, y: index % 2 === 0 ? 0.055 : -0.055, z: 0 }
+      }, { parent: node });
     }
 
     if (item.mirrored) {

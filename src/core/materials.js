@@ -332,6 +332,12 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
   };
 
   if (normalized.kind === 'texture' && normalized.src) {
+    if (normalized.alpha !== undefined) {
+      material.alpha = Math.max(0, Math.min(1, normalized.alpha));
+      material.backFaceCulling = false;
+      material.twoSidedLighting = true;
+    }
+
     if (normalized.reflective) {
       const reflectionLevel = normalized.reflectionLevel !== undefined ? normalized.reflectionLevel : 0.55;
       const specularStrength = normalized.specularStrength !== undefined ? normalized.specularStrength : 0.72;

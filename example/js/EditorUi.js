@@ -1044,7 +1044,8 @@ export function createColorField(label, value, onChange, currentMaterialName = '
 
   const input = document.createElement('input');
   input.type = 'color';
-  input.style.cssText = 'position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;';
+  input.setAttribute('aria-label', `${label}：选择自定义颜色`);
+  input.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 30px; opacity: 0.001; cursor: pointer; z-index: 2; padding: 0; border: 0;';
   
   let hexColor = '#ffffff';
   if (typeof value === 'string') {
@@ -1059,8 +1060,9 @@ export function createColorField(label, value, onChange, currentMaterialName = '
   const colorBtn = document.createElement('button');
   colorBtn.type = 'button';
   colorBtn.setAttribute('aria-label', `${label}：选择自定义颜色`);
+  colorBtn.tabIndex = -1;
   colorBtn.className = 'color-preview-btn';
-  colorBtn.style.cssText = 'width: 100%; height: 30px; padding: 0; appearance: none; border: 1px solid rgba(42, 65, 92, 0.2); border-radius: 6px; cursor: pointer; box-sizing: border-box;';
+  colorBtn.style.cssText = 'width: 100%; height: 30px; padding: 0; appearance: none; border: 1px solid rgba(42, 65, 92, 0.2); border-radius: 6px; pointer-events: none; box-sizing: border-box;';
   
   const descriptor = materialDescriptor || value;
   let normalized = null;
@@ -1083,22 +1085,15 @@ export function createColorField(label, value, onChange, currentMaterialName = '
     colorBtn.style.backgroundColor = hexColor;
   }
   
-  colorBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    try {
-      if (typeof input.showPicker === 'function') input.showPicker();
-      else input.click();
-    } catch (_error) {
-      input.click();
-    }
-  });
-  
   input.addEventListener('input', (e) => {
     colorBtn.style.backgroundImage = '';
     colorBtn.style.backgroundColor = e.target.value;
   });
   
-  container.append(span, input, colorBtn);
+  const picker = document.createElement('div');
+  picker.style.cssText = 'position: relative; width: 100%; height: 30px;';
+  picker.append(colorBtn, input);
+  container.append(span, picker);
   return container;
 }
 

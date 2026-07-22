@@ -136,10 +136,10 @@ test('catalog exposes brick textures', () => {
   });
 });
 
-test('catalog exposes five fabric textures', () => {
+test('catalog exposes six fabric textures including translucent organza', () => {
   const fabricMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'fabric');
 
-  assert.equal(fabricMaterials.length, 5);
+  assert.equal(fabricMaterials.length, 6);
   assert.deepEqual(
     fabricMaterials.map((entry) => entry.id),
     [
@@ -147,7 +147,8 @@ test('catalog exposes five fabric textures', () => {
       'fabric-knit-cable-grey',
       'fabric-knit-cable-white',
       'fabric-knit-chevron-cream',
-      'fabric-weave-dark'
+      'fabric-weave-dark',
+      'fabric-organza-white'
     ]
   );
 
@@ -157,6 +158,29 @@ test('catalog exposes five fabric textures', () => {
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
     assert.ok(material.scale >= 2 && material.scale <= 2.5);
   });
+
+  const organza = fabricMaterials.find((material) => material.id === 'fabric-organza-white');
+  assert.equal(organza.name, '欧根纱');
+  assert.equal(organza.alpha, 0.48);
+});
+
+test('textured organza keeps alpha and renders both sides', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  try {
+    const organza = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'fabric-organza-white');
+    const normalized = normalizeMaterialDescriptor(organza);
+    const material = createBlueprintMaterial(scene, 'organza-test', organza);
+
+    assert.equal(normalized.alpha, 0.48);
+    assert.equal(material.alpha, 0.48);
+    assert.equal(material.backFaceCulling, false);
+    assert.equal(material.twoSidedLighting, true);
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
 });
 
 test('catalog exposes seventeen wallpaper textures including five built-in posters', () => {

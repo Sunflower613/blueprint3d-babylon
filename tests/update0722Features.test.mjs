@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as BABYLON from '@babylonjs/core';
+import fs from 'node:fs';
 
 import { FloorplanDocument } from '../src/domain/FloorplanDocument.js';
 import { FURNITURE_LIST } from '../src/furniture/index.js';
@@ -131,6 +132,59 @@ test('单张海报只有一层薄贴图，不再生成背板', () => {
   assert.ok(meshes[0].getBoundingInfo().boundingBox.extendSizeWorld.z * 2 <= 0.003);
   scene.dispose();
   engine.dispose();
+});
+
+test('单开帘使用木质顶轨和多道落地褶皱', () => {
+  const definition = FURNITURE_LIST.find((item) => item.type === 'single_blackout_curtain');
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const node = new BABYLON.TransformNode('single-curtain-test', scene);
+  const registry = {
+    scene,
+    materialCache: new Map(),
+    add(mesh, options = {}) {
+      mesh.parent = options.parent || node;
+      if (options.material) mesh.material = options.material;
+      return mesh;
+    }
+  };
+
+  definition.build(registry, { id: 'curtain', isOn: true, colors: {}, materials: {} }, node, {
+    width: 1.22, depth: 0.076, height: 2.03
+  });
+  node.computeWorldMatrix(true);
+
+  const rods = node.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'rod');
+  const visibleFabric = node.getChildMeshes().filter((mesh) => (
+    mesh.metadata?.blueprintFurnitureComponentId === 'fabric' && mesh.visibility > 0.5
+  ));
+  assert.equal(rods.length, 2);
+  assert.ok(visibleFabric.length >= 9);
+
+  const bounds = visibleFabric.reduce((result, mesh) => {
+    mesh.computeWorldMatrix(true);
+    const box = mesh.getBoundingInfo().boundingBox;
+    return {
+      min: Math.min(result.min, box.minimumWorld.x),
+      max: Math.max(result.max, box.maximumWorld.x)
+    };
+  }, { min: Infinity, max: -Infinity });
+  assert.ok(bounds.max - bounds.min > 1.22 * 0.56);
+  assert.ok(bounds.max - bounds.min < 1.22 * 0.70);
+  assert.ok(bounds.min < -1.22 * 0.44);
+
+  scene.dispose();
+  engine.dispose();
+});
+
+test('材质预览框由原生颜色输入直接覆盖并接收点击', () => {
+  const source = fs.readFileSync(new URL('../example/js/EditorUi.js', import.meta.url), 'utf8');
+  const colorField = source.slice(source.indexOf('export function createColorField'), source.indexOf('export function createApplyMaterialButton'));
+
+  assert.match(colorField, /input\.type = 'color'/);
+  assert.match(colorField, /inset: 0; width: 100%; height: 30px/);
+  assert.doesNotMatch(colorField, /input\.style\.pointerEvents\s*=\s*'none'/);
+  assert.doesNotMatch(colorField, /showPicker\(/);
 });
 
 test('三联海报把一张贴图横向裁成三块', () => {

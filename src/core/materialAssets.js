@@ -43,6 +43,7 @@ const TEXTURE_MAP = {
   'fabric_knit_cable_white.jpg': new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href,
   'fabric_knit_chevron_cream.jpg': new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href,
   'fabric_weave_dark.jpg': new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href,
+  'fabric_organza_white.png': new URL('../textures/fabric_organza_white.png', import.meta.url).href,
   'wallmap_yellow.png': new URL('../textures/wallmap_yellow.png', import.meta.url).href,
   'wallpaper_leaf_bluegrey.jpg': new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href,
   'wallpaper_paisley_orange.jpg': new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href,

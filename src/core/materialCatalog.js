@@ -40,6 +40,7 @@ const fabricKnitCableGreyUrl = new URL('../textures/fabric_knit_cable_grey.jpg',
 const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href;
 const fabricKnitChevronCreamUrl = new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href;
 const fabricWeaveDarkUrl = new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href;
+const fabricOrganzaWhiteUrl = new URL('../textures/fabric_organza_white.png', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
 const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
@@ -92,7 +93,8 @@ const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-knit-cable-grey', name: '灰麻花', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-knit-cable-white', name: '白麻花', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#ffffff' }
+  { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#ffffff' },
+  { id: 'fabric-organza-white', name: '欧根纱', src: fabricOrganzaWhiteUrl, scale: 2.2, color: '#fffdf8', alpha: 0.48 }
 ].map((material) => ({
   ...material,
   category: 'fabric',

@@ -96,6 +96,31 @@ function normalizeWallSegmentMesh(mesh) {
   return mesh;
 }
 
+function mapWallSegmentUV(mesh, { originX, originZ, axisX, axisZ, xMin, xMax, yMin, yMax }) {
+  if (!mesh) return mesh;
+  const positions = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+  if (!positions) return mesh;
+  const width = Math.max(0.001, xMax - xMin);
+  const height = Math.max(0.001, yMax - yMin);
+  mesh.computeWorldMatrix(true);
+  const worldMatrix = mesh.getWorldMatrix();
+  const uvs = new Array((positions.length / 3) * 2);
+
+  for (let index = 0; index < positions.length; index += 3) {
+    const world = BABYLON.Vector3.TransformCoordinates(
+      new BABYLON.Vector3(positions[index], positions[index + 1], positions[index + 2]),
+      worldMatrix
+    );
+    const wallX = (world.x - originX) * axisX + (world.z - originZ) * axisZ;
+    const uvIndex = (index / 3) * 2;
+    uvs[uvIndex] = (wallX - xMin) / width;
+    uvs[uvIndex + 1] = (world.y - yMin) / height;
+  }
+
+  mesh.setVerticesData(BABYLON.VertexBuffer.UVKind, uvs);
+  return mesh;
+}
+
 const OPENING_PREVIEW_SHAPE_INDEX = Object.freeze({
   square: 0,
   diamond: 1,
@@ -1366,6 +1391,16 @@ export class BabylonSceneRenderer {
 
       const X_min = -extLen_start;
       const X_max = length + extLen_end;
+      const wallUvOptions = {
+        originX: x1,
+        originZ: z1,
+        axisX: ux,
+        axisZ: uz,
+        xMin: X_min,
+        xMax: X_max,
+        yMin: wallBaseY - FH,
+        yMax: wallBaseY + H
+      };
 
       const wallOpenings = this.floorplan.openings.filter((op) => op.wallId === wall.id && this.document.isFloorVisible(op.floorId));
       const hasProfiledOpenings = wallOpenings.some((opening) => normalizeOpeningShape(opening.shape) !== 'square');
@@ -1581,6 +1616,7 @@ export class BabylonSceneRenderer {
         const result = wallCSG.toMesh(`wall_profiled_result_${wall.id}_${side}_${band.component}`, material, this.scene);
         baseMesh.dispose();
         normalizeWallSegmentMesh(result);
+        mapWallSegmentUV(result, wallUvOptions);
         result.setParent(wallGroup);
         result.metadata = { blueprintWallId: wall.id, side, wallComponent: band.component };
         this.shadowCasters.push(result);
@@ -1631,6 +1667,7 @@ export class BabylonSceneRenderer {
             subMeshFront.dispose();
           }
           normalizeWallSegmentMesh(finalSubMeshFront);
+          mapWallSegmentUV(finalSubMeshFront, wallUvOptions);
           finalSubMeshFront.setParent(wallGroup);
           finalSubMeshFront.metadata = { blueprintWallId: wall.id, side: 'front', wallComponent: band.component };
           this.shadowCasters.push(finalSubMeshFront);
@@ -1658,6 +1695,7 @@ export class BabylonSceneRenderer {
             subMeshBack.dispose();
           }
           normalizeWallSegmentMesh(finalSubMeshBack);
+          mapWallSegmentUV(finalSubMeshBack, wallUvOptions);
           finalSubMeshBack.setParent(wallGroup);
           finalSubMeshBack.metadata = { blueprintWallId: wall.id, side: 'back', wallComponent: band.component };
           this.shadowCasters.push(finalSubMeshBack);

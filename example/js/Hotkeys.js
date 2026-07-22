@@ -103,7 +103,7 @@ export function handleHotkeys(event, ctx) {
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
     if (ctx.selectedItemId) {
-      const step = 2.4; // 2.4 英寸 (0.1 米)
+      const step = 0.05; // 0.05米 (每次步进值)
       const delta = event.key === 'PageUp' ? step : -step;
       ctx.entityManager.adjustItemElevation(ctx.selectedItemId, delta);
     } else if (ctx.selectedOpeningId) {

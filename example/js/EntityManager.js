@@ -283,7 +283,7 @@ export class EntityManager {
       }
 
       if (item.elevation === undefined || item.elevation === 0) {
-        patch.elevation = 33.6;
+        patch.elevation = 0.85;
       }
     } else if (definition.placeType === 'ceiling') {
       // 天花板物体逻辑
@@ -850,16 +850,16 @@ export class EntityManager {
   /**
    * 键盘快捷键：PageUp/PageDown 调整家具高度
    * @param {string} itemId
-   * @param {number} deltaInches - 高度增量（英寸）
+   * @param {number} delta - 高度增量（米）
    */
-  adjustItemElevation(itemId, deltaInches) {
+  adjustItemElevation(itemId, delta) {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
     const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
 
     this.opts.pushHistory();
-    const newElev = Math.max(0, (item.elevation || 0) + deltaInches);
+    const newElev = Math.max(0, (item.elevation || 0) + delta);
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { elevation: newElev } });
 
     this.updateChildrenOnBookshelf(item, beforeState);
@@ -1028,11 +1028,12 @@ export class EntityManager {
     const definition = this.opts.testMap.getFurnitureDefinition(type);
     if (!definition) return null;
     this.opts.pushHistory();
+    const isMeterDef = definition.unit === 'm';
     const item = this.opts.testMap.executeCommand('addItem', {
       type,
-      width: definition.defaultSize.width / INCHES_PER_UNIT,
-      depth: definition.defaultSize.depth / INCHES_PER_UNIT,
-      height: definition.defaultSize.height / INCHES_PER_UNIT,
+      width: isMeterDef ? definition.defaultSize.width : definition.defaultSize.width / INCHES_PER_UNIT,
+      depth: isMeterDef ? definition.defaultSize.depth : definition.defaultSize.depth / INCHES_PER_UNIT,
+      height: isMeterDef ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT,
       x,
       z,
       ...extraProps

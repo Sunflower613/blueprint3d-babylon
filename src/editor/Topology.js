@@ -232,10 +232,19 @@ export function canPlaceOnTable(item, definition) {
     }
   }
   
-  // 6. 统一尺寸限制：宽度限制放宽到32英寸以容纳30英寸的满层书籍摆件，深度限制保持24英寸
-  const w = item.width || definition.defaultSize.width;
-  const d = item.depth || definition.defaultSize.depth;
-  if (w > 32 || d > 24) {
+  
+  // 6. Textiles 大类过滤：除了 cushion（靠枕）以外，其余 textiles（如地毯等）均不能摆放在桌子上
+  if (category === 'textiles') {
+    if (type !== 'cushion') {
+      return false;
+    }
+  }
+
+  // 7. 统一尺寸限制：宽度限制放宽到32英寸以容纳30英寸的满层书籍摆件，深度限制保持24英寸
+  const isMeterDef = definition.unit === 'm';
+  const wInches = item.width ? item.width * INCHES_PER_UNIT : (isMeterDef ? definition.defaultSize.width * INCHES_PER_UNIT : definition.defaultSize.width);
+  const dInches = item.depth ? item.depth * INCHES_PER_UNIT : (isMeterDef ? definition.defaultSize.depth * INCHES_PER_UNIT : definition.defaultSize.depth);
+  if (wInches > 32 || dInches > 24) {
     return false;
   }
   return true;

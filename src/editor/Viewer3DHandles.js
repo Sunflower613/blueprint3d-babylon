@@ -143,7 +143,7 @@ export class Viewer3DHandles {
     if (type === 'item') {
       const item = bounds.target;
       const roomOffset = this.ctx.testMap.getEntityElevationOffset('item', item);
-      return floorY + roomOffset + (item.elevation || 0) / this.INCHES_PER_UNIT + 0.18;
+      return floorY + roomOffset + (item.elevation || 0) + 0.18;
     }
     
     return floorY + 0.18;

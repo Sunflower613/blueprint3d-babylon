@@ -1096,7 +1096,9 @@ export function initUiEventListeners() {
     let elevation = undefined;
     let rotation = undefined;
     if (definition.placeType === 'ceiling') {
-      elevation = (testMap.getSnapshot().wallHeight || 2.8) * INCHES_PER_UNIT - (definition.defaultSize.height || 0);
+      const ceilingHeight = testMap.getSnapshot().wallHeight || 2.8;
+      const itemHeight = definition.unit === 'm' ? (definition.defaultSize.height || 0) : (definition.defaultSize.height || 0) / INCHES_PER_UNIT;
+      elevation = ceilingHeight - itemHeight;
     } else if (canPlaceOnTable({ x, z, floorId: testMap.getCurrentFloorId(), width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
       // 检查当前选中的物品是否是多层架子柜
       const selectedItem = selection.selectedItemId ? testMap.getEntity('item', selection.selectedItemId) : null;
@@ -1128,8 +1130,10 @@ export function initUiEventListeners() {
         rotation = selectedItem.rotation || 0;
 
         // 计算模特的各个节点高度
-        const modelHeight = (selectedItem.height || selectedDef.defaultSize.height) * (selectedItem.scale || 1);
-        const modelWidth = (selectedItem.width || selectedDef.defaultSize.width) * (selectedItem.scale || 1);
+        const defHeight = selectedDef.unit === 'm' ? selectedDef.defaultSize.height : selectedDef.defaultSize.height / INCHES_PER_UNIT;
+        const defWidth = selectedDef.unit === 'm' ? selectedDef.defaultSize.width : selectedDef.defaultSize.width / INCHES_PER_UNIT;
+        const modelHeight = (selectedItem.height || defHeight) * (selectedItem.scale || 1);
+        const modelWidth = (selectedItem.width || defWidth) * (selectedItem.scale || 1);
         
         let gender = 'male';
         if (selectedDef.type.includes('female')) gender = 'female';
@@ -1147,7 +1151,7 @@ export function initUiEventListeners() {
         const headD = gender === 'child' ? modelWidth * 0.5 : modelWidth * 0.4;
 
         const clothType = definition.type;
-        const clothHeight = (definition.defaultSize.height || 0);
+        const clothHeight = definition.unit === 'm' ? (definition.defaultSize.height || 0) : (definition.defaultSize.height || 0) / INCHES_PER_UNIT;
 
         if (clothType.includes('cap') || clothType.includes('beanie') || clothType.includes('fedora') || clothType.includes('hat') || clothType.includes('beret')) {
           // 帽子
@@ -1175,7 +1179,8 @@ export function initUiEventListeners() {
           const tableBelow = findTableBelow({ x, z, floorId: testMap.getCurrentFloorId(), id: null });
           if (tableBelow) {
             const tableDef = testMap.getFurnitureDefinition(tableBelow.type);
-            elevation = (tableBelow.elevation || 0) + (tableBelow.height || tableDef.defaultSize.height) * (tableBelow.scale || 1);
+            const tableHeight = tableBelow.height ?? (tableDef.unit === 'm' ? tableDef.defaultSize.height : tableDef.defaultSize.height / INCHES_PER_UNIT);
+            elevation = (tableBelow.elevation || 0) + tableHeight * (tableBelow.scale || 1);
           } else {
             elevation = 0;
           }

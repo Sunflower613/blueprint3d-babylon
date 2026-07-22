@@ -3,17 +3,21 @@ import { MeshBuilder, TransformNode } from '../core/babylon.js';
 
 const BABYLON = { MeshBuilder, TransformNode };
 
-function applyPosterCrop(mesh, column, row) {
+function applyPosterCrop(mesh, column, row, columns = 2, rows = 2) {
   const sourceMaterial = mesh?.material;
   if (!sourceMaterial?.diffuseTexture) return;
   const material = sourceMaterial.clone(`${mesh.name}_crop_material`);
   const texture = sourceMaterial.diffuseTexture.clone();
-  texture.uScale = 0.5;
-  texture.vScale = 0.5;
-  texture.uOffset = column * 0.5;
-  texture.vOffset = row * 0.5;
+  texture.uScale = 1 / columns;
+  texture.vScale = 1 / rows;
+  texture.uOffset = column / columns;
+  texture.vOffset = row / rows;
   material.diffuseTexture = texture;
   mesh.material = material;
+}
+
+function posterMaterial(id, name) {
+  return { id, name, category: 'wallpaper', kind: 'texture', scale: 1, color: '#ffffff' };
 }
 
 export const paintingFurniture = {
@@ -23,7 +27,12 @@ export const paintingFurniture = {
   placeType: 'wall',
   components: [
     { id: 'frame', label: '木质画框', defaultColor: '#59412e' },
-    { id: 'canvas', label: '艺术画布', defaultColor: '#faedd9' }
+    {
+      id: 'canvas',
+      label: '艺术画布',
+      defaultColor: '#ffffff',
+      defaultMaterial: posterMaterial('poster-bauhaus-primary', '包豪斯')
+    }
   ],
   build(registry, item, node, size) {
     // 1. 外框 (Frame)
@@ -41,21 +50,56 @@ export const paintingFurniture = {
 export const posterFurniture = {
   type: 'poster',
   name: '单张海报',
-  defaultSize: { width: 18, depth: 0.8, height: 24 },
+  defaultSize: { width: 18, depth: 0.08, height: 24 },
   placeType: 'wall',
   components: [
-    { id: 'backing', label: '海报背板', defaultColor: '#f3efe6' },
-    { id: 'poster', label: '海报贴图', defaultColor: '#d9a889' }
+    {
+      id: 'poster',
+      label: '海报贴图',
+      defaultColor: '#ffffff',
+      defaultMaterial: posterMaterial('poster-celestial-moons', '月相星空')
+    }
   ],
   build(registry, item, node, size) {
-    boxComponent(registry, item, posterFurniture, 'backing', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
     boxComponent(registry, item, posterFurniture, 'poster', {
-      width: Math.max(0.02, size.width - 0.018),
-      height: Math.max(0.02, size.height - 0.018),
-      depth: 0.006
-    }, { position: { x: 0, y: size.height / 2, z: size.depth / 2 + 0.003 } }, { parent: node });
+      width: size.width,
+      height: size.height,
+      depth: Math.min(0.003, size.depth)
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+  }
+};
+
+export const triptychPosterFurniture = {
+  type: 'triptych_poster',
+  name: '三联海报',
+  defaultSize: { width: 54, depth: 1.2, height: 30 },
+  placeType: 'wall',
+  components: [
+    { id: 'frame', label: '三联画框', defaultColor: '#2f2b28' },
+    {
+      id: 'poster',
+      label: '三联贴图',
+      defaultColor: '#ffffff',
+      defaultMaterial: posterMaterial('poster-botanical-sage', '鼠尾草')
+    }
+  ],
+  build(registry, item, node, size) {
+    const gap = Math.min(0.045, Math.min(size.width, size.height) * 0.035);
+    const panelWidth = (size.width - gap * 2) / 3;
+    const frameBorder = Math.min(0.035, Math.min(panelWidth, size.height) * 0.08);
+
+    for (let column = 0; column < 3; column++) {
+      const x = (column - 1) * (panelWidth + gap);
+      boxComponent(registry, item, triptychPosterFurniture, 'frame', {
+        width: panelWidth, height: size.height, depth: size.depth
+      }, { position: { x, y: size.height / 2, z: 0 } }, { parent: node });
+      const poster = boxComponent(registry, item, triptychPosterFurniture, 'poster', {
+        width: Math.max(0.02, panelWidth - frameBorder * 2),
+        height: Math.max(0.02, size.height - frameBorder * 2),
+        depth: 0.006
+      }, { position: { x, y: size.height / 2, z: size.depth / 2 + 0.003 } }, { parent: node });
+      applyPosterCrop(poster, column, 0, 3, 1);
+    }
   }
 };
 
@@ -66,7 +110,12 @@ export const quadPosterFurniture = {
   placeType: 'wall',
   components: [
     { id: 'frame', label: '四联画框', defaultColor: '#2f2b28' },
-    { id: 'poster', label: '拼图海报贴图', defaultColor: '#d8b486' }
+    {
+      id: 'poster',
+      label: '拼图海报贴图',
+      defaultColor: '#ffffff',
+      defaultMaterial: posterMaterial('poster-abstract-arches', '拱形抽象')
+    }
   ],
   build(registry, item, node, size) {
     const gap = Math.min(0.045, Math.min(size.width, size.height) * 0.035);
@@ -678,7 +727,12 @@ export const landscapePaintingFurniture = {
   placeType: 'wall',
   components: [
     { id: 'frame', label: '红木画框', defaultColor: '#3d2314' },
-    { id: 'canvas', label: '水墨画布', defaultColor: '#eaeaea' }
+    {
+      id: 'canvas',
+      label: '水墨画布',
+      defaultColor: '#ffffff',
+      defaultMaterial: posterMaterial('wallpaper-ink-bamboo-mist', '水墨竹韵')
+    }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, landscapePaintingFurniture, 'frame', {

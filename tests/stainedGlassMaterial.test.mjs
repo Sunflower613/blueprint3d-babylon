@@ -159,14 +159,15 @@ test('catalog exposes five fabric textures', () => {
   });
 });
 
-test('catalog exposes sixteen wallpaper textures including five built-in posters', () => {
+test('catalog exposes seventeen wallpaper textures including five built-in posters', () => {
   const wallpaperMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'wallpaper');
   const wallpaperTextures = wallpaperMaterials.filter((entry) => entry.kind === 'texture');
 
-  assert.equal(wallpaperTextures.length, 16);
+  assert.equal(wallpaperTextures.length, 17);
   assert.deepEqual(
     wallpaperTextures.map((entry) => entry.id),
     [
+      'wallpaper-rose',
       'wallpaper-yellow-flower',
       'wallpaper-leaf-bluegrey',
       'wallpaper-paisley-orange',
@@ -195,7 +196,16 @@ test('catalog exposes sixteen wallpaper textures including five built-in posters
       String(material.src).includes('poster_')
     );
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
+    assert.ok([...material.name].length <= 4, `${material.id} should use a short display name`);
   });
+});
+
+test('built-in texture materials use concise display names', () => {
+  DEFAULT_MATERIAL_PACKS
+    .filter((material) => material.kind === 'texture')
+    .forEach((material) => {
+      assert.ok([...material.name].length <= 4, `${material.id} should use a short display name`);
+    });
 });
 
 test('wallpaper textures repeat on long surfaces instead of stretching across the full span', () => {

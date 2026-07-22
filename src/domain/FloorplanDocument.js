@@ -390,7 +390,7 @@ export class FloorplanDocument {
       item.materials ||= {};
       definition.components.forEach((component) => {
         item.colors[component.id] ||= component.defaultColor;
-        item.materials[component.id] ||= item.colors[component.id];
+        item.materials[component.id] ||= component.defaultMaterial || item.colors[component.id];
       });
     });
 
@@ -679,7 +679,7 @@ export class FloorplanDocument {
     };
     definition.components.forEach((component) => {
       item.colors[component.id] = partialItem.colors?.[component.id] || component.defaultColor;
-      item.materials[component.id] = partialItem.materials?.[component.id] || item.colors[component.id];
+      item.materials[component.id] = partialItem.materials?.[component.id] || component.defaultMaterial || item.colors[component.id];
     });
     this.floorplan.items.push(item);
     return item;

@@ -50,6 +50,7 @@ const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold
 const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
 const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
 const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
+const wallpaperRoseUrl = new URL('../textures/wallpaper_rose.png', import.meta.url).href;
 const posterAbstractArchesUrl = new URL('../textures/poster_abstract_arches.png', import.meta.url).href;
 const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.png', import.meta.url).href;
 const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href;
@@ -71,15 +72,15 @@ export const MATERIAL_CATEGORIES = [
 ];
 
 const COMMON_WOOD_MATERIALS = [
-  { id: 'wood-panel-moulding-light', name: '浅木护墙板', src: woodPanelMouldingLightUrl, scale: 1, color: '#ffffff' },
+  { id: 'wood-panel-moulding-light', name: '护墙板', src: woodPanelMouldingLightUrl, scale: 1, color: '#ffffff' },
   { id: 'wood-fluted-oak-light', name: '浅木格栅', src: woodFlutedOakLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-herringbone-oak-light', name: '浅木人字拼', src: woodHerringboneOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-herringbone-oak-light', name: '人字拼', src: woodHerringboneOakLightUrl, scale: 2, color: '#ffffff' },
   { id: 'wood-plank-oak-light', name: '浅木长板', src: woodPlankOakLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-oak-natural-light', name: '浅色原木直纹', src: woodOakNaturalLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-butcher-block-light', name: '浅木指接板', src: woodButcherBlockLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-basket-parquet-light', name: '浅木方篮拼', src: woodBasketParquetLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-chevron-oak-light', name: '浅木箭羽拼', src: woodChevronOakLightUrl, scale: 2, color: '#ffffff' },
-  { id: 'wood-diagonal-plank-light', name: '浅木斜铺长板', src: woodDiagonalPlankLightUrl, scale: 2, color: '#ffffff' }
+  { id: 'wood-oak-natural-light', name: '原木纹', src: woodOakNaturalLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-butcher-block-light', name: '指接板', src: woodButcherBlockLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-basket-parquet-light', name: '方篮拼', src: woodBasketParquetLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-chevron-oak-light', name: '箭羽拼', src: woodChevronOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-diagonal-plank-light', name: '斜铺板', src: woodDiagonalPlankLightUrl, scale: 2, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'wood',
@@ -88,8 +89,8 @@ const COMMON_WOOD_MATERIALS = [
 
 const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-rope-cable-beige', name: '绳纹针织', src: fabricRopeCableBeigeUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'fabric-knit-cable-grey', name: '交织麻花针织', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'fabric-knit-cable-white', name: '竖纹麻花针织', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-knit-cable-grey', name: '灰麻花', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'fabric-knit-cable-white', name: '白麻花', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#ffffff' }
 ].map((material) => ({
@@ -100,20 +101,20 @@ const COMMON_FABRIC_MATERIALS = [
 
 const COMMON_WALLPAPER_MATERIALS = [
   { id: 'wallpaper-leaf-bluegrey', name: '叶影墙纸', src: wallpaperLeafBluegreyUrl, scale: 1, color: '#9aa0b1' },
-  { id: 'wallpaper-paisley-orange', name: '佩斯利墙纸', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#f1c598' },
-  { id: 'wallpaper-fan-gold', name: '扇纹几何墙纸', src: wallpaperFanGoldUrl, scale: 1, color: '#c6a47d' },
+  { id: 'wallpaper-paisley-orange', name: '佩斯利', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#f1c598' },
+  { id: 'wallpaper-fan-gold', name: '金扇纹', src: wallpaperFanGoldUrl, scale: 1, color: '#c6a47d' },
   { id: 'wallpaper-stripe-teal-pink', name: '条纹墙纸', src: wallpaperStripeTealPinkUrl, scale: 1, color: '#7ca8a7' },
-  { id: 'wallpaper-damask-olive', name: '达玛斯墙纸', src: wallpaperDamaskOliveUrl, scale: 1, color: '#b8af71' },
-  { id: 'wallpaper-ink-bamboo-mist', name: '水墨竹韵墙纸', src: wallpaperInkBambooMistUrl, scale: 1, color: '#d8dde1' },
+  { id: 'wallpaper-damask-olive', name: '达玛斯', src: wallpaperDamaskOliveUrl, scale: 1, color: '#b8af71' },
+  { id: 'wallpaper-ink-bamboo-mist', name: '水墨竹韵', src: wallpaperInkBambooMistUrl, scale: 1, color: '#d8dde1' },
   { id: 'wallpaper-cloud-navy-gold', name: '祥云墙纸', src: wallpaperCloudNavyGoldUrl, scale: 1, color: '#d7be8a' },
   { id: 'wallpaper-ruyi-swirl-yellow', name: '回纹墙纸', src: wallpaperRuyiSwirlYellowUrl, scale: 1, color: '#f0dc75' },
-  { id: 'wallpaper-floral-blue-white', name: '青花团纹墙纸', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#62789a' },
-  { id: 'wallpaper-seigaiha-blush', name: '青海波墙纸', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' },
-  { id: 'poster-abstract-arches', name: '拱形抽象海报', src: posterAbstractArchesUrl, scale: 1, color: '#ffffff' },
-  { id: 'poster-botanical-sage', name: '鼠尾草植物海报', src: posterBotanicalSageUrl, scale: 1, color: '#ffffff' },
-  { id: 'poster-bauhaus-primary', name: '包豪斯几何海报', src: posterBauhausPrimaryUrl, scale: 1, color: '#ffffff' },
-  { id: 'poster-mountain-sunrise', name: '山峦日出海报', src: posterMountainSunriseUrl, scale: 1, color: '#ffffff' },
-  { id: 'poster-celestial-moons', name: '月相星空海报', src: posterCelestialMoonsUrl, scale: 1, color: '#ffffff' }
+  { id: 'wallpaper-floral-blue-white', name: '青花纹', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#62789a' },
+  { id: 'wallpaper-seigaiha-blush', name: '青海波', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' },
+  { id: 'poster-abstract-arches', name: '拱形抽象', src: posterAbstractArchesUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-botanical-sage', name: '鼠尾草', src: posterBotanicalSageUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-bauhaus-primary', name: '包豪斯', src: posterBauhausPrimaryUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-mountain-sunrise', name: '山峦日出', src: posterMountainSunriseUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-celestial-moons', name: '月相星空', src: posterCelestialMoonsUrl, scale: 1, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'wallpaper',
@@ -140,13 +141,13 @@ const COMMON_STONE_MATERIALS = [
 
 const COMMON_BRICK_MATERIALS = [
   { id: 'brick-marble-warm', name: '大理石', src: brickMarbleWarmUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'brick-grey-gloss-marble', name: '亮面大理石', src: brickMarbleGreyGlossUrl, scale: 2.4, color: '#ffffff', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'brick-grey-gloss-marble', name: '亮面石', src: brickMarbleGreyGlossUrl, scale: 2.4, color: '#ffffff', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
   { id: 'brick-marble-tiles', name: '大理石砖', src: brickMarbleTilesUrl, scale: 3.0, color: '#ffffff' },
   { id: 'brick-light', name: '石砖', src: brickLightUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-red', name: '红砖', src: brickRedUrl, scale: 1.5, color: '#ffffff' },
 
   // 新加砖块/瓷砖
-  { id: 'brick-cube', name: '立体魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-cube', name: '魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
   { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
@@ -194,10 +195,10 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'metal-iron-matte', name: '磨砂铁', category: 'metal', kind: 'metal', color: '#43464b', roughness: 0.6 },
   { id: 'metal-aluminum-matte', name: '磨砂铝', category: 'metal', kind: 'metal', color: '#d9d9d9', roughness: 0.6 },
 
-  { id: 'wallpaper-rose', name: '玫瑰墙纸', category: 'wallpaper', color: '#f7bfd2' },
+  { id: 'wallpaper-rose', name: '玫瑰', category: 'wallpaper', kind: 'texture', src: wallpaperRoseUrl, scale: 1, color: '#ffffff' },
   {
     id: 'wallpaper-yellow-flower',
-    name: '花卉墙纸',
+    name: '花卉',
     category: 'wallpaper',
     kind: 'texture',
     src: wallmapYellowUrl,

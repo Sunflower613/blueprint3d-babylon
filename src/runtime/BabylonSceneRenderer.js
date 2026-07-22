@@ -2047,7 +2047,7 @@ export class BabylonSceneRenderer {
     item.materials ||= {};
     definition.components.forEach((component) => {
       item.colors[component.id] ||= component.defaultColor;
-      item.materials[component.id] ||= item.colors[component.id];
+      item.materials[component.id] ||= component.defaultMaterial || item.colors[component.id];
     });
 
     const node = new BABYLON.TransformNode(`item_${item.id}`, this.scene);

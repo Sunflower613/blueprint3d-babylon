@@ -54,6 +54,7 @@ const TEXTURE_MAP = {
   'wallpaper_ruyi_swirl_yellow.jpg': new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href,
   'wallpaper_floral_blue_white.jpg': new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href,
   'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href,
+  'wallpaper_rose.png': new URL('../textures/wallpaper_rose.png', import.meta.url).href,
   'poster_abstract_arches.png': new URL('../textures/poster_abstract_arches.png', import.meta.url).href,
   'poster_botanical_sage.png': new URL('../textures/poster_botanical_sage.png', import.meta.url).href,
   'poster_bauhaus_primary.png': new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href,

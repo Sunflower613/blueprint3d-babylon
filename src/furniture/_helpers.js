@@ -3,13 +3,13 @@ import { createBox, createCylinder, createSphere, createLathe } from '../core/pr
 
 export function getComponentColor(item, definition, componentId) {
   const component = definition.components.find((candidate) => candidate.id === componentId);
-  const descriptor = item.materials?.[componentId] || item.colors?.[componentId] || component?.defaultColor || '#ffffff';
+  const descriptor = item.materials?.[componentId] || item.colors?.[componentId] || component?.defaultMaterial || component?.defaultColor || '#ffffff';
   return materialPreviewColor(descriptor, component?.defaultColor || '#ffffff');
 }
 
 export function getComponentMaterialDescriptor(item, definition, componentId) {
   const component = definition.components.find((candidate) => candidate.id === componentId);
-  return item.materials?.[componentId] || item.colors?.[componentId] || component?.defaultColor || '#ffffff';
+  return item.materials?.[componentId] || item.colors?.[componentId] || component?.defaultMaterial || component?.defaultColor || '#ffffff';
 }
 
 export function getComponentMaterial(registry, item, definition, componentId) {

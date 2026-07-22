@@ -43,11 +43,12 @@ export function stringifyBuildingFile(floorplan, options = {}) {
   return JSON.stringify(createBuildingFile(floorplan, options), null, 2);
 }
 
-export function createBuildingFileName(name = 'blueprint-building') {
+export function createBuildingFileName(name = 'blueprint-building', date = new Date()) {
   const safeName = String(name)
     .trim()
     .replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'blueprint-building';
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const pad = (value) => String(value).padStart(2, '0');
+  const stamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
   return `${safeName}-${stamp}.${BUILDING_FILE_EXTENSION}`;
 }

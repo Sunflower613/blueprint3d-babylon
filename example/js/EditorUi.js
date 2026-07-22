@@ -204,6 +204,8 @@ export function ensureStructureEditor() {
 
   editor.appendChild(createStructureField('旋转度数 (度)', 'structure-spiral-degrees', { type: 'number', min: '45', max: '720', step: '15' }));
   editor.appendChild(createStructureField('拐角台阶位置', 'structure-corner-step', { type: 'number', min: '1', step: '1' }));
+  editor.appendChild(createStructureField('转角前长度 (m)', 'structure-run-before-corner', { type: 'number', min: '0.2', max: '20', step: '0.1' }));
+  editor.appendChild(createStructureField('转角后长度 (m)', 'structure-run-after-corner', { type: 'number', min: '0.2', max: '20', step: '0.1' }));
   editor.appendChild(createStructureField('间层宽度 (m)', 'structure-u-slot-width', { type: 'number', min: '0', max: '1.0', step: '0.05' }));
   editor.appendChild(createStructureField('中空长度 (m)', 'structure-u-void-length', { type: 'number', min: '0', max: '3.0', step: '0.1' }));
 
@@ -596,6 +598,16 @@ export function updateEditor() {
       cornerStepInput.value = structure.cornerStep ?? Math.floor((structure.steps || 9) / 2);
     }
 
+    ['before', 'after'].forEach((part) => {
+      const input = document.getElementById(`structure-run-${part}-corner`);
+      if (!input) return;
+      input.closest('label')?.classList.toggle('hidden', structureType !== 'stairs' || subtype !== 'lshape');
+      const fallback = Math.max(0.2, (structure.depth || 3.2) - (structure.width || 1.2));
+      input.value = part === 'before'
+        ? (structure.runBeforeCorner ?? fallback)
+        : (structure.runAfterCorner ?? fallback);
+    });
+
     const uSlotWidthInput = document.getElementById('structure-u-slot-width');
     if (uSlotWidthInput) {
       const parentLabel = uSlotWidthInput.closest('label');
@@ -739,7 +751,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
   designSelectionPanel.innerHTML = '';
   const btnResetMaterial = document.getElementById('btn-reset-material');
   if (btnResetMaterial) {
-    btnResetMaterial.disabled = !(room || wall || item || structure || fence || opening || fenceGate);
+    btnResetMaterial.disabled = false;
   }
   if (room) {
     const group = document.createElement('div');
@@ -950,6 +962,36 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
     }));
     designSelectionPanel.appendChild(groupContent);
   }
+
+  const currentFloor = testMap.getFloor(testMap.getCurrentFloorId());
+  if (!(room || wall || item || structure || fence || opening || fenceGate) && currentFloor?.skyboxEnabled === true) {
+    const environment = testMap.getSnapshot().environment || {};
+    const applyEnvironmentMaterial = (component, material) => {
+      pushHistory();
+      testMap.executeCommand('setEnvironmentMaterial', { component, material, rebuild: false });
+      const nextEnvironment = testMap.getSnapshot().environment || {};
+      viewer3d.setEnvironmentMaterials(nextEnvironment.skyMaterial, nextEnvironment.groundMaterial);
+      updateEditor();
+    };
+    const appendEnvironmentRow = (component, label, material, fallbackColor) => {
+      const group = document.createElement('div');
+      group.className = 'component-material-row';
+      group.appendChild(createColorField(label, material?.color || fallbackColor, (color) => {
+        applyEnvironmentMaterial(component, color);
+      }, getMaterialFriendlyName(material), material));
+      group.appendChild(createApplyMaterialButton('应用当前材质', () => {
+        applyEnvironmentMaterial(component, activeMaterialDescriptor);
+      }));
+      designSelectionPanel.appendChild(group);
+    };
+
+    const title = document.createElement('p');
+    title.className = 'selection-title';
+    title.textContent = '楼层环境材质（天空贴图推荐 2:1 全景图）';
+    designSelectionPanel.appendChild(title);
+    appendEnvironmentRow('sky', '天空', environment.skyMaterial, '#d9ecff');
+    appendEnvironmentRow('ground', '地面', environment.groundMaterial, '#8ca66b');
+  }
 }
 
 export function getMaterialFriendlyName(material) {
@@ -979,7 +1021,7 @@ export function getMaterialFriendlyName(material) {
 }
 
 export function createColorField(label, value, onChange, currentMaterialName = '', materialDescriptor = null) {
-  const container = document.createElement('label');
+  const container = document.createElement('div');
   container.className = 'field';
   
   const span = document.createElement('span');
@@ -1002,7 +1044,7 @@ export function createColorField(label, value, onChange, currentMaterialName = '
 
   const input = document.createElement('input');
   input.type = 'color';
-  input.style.display = 'none';
+  input.style.cssText = 'position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;';
   
   let hexColor = '#ffffff';
   if (typeof value === 'string') {
@@ -1014,9 +1056,11 @@ export function createColorField(label, value, onChange, currentMaterialName = '
   input.value = hexColor;
   input.addEventListener('change', (e) => onChange(e.target.value));
   
-  const colorBtn = document.createElement('div');
+  const colorBtn = document.createElement('button');
+  colorBtn.type = 'button';
+  colorBtn.setAttribute('aria-label', `${label}：选择自定义颜色`);
   colorBtn.className = 'color-preview-btn';
-  colorBtn.style.cssText = 'width: 100%; height: 30px; border: 1px solid rgba(42, 65, 92, 0.2); border-radius: 6px; cursor: pointer; box-sizing: border-box;';
+  colorBtn.style.cssText = 'width: 100%; height: 30px; padding: 0; appearance: none; border: 1px solid rgba(42, 65, 92, 0.2); border-radius: 6px; cursor: pointer; box-sizing: border-box;';
   
   const descriptor = materialDescriptor || value;
   let normalized = null;
@@ -1041,7 +1085,12 @@ export function createColorField(label, value, onChange, currentMaterialName = '
   
   colorBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    input.click();
+    try {
+      if (typeof input.showPicker === 'function') input.showPicker();
+      else input.click();
+    } catch (_error) {
+      input.click();
+    }
   });
   
   input.addEventListener('input', (e) => {
@@ -1221,7 +1270,7 @@ export function initUiEventListeners() {
     }
   });
 
-  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-u-slot-width', 'structure-u-void-length', 'structure-curve', 'structure-elevation'].forEach((id) => {
+  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-curve', 'structure-elevation'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
   });
 

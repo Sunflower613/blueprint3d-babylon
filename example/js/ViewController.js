@@ -71,7 +71,7 @@ export function resetCurrentMaterial() {
     Context.pushHistory();
     map.executeCommand('setRoomFloorMaterial', {
       roomId: Context.selectedRoomId,
-      material: DEFAULT_MATERIAL_PACKS.find((material) => material.id === 'wood-light-fine')
+      material: DEFAULT_MATERIAL_PACKS.find((material) => material.id === 'wood-plank-oak-light')
     });
   } else if (Context.selectedFenceId) {
     Context.pushHistory();
@@ -80,7 +80,10 @@ export function resetCurrentMaterial() {
     Context.pushHistory();
     map.executeCommand('resetOpeningMaterial', { openingId: Context.selectedOpeningId });
   } else {
-    return;
+    Context.pushHistory();
+    map.executeCommand('setEnvironmentMaterial', { component: 'sky', material: null, rebuild: false });
+    map.executeCommand('setEnvironmentMaterial', { component: 'ground', material: null, rebuild: false });
+    Context.updateSkyboxFromCurrentFloor();
   }
   refreshShadows();
   Context.updateEditor();

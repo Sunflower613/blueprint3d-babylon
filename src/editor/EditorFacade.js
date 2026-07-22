@@ -358,6 +358,9 @@ export class EditorFacade {
         result = this._document.changeFloorDefaultFloorHeight(args.floorId, floorHeight);
         break;
       }
+      case 'setEnvironmentMaterial':
+        result = this._document.setEnvironmentMaterial(args.component, args.material);
+        break;
 
       // 2. 房间命令
       case 'addRoom':
@@ -580,6 +583,7 @@ export class EditorFacade {
   moveFloor(floorId, direction) { return this.executeCommand('moveFloor', { floorId, direction }); }
   renameFloor(floorId, name) { return this.executeCommand('renameFloor', { floorId, name }); }
   setCurrentFloor(floorId) { return this.executeCommand('setCurrentFloor', { floorId }); }
+  setEnvironmentMaterial(component, material, rebuild = false) { return this.executeCommand('setEnvironmentMaterial', { component, material, rebuild }); }
   addRoom(partialRoom = {}) { return this.executeCommand('addRoom', partialRoom); }
   updateRoom(roomId, patch, options = {}) { return this.executeCommand('updateRoom', { roomId, patch, options, rebuild: options.rebuild }); }
   deleteRoom(roomId) { return this.executeCommand('deleteRoom', { roomId }); }

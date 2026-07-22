@@ -104,21 +104,6 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
 export const FURNITURE_DEFINITIONS = DOMAIN_FURNITURE_DEFINITIONS;
 
 
-const KITCHEN_APPLIANCES = [
-  'fridge',
-  'microwave',
-  'stove',
-  'range_hood',
-  'coffee_maker',
-  'toaster',
-  'electric_kettle',
-  'dishwasher',
-  'water_dispenser',
-  'rice_cooker',
-  'air_fryer',
-  'blender'
-];
-
 const furnitureModules = [
   { module: seatingModule, category: 'seating' },
   { module: tablesModule, category: 'tables' },
@@ -142,11 +127,7 @@ for (const { module, category } of furnitureModules) {
   for (const item of Object.values(module)) {
     if (!item || typeof item !== 'object' || !item.type) continue;
 
-    let targetCategory = category;
-    if (category === 'kitchen' && KITCHEN_APPLIANCES.includes(item.type)) {
-      targetCategory = 'appliances';
-    }
-    item.category = targetCategory;
+    item.category = category;
 
     if (APPLIANCE_POWER_EFFECTS[item.type]) {
       item.isSwitchable = true;

@@ -178,7 +178,7 @@ export function isBigKitchenBathItem(type) {
   return type === 'fridge' || type === 'toilet' || type === 'bathtub' || 
          type === 'washing_machine' || type === 'stove' || type === 'shower_cabin' || 
          type === 'dishwasher' || type === 'water_dispenser' || type === 'range_hood' ||
-         type === 'sink_kitchen' || type === 'sink_bathroom';
+         type === 'sink_kitchen' || type === 'sink_cabinet' || type === 'sink_bathroom';
 }
 
 /**
@@ -603,43 +603,46 @@ export function getStairsRailingSegments(stairs, testMap) {
     const n1 = Math.max(1, Math.min(stairs.steps || 9, stairs.cornerStep ?? Math.floor((stairs.steps || 9) / 2)));
     const stepHeight = height / (stairs.steps || 9);
     const landHeight = stepHeight * n1;
+    const runBeforeCorner = Math.max(0.2, Number(stairs.runBeforeCorner ?? (depth - width)));
+    const runAfterCorner = Math.max(0.2, Number(stairs.runAfterCorner ?? (depth - width)));
+    const landingZ = runBeforeCorner / 2;
 
-    const l1Depth = depth - width;
+    const l1Depth = runBeforeCorner;
     const tilt1 = Math.atan2(landHeight, l1Depth);
     const yOffset1 = landHeight / 2;
 
     // 第一段楼梯
     segments.push({
-      from: getWordPos(-width / 2, -depth / 2),
-      to: getWordPos(-width / 2, depth / 2 - width),
+      from: getWordPos(-width / 2, -(runBeforeCorner + width) / 2),
+      to: getWordPos(-width / 2, landingZ - width / 2),
       tilt: tilt1,
       yOffset: yOffset1
     });
 
     segments.push({
-      from: getWordPos(width / 2, -depth / 2),
-      to: getWordPos(width / 2, depth / 2 - width),
+      from: getWordPos(width / 2, -(runBeforeCorner + width) / 2),
+      to: getWordPos(width / 2, landingZ - width / 2),
       tilt: tilt1,
       yOffset: yOffset1
     });
 
     // 第二段楼梯
-    const l2Length = depth - width;
+    const l2Length = runAfterCorner;
     const tilt2 = Math.atan2(height - landHeight, l2Length);
     const yOffset2 = landHeight + (height - landHeight) / 2;
     const lxStart = (width / 2) * flipX;
-    const lxEnd = (depth / 2) * flipX;
+    const lxEnd = (width / 2 + runAfterCorner) * flipX;
 
     segments.push({
-      from: getWordPos(lxStart, depth / 2),
-      to: getWordPos(lxEnd, depth / 2),
+      from: getWordPos(lxStart, landingZ + width / 2),
+      to: getWordPos(lxEnd, landingZ + width / 2),
       tilt: tilt2,
       yOffset: yOffset2
     });
 
     segments.push({
-      from: getWordPos(lxStart, depth / 2 - width),
-      to: getWordPos(lxEnd, depth / 2 - width),
+      from: getWordPos(lxStart, landingZ - width / 2),
+      to: getWordPos(lxEnd, landingZ - width / 2),
       tilt: tilt2,
       yOffset: yOffset2
     });

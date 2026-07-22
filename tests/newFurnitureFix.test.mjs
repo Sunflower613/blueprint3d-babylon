@@ -43,30 +43,11 @@ test('3. 新增带柜水槽', () => {
   assert.ok(typeof sinkCabinet.build === 'function');
 });
 
-test('4. 厨房相关家电分类规范，理顺分类边界', () => {
-  const fridge = FURNITURE_LIST.find(item => item.type === 'fridge');
-  assert.equal(fridge.category, 'appliances', '冰箱 category 应该被归到 appliances');
-
-  const microwave = FURNITURE_LIST.find(item => item.type === 'microwave');
-  assert.equal(microwave.category, 'appliances', '微波炉 category 应该被归到 appliances');
-
-  const stove = FURNITURE_LIST.find(item => item.type === 'stove');
-  assert.equal(stove.category, 'appliances', '燃气灶 category 应该被归到 appliances');
-
-  const rangeHood = FURNITURE_LIST.find(item => item.type === 'range_hood');
-  assert.equal(rangeHood.category, 'appliances', '抽油烟机 category 应该被归到 appliances');
-
-  const dishwasher = FURNITURE_LIST.find(item => item.type === 'dishwasher');
-  assert.equal(dishwasher.category, 'appliances', '洗碗机 category 应该被归到 appliances');
-
-  const sinkKitchen = FURNITURE_LIST.find(item => item.type === 'sink_kitchen');
-  assert.equal(sinkKitchen.category, 'kitchen', '普通厨房水槽 category 应该保留在 kitchen');
-
-  const kitchenware = FURNITURE_LIST.find(item => item.type === 'kitchenware');
-  assert.equal(kitchenware.category, 'kitchen', '餐具架 category 应该保留在 kitchen');
-
-  const knifeBlock = FURNITURE_LIST.find(item => item.type === 'knife_block');
-  assert.equal(knifeBlock.category, 'kitchen', '刀架 category 应该保留在 kitchen');
+test('4. 厨房模块家具全部保留在厨房分类', () => {
+  for (const type of ['fridge', 'microwave', 'stove', 'range_hood', 'dishwasher', 'sink_kitchen', 'sink_cabinet', 'kitchenware', 'knife_block']) {
+    const definition = FURNITURE_LIST.find(item => item.type === type);
+    assert.equal(definition.category, 'kitchen', `${type} 应该保留在 kitchen`);
+  }
 });
 
 test('5. 燃气灶统一为一米宽并内置烤箱组件', () => {
@@ -77,4 +58,17 @@ test('5. 燃气灶统一为一米宽并内置烤箱组件', () => {
   assert.ok(componentIds.has('oven_frame'));
   assert.ok(componentIds.has('oven_glass'));
   assert.ok(componentIds.has('oven_handle'));
+});
+
+test('6. 厨房柜体和大家电默认宽度统一为一米', () => {
+  for (const type of ['cabinet_kitchen', 'sink_kitchen', 'sink_cabinet', 'stove', 'dishwasher', 'fridge', 'range_hood']) {
+    const definition = FURNITURE_LIST.find(item => item.type === type);
+    assert.equal(definition.defaultSize.width, 39.37, `${type} 默认宽度应为 1m`);
+  }
+});
+
+test('7. 洗碗机采用标准地柜高度', () => {
+  const dishwasher = FURNITURE_LIST.find(item => item.type === 'dishwasher');
+  assert.equal(dishwasher.defaultSize.height, 36);
+  assert.equal(dishwasher.defaultSize.depth, 24);
 });

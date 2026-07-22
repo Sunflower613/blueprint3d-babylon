@@ -177,7 +177,7 @@ export const nightstandFurniture = {
 export const cabinetKitchenFurniture = {
   type: 'cabinet_kitchen',
   name: '橱柜',
-  defaultSize: { width: 36, depth: 24, height: 36 },
+  defaultSize: { width: 39.37, depth: 24, height: 36 },
   components: [
     { id: 'counter', label: '石英台面', defaultColor: '#fcfcfa' },
     { id: 'doors', label: '柜门', defaultColor: '#89a5ad' },

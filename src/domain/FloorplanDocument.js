@@ -131,15 +131,22 @@ export class FloorplanDocument {
   normalizeFloorplan(floorplan) {
     const normalized = cloneFloorplan(floorplan);
     const defaultFloorMaterial = {
-      id: 'wood-light-fine',
-      name: '精细浅木',
+      id: 'wood-plank-oak-light',
+      name: '浅木长板',
       category: 'wood',
       kind: 'texture',
-      scale: 3,
-      color: '#e5c4a3'
+      scale: 2,
+      color: '#ffffff'
     };
 
     normalized.floor ||= { rooms: [] };
+    normalized.environment ||= {};
+    normalized.environment.skyMaterial = normalized.environment.skyMaterial
+      ? normalizeMaterialDescriptor(normalized.environment.skyMaterial, '#d9ecff')
+      : null;
+    normalized.environment.groundMaterial = normalized.environment.groundMaterial
+      ? normalizeMaterialDescriptor(normalized.environment.groundMaterial, '#8ca66b')
+      : null;
     normalized.floor.color ||= DEFAULT_FLOOR_COLOR;
     if (!normalized.floor.material || normalized.floor.material === DEFAULT_FLOOR_COLOR) {
       normalized.floor.material = defaultFloorMaterial;
@@ -271,6 +278,8 @@ export class FloorplanDocument {
       stairs.mirrored = !!stairs.mirrored;
       stairs.spiralDegrees = toFiniteNumber(stairs.spiralDegrees ?? (stairs.subtype === 'curved' ? 90 : 360), stairs.subtype === 'curved' ? 90 : 360);
       stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, toFiniteNumber(stairs.cornerStep ?? Math.floor(stairs.steps / 2), Math.floor(stairs.steps / 2))));
+      stairs.runBeforeCorner = toFinitePositive(stairs.runBeforeCorner, Math.max(0.2, stairs.depth - stairs.width), 0.2);
+      stairs.runAfterCorner = toFinitePositive(stairs.runAfterCorner, Math.max(0.2, stairs.depth - stairs.width), 0.2);
       stairs.uSlotWidth = toFiniteNumber(stairs.uSlotWidth ?? 0.1, 0.1);
       stairs.uVoidLength = toFiniteNumber(stairs.uVoidLength ?? (stairs.depth - 1), stairs.depth - 1);
     });
@@ -987,6 +996,9 @@ export class FloorplanDocument {
       sideColor: partialStairs.sideColor || partialStairs.color || '#d8c0a0',
       sideMaterial: partialStairs.sideMaterial || partialStairs.sideColor || partialStairs.color || '#d8c0a0',
       sideHidden: !!partialStairs.sideHidden,
+      cornerStep: partialStairs.cornerStep,
+      runBeforeCorner: partialStairs.runBeforeCorner ?? Math.max(0.2, (partialStairs.depth || 3.2) - (partialStairs.width || 1.2)),
+      runAfterCorner: partialStairs.runAfterCorner ?? Math.max(0.2, (partialStairs.depth || 3.2) - (partialStairs.width || 1.2)),
       locked: !!partialStairs.locked
     };
     this.floorplan.stairs.push(stairs);
@@ -1004,6 +1016,9 @@ export class FloorplanDocument {
     stairs.depth = Math.max(1.2, Number(stairs.depth || 1.2));
     stairs.height = Math.max(1, Number(stairs.height || 1));
     stairs.steps = Math.max(3, Math.round(Number(stairs.steps || 9)));
+    stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, Math.round(Number(stairs.cornerStep ?? Math.floor(stairs.steps / 2)))));
+    stairs.runBeforeCorner = Math.max(0.2, Number(stairs.runBeforeCorner ?? Math.max(0.2, stairs.depth - stairs.width)));
+    stairs.runAfterCorner = Math.max(0.2, Number(stairs.runAfterCorner ?? Math.max(0.2, stairs.depth - stairs.width)));
     stairs.rotation = Number(stairs.rotation || 0);
     if (patch.color && !patch.material) stairs.material = patch.color;
     stairs.color ||= '#d8c0a0';
@@ -1416,6 +1431,17 @@ export class FloorplanDocument {
       f.skyboxEnabled = enabled;
     });
     return true;
+  }
+
+  setEnvironmentMaterial(component, materialDescriptor) {
+    if (component !== 'sky' && component !== 'ground') return null;
+    this.floorplan.environment ||= {};
+    const key = component === 'sky' ? 'skyMaterial' : 'groundMaterial';
+    const fallback = component === 'sky' ? '#d9ecff' : '#8ca66b';
+    this.floorplan.environment[key] = materialDescriptor == null
+      ? null
+      : normalizeMaterialDescriptor(materialDescriptor, fallback);
+    return cloneFloorplan(this.floorplan.environment);
   }
 
   changeFloorHeight(floorId, height) {

@@ -3,7 +3,7 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const fridgeFurniture = {
   type: 'fridge',
   name: '冰箱',
-  defaultSize: { width: 32, depth: 30, height: 70 },
+  defaultSize: { width: 39.37, depth: 30, height: 70 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#c7cfd6' },
     { id: 'display', label: '控制面板', defaultColor: '#1f2224' },
@@ -40,7 +40,7 @@ export const fridgeFurniture = {
 export const sinkKitchenFurniture = {
   type: 'sink_kitchen',
   name: '厨房水槽',
-  defaultSize: { width: 32, depth: 22, height: 36 },
+  defaultSize: { width: 39.37, depth: 22, height: 36 },
   components: [
     { id: 'counter', label: '橱柜台面', defaultColor: '#ede8de' },
     { id: 'tub', label: '钢质水槽', defaultColor: '#b3bdc4' },
@@ -196,7 +196,7 @@ export const stoveFurniture = {
 export const rangeHoodFurniture = {
   type: 'range_hood',
   name: '抽油烟机',
-  defaultSize: { width: 30, depth: 20, height: 18 },
+  defaultSize: { width: 39.37, depth: 20, height: 18 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#b0b5b8' },
     { id: 'glass', label: '钢化玻璃', defaultColor: '#3b3e40' },
@@ -309,7 +309,8 @@ export const electricKettleFurniture = {
 export const dishwasherFurniture = {
   type: 'dishwasher',
   name: '洗碗机',
-  defaultSize: { width: 22, depth: 20, height: 18 },
+  defaultSize: { width: 39.37, depth: 24, height: 36 },
+  snapToEdge: true,
   components: [
     { id: 'body', label: '机身', defaultColor: '#eceff1' },
     { id: 'door', label: '前面板', defaultColor: '#cfd8dc' },
@@ -695,7 +696,8 @@ export const pairMugsFurniture = {
 export const sinkCabinetFurniture = {
   type: 'sink_cabinet',
   name: '带柜水槽',
-  defaultSize: { width: 32, depth: 22, height: 36 },
+  defaultSize: { width: 39.37, depth: 22, height: 36 },
+  snapToEdge: true,
   components: [
     { id: 'cabinet', label: '柜体', defaultColor: '#ebe7db' },
     { id: 'door', label: '柜门', defaultColor: '#d7cec1' },

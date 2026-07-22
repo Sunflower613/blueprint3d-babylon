@@ -80,6 +80,9 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
     const stepHeight = height / steps;
     const landHeight = stepHeight * n1;
     const treadThickness = Math.min(0.04, stepHeight * 0.5);
+    const runBeforeCorner = Math.max(0.2, Number(stairs.runBeforeCorner ?? (depth - width)));
+    const runAfterCorner = Math.max(0.2, Number(stairs.runAfterCorner ?? (depth - width)));
+    const landingZ = runBeforeCorner / 2;
 
     // 平台顶板
     createBox(registry, `stairs_land_tread_${stairs.id}`, {
@@ -90,7 +93,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
       position: {
         x: 0,
         y: landHeight - treadThickness / 2,
-        z: depth / 2 - width / 2
+        z: landingZ
       }
     }, {
       material,
@@ -111,7 +114,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
           position: {
             x: 0,
             y: baseH / 2,
-            z: depth / 2 - width / 2
+            z: landingZ
           }
         }, {
           material: sideMaterial,
@@ -123,7 +126,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
     }
 
     // 第一跑踏步 (L1)
-    const stepDepth = (depth - width) / n1;
+    const stepDepth = runBeforeCorner / n1;
     for (let i = 0; i < n1; i++) {
       const curStepH = stepHeight * (i + 1);
       // 踏面板
@@ -135,7 +138,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
         position: {
           x: 0,
           y: curStepH - treadThickness / 2,
-          z: -depth / 2 + stepDepth * i + stepDepth / 2
+          z: -(runBeforeCorner + width) / 2 + stepDepth * i + stepDepth / 2
         }
       }, {
         material,
@@ -156,7 +159,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
             position: {
               x: 0,
               y: baseH / 2,
-              z: -depth / 2 + stepDepth * i + stepDepth / 2
+              z: -(runBeforeCorner + width) / 2 + stepDepth * i + stepDepth / 2
             }
           }, {
             material: sideMaterial,
@@ -169,7 +172,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
     }
 
     // 第二跑踏步 (L2)
-    const stepX = (depth - width) / n2;
+    const stepX = runAfterCorner / n2;
     for (let i = 0; i < n2; i++) {
       const curStepH = landHeight + stepHeight * (i + 1);
       // 踏面板
@@ -181,7 +184,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
         position: {
           x: (width / 2 + stepX * i + stepX / 2) * flipX,
           y: curStepH - treadThickness / 2,
-          z: depth / 2 - width / 2
+          z: landingZ
         }
       }, {
         material,
@@ -202,7 +205,7 @@ export function buildStairsGeometry(registry, group, stairs, material, width, de
             position: {
               x: (width / 2 + stepX * i + stepX / 2) * flipX,
               y: baseH / 2,
-              z: depth / 2 - width / 2
+              z: landingZ
             }
           }, {
             material: sideMaterial,

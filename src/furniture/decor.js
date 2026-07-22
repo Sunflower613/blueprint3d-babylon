@@ -3,6 +3,19 @@ import { MeshBuilder, TransformNode } from '../core/babylon.js';
 
 const BABYLON = { MeshBuilder, TransformNode };
 
+function applyPosterCrop(mesh, column, row) {
+  const sourceMaterial = mesh?.material;
+  if (!sourceMaterial?.diffuseTexture) return;
+  const material = sourceMaterial.clone(`${mesh.name}_crop_material`);
+  const texture = sourceMaterial.diffuseTexture.clone();
+  texture.uScale = 0.5;
+  texture.vScale = 0.5;
+  texture.uOffset = column * 0.5;
+  texture.vOffset = row * 0.5;
+  material.diffuseTexture = texture;
+  mesh.material = material;
+}
+
 export const paintingFurniture = {
   type: 'painting',
   name: '艺术挂画',
@@ -22,6 +35,62 @@ export const paintingFurniture = {
     boxComponent(registry, item, paintingFurniture, 'canvas', {
       width: size.width - 0.06, height: size.height - 0.06, depth: size.depth + 0.006
     }, { position: { x: 0, y: size.height / 2, z: 0.003 } }, { parent: node });
+  }
+};
+
+export const posterFurniture = {
+  type: 'poster',
+  name: '单张海报',
+  defaultSize: { width: 18, depth: 0.8, height: 24 },
+  placeType: 'wall',
+  components: [
+    { id: 'backing', label: '海报背板', defaultColor: '#f3efe6' },
+    { id: 'poster', label: '海报贴图', defaultColor: '#d9a889' }
+  ],
+  build(registry, item, node, size) {
+    boxComponent(registry, item, posterFurniture, 'backing', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    boxComponent(registry, item, posterFurniture, 'poster', {
+      width: Math.max(0.02, size.width - 0.018),
+      height: Math.max(0.02, size.height - 0.018),
+      depth: 0.006
+    }, { position: { x: 0, y: size.height / 2, z: size.depth / 2 + 0.003 } }, { parent: node });
+  }
+};
+
+export const quadPosterFurniture = {
+  type: 'quad_poster',
+  name: '四联拼图海报',
+  defaultSize: { width: 40, depth: 1.2, height: 40 },
+  placeType: 'wall',
+  components: [
+    { id: 'frame', label: '四联画框', defaultColor: '#2f2b28' },
+    { id: 'poster', label: '拼图海报贴图', defaultColor: '#d8b486' }
+  ],
+  build(registry, item, node, size) {
+    const gap = Math.min(0.045, Math.min(size.width, size.height) * 0.035);
+    const panelWidth = (size.width - gap) / 2;
+    const panelHeight = (size.height - gap) / 2;
+    const frameBorder = Math.min(0.035, Math.min(panelWidth, panelHeight) * 0.08);
+    const xOffset = panelWidth / 2 + gap / 2;
+    const yOffsets = [panelHeight / 2, panelHeight + gap + panelHeight / 2];
+
+    for (let row = 0; row < 2; row++) {
+      for (let column = 0; column < 2; column++) {
+        const x = column === 0 ? -xOffset : xOffset;
+        const y = yOffsets[1 - row];
+        boxComponent(registry, item, quadPosterFurniture, 'frame', {
+          width: panelWidth, height: panelHeight, depth: size.depth
+        }, { position: { x, y, z: 0 } }, { parent: node });
+        const poster = boxComponent(registry, item, quadPosterFurniture, 'poster', {
+          width: Math.max(0.02, panelWidth - frameBorder * 2),
+          height: Math.max(0.02, panelHeight - frameBorder * 2),
+          depth: 0.006
+        }, { position: { x, y, z: size.depth / 2 + 0.003 } }, { parent: node });
+        applyPosterCrop(poster, column, row);
+      }
+    }
   }
 };
 
@@ -1214,34 +1283,36 @@ export const traditionalChineseScreenFurniture = {
 
 export const modernSlatScreenFurniture = {
   type: 'modern_slat_screen',
-  name: '格栅屏风',
-  defaultSize: { width: 48, depth: 6, height: 72 },
+  name: '木格栅墙',
+  defaultSize: { width: 48, depth: 3, height: 72 },
   components: [
-    { id: 'base', label: '水磨石底座', defaultColor: '#37474f' },
-    { id: 'slats', label: '橡木格栅条', defaultColor: '#d2b48c' }
+    { id: 'base', label: '上下横梁', defaultColor: '#b58a5f' },
+    { id: 'slats', label: '浅橡木格栅条', defaultColor: '#d8b486' }
   ],
   build(registry, item, node, size) {
-    const baseH = size.height * 0.08;
-    const slatH = size.height - baseH;
-    const N = 11;
-    const slatW = 0.015; // 1.5 厘米
-    const slatD = size.depth * 0.4;
+    const beamH = Math.min(0.045, size.height * 0.04);
+    const slatH = Math.max(0.02, size.height - beamH * 2);
+    const N = Math.max(4, Math.round(size.width / 0.14));
+    const slatW = Math.min(0.055, size.width / N * 0.52);
+    const slatD = Math.max(0.025, size.depth * 0.72);
 
-    // 1. 底座 (Base)
-    boxComponent(registry, item, modernSlatScreenFurniture, 'base', {
-      width: size.width, height: baseH, depth: size.depth
-    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+    // 仅保留上下横梁，不生成连续背板，让格栅保持通透。
+    [beamH / 2, size.height - beamH / 2].forEach((y) => {
+      boxComponent(registry, item, modernSlatScreenFurniture, 'base', {
+        width: size.width, height: beamH, depth: slatD
+      }, { position: { x: 0, y, z: 0 } }, { parent: node });
+    });
 
-    // 2. 格栅条 (Slats)
-    const startX = -size.width / 2 + 0.03; // 两侧留 3 厘米
-    const endX = size.width / 2 - 0.03;
+    // 使用更疏的竖向木条。
+    const startX = -size.width / 2 + slatW / 2;
+    const endX = size.width / 2 - slatW / 2;
     const stepX = (endX - startX) / (N - 1);
 
     for (let i = 0; i < N; i++) {
       const sx = startX + i * stepX;
       boxComponent(registry, item, modernSlatScreenFurniture, 'slats', {
         width: slatW, height: slatH, depth: slatD
-      }, { position: { x: sx, y: baseH + slatH / 2, z: 0 } }, { parent: node });
+      }, { position: { x: sx, y: beamH + slatH / 2, z: 0 } }, { parent: node });
     }
   }
 };

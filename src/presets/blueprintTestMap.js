@@ -1342,6 +1342,10 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     return room;
   }
 
+  setEnvironmentMaterial(component, materialDescriptor) {
+    return this.editorFacade.setEnvironmentMaterial(component, materialDescriptor, false);
+  }
+
   /**
    * 为全局未指定材质的默认地板整体覆盖新的材质参数
    * @param {Object} materialDescriptor - 全局地板的材质描述包

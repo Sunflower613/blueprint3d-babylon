@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, shouldIncludeShadowCaster } from '../../src/index.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
@@ -408,8 +408,6 @@ export class Viewer3D {
   }
 
   /**
-   * 开启或关闭天空盒及 1 楼草地
-  /**
    * 更新天空盒滤镜/背景颜色
    * @param {string} colorHex - 颜色十六进制值
    */
@@ -417,6 +415,51 @@ export class Viewer3D {
     this._skyboxColor = colorHex;
     if (this.skybox && this.skybox.material) {
       this.skybox.material.emissiveColor = BABYLON.Color3.FromHexString(colorHex);
+    }
+  }
+
+  setEnvironmentMaterials(skyDescriptor = null, groundDescriptor = null) {
+    this._environmentSkyMaterial = skyDescriptor;
+    this._environmentGroundMaterial = groundDescriptor;
+
+    if (this.skybox?.material) {
+      const material = this.skybox.material;
+      material.emissiveTexture?.dispose();
+      material.emissiveTexture = null;
+      if (skyDescriptor) {
+        const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#d9ecff');
+        const resolved = resolveMaterialAssetDescriptor(normalized);
+        material.emissiveColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
+        if (resolved.kind === 'texture' && resolved.src) {
+          material.emissiveTexture = new BABYLON.Texture(resolved.src, this.scene, false, false);
+        }
+      } else {
+        material.emissiveColor = BABYLON.Color3.White();
+        material.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene);
+      }
+    }
+
+    if (this.grassLawn?.material) {
+      const material = this.grassLawn.material;
+      material.diffuseTexture?.dispose();
+      material.diffuseTexture = null;
+      if (groundDescriptor) {
+        const normalized = MaterialResolver.normalizeMaterialDescriptor(groundDescriptor, '#8ca66b');
+        const resolved = resolveMaterialAssetDescriptor(normalized);
+        material.diffuseColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
+        if (resolved.kind === 'texture' && resolved.src) {
+          material.diffuseTexture = new BABYLON.Texture(resolved.src, this.scene);
+          material.diffuseTexture.uScale = Math.max(1, Number(resolved.scale || 1) * 40);
+          material.diffuseTexture.vScale = Math.max(1, Number(resolved.scale || 1) * 40);
+          material.diffuseTexture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+          material.diffuseTexture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+        }
+      } else {
+        material.diffuseColor = BABYLON.Color3.White();
+        material.diffuseTexture = new BABYLON.Texture(GRASS_TEXTURE_URL, this.scene);
+        material.diffuseTexture.uScale = 40;
+        material.diffuseTexture.vScale = 40;
+      }
     }
   }
 
@@ -460,6 +503,7 @@ export class Viewer3D {
         this.grassLawn.position.y = -0.01; // 略微低于 0 米，防止同 1 楼地板发生 Z-fighting 闪烁
         this.grassLawn.isPickable = false; // 排除拾取
       }
+      this.setEnvironmentMaterials(this._environmentSkyMaterial, this._environmentGroundMaterial);
       this.grassLawn.setEnabled(true);
     } else {
       if (this.skybox) {

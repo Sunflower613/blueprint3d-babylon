@@ -31,27 +31,29 @@ test('stained-glass descriptor keeps its transparency and pattern controls', () 
   assert.equal(normalized.emissiveStrength, 0.12);
 });
 
-test('catalog exposes eight common wood textures and no flat wood color', () => {
+test('catalog exposes nine uploaded wood textures without duplicate placeholders', () => {
   const woodMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'wood');
 
-  assert.equal(woodMaterials.length, 8);
+  assert.equal(woodMaterials.length, 9);
   assert.deepEqual(
     woodMaterials.map((entry) => entry.id),
     [
-      'wood-light-fine',
-      'wood-light-oak',
-      'wood-ash',
-      'wood-maple',
-      'wood-pine',
-      'wood-teak',
-      'wood-cherry',
-      'wood-walnut'
+      'wood-panel-moulding-light',
+      'wood-fluted-oak-light',
+      'wood-herringbone-oak-light',
+      'wood-plank-oak-light',
+      'wood-oak-natural-light',
+      'wood-butcher-block-light',
+      'wood-basket-parquet-light',
+      'wood-chevron-oak-light',
+      'wood-diagonal-plank-light'
     ]
   );
+  assert.equal(new Set(woodMaterials.map((material) => material.src)).size, 9);
 
   woodMaterials.forEach((material) => {
     assert.equal(material.kind, 'texture');
-    assert.ok(String(material.src).includes('light_fine_wood.jpg'));
+    assert.match(String(material.src), /wood_(panel|fluted|herringbone|plank|oak|butcher|basket|chevron|diagonal)/);
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
   });
 });
@@ -157,11 +159,11 @@ test('catalog exposes five fabric textures', () => {
   });
 });
 
-test('catalog exposes eleven wallpaper textures including the new Chinese-style patterns', () => {
+test('catalog exposes sixteen wallpaper textures including five built-in posters', () => {
   const wallpaperMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'wallpaper');
   const wallpaperTextures = wallpaperMaterials.filter((entry) => entry.kind === 'texture');
 
-  assert.equal(wallpaperTextures.length, 11);
+  assert.equal(wallpaperTextures.length, 16);
   assert.deepEqual(
     wallpaperTextures.map((entry) => entry.id),
     [
@@ -175,7 +177,12 @@ test('catalog exposes eleven wallpaper textures including the new Chinese-style 
       'wallpaper-cloud-navy-gold',
       'wallpaper-ruyi-swirl-yellow',
       'wallpaper-floral-blue-white',
-      'wallpaper-seigaiha-blush'
+      'wallpaper-seigaiha-blush',
+      'poster-abstract-arches',
+      'poster-botanical-sage',
+      'poster-bauhaus-primary',
+      'poster-mountain-sunrise',
+      'poster-celestial-moons'
     ]
   );
 
@@ -184,7 +191,8 @@ test('catalog exposes eleven wallpaper textures including the new Chinese-style 
     assert.equal(material.kind, 'texture');
     assert.ok(
       String(material.src).includes('wallmap_yellow.png') ||
-      String(material.src).includes('wallpaper_')
+      String(material.src).includes('wallpaper_') ||
+      String(material.src).includes('poster_')
     );
     assert.ok(/^#[0-9a-f]{6}$/i.test(material.color));
   });

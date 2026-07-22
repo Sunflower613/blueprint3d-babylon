@@ -66,27 +66,35 @@ export const deskFurniture = {
 export const coffeeTableFurniture = {
   type: 'coffee_table',
   name: '茶几',
-  defaultSize: { width: 42, depth: 22, height: 18 },
+  defaultSize: { width: 28, depth: 28, height: 18 },
   components: [
-    { id: 'top', label: '桌面', defaultColor: '#8f7058' },
-    { id: 'legs', label: '桌腿', defaultColor: '#594231' }
+    { id: 'top', label: '浅橡木厚桌面', defaultColor: '#dfbd8c' },
+    { id: 'legs', label: '浅橡木外撇桌腿', defaultColor: '#c99b68' }
   ],
   build(registry, item, node, size) {
-    const topH = 0.038;
+    const topH = Math.min(0.065, size.height * 0.16);
     boxComponent(registry, item, coffeeTableFurniture, 'top', {
       width: size.width, height: topH, depth: size.depth
     }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
 
-    const legH = size.height - topH;
-    const legW = Math.max(0.04, size.width * 0.08);
-    const xOffset = size.width / 2 - legW / 2;
-    const zOffset = size.depth / 2 - legW / 2;
+    // 略微内收的第二层桌沿，让方形浅木桌面在远景中也有清晰轮廓。
+    boxComponent(registry, item, coffeeTableFurniture, 'top', {
+      width: size.width * 0.9, height: topH * 0.45, depth: size.depth * 0.9
+    }, { position: { x: 0, y: size.height - topH - topH * 0.225, z: 0 } }, { parent: node });
+
+    const legH = size.height - topH * 1.45;
+    const legW = Math.min(0.055, Math.min(size.width, size.depth) * 0.11);
+    const inset = Math.min(0.055, Math.min(size.width, size.depth) * 0.1);
+    const xOffset = size.width / 2 - inset - legW / 2;
+    const zOffset = size.depth / 2 - inset - legW / 2;
 
     [-1, 1].forEach((x) => {
       [-1, 1].forEach((z) => {
-        boxComponent(registry, item, coffeeTableFurniture, 'legs', {
+        const leg = boxComponent(registry, item, coffeeTableFurniture, 'legs', {
           width: legW, height: legH, depth: legW
         }, { position: { x: x * xOffset, y: legH / 2, z: z * zOffset } }, { parent: node });
+        leg.rotation.x = z * 0.045;
+        leg.rotation.z = -x * 0.045;
       });
     });
   }
@@ -96,29 +104,33 @@ export const coffeeTableFurniture = {
 export const sideTableFurniture = {
   type: 'side_table',
   name: '边几',
-  defaultSize: { width: 16, depth: 16, height: 22 },
+  defaultSize: { width: 18, depth: 18, height: 22 },
   components: [
-    { id: 'top', label: '几面', defaultColor: '#cfa170' },
-    { id: 'legs', label: '脚架', defaultColor: '#3b3835' }
+    { id: 'top', label: '浅橡木双层几面', defaultColor: '#dfbd8c' },
+    { id: 'legs', label: '浅橡木框架', defaultColor: '#c99b68' }
   ],
   build(registry, item, node, size) {
-    const topH = 0.024;
+    const topH = Math.min(0.05, size.height * 0.11);
     boxComponent(registry, item, sideTableFurniture, 'top', {
       width: size.width, height: topH, depth: size.depth
     }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
 
-    const legH = size.height - topH;
-    const legW = 0.02;
-    const xOffset = size.width / 2 - legW / 2;
-    const zOffset = size.depth / 2 - legW / 2;
-
+    const frameT = Math.min(0.045, Math.min(size.width, size.depth) * 0.1);
+    const frameH = size.height - topH;
+    const xOffset = size.width / 2 - frameT / 2 - 0.025;
     [-1, 1].forEach((x) => {
-      [-1, 1].forEach((z) => {
-        boxComponent(registry, item, sideTableFurniture, 'legs', {
-          width: legW, height: legH, depth: legW
-        }, { position: { x: x * xOffset, y: legH / 2, z: z * zOffset } }, { parent: node });
-      });
+      boxComponent(registry, item, sideTableFurniture, 'legs', {
+        width: frameT, height: frameH, depth: frameT
+      }, { position: { x: x * xOffset, y: frameH / 2, z: 0 } }, { parent: node });
     });
+    boxComponent(registry, item, sideTableFurniture, 'legs', {
+      width: xOffset * 2 + frameT, height: frameT, depth: size.depth * 0.82
+    }, { position: { x: 0, y: frameT / 2, z: 0 } }, { parent: node });
+
+    // 下层置物板与 Photo 5 的轻量方几保持一致，同时与旧四腿造型明显区分。
+    boxComponent(registry, item, sideTableFurniture, 'top', {
+      width: size.width * 0.82, height: topH * 0.55, depth: size.depth * 0.78
+    }, { position: { x: 0, y: frameT + topH * 0.275, z: 0 } }, { parent: node });
   }
 };
 

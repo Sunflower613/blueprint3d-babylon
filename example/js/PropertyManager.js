@@ -159,6 +159,8 @@ export function updateSelectedStructure() {
     patch.mirrored = document.getElementById('structure-mirrored').checked;
     patch.spiralDegrees = Number(document.getElementById('structure-spiral-degrees').value);
     patch.cornerStep = Number(document.getElementById('structure-corner-step').value);
+    patch.runBeforeCorner = Number(document.getElementById('structure-run-before-corner').value);
+    patch.runAfterCorner = Number(document.getElementById('structure-run-after-corner').value);
     patch.uSlotWidth = Number(document.getElementById('structure-u-slot-width').value);
     patch.uVoidLength = Number(document.getElementById('structure-u-void-length').value);
   }
@@ -261,6 +263,8 @@ export function updateSkyboxFromCurrentFloor() {
   if (currentFloor) {
     const skyboxEnabled = currentFloor.skyboxEnabled === true;
     Context.viewer3d.setSkyboxEnabled(skyboxEnabled);
+    const environment = Context.testMap.getSnapshot().environment || {};
+    Context.viewer3d.setEnvironmentMaterials(environment.skyMaterial, environment.groundMaterial);
   }
 }
 

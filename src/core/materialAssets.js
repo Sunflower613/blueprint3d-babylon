@@ -2,6 +2,15 @@ import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
 
 const TEXTURE_MAP = {
   'light_fine_wood.jpg': new URL('../textures/light_fine_wood.jpg', import.meta.url).href,
+  'wood_panel_moulding_light.jpg': new URL('../textures/wood_panel_moulding_light.jpg', import.meta.url).href,
+  'wood_fluted_oak_light.jpg': new URL('../textures/wood_fluted_oak_light.jpg', import.meta.url).href,
+  'wood_herringbone_oak_light.jpg': new URL('../textures/wood_herringbone_oak_light.jpg', import.meta.url).href,
+  'wood_plank_oak_light.jpg': new URL('../textures/wood_plank_oak_light.jpg', import.meta.url).href,
+  'wood_oak_natural_light.jpg': new URL('../textures/wood_oak_natural_light.jpg', import.meta.url).href,
+  'wood_butcher_block_light.jpg': new URL('../textures/wood_butcher_block_light.jpg', import.meta.url).href,
+  'wood_basket_parquet_light.jpg': new URL('../textures/wood_basket_parquet_light.jpg', import.meta.url).href,
+  'wood_chevron_oak_light.jpg': new URL('../textures/wood_chevron_oak_light.jpg', import.meta.url).href,
+  'wood_diagonal_plank_light.jpg': new URL('../textures/wood_diagonal_plank_light.jpg', import.meta.url).href,
   'brick_marble_tiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href,
   'marbletiles.jpg': new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href,
   'brick_light.jpg': new URL('../textures/brick_light.jpg', import.meta.url).href,
@@ -44,7 +53,12 @@ const TEXTURE_MAP = {
   'wallpaper_cloud_navy_gold.jpg': new URL('../textures/wallpaper_cloud_navy_gold.jpg', import.meta.url).href,
   'wallpaper_ruyi_swirl_yellow.jpg': new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href,
   'wallpaper_floral_blue_white.jpg': new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href,
-  'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href
+  'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href,
+  'poster_abstract_arches.png': new URL('../textures/poster_abstract_arches.png', import.meta.url).href,
+  'poster_botanical_sage.png': new URL('../textures/poster_botanical_sage.png', import.meta.url).href,
+  'poster_bauhaus_primary.png': new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href,
+  'poster_mountain_sunrise.png': new URL('../textures/poster_mountain_sunrise.png', import.meta.url).href,
+  'poster_celestial_moons.png': new URL('../textures/poster_celestial_moons.png', import.meta.url).href
 };
 
 export function resolveMaterialAssetDescriptor(descriptor) {

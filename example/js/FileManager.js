@@ -14,7 +14,7 @@ let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
 
 function getProjectName(fallback = 'blueprint-building') {
-  return ctx.testMap.getProjectMetadata().name || fallback;
+  return ctx.store?.getCurrentProjectName?.() || ctx.testMap.getProjectMetadata().name || fallback;
 }
 
 /**

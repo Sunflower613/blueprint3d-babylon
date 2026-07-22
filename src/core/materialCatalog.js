@@ -1,4 +1,12 @@
-const lightFineWoodUrl = new URL('../textures/light_fine_wood.jpg', import.meta.url).href;
+const woodPanelMouldingLightUrl = new URL('../textures/wood_panel_moulding_light.jpg', import.meta.url).href;
+const woodFlutedOakLightUrl = new URL('../textures/wood_fluted_oak_light.jpg', import.meta.url).href;
+const woodHerringboneOakLightUrl = new URL('../textures/wood_herringbone_oak_light.jpg', import.meta.url).href;
+const woodPlankOakLightUrl = new URL('../textures/wood_plank_oak_light.jpg', import.meta.url).href;
+const woodOakNaturalLightUrl = new URL('../textures/wood_oak_natural_light.jpg', import.meta.url).href;
+const woodButcherBlockLightUrl = new URL('../textures/wood_butcher_block_light.jpg', import.meta.url).href;
+const woodBasketParquetLightUrl = new URL('../textures/wood_basket_parquet_light.jpg', import.meta.url).href;
+const woodChevronOakLightUrl = new URL('../textures/wood_chevron_oak_light.jpg', import.meta.url).href;
+const woodDiagonalPlankLightUrl = new URL('../textures/wood_diagonal_plank_light.jpg', import.meta.url).href;
 const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
 const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
 const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
@@ -42,6 +50,11 @@ const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold
 const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
 const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
 const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
+const posterAbstractArchesUrl = new URL('../textures/poster_abstract_arches.png', import.meta.url).href;
+const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.png', import.meta.url).href;
+const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href;
+const posterMountainSunriseUrl = new URL('../textures/poster_mountain_sunrise.png', import.meta.url).href;
+const posterCelestialMoonsUrl = new URL('../textures/poster_celestial_moons.png', import.meta.url).href;
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -58,20 +71,19 @@ export const MATERIAL_CATEGORIES = [
 ];
 
 const COMMON_WOOD_MATERIALS = [
-  { id: 'wood-light-fine', name: '\u7cbe\u7ec6\u6d45\u6728', color: '#e5c4a3' },
-  { id: 'wood-light-oak', name: '\u6d45\u6a61\u6728', color: '#dcc09a' },
-  { id: 'wood-ash', name: '\u767d\u8721\u6728', color: '#d6c3a5' },
-  { id: 'wood-maple', name: '\u67ab\u6728', color: '#d8ad84' },
-  { id: 'wood-pine', name: '\u677e\u6728', color: '#d2b07a' },
-  { id: 'wood-teak', name: '\u67da\u6728', color: '#b98658' },
-  { id: 'wood-cherry', name: '\u6a31\u6843\u6728', color: '#b86f52' },
-  { id: 'wood-walnut', name: '\u80e1\u6843\u6728', color: '#8a5c3b' }
+  { id: 'wood-panel-moulding-light', name: '浅木护墙板', src: woodPanelMouldingLightUrl, scale: 1, color: '#ffffff' },
+  { id: 'wood-fluted-oak-light', name: '浅木格栅', src: woodFlutedOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-herringbone-oak-light', name: '浅木人字拼', src: woodHerringboneOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-plank-oak-light', name: '浅木长板', src: woodPlankOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-oak-natural-light', name: '浅色原木直纹', src: woodOakNaturalLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-butcher-block-light', name: '浅木指接板', src: woodButcherBlockLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-basket-parquet-light', name: '浅木方篮拼', src: woodBasketParquetLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-chevron-oak-light', name: '浅木箭羽拼', src: woodChevronOakLightUrl, scale: 2, color: '#ffffff' },
+  { id: 'wood-diagonal-plank-light', name: '浅木斜铺长板', src: woodDiagonalPlankLightUrl, scale: 2, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'wood',
-  kind: 'texture',
-  src: lightFineWoodUrl,
-  scale: 3
+  kind: 'texture'
 }));
 
 const COMMON_FABRIC_MATERIALS = [
@@ -96,7 +108,12 @@ const COMMON_WALLPAPER_MATERIALS = [
   { id: 'wallpaper-cloud-navy-gold', name: '祥云墙纸', src: wallpaperCloudNavyGoldUrl, scale: 1, color: '#d7be8a' },
   { id: 'wallpaper-ruyi-swirl-yellow', name: '回纹墙纸', src: wallpaperRuyiSwirlYellowUrl, scale: 1, color: '#f0dc75' },
   { id: 'wallpaper-floral-blue-white', name: '青花团纹墙纸', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#62789a' },
-  { id: 'wallpaper-seigaiha-blush', name: '青海波墙纸', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' }
+  { id: 'wallpaper-seigaiha-blush', name: '青海波墙纸', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' },
+  { id: 'poster-abstract-arches', name: '拱形抽象海报', src: posterAbstractArchesUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-botanical-sage', name: '鼠尾草植物海报', src: posterBotanicalSageUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-bauhaus-primary', name: '包豪斯几何海报', src: posterBauhausPrimaryUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-mountain-sunrise', name: '山峦日出海报', src: posterMountainSunriseUrl, scale: 1, color: '#ffffff' },
+  { id: 'poster-celestial-moons', name: '月相星空海报', src: posterCelestialMoonsUrl, scale: 1, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'wallpaper',

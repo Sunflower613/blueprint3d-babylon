@@ -58,9 +58,9 @@ test('0722：地毯不会吸附到桌面，靠枕仍可放在桌面', () => {
   assert.equal(Topology.canPlaceOnTable({}, FURNITURE_DEFINITIONS.cushion), true);
 });
 
-test('0722：厨房大家电重分类为 appliances 后仍保持贴墙', () => {
+test('0722：厨房柜体和大家电保持贴墙', () => {
   const { manager } = createManager();
-  for (const type of ['stove', 'fridge', 'dishwasher', 'range_hood']) {
+  for (const type of ['stove', 'fridge', 'dishwasher', 'range_hood', 'sink_cabinet']) {
     assert.equal(manager.shouldSnapToEdge(type), true, `${type} 应贴墙`);
   }
 });

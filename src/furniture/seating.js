@@ -22,27 +22,36 @@ export const sofaFurniture = {
     }
   },
   build(registry, item, node, size) {
-    const seatH = Math.max(0.12, size.height * 0.36);
-    boxComponent(registry, item, sofaFurniture, 'seat', {
-      width: size.width, height: seatH, depth: size.depth
-    }, { position: { x: 0, y: seatH / 2, z: 0 } }, { parent: node });
+    const moduleCount = size.width / Math.max(size.depth, 0.001) > 1.9 ? 3 : 2;
+    const moduleWidth = size.width / moduleCount;
+    const seatY = size.height * 0.3;
 
-    boxComponent(registry, item, sofaFurniture, 'back', {
-      width: size.width, height: size.height * 0.58, depth: Math.max(0.12, size.depth * 0.18)
-    }, { position: { x: 0, y: size.height * 0.58, z: -size.depth * 0.41 } }, { parent: node });
+    // 独立的圆润软包形成云朵轮廓，同时保留原有组件 ID 供旧存档配色。
+    for (let index = 0; index < moduleCount; index += 1) {
+      const x = (index - (moduleCount - 1) / 2) * moduleWidth * 0.84;
+      const seat = sphereComponent(registry, item, sofaFurniture, 'seat', {
+        diameter: 1, segments: 20
+      }, { position: { x, y: seatY, z: size.depth * 0.05 } }, { parent: node });
+      seat.scaling.set(moduleWidth * 0.58, size.height * 0.34, size.depth * 0.5);
+
+      const back = sphereComponent(registry, item, sofaFurniture, 'back', {
+        diameter: 1, segments: 20
+      }, { position: { x, y: size.height * 0.65, z: -size.depth * 0.32 } }, { parent: node });
+      back.scaling.set(moduleWidth * 0.62, size.height * 0.48, size.depth * 0.28);
+    }
 
     [-1, 1].forEach((side) => {
-      boxComponent(registry, item, sofaFurniture, 'arms', {
-        width: Math.max(0.12, size.width * 0.09), height: size.height * 0.52, depth: size.depth
-      }, { position: { x: side * size.width * 0.455, y: size.height * 0.38, z: 0 } }, { parent: node });
+      const arm = sphereComponent(registry, item, sofaFurniture, 'arms', {
+        diameter: 1, segments: 18
+      }, { position: { x: side * size.width * 0.46, y: size.height * 0.34, z: size.depth * 0.04 } }, { parent: node });
+      arm.scaling.set(size.width * 0.13, size.height * 0.33, size.depth * 0.5);
     });
 
-    [-1, 1].forEach((xSide) => {
-      [-1, 1].forEach((zSide) => {
-        boxComponent(registry, item, sofaFurniture, 'legs', {
-          width: 0.08, height: 0.16, depth: 0.08
-        }, { position: { x: xSide * size.width * 0.36, y: 0.08, z: zSide * size.depth * 0.32 } }, { parent: node });
-      });
+    [-1, 1].forEach((side) => {
+      cylinderComponent(registry, item, sofaFurniture, 'legs', {
+        diameterTop: size.width * 0.035, diameterBottom: size.width * 0.045,
+        height: size.height * 0.1, tessellation: 16
+      }, { position: { x: side * size.width * 0.34, y: size.height * 0.05, z: 0 } }, { parent: node });
     });
   }
 };
@@ -102,9 +111,9 @@ export const armchairFurniture = {
   name: '沙发',
   defaultSize: { width: 36, depth: 32, height: 30 },
   components: [
-    { id: 'seat', label: '座垫', defaultColor: '#ebd9c8' },
-    { id: 'back', label: '靠背', defaultColor: '#d4c2b0' },
-    { id: 'arms', label: '扶手', defaultColor: '#d4c2b0' },
+    { id: 'seat', label: '座垫', defaultColor: '#f7f4ee' },
+    { id: 'back', label: '靠背', defaultColor: '#f2eee7' },
+    { id: 'arms', label: '扶手', defaultColor: '#f2eee7' },
     { id: 'legs', label: '短腿', defaultColor: '#7c6351' }
   ],
   interaction: {
@@ -118,30 +127,27 @@ export const armchairFurniture = {
     }
   },
   build(registry, item, node, size) {
-    const seatH = size.height * 0.38;
-    const legH = size.height * 0.12;
+    const legH = size.height * 0.06;
+    const seat = sphereComponent(registry, item, armchairFurniture, 'seat', {
+      diameter: 1, segments: 24
+    }, { position: { x: 0, y: size.height * 0.27, z: size.depth * 0.06 } }, { parent: node });
+    seat.scaling.set(size.width * 0.4, size.height * 0.28, size.depth * 0.46);
 
-    boxComponent(registry, item, armchairFurniture, 'seat', {
-      width: size.width * 0.78, height: seatH, depth: size.depth * 0.92
-    }, { position: { x: 0, y: legH + seatH / 2, z: size.depth * 0.04 } }, { parent: node });
-
-    boxComponent(registry, item, armchairFurniture, 'back', {
-      width: size.width, height: size.height * 0.88, depth: size.depth * 0.20
-    }, { position: { x: 0, y: size.height * 0.44, z: -size.depth * 0.40 } }, { parent: node });
+    const back = sphereComponent(registry, item, armchairFurniture, 'back', {
+      diameter: 1, segments: 24
+    }, { position: { x: 0, y: size.height * 0.58, z: -size.depth * 0.33 } }, { parent: node });
+    back.scaling.set(size.width * 0.5, size.height * 0.5, size.depth * 0.28);
 
     [-1, 1].forEach((side) => {
-      boxComponent(registry, item, armchairFurniture, 'arms', {
-        width: size.width * 0.11, height: size.height * 0.58, depth: size.depth * 0.96
-      }, { position: { x: side * size.width * 0.445, y: size.height * 0.29, z: size.depth * 0.02 } }, { parent: node });
-    });
+      const arm = sphereComponent(registry, item, armchairFurniture, 'arms', {
+        diameter: 1, segments: 20
+      }, { position: { x: side * size.width * 0.4, y: size.height * 0.32, z: size.depth * 0.03 } }, { parent: node });
+      arm.scaling.set(size.width * 0.18, size.height * 0.32, size.depth * 0.48);
 
-    const legD = Math.max(0.03, size.width * 0.08);
-    [-1, 1].forEach((x) => {
-      [-1, 1].forEach((z) => {
-        cylinderComponent(registry, item, armchairFurniture, 'legs', {
-          diameterTop: legD, diameterBottom: legD * 0.8, height: legH, tessellation: 12
-        }, { position: { x: x * size.width * 0.38, y: legH / 2, z: z * size.depth * 0.38 } }, { parent: node });
-      });
+      cylinderComponent(registry, item, armchairFurniture, 'legs', {
+        diameterTop: size.width * 0.045, diameterBottom: size.width * 0.055,
+        height: legH, tessellation: 16
+      }, { position: { x: side * size.width * 0.3, y: legH / 2, z: 0 } }, { parent: node });
     });
   }
 };

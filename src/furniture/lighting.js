@@ -161,7 +161,7 @@ export const wallSconceLight = {
 // 4. 现代落地灯 (Floor Lamp)
 export const floorLampLight = {
   type: 'floor_lamp_light',
-  name: '弧形落地灯',
+  name: '落地灯',
   defaultSize: { width: 14, depth: 14, height: 64 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
@@ -205,7 +205,72 @@ export const floorLampLight = {
   }
 };
 
-// 5. 折角护眼台灯 (Desk Lamp)
+// 5. 弧形落地灯：独立 type 保留旧直杆灯存档兼容性。
+export const arcFloorLampLight = {
+  type: 'arc_floor_lamp_light',
+  name: '弧形落地灯',
+  defaultSize: { width: 36, depth: 16, height: 64 },
+  emissiveComponents: ['glow'],
+  lightColorComponent: 'glow',
+  lightSource: {
+    type: 'point',
+    offset: { x: 14, y: 48, z: 0 },
+    color: '#fffae6',
+    intensity: 0.85,
+    range: 160
+  },
+  components: [
+    { id: 'base', label: '落地底座', defaultColor: '#303030' },
+    { id: 'pole', label: '弧形灯臂', defaultColor: '#1d1d1d' },
+    { id: 'shade', label: '悬挂灯罩', defaultColor: '#ece7db' },
+    { id: 'glow', label: '发光内侧', defaultColor: '#fffae6' }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.03;
+    cylinderComponent(registry, item, arcFloorLampLight, 'base', {
+      diameterTop: size.depth * 0.72, diameterBottom: size.depth * 0.8,
+      height: baseH, tessellation: 24
+    }, { position: { x: -size.width * 0.32, y: baseH / 2, z: 0 } }, { parent: node });
+
+    const points = [];
+    const segments = 10;
+    for (let index = 0; index <= segments; index += 1) {
+      const t = index / segments;
+      const angle = Math.PI * 0.5 * t;
+      points.push({
+        x: -size.width * 0.32 + size.width * 0.7 * (1 - Math.cos(angle)),
+        y: baseH + size.height * 0.82 * Math.sin(angle),
+        z: 0
+      });
+    }
+    for (let index = 0; index < segments; index += 1) {
+      const start = points[index];
+      const end = points[index + 1];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      const segment = cylinderComponent(registry, item, arcFloorLampLight, 'pole', {
+        diameterTop: size.depth * 0.055, diameterBottom: size.depth * 0.055,
+        height: length * 1.04, tessellation: 12
+      }, { position: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, z: 0 } }, { parent: node });
+      segment.rotation.z = -Math.atan2(dx, dy);
+    }
+
+    const shadeH = size.height * 0.15;
+    const lampX = size.width * 0.38;
+    const lampY = size.height * 0.82;
+    cylinderComponent(registry, item, arcFloorLampLight, 'shade', {
+      diameterTop: size.depth * 0.48, diameterBottom: size.depth * 0.86,
+      height: shadeH, tessellation: 24
+    }, { position: { x: lampX, y: lampY - shadeH / 2, z: 0 } }, { parent: node });
+    cylinderComponent(registry, item, arcFloorLampLight, 'glow', {
+      diameterTop: size.depth * 0.34, diameterBottom: size.depth * 0.5,
+      height: shadeH * 0.7, tessellation: 16
+    }, { position: { x: lampX, y: lampY - shadeH * 0.82, z: 0 } }, { parent: node });
+  }
+};
+
+// 6. 折角护眼台灯 (Desk Lamp)
 export const deskLampLight = {
   type: 'desk_lamp_light',
   name: '台灯',

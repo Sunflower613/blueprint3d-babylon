@@ -1131,6 +1131,39 @@ export class BabylonSceneRenderer {
               bottom: Math.min(bottom, cz + aabb.bottom)
             };
           });
+        } else if (stairs.subtype === 'lshape') {
+          const w = Number(stairs.width || 1.2);
+          const d = Number(stairs.depth || 3.2);
+          const cx = Number(stairs.x || 0);
+          const cz = Number(stairs.z || 0);
+          const runBeforeCorner = Math.max(0.2, Number(stairs.runBeforeCorner ?? (d - w)));
+          const runAfterCorner = Math.max(0.2, Number(stairs.runAfterCorner ?? (d - w)));
+          const flipX = stairs.mirrored ? -1 : 1;
+          const landingZ = runBeforeCorner / 2;
+
+          const r1 = {
+            left: -w / 2,
+            right: w / 2,
+            top: -(runBeforeCorner + w) / 2,
+            bottom: landingZ + w / 2
+          };
+
+          const r2 = {
+            left: flipX === 1 ? w / 2 : -w / 2 - runAfterCorner,
+            right: flipX === 1 ? w / 2 + runAfterCorner : -w / 2,
+            top: landingZ - w / 2,
+            bottom: landingZ + w / 2
+          };
+
+          return [r1, r2].map((q) => {
+            const aabb = rotateEnvelope(q, rotation);
+            return {
+              left: Math.max(left, cx + aabb.left),
+              right: Math.min(right, cx + aabb.right),
+              top: Math.max(top, cz + aabb.top),
+              bottom: Math.min(bottom, cz + aabb.bottom)
+            };
+          });
         } else {
           const halfWidth = Math.abs(Math.cos(rotation)) * Number(stairs.width || 1.2) / 2 + Math.abs(Math.sin(rotation)) * Number(stairs.depth || 3.2) / 2;
           const halfDepth = Math.abs(Math.sin(rotation)) * Number(stairs.width || 1.2) / 2 + Math.abs(Math.cos(rotation)) * Number(stairs.depth || 3.2) / 2;

@@ -156,8 +156,10 @@ function bindToolSelectors(Context) {
         Context.pushHistory();
         Context.testMap.executeCommand('addFloor', copyCurrentFloor ? { copyFromFloorId: sourceFloorId } : {});
         Context.clearSelection();
+        Context.updateSkyboxFromCurrentFloor();
         Context.syncFloorControls();
         Context.refreshShadows();
+        Context.updateEditor();
         Context.renderPlan();
       });
       return;

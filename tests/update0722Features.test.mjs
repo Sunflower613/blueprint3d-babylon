@@ -3,7 +3,7 @@ import test from 'node:test';
 import * as BABYLON from '@babylonjs/core';
 import fs from 'node:fs';
 
-import { FloorplanDocument } from '../src/domain/FloorplanDocument.js';
+import { FloorplanDocument, BabylonSceneRenderer } from '../src/index.js';
 import { FURNITURE_LIST } from '../src/furniture/index.js';
 import { buildStairsGeometry } from '../src/geometry/stairsGeometry.js';
 
@@ -263,3 +263,41 @@ test('四联拼图把一张自定义海报贴图裁成四个象限', () => {
   scene.dispose();
   engine.dispose();
 });
+
+test('L 楼梯能生成包含拐角前与拐角后的两个楼板洞口', () => {
+  const document = new FloorplanDocument(minimalPlan({
+    floors: [
+      { id: 'floor_1', name: '1F', level: 0 },
+      { id: 'floor_2', name: '2F', level: 1 }
+    ],
+    floor: {
+      rooms: [
+        { id: 'room_upper', floorId: 'floor_2', shape: 'square', x: 0, z: 0, width: 10, depth: 10 }
+      ]
+    },
+    stairs: [{
+      id: 'stairs_l', floorId: 'floor_1', subtype: 'lshape', x: 0, z: 0, width: 1,
+      depth: 3, height: 3, steps: 10, cornerStep: 4,
+      runBeforeCorner: 2.0, runAfterCorner: 1.5, mirrored: false
+    }]
+  }));
+
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const renderer = new BabylonSceneRenderer(scene, document);
+
+  const room = document.floorplan.floor.rooms[0];
+  const holes = renderer.getStairFloorHoles(room);
+
+  assert.equal(holes.length, 2, 'L 形楼梯应生成 2 个楼板切割洞口（拐角前平台与拐角后跑道）');
+  // 洞口 1 应该在 X [-0.5, 0.5] 范围内（第一跑与平台）
+  const h1 = holes.find((h) => Math.abs(h.left - (-0.5)) < 0.01 && Math.abs(h.right - 0.5) < 0.01);
+  assert.ok(h1, '拐角前洞口 X 范围正确');
+  // 洞口 2 应该延伸到右侧 X [0.5, 2.0]（拐角后 runAfterCorner = 1.5）
+  const h2 = holes.find((h) => Math.abs(h.left - 0.5) < 0.01 && Math.abs(h.right - 2.0) < 0.01);
+  assert.ok(h2, '拐角后洞口 X 范围扩展正确');
+
+  scene.dispose();
+  engine.dispose();
+});
+

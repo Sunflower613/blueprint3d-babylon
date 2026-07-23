@@ -1,17 +1,26 @@
 ---
 name: create-buildings
-description: Blueprint3D Babylon 通用 3D 建筑 JSON (`.b3dbuilding.json`) 权威生成、错层预防与坐标防镜像校验技能。包含严格的防错层防镜像七大三维几何定理、等轴测视角与 X-Z 坐标系方向对照法则、楼层相对高程隔离法则 (Floor-Local Elevation Rule)、挑空虚空区遮罩公式 (Loft Void Rule)、多部件 colors/materials 映射、湿区墙裙与复合切角平台算法、跨层楼梯与通高屏风公式、防错自查反例字典及 GitHub 开源参考查询索引。
+description: 生成、检查和解释 Blueprint3D Babylon 建筑 JSON (`.b3dbuilding.json`)，覆盖楼层局部高程、房间/墙体/开洞/家具引用、Loft 挑空、楼梯接驳、材质目录和家具朝向。Use when an external model must directly generate a compatible building file, or when converting a floor-plan image/design, repairing a building file, or validating its structure and geometry.
 ---
 
 # Blueprint3D 通用 3D 建筑 JSON 权威生成与防错层防镜像指南
 
-本技能为通用的 3D 建筑档案生成与转换权威指南。旨在指导智能体（无论是否位于本项目上下文中）**将任意户型图片或设计图（平层、Loft跃层、错层复式、多层别墅、不规则空间等）**精确转换为符合 `blueprint3d-babylon.building.v1` 规范的标准 `.b3dbuilding.json` 档案，并**100% 杜绝错层、悬空、镜像翻转与楼梯接驳错位异常**。
+本技能指导智能体将平层、Loft 跃层或多层户型转换为符合 `blueprint3d-babylon.building.v1` 的 `.b3dbuilding.json`。它同时提供可由脚本检查的结构约束，以及需要结合图纸和渲染结果判断的几何经验。不要把经验规则当作形式化证明；当图片无法确定尺寸或接驳关系时，应标记假设并请求确认。
+
+## 使用边界与执行顺序
+
+1. 先读取本文件中的核心规则，再按需要读取 `references/` 下的建筑、家具或材质目录。目录是当前代码的索引，不是独立 Schema。
+2. 优先使用仓库的 `createBuildingFile`/`stringifyBuildingFile` 生成标准外壳；不要手写与运行时代码不一致的字段。
+3. 先建立楼层、楼板房间和墙体，再添加开洞、楼梯、护栏和家具。所有实体必须引用存在的 `floorId`；开洞必须引用存在的 `wallId`。
+4. 运行基础校验；交付文件再运行严格校验：`node skills/create-buildings/scripts/validate-building.mjs <file> --strict`。
+5. 对图片推断出的尺寸、镜像方向、挑空边界和楼梯终点做人工或渲染复核。Validator 通过不等于几何布局已经正确。
 
 ---
 
 ## 1. 组件与材质权威查询索引 (External Catalog References)
 
-- 🏠 **官方 Loft 跃层示范 JSON 档案**：查阅本地范例文件 [loft-building-example.b3dbuilding.json](../../example/downloads/loft-building-example.b3dbuilding.json)或[GitHub链接](https://github.com/Sunflower613/blueprint3d-babylon)（位于 `example/downloads/loft-building-example.b3dbuilding.json`）。该档案为标准 Loft 跃层建筑示范 JSON，展示了 1F/2F 跃层房间拓扑、跨层楼梯接驳、挑空护栏及完整软装与材质映射。
+- 🏠 **Loft 跃层示范 JSON 档案**：查阅本地范例文件 [loft-building-example.b3dbuilding.json](../../example/downloads/loft-building-example.b3dbuilding.json)。它是一个特定户型的参考，不应将其中的坐标、房间 ID 或尺寸直接复制到其他户型。
+- 🌐 **外部模型参考入口**：需要让不在本仓库上下文中的模型直接生成文件时，可将 [GitHub 仓库](https://github.com/Sunflower613/blueprint3d-babylon) 作为实现参考；优先以仓库中的 `src/core/buildingFile.js`、本 skill 的目录和 [minimal-building.b3dbuilding.json](references/minimal-building.b3dbuilding.json) 为准，并在输出后运行本地 Validator。GitHub 链接是参考入口，不是稳定的版本化 Schema；如果外部模型无法访问仓库，应直接使用本 skill 中的外壳和最小示例。
 - 🏛️ **全量建筑组件离线词典**：查阅 [building-catalog.md](references/building-catalog.md) 直接获取 100% 全量房间形状 (Shape)、开洞 Shapes、门窗类型、楼梯 Subtype 专属参数、护栏栅栏、屋顶与天空盒配置。
 - 🪑 **全量家具与软装词典**：查阅 [furniture-catalog.md](references/furniture-catalog.md) 直接检索 100% 全量合法的家具 `type` 标识、中文名称及推荐尺寸（包含坐具、桌几、柜体、卧房套件、集成厨房、卫浴设施、屏风窗帘地毯、绿植景观、灯具、服饰模特等全分类）。
 - 🎨 **全量材质与海报词典**：查阅 [material-catalog.md](references/material-catalog.md) 直接获取 100% 全量面漆涂料、高清木纹、大理石瓷砖、墙纸壁纸、海报艺术、玻璃镜面、自发光材质 `id` 与配置。
@@ -62,6 +71,27 @@ description: Blueprint3D Babylon 通用 3D 建筑 JSON (`.b3dbuilding.json`) 权
 }
 ```
 - `floorplan`: 核心户型数据容器，包含楼层 `floors`、房间 `floor.rooms`、墙体 `walls`、门窗开洞 `openings`、软装家具 `items`、屋顶 `roofs`、楼梯 `stairs`、护栏 `fences` 与栅栏门 `fenceGates` 全量集合。各组件详细字段请直接查阅上文对应的全量词典。
+
+可运行的精简 Loft 系统参考见 [minimal-building.b3dbuilding.json](references/minimal-building.b3dbuilding.json)。它直接基于仓库现有 Loft 地图，保留完整的楼层、挑空房间组合、墙体、门窗、楼梯、环境和功能家具，只删除海报、植物、地毯、灯具及桌面摆件等装饰项；不要把它误解成只有字段骨架的 toy 示例。可用以下命令验证：
+
+```powershell
+node skills/create-buildings/scripts/validate-building.mjs skills/create-buildings/references/minimal-building.b3dbuilding.json --strict
+```
+
+| 关键规则 | 最小示例对应字段 | 说明 |
+| :--- | :--- | :--- |
+| 标准文件外壳 | `format`, `version`, `floorplan` | 可直接交给 `parseBuildingFile` 加载 |
+| 楼层局部高程 | `floorplan.floors`, `floor.rooms[].elevation`, `items[].elevation` | 二层落地实体使用本层局部 `0` |
+| Loft 挑空提示 | `floors[1].hideRoof`, 仅有局部二层房间 | 挑空区不创建二层房间；具体边界仍需按户型计算 |
+| 墙体与开洞引用 | `walls[].id`, `openings[].wallId` | 开洞绑定真实墙体 |
+| 家具材质映射 | `items[0].colors`, `items[0].materials` | 部件映射是示例约束，不代表所有家具部件名都相同 |
+| 楼梯跨层 | `stairs[0].floorId`, `height`, `elevation` | 楼梯归属起始层；终点接驳仍需几何复核 |
+| 通高件与二层护栏分层 | `items[type=modern_slat_screen].floorId`, `floors[].level` | 原始 Loft 地图的 `fences` 集合为空；示例保留通高木格栅屏风和楼层分层字段，不伪造不存在的护栏 |
+| 湿区墙裙 | `walls[0].wainscotEnabled`, `wainscotHeight`, `wainscotMaterialFront` | 示例只展示字段结构；真实湿区仍需闭合房间和完整墙体绑定 |
+| 环境材质 | `environment.skyMaterial`, `groundMaterial` | 严格模式要求非空 |
+| 坐标与朝向 | `babylon.coordinateSystem`, `items[0].rotation` | 旋转约定见定理六 |
+
+定理一至七的字段入口分别对应：楼层/实体 `floorId` 与 `elevation`、二层 `hideRoof` 与局部房间、`stairs` 的起始层和高度、墙体/护栏的分层字段、`babylon.coordinateSystem` 与 X-Z 坐标、家具 `rotation`，以及上述字段组合形成的反例自查。示例用于确认字段落点；固定的象限坐标、L 型楼梯镜像角度等仍属于特定户型经验，不能从最小示例推导为通用常量。
 
 ---
 
@@ -187,7 +217,7 @@ description: Blueprint3D Babylon 通用 3D 建筑 JSON (`.b3dbuilding.json`) 权
 
 ## 5.1 天空盒与环境材质死律规范 (Skybox & Environment Material Rules)
 
-1. **楼层天空盒开关**: `floors` 数组中的所有楼层（如 `floor_1`, `floor_2`）其 `"skyboxEnabled"` 必须显式设为 `true`。
+1. **楼层天空盒开关**: 如果场景需要天空盒，应在每个相关楼层显式设置 `"skyboxEnabled": true`。运行时默认值是 `false`，不要把“未设置”描述成“自动开启”。
 2. **环境天空盒与地面材质**: `environment` 必须配置非空的 `skyMaterial` 和 `groundMaterial`（严禁设为 `null`）。推荐采用与场景主色调一致的浅色/温暖涂料材质：
    ```json
    "environment": {
@@ -208,17 +238,18 @@ description: Blueprint3D Babylon 通用 3D 建筑 JSON (`.b3dbuilding.json`) 权
    }
    ```
 
-完成任意 JSON 后，运行仓库校验命令：
+完成建筑 JSON 后，先运行基础校验；对交付文件运行严格校验：
 
 ```powershell
 node skills/create-buildings/scripts/validate-building.mjs <文件路径>
+node skills/create-buildings/scripts/validate-building.mjs <文件路径> --strict
 ```
 
 ---
 
 ## 6. 建筑生成关键注意事项 (Generation Guidelines & Checklist)
 
-在根据设计图或参考图片生成 3D 建筑 JSON 时，请严格遵循以下核心生成注意事项与自查清单：
+在根据设计图或参考图片生成 3D 建筑 JSON 时，请遵循以下核心生成注意事项与自查清单：
 
 ### 6.1 生成核心规范
 1. **尺度与高程算准**：记录每层 `level`、`wallHeight`、`floorHeight` 及平台完成面标高。
@@ -227,6 +258,12 @@ node skills/create-buildings/scripts/validate-building.mjs <文件路径>
 4. **按立面开洞**：每个门窗 (`opening`) 必须精准绑定对应的 `wallId`，确保宽、高、窗台高不超出墙体范围。
 5. **部件材质成对提供**：家具组件需成对提供部件级 `colors` 与 `materials`；挂墙件 `elevation` 代表本层局部挂墙高度；台面摆件 `elevation` 必须等于承载面高度。
 
-### 6.2 自查与完成判定标准
+### 6.2 校验能力边界
+
+基础校验会检查 JSON 可解析性、标准外壳、集合 ID 唯一性、楼层引用、家具房间引用和开洞墙体引用。严格校验还会检查实体坐标/尺寸是否为有限数值、正尺寸、开洞参数是否合理，以及楼层高程相关的明显错误。
+
+Validator 不会自动证明房间闭合、开洞未越过墙体、房间不重叠、挑空未被覆盖或楼梯最后一级准确落在平台上；这些项目必须通过几何计算、渲染截图或人工复核完成。
+
+### 6.3 自查与完成判定标准
 完成任意建筑 JSON 生成后，最终成功判定标准为：
-**基础 Validator 校验通过 + 墙/门窗/房间引用闭合 + 挑空与楼梯几何无接驳冲突 + 空间功能件齐全 + 部件材质语义完整**。
+**严格 Validator 校验通过 + 墙/门窗/房间引用闭合 + 挑空与楼梯几何无接驳冲突 + 空间功能件齐全 + 部件材质语义完整 + 对关键视角完成渲染复核**。若未完成几何或渲染复核，只能报告为“结构校验通过”。

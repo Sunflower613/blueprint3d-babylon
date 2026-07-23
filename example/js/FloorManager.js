@@ -174,21 +174,6 @@ export function syncFloorControls() {
   addBtn.setAttribute('aria-label', '新建楼层');
   addBtn.innerHTML = '<svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>';
   
-  addBtn.addEventListener('click', () => {
-    Context.pushHistory();
-    const currentFloorId = Context.testMap.getCurrentFloorId();
-    const nextFloorId = Context.testMap.addFloor?.({ parentFloorId: currentFloorId });
-    if (nextFloorId) {
-      Context.testMap.setCurrentFloor(nextFloorId);
-      Context.syncFloorControls();
-      Context.clearSelection();
-      Context.updateSkyboxFromCurrentFloor();
-      Context.refreshShadows();
-      Context.updateEditor();
-      Context.renderPlan();
-    }
-  });
-  
   container.appendChild(addBtn);
 
   const foldBtn = document.createElement('button');

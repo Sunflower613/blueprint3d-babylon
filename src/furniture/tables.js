@@ -68,35 +68,57 @@ export const coffeeTableFurniture = {
   name: '茶几',
   defaultSize: { width: 28, depth: 28, height: 18 },
   components: [
-    { id: 'top', label: '浅橡木厚桌面', defaultColor: '#dfbd8c' },
-    { id: 'legs', label: '浅橡木外撇桌腿', defaultColor: '#c99b68' }
+    { id: 'top', label: '实木面板与搁板', defaultColor: '#c9a882' },
+    { id: 'legs', label: '实木桌腿边框', defaultColor: '#967b61' },
+    { id: 'decor', label: '桌面书刊杂物', defaultColor: '#eae6df' }
   ],
   build(registry, item, node, size) {
-    const topH = Math.min(0.065, size.height * 0.16);
+    const topH = Math.min(0.045, size.height * 0.12);
+    const topY = size.height - topH / 2;
+
+    // 1. 上层实木桌面面板
     boxComponent(registry, item, coffeeTableFurniture, 'top', {
       width: size.width, height: topH, depth: size.depth
-    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+    }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
 
-    // 略微内收的第二层桌沿，让方形浅木桌面在远景中也有清晰轮廓。
+    // 2. 桌面凹槽托盘沿
     boxComponent(registry, item, coffeeTableFurniture, 'top', {
-      width: size.width * 0.9, height: topH * 0.45, depth: size.depth * 0.9
-    }, { position: { x: 0, y: size.height - topH - topH * 0.225, z: 0 } }, { parent: node });
+      width: size.width * 0.94, height: topH * 0.4, depth: size.depth * 0.94
+    }, { position: { x: 0, y: size.height - topH - topH * 0.2, z: 0 } }, { parent: node });
 
-    const legH = size.height - topH * 1.45;
-    const legW = Math.min(0.055, Math.min(size.width, size.depth) * 0.11);
-    const inset = Math.min(0.055, Math.min(size.width, size.depth) * 0.1);
+    // 3. 下层横向置物搁板
+    const shelfH = topH * 0.8;
+    const shelfY = size.height * 0.32;
+    boxComponent(registry, item, coffeeTableFurniture, 'top', {
+      width: size.width * 0.88, height: shelfH, depth: size.depth * 0.88
+    }, { position: { x: 0, y: shelfY, z: 0 } }, { parent: node });
+
+    // 4. 四角贯穿支撑立柱腿
+    const legH = size.height - topH * 1.4;
+    const legW = Math.min(0.045, Math.min(size.width, size.depth) * 0.1);
+    const inset = Math.min(0.045, Math.min(size.width, size.depth) * 0.08);
     const xOffset = size.width / 2 - inset - legW / 2;
     const zOffset = size.depth / 2 - inset - legW / 2;
 
     [-1, 1].forEach((x) => {
       [-1, 1].forEach((z) => {
-        const leg = boxComponent(registry, item, coffeeTableFurniture, 'legs', {
+        boxComponent(registry, item, coffeeTableFurniture, 'legs', {
           width: legW, height: legH, depth: legW
         }, { position: { x: x * xOffset, y: legH / 2, z: z * zOffset } }, { parent: node });
-        leg.rotation.x = z * 0.045;
-        leg.rotation.z = -x * 0.045;
       });
     });
+
+    // 5. 下层置物搁板上的杂志与书籍细节
+    const bookW = size.width * 0.28;
+    const bookD = size.depth * 0.36;
+    const bookH = 0.025;
+    boxComponent(registry, item, coffeeTableFurniture, 'decor', {
+      width: bookW, height: bookH, depth: bookD
+    }, { position: { x: -size.width * 0.18, y: shelfY + shelfH / 2 + bookH / 2, z: size.depth * 0.08 } }, { parent: node });
+
+    boxComponent(registry, item, coffeeTableFurniture, 'decor', {
+      width: bookW * 0.9, height: bookH * 0.8, depth: bookD * 0.95
+    }, { position: { x: -size.width * 0.16, y: shelfY + shelfH / 2 + bookH * 1.4, z: size.depth * 0.06 } }, { parent: node });
   }
 };
 
@@ -106,31 +128,63 @@ export const sideTableFurniture = {
   name: '边几',
   defaultSize: { width: 18, depth: 18, height: 22 },
   components: [
-    { id: 'top', label: '浅橡木双层几面', defaultColor: '#dfbd8c' },
-    { id: 'legs', label: '浅橡木框架', defaultColor: '#c99b68' }
+    { id: 'top', label: '奶油白防落托盘', defaultColor: '#f7f4ed' },
+    { id: 'legs', label: '原木色斜撑腿', defaultColor: '#b08e68' },
+    { id: 'accent', label: '铜质饰件', defaultColor: '#d4af37' }
   ],
   build(registry, item, node, size) {
-    const topH = Math.min(0.05, size.height * 0.11);
-    boxComponent(registry, item, sideTableFurniture, 'top', {
-      width: size.width, height: topH, depth: size.depth
-    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+    const topH = Math.min(0.04, size.height * 0.09);
+    const topY = size.height - topH;
 
-    const frameT = Math.min(0.045, Math.min(size.width, size.depth) * 0.1);
-    const frameH = size.height - topH;
-    const xOffset = size.width / 2 - frameT / 2 - 0.025;
-    [-1, 1].forEach((x) => {
-      boxComponent(registry, item, sideTableFurniture, 'legs', {
-        width: frameT, height: frameH, depth: frameT
-      }, { position: { x: x * xOffset, y: frameH / 2, z: 0 } }, { parent: node });
-    });
-    boxComponent(registry, item, sideTableFurniture, 'legs', {
-      width: xOffset * 2 + frameT, height: frameT, depth: size.depth * 0.82
-    }, { position: { x: 0, y: frameT / 2, z: 0 } }, { parent: node });
+    cylinderComponent(registry, item, sideTableFurniture, 'top', {
+      diameterTop: size.width,
+      diameterBottom: size.width * 0.98,
+      height: topH,
+      tessellation: 24
+    }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
 
-    // 下层置物板与 Photo 5 的轻量方几保持一致，同时与旧四腿造型明显区分。
-    boxComponent(registry, item, sideTableFurniture, 'top', {
-      width: size.width * 0.82, height: topH * 0.55, depth: size.depth * 0.78
-    }, { position: { x: 0, y: frameT + topH * 0.275, z: 0 } }, { parent: node });
+    const rimH = size.height * 0.05;
+    cylinderComponent(registry, item, sideTableFurniture, 'top', {
+      diameterTop: size.width,
+      diameterBottom: size.width,
+      height: rimH,
+      tessellation: 24
+    }, { position: { x: 0, y: topY + topH / 2 + rimH / 2, z: 0 } }, { parent: node });
+
+    const midY = size.height * 0.38;
+    cylinderComponent(registry, item, sideTableFurniture, 'top', {
+      diameterTop: size.width * 0.78,
+      diameterBottom: size.width * 0.78,
+      height: topH * 0.8,
+      tessellation: 20
+    }, { position: { x: 0, y: midY, z: 0 } }, { parent: node });
+
+    const legH = size.height - topH * 1.2;
+    const legD = Math.min(0.035, size.width * 0.08);
+    const legR = size.width * 0.36;
+
+    for (let index = 0; index < 3; index += 1) {
+      const angle = (index * 2 * Math.PI) / 3;
+      const legX = Math.cos(angle) * legR;
+      const legZ = Math.sin(angle) * legR;
+
+      const leg = cylinderComponent(registry, item, sideTableFurniture, 'legs', {
+        diameterTop: legD,
+        diameterBottom: legD * 0.7,
+        height: legH,
+        tessellation: 10
+      }, { position: { x: legX, y: legH / 2, z: legZ } }, { parent: node });
+
+      leg.rotation.z = -Math.cos(angle) * 0.12;
+      leg.rotation.x = Math.sin(angle) * 0.12;
+    }
+
+    cylinderComponent(registry, item, sideTableFurniture, 'accent', {
+      diameterTop: 0.02,
+      diameterBottom: 0.02,
+      height: 0.012,
+      tessellation: 12
+    }, { position: { x: 0, y: topY + rimH + 0.006, z: 0 } }, { parent: node });
   }
 };
 

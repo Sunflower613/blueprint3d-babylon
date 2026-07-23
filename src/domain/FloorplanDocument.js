@@ -515,7 +515,11 @@ export class FloorplanDocument {
     if (definition?.placeType === 'ceiling') return 0;
     const room = this.floorplan.floor.rooms.find(r => r.id === item.roomId) || 
                  this.floorplan.floor.rooms.find(r => r.floorId === item.floorId && pointInRoom(r, item.x, item.z));
-    return room ? (room.elevation || 0) : 0;
+    if (room) {
+      return room.elevation || 0;
+    }
+    const floorHeight = Number(this.getFloorHeight(item.floorId));
+    return -floorHeight;
   }
 
   getOpeningElevationOffset(opening) {

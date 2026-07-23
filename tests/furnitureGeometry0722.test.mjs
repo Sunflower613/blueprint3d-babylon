@@ -20,16 +20,16 @@ function buildFurniture(scene, type, size) {
   return node;
 }
 
-test('茶几和边几使用新版双层开放式结构', () => {
+test('茶几和边几使用新版多层开放式结构', () => {
   const engine = new BABYLON.NullEngine();
   const scene = new BABYLON.Scene(engine);
 
   const coffee = buildFurniture(scene, 'coffee_table', { width: 0.71, depth: 0.71, height: 0.46 });
-  assert.equal(coffee.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'top').length, 2);
+  assert.equal(coffee.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'top').length, 3);
   assert.equal(coffee.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'legs').length, 4);
 
   const side = buildFurniture(scene, 'side_table', { width: 0.46, depth: 0.46, height: 0.56 });
-  assert.equal(side.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'top').length, 2);
+  assert.equal(side.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'top').length, 3);
   assert.equal(side.getChildMeshes().filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'legs').length, 3);
 
   scene.dispose();

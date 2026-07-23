@@ -130,7 +130,13 @@ export function getItemRoomElevationOffset(floorplan, item) {
   const rooms = floorplan.floor?.rooms || [];
   const room = rooms.find((candidate) => candidate.id === item.roomId)
     || rooms.find((candidate) => entityFloorId(floorplan, candidate) === entityFloorId(floorplan, item) && pointInRoom(candidate, item.x, item.z));
-  return room ? Number(room.elevation || 0) : 0;
+  if (room) {
+    return Number(room.elevation || 0);
+  }
+  const floorId = entityFloorId(floorplan, item);
+  const floor = getFloor(floorplan, floorId);
+  const floorHeight = Number(floor?.floorHeight ?? floorplan.floorHeight ?? 0.2);
+  return -floorHeight;
 }
 
 /**

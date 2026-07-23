@@ -1472,3 +1472,113 @@ export const landscapeMarbleBridge = {
     });
   }
 };
+
+export const outdoorStoneChessTable = {
+  type: 'outdoor_stone_chess_table',
+  name: '石头象棋桌',
+  defaultSize: { width: 32, depth: 32, height: 28 },
+  components: [
+    { id: 'table-base', label: '雕花石底座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'table-top', label: '石质台面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'chess-board', label: '楚河汉界棋盘', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone }
+  ],
+  build(registry, item, node, size) {
+    const baseH = size.height * 0.08;
+    const pillarH = size.height * 0.78;
+    const topH = size.height * 0.14;
+
+    cylinderComponent(registry, item, outdoorStoneChessTable, 'table-base', {
+      diameterTop: size.width * 0.55,
+      diameterBottom: size.width * 0.65,
+      height: baseH,
+      tessellation: 8
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneChessTable, 'table-base', {
+      diameterTop: size.width * 0.35,
+      diameterBottom: size.width * 0.45,
+      height: pillarH * 0.5,
+      tessellation: 8
+    }, { position: { x: 0, y: baseH + pillarH * 0.25, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneChessTable, 'table-base', {
+      diameterTop: size.width * 0.42,
+      diameterBottom: size.width * 0.35,
+      height: pillarH * 0.5,
+      tessellation: 8
+    }, { position: { x: 0, y: baseH + pillarH * 0.75, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneChessTable, 'table-top', {
+      diameterTop: size.width,
+      diameterBottom: size.width * 0.95,
+      height: topH,
+      tessellation: 12
+    }, { position: { x: 0, y: size.height - topH / 2, z: 0 } }, { parent: node });
+
+    const boardSize = size.width * 0.58;
+    boxComponent(registry, item, outdoorStoneChessTable, 'chess-board', {
+      width: boardSize,
+      height: 0.006,
+      depth: boardSize
+    }, { position: { x: 0, y: size.height + 0.003, z: 0 } }, { parent: node });
+  }
+};
+
+export const outdoorStoneStool = {
+  type: 'outdoor_stone_stool',
+  name: '石墩子',
+  defaultSize: { width: 14, depth: 14, height: 16 },
+  components: [
+    { id: 'stone-body', label: '石墩鼓身', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'stone-seat', label: '光滑坐面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'stone-ornament', label: '鼓钉饰纹', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [
+        { x: 0, y: size.height * 0.9, z: 0, rot: 0 }
+      ];
+    }
+  },
+  build(registry, item, node, size) {
+    const d = Math.min(size.width, size.depth);
+    const h = size.height;
+
+    cylinderComponent(registry, item, outdoorStoneStool, 'stone-body', {
+      diameterTop: d * 0.8,
+      diameterBottom: d * 0.85,
+      height: h * 0.12,
+      tessellation: 10
+    }, { position: { x: 0, y: h * 0.06, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneStool, 'stone-body', {
+      diameterTop: d * 0.98,
+      diameterBottom: d * 0.8,
+      height: h * 0.38,
+      tessellation: 10
+    }, { position: { x: 0, y: h * 0.31, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneStool, 'stone-body', {
+      diameterTop: d * 0.82,
+      diameterBottom: d * 0.98,
+      height: h * 0.38,
+      tessellation: 10
+    }, { position: { x: 0, y: h * 0.69, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneStool, 'stone-ornament', {
+      diameterTop: d * 0.9,
+      diameterBottom: d * 0.9,
+      height: h * 0.06,
+      tessellation: 10
+    }, { position: { x: 0, y: h * 0.85, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorStoneStool, 'stone-seat', {
+      diameterTop: d * 0.85,
+      diameterBottom: d * 0.85,
+      height: h * 0.08,
+      tessellation: 12
+    }, { position: { x: 0, y: h * 0.92, z: 0 } }, { parent: node });
+  }
+};
+

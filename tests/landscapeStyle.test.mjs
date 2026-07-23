@@ -23,7 +23,7 @@ function buildLandscape(type) {
 
 test('landscape defaults use the softer low-poly palette', () => {
   const landscape = FURNITURE_LIST.filter((item) => item.category === 'landscape');
-  assert.equal(landscape.length, 22);
+  assert.equal(landscape.length, 24);
 
   const legacyHighSaturationColors = new Set([
     '#00acc1', '#00b0ff', '#00e5ff', '#29b6f6', '#e040fb', '#ff5722'

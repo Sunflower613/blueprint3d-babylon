@@ -891,3 +891,120 @@ export const landscapeOldWell = {
     roof.rotation.z = Math.PI / 2;
   }
 };
+
+export const landscapeGardenRock = {
+  type: 'landscape_garden_rock',
+  name: '石头',
+  defaultSize: { width: 32, depth: 26, height: 20 },
+  components: [
+    { id: 'rock-main', label: '主体原石', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'rock-accent', label: '伴石', defaultColor: LANDSCAPE_COLORS.deepStone },
+    { id: 'moss', label: '青苔点缀', defaultColor: LANDSCAPE_COLORS.sage }
+  ],
+  build(registry, item, node, size) {
+    lowPolyBoulder(registry, item, landscapeGardenRock, 'rock-main', {
+      diameter: size.width * 0.75,
+      x: 0,
+      y: size.height * 0.38,
+      z: 0,
+      scaleX: 1.0,
+      scaleY: 0.75,
+      scaleZ: 0.85,
+      rotationY: 0.2,
+      segments: 6
+    }, node);
+
+    lowPolyBoulder(registry, item, landscapeGardenRock, 'rock-accent', {
+      diameter: size.width * 0.52,
+      x: -size.width * 0.28,
+      y: size.height * 0.25,
+      z: size.depth * 0.15,
+      scaleX: 0.85,
+      scaleY: 0.6,
+      scaleZ: 0.75,
+      rotationY: -0.5,
+      segments: 5
+    }, node);
+
+    lowPolyBoulder(registry, item, landscapeGardenRock, 'rock-accent', {
+      diameter: size.width * 0.38,
+      x: size.width * 0.25,
+      y: size.height * 0.18,
+      z: -size.depth * 0.2,
+      scaleX: 0.75,
+      scaleY: 0.55,
+      scaleZ: 0.8,
+      rotationY: 0.8,
+      segments: 5
+    }, node);
+
+    lowPolyBoulder(registry, item, landscapeGardenRock, 'moss', {
+      diameter: size.width * 0.35,
+      x: -size.width * 0.05,
+      y: size.height * 0.62,
+      z: -size.depth * 0.05,
+      scaleX: 0.9,
+      scaleY: 0.25,
+      scaleZ: 0.7,
+      rotationY: 0.1,
+      segments: 4
+    }, node);
+  }
+};
+
+export const landscapeGiantTreeStump = {
+  type: 'landscape_giant_tree_stump',
+  name: '巨树木墩',
+  defaultSize: { width: 36, depth: 36, height: 24 },
+  components: [
+    { id: 'stump-bark', label: '粗树皮', defaultColor: '#5c4533' },
+    { id: 'stump-wood', label: '截面年轮', defaultColor: '#9e8065' },
+    { id: 'stump-roots', label: '粗大树根', defaultColor: '#473527' }
+  ],
+  build(registry, item, node, size) {
+    const mainRadius = Math.min(size.width, size.depth) * 0.42;
+    const height = size.height;
+
+    cylinderComponent(registry, item, landscapeGiantTreeStump, 'stump-bark', {
+      diameterTop: mainRadius * 1.9,
+      diameterBottom: mainRadius * 2.2,
+      height: height * 0.6,
+      tessellation: 12
+    }, { position: { x: 0, y: height * 0.3, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, landscapeGiantTreeStump, 'stump-bark', {
+      diameterTop: mainRadius * 1.75,
+      diameterBottom: mainRadius * 1.9,
+      height: height * 0.4,
+      tessellation: 12
+    }, { position: { x: 0, y: height * 0.8, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, landscapeGiantTreeStump, 'stump-wood', {
+      diameterTop: mainRadius * 1.7,
+      diameterBottom: mainRadius * 1.7,
+      height: 0.015,
+      tessellation: 16
+    }, { position: { x: 0, y: height + 0.005, z: 0 } }, { parent: node });
+
+    const rootAngles = [0, 1.4, 2.9, 4.5, 5.6];
+    rootAngles.forEach((angle, idx) => {
+      const rootL = mainRadius * (0.5 + (idx % 3) * 0.15);
+      const rootR = mainRadius * 0.25;
+      const rootMesh = cylinderComponent(registry, item, landscapeGiantTreeStump, 'stump-roots', {
+        diameterTop: rootR * 0.4,
+        diameterBottom: rootR,
+        height: rootL,
+        tessellation: 6
+      }, {
+        position: {
+          x: Math.cos(angle) * (mainRadius * 0.95),
+          y: height * 0.15,
+          z: Math.sin(angle) * (mainRadius * 0.95)
+        }
+      }, { parent: node });
+      rootMesh.rotation.z = Math.PI / 2.3;
+      rootMesh.rotation.y = -angle;
+    });
+  }
+};
+

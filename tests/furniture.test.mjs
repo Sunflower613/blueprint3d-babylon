@@ -58,19 +58,21 @@ test('contains clothing furniture in list', () => {
   }
 });
 
-test('contains outdoor furniture category and 23 outdoor items', () => {
+test('contains outdoor furniture category and 25 outdoor items', () => {
   const outdoorCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'outdoor');
   assert.ok(outdoorCategory, 'Outdoor category should exist');
   assert.equal(outdoorCategory.label, '户外');
 
   const outdoorItems = FURNITURE_LIST.filter((item) => item.category === 'outdoor');
-  assert.equal(outdoorItems.length, 23, 'Should contain exactly 23 outdoor furniture items');
+  assert.equal(outdoorItems.length, 25, 'Should contain exactly 25 outdoor furniture items');
 
   const types = outdoorItems.map((item) => item.type);
   assert.ok(types.includes('outdoor_umbrella'));
   assert.ok(types.includes('pergola'));
   assert.ok(types.includes('flower_arch'));
   assert.ok(types.includes('shared_bicycle'));
+  assert.ok(types.includes('outdoor_stone_chess_table'));
+  assert.ok(types.includes('outdoor_stone_stool'));
 });
 
 test('separates landscape plants into flora category', () => {
@@ -90,7 +92,7 @@ test('separates landscape plants into flora category', () => {
   assert.ok(floraTypes.has('apple_tree'));
 
   const landscapeItems = FURNITURE_LIST.filter((item) => item.category === 'landscape');
-  assert.equal(landscapeItems.length, 22, 'Should keep exactly 22 non-plant landscape items');
+  assert.equal(landscapeItems.length, 24, 'Should keep exactly 24 non-plant landscape items');
 
   const landscapeTypes = new Set(landscapeItems.map((item) => item.type));
   assert.ok(!landscapeTypes.has('landscape_bamboo_grove'));

@@ -144,16 +144,39 @@ node skills/create-buildings/scripts/validate-building.mjs skills/create-buildin
   - `rotation: 3.1416` ($\pi$)：正面面向 $-Z$ 轴（后方）。
   - `rotation: 4.7124` ($\frac{3\pi}{2}$)：正面面向 $+X$ 轴（右侧）。
 
-### 定理七：防错层防镜像自查反例字典 (Anti-Pattern Self-Check Dictionary)
+### 定理八：屋顶、围栏、栅栏门与喷泉 3D 渲染引擎 Subtype 权威对齐定理 (Engine Alignment Theorem)
+- **底层引擎对齐机制**: Babylon Scene Renderer 严格基于特定 `subtype` 关键字构建几何顶点；若使用非官方支持的扩展名称（如 `hipped`, `pyramid`, `slat`, `glass`），将直接导致渲染器无法识别几何网格而消失或回退。
+- **强制死律**:
+  1. **屋顶 (`roofs`) 权威标识**:
+     - 四坡坡屋顶: `"subtype": "hip"`（**严禁**写成 `"hipped"`）。
+     - 圆穹顶/城堡塔楼顶: `"subtype": "dome"`（**严禁**写成 `"pyramid"`）。
+     - 双坡人字屋顶: `"subtype": "gable"`（**严禁**写成 `"gabled"`）。
+     - 单坡斜屋顶: `"subtype": "shed"`（**严禁**写成 `"monosloped"`）。
+     - **檐口标高死律**: 必须配置 `"elevation"` (推荐为本层墙高如 `4.5`)，确保屋檐在墙顶精准悬挂，避免贴地或失踪。
+  2. **围栏 (`fences`) 权威标识**:
+     - 欧式雕花铁艺围墙: `"subtype": "iron_ornamental"`（豪宅/城堡庭院围墙首选）。
+     - 现代玻璃护栏: `"subtype": "glass_rail"`（**严禁**遗漏 `_rail` 后缀写成 `"glass"`）。
+     - 立柱木栅栏: `"subtype": "picket_wood"`；石砌矮墙: `"subtype": "stone_masonry"`。
+  3. **栅栏门 (`fenceGates`) 位置死律**:
+     - **必须**提供绑定的 `"fenceId"` 与线上偏移 `"t"` (0~1 之间)，或者直接提供端点坐标数组 `"from": [x1, z1]` 与 `"to": [x2, z2]`；**严禁**仅传单个 `x, z` 坐标导致引擎抛弃端点向量。
+  4. **庭院中央喷泉 (`items`) 权威类型**:
+     - 必须使用 `"type": "landscape_marble_fountain"` (汉白玉喷泉) 或 `"garden_fountain"`；**绝对禁止**误设为 `"landscape_rockery_aquarium"` (室内水族箱)。
 
-| 场景描述 | ❌ 错误配置 (导致错层/镜像/脱节) | ✅ 正确配置 (零错层零镜像) |
+### 定理九：防错层防镜像与渲染失败自查字典 (Anti-Pattern Self-Check Dictionary)
+
+| 场景描述 | ❌ 错误配置 (导致消失/错层/镜像/脱节) | ✅ 正确配置 (零错层零消失) |
 | :--- | :--- | :--- |
+| **四坡斜屋顶 Subtype** | `"subtype": "hipped"` (引擎无法识别导致丢失) | `"subtype": "hip"`, `"elevation": 4.5` (准确渲染四坡瓦片屋顶) |
+| **圆穹顶塔楼盖顶** | `"subtype": "pyramid"` (引擎不匹配) | `"subtype": "dome"`, `"elevation": 4.5` (生成漂亮半球穹顶) |
+| **玻璃护栏 Subtype** | `"subtype": "glass"` (缺少后缀回退为木栏) | `"subtype": "glass_rail"` (生成半透明通透玻璃栏杆) |
+| **庭院铁艺围墙** | `"subtype": "slat"` (非引擎标准关键字) | `"subtype": "iron_ornamental"` (生成黑色欧式雕花铁艺栅栏) |
+| **栅栏门位置传参** | 只传 `"x": 0, "z": -28` (缺少端点丢失渲染) | `"fenceId": "fence_front_north"`, `"t": 0.43` 或 `"from"`/`"to"` 数组 |
+| **庭院中央喷泉** | `"type": "landscape_rockery_aquarium"` (错设为水族箱) | `"type": "landscape_marble_fountain"` (生成汉白玉雕塑喷泉) |
 | **二层双人床高程** | `"floorId": "floor_2"`, `"elevation": 2.3` (手动叠加二层高度) | `"floorId": "floor_2"`, `"elevation": 0` (直接落于二层面板上) |
 | **Loft 楼梯参数与深高比** | `depth: 2.2`, 未设 `runBeforeCorner` | 设于 $-X$ 区域 (`x: -2.5, z: 0.5`)，配置 `depth: 3`, `height: 2.2`, `cornerStep: 8`, `runBeforeCorner: 2`, `runAfterCorner: 1` |
 | **木格栅屏风位置** | 置于 $-X$ 左侧边墙，`rotation: 1.5708` | 置于 $-Z$ 后墙区域 (`z: -3.89`, `rotation: 0`)，通高段设 `height: 5.0, width: 2.0` |
 | **2F Sector 延伸台旋转角** | `rotation: 0` (圆弧面向内部) | `rotation: -4.7124` (圆弧面向右上接驳楼梯出口) |
 | **右侧靠墙沙发位置** | 将沙发置于 $-X$ 区域导致与电视柜挤在一起 | 置于 $+X$ 区域 (`x: 1.425, z: -2.9`, `rotation: 4.7124`)，背靠右侧立面墙 |
-
 | **跨层直梯归属层** | `"floorId": "floor_2"`, `"elevation": 2.3` | `"floorId": "floor_1"`, `"elevation": 0`, `"height": 2.2` |
 
 ---
@@ -264,6 +287,24 @@ node skills/create-buildings/scripts/validate-building.mjs <文件路径> --stri
 
 Validator 不会自动证明房间闭合、开洞未越过墙体、房间不重叠、挑空未被覆盖或楼梯最后一级准确落在平台上；这些项目必须通过几何计算、渲染截图或人工复核完成。
 
-### 6.3 自查与完成判定标准
+### 6.4 引擎几何与材质死律定理 (Engine Architectural Theorems)
+
+#### 定理十：墙体绘制向量与室内外双面材质映射定理 (Wall Normal & Dual-Surface Material Theorem)
+在 3D 渲染引擎中，一段墙体按起点 `from: [x1, z1]` 至终点 `to: [x2, z2]` 的绘制向量决定 `materialFront`（正面法线）与 `materialBack`（背面法线）的面向。
+
+1. **法线几何方向**:
+   - `dx = x2 - x1, dz = z2 - z1`
+   - `materialFront`（正面）法线方向为：沿着矢量 $(dx, dz)$ 旋转 $+90^\circ$（左侧）；
+   - `materialBack`（背面）法线方向为：沿着矢量 $(dx, dz)$ 旋转 $-90^\circ$（右侧）。
+
+2. **室内外材质映射规约**:
+   - **向右矢量 ($dx > 0, dz = 0$，如南外墙)**: `materialFront` 朝向**室内**（应设为室内墙漆/壁纸，如 `#f9fbff`），`materialBack` 朝向**室外**（应设为室外建筑粉墙 `#ff85a2`）。若写反，室外将露出一片尴尬的白墙！
+   - **向左矢量 ($dx < 0, dz = 0$，如北外墙)**: `materialFront` 朝向**室外**（应设为室外建筑粉墙 `#ff85a2`），`materialBack` 朝向**室内**（应设为室内墙漆 `#f9fbff`）。
+   - **向上矢量 ($dx = 0, dz > 0$，如西外墙)**: `materialFront` 朝向**室外**，`materialBack` 朝向**室内**。
+   - **向下矢量 ($dx = 0, dz < 0$，如东外墙)**: `materialFront` 朝向**室内**，`materialBack` 朝向**室外**。
+
+**禁止图方便全量设为相同颜色，必须按矢量法线规则精准指定 `materialFront`（室内）与 `materialBack`（室外），以保证室内乳白温馨、室外靓丽粉嫩的双面真实建筑效果！**
+
+### 6.5 自查与完成判定标准
 完成任意建筑 JSON 生成后，最终成功判定标准为：
 **严格 Validator 校验通过 + 墙/门窗/房间引用闭合 + 挑空与楼梯几何无接驳冲突 + 空间功能件齐全 + 部件材质语义完整 + 对关键视角完成渲染复核**。若未完成几何或渲染复核，只能报告为“结构校验通过”。

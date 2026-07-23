@@ -1811,8 +1811,8 @@ export class BabylonSceneRenderer {
         openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, shape: opening.shape, wallId: opening.wallId, floorId: opening.floorId, locked: !!opening.locked };
 
         const wallT = this.floorplan.wallThickness;
-        const frameT = wallT + 0.02;
-        const frameW = 0.04;
+        const frameT = wallT + 0.08;
+        const frameW = 0.14;
         buildOpeningGeometry(this, opening, openingGroup, { width, height, frameT, frameW });
 
         this.openingNodes.set(opening.id, openingGroup);
@@ -1878,8 +1878,8 @@ export class BabylonSceneRenderer {
         sideVD.applyToMesh(sideMesh);
         sideMesh.convertToFlatShadedMesh();
 
-        const sideMat = createBlueprintMaterial(this.scene, `roof_side_${roof.id}_mat`, roof.sideMaterial || roof.sideColor || '#f9fbff', {
-          fallbackColor: roof.sideColor || '#f9fbff',
+        const sideMat = createBlueprintMaterial(this.scene, `roof_side_${roof.id}_mat`, roof.sideMaterial || roof.sideColor || '#ff85a2', {
+          fallbackColor: roof.sideColor || '#ff85a2',
           flatShading: true,
           backFaceCulling: false
         });

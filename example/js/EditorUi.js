@@ -987,7 +987,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
 
     const title = document.createElement('p');
     title.className = 'selection-title';
-    title.textContent = '楼层环境材质（天空贴图推荐 2:1 全景图）';
+    title.textContent = '天空盒材质';
     designSelectionPanel.appendChild(title);
     appendEnvironmentRow('sky', '天空', environment.skyMaterial, '#d9ecff');
     appendEnvironmentRow('ground', '地面', environment.groundMaterial, '#8ca66b');

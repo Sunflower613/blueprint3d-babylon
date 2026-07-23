@@ -1,0 +1,1474 @@
+{
+  "format": "blueprint3d-babylon.building.v1",
+  "version": 1,
+  "name": "BarbieCastleMansion",
+  "createdAt": "2026-07-23T12:00:00.000Z",
+  "updatedAt": "2026-07-23T12:00:00.000Z",
+  "generator": "blueprint3d-babylon",
+  "babylon": {
+    "engine": "Babylon.js",
+    "renderer": "Blueprint3DTestMap",
+    "coordinateSystem": "Y_UP_XZ_FLOOR",
+    "units": "m",
+    "entry": "Blueprint3DTestMap.loadBuildingFile"
+  },
+  "floorplan": {
+    "name": "BarbieCastleMansion",
+    "unit": "m",
+    "wallHeight": 4.5,
+    "wallThickness": 0.24,
+    "floorHeight": 0.08,
+    "storyHeight": 4.5,
+    "currentFloorId": "floor_1",
+    "floors": [
+      {
+        "id": "floor_1",
+        "name": "一层 Ground Floor",
+        "level": 0,
+        "wallHeight": 4.5,
+        "floorHeight": 0.08,
+        "skyboxEnabled": true
+      },
+      {
+        "id": "floor_2",
+        "name": "二层 First Floor",
+        "level": 1,
+        "wallHeight": 4.5,
+        "floorHeight": 0.08,
+        "skyboxEnabled": true,
+        "hideRoof": false
+      }
+    ],
+    "floor": {
+      "rooms": [
+        {
+          "id": "room_1f_main_hall",
+          "name": "中央挑空大厅 Main Hall",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 0,
+          "z": 0,
+          "width": 8.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖色大理石拼花地面",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_hall_north",
+            "east": "wall_1f_hall_east",
+            "south": "wall_1f_hall_south",
+            "west": "wall_1f_hall_west"
+          }
+        },
+        {
+          "id": "room_1f_entry_porch",
+          "name": "拱门入口门廊 Entry Porch",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 0,
+          "z": -7.5,
+          "width": 6.0,
+          "depth": 3.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-tiles",
+            "kind": "texture",
+            "category": "brick",
+            "name": "大理石瓷砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_hall_south",
+            "east": "wall_1f_porch_east",
+            "south": "wall_1f_porch_south",
+            "west": "wall_1f_porch_west"
+          }
+        },
+        {
+          "id": "room_1f_living_hall",
+          "name": "起居大厅 Living Hall",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": -9.0,
+          "z": 0,
+          "width": 10.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅橡木地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_living_north",
+            "east": "wall_1f_hall_west",
+            "south": "wall_1f_living_south",
+            "west": "wall_1f_living_west"
+          }
+        },
+        {
+          "id": "room_1f_terrace",
+          "name": "城堡一层柱廊露台 Terrace Arcade",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": -17.0,
+          "z": 0,
+          "width": 6.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖大理石露台地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "east": "wall_1f_living_west"
+          }
+        },
+        {
+          "id": "room_1f_dining_room",
+          "name": "宫廷主餐厅 Dining Room",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 8.0,
+          "z": 0,
+          "width": 8.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖色大理石瓷砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_dining_north",
+            "east": "wall_1f_dining_east",
+            "south": "wall_1f_dining_south",
+            "west": "wall_1f_hall_east"
+          }
+        },
+        {
+          "id": "room_1f_staircase",
+          "name": "主楼梯间 Staircase Hall",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 14.5,
+          "z": 2.5,
+          "width": 5.0,
+          "depth": 7.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖色大理石瓷砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_stair_north",
+            "east": "wall_1f_stair_east",
+            "south": "wall_1f_stair_south",
+            "west": "wall_1f_dining_east"
+          }
+        },
+        {
+          "id": "room_1f_tower",
+          "name": "圆形穹顶塔楼一层 Domed Tower 1F",
+          "floorId": "floor_1",
+          "shape": "circle",
+          "x": 12.0,
+          "z": -4.0,
+          "width": 6.0,
+          "depth": 6.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖色大理石瓷砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_dining_south",
+            "east": "wall_1f_tower_east",
+            "south": "wall_1f_tower_south",
+            "west": "wall_1f_tower_west"
+          }
+        },
+        {
+          "id": "room_1f_kitchen",
+          "name": "行政厨房 Kitchen Suite",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 21.0,
+          "z": 2.5,
+          "width": 8.0,
+          "depth": 7.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-square",
+            "kind": "texture",
+            "category": "brick",
+            "name": "广场方砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_kitchen_north",
+            "east": "wall_1f_kitchen_east",
+            "south": "wall_1f_kitchen_south",
+            "west": "wall_1f_stair_east"
+          }
+        },
+        {
+          "id": "room_1f_guest_room",
+          "name": "贵宾客房 Guest Suite",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 21.0,
+          "z": -3.5,
+          "width": 8.0,
+          "depth": 5.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅橡木地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_kitchen_south",
+            "east": "wall_1f_guest_east",
+            "south": "wall_1f_guest_south",
+            "west": "wall_1f_tower_east"
+          }
+        },
+        {
+          "id": "room_1f_loggia",
+          "name": "柱廊纵向连廊 Loggia Corridor",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 15.0,
+          "z": -12.0,
+          "width": 4.0,
+          "depth": 10.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "沙石大理石板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_guest_south",
+            "east": "wall_1f_loggia_east",
+            "south": "wall_1f_garage_north",
+            "west": "wall_1f_loggia_west"
+          }
+        },
+        {
+          "id": "room_1f_garage",
+          "name": "双车位大车库 Two-Car Garage",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 22.0,
+          "z": -21.0,
+          "width": 10.0,
+          "depth": 8.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-square",
+            "kind": "texture",
+            "category": "brick",
+            "name": "广场方砖",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_garage_north",
+            "east": "wall_1f_garage_east",
+            "south": "wall_1f_garage_south",
+            "west": "wall_1f_garage_west"
+          }
+        },
+        {
+          "id": "room_1f_driveway",
+          "name": "前院环形车道拼花广场 Arched Driveway Plaza",
+          "floorId": "floor_1",
+          "shape": "square",
+          "x": 0,
+          "z": -15.0,
+          "width": 16.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-tiles",
+            "kind": "texture",
+            "category": "brick",
+            "name": "奢华大理石拼花地面",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_1f_porch_south"
+          }
+        },
+        {
+          "id": "room_2f_master_suite",
+          "name": "二层城堡主卧套房 Master Suite 2F",
+          "floorId": "floor_2",
+          "shape": "square",
+          "x": 0,
+          "z": 0,
+          "width": 16.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅橡木地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_2f_master_north",
+            "east": "wall_2f_master_east",
+            "south": "wall_2f_master_south",
+            "west": "wall_2f_master_west"
+          }
+        },
+        {
+          "id": "room_2f_secondary_bedroom",
+          "name": "二层次卧与书房 Secondary Suite 2F",
+          "floorId": "floor_2",
+          "shape": "square",
+          "x": -9.0,
+          "z": 0,
+          "width": 10.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅橡木地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_2f_second_north",
+            "east": "wall_2f_master_west",
+            "south": "wall_2f_second_south",
+            "west": "wall_2f_second_west"
+          }
+        },
+        {
+          "id": "room_2f_terrace",
+          "name": "二层城堡开放大露台 Terrace 2F",
+          "floorId": "floor_2",
+          "shape": "square",
+          "x": -17.0,
+          "z": 0,
+          "width": 6.0,
+          "depth": 12.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "brick-marble-warm",
+            "kind": "texture",
+            "category": "brick",
+            "name": "暖大理石露台地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "east": "wall_2f_second_west"
+          }
+        },
+        {
+          "id": "room_2f_tower",
+          "name": "二层圆形塔楼观景平台 Domed Tower 2F",
+          "floorId": "floor_2",
+          "shape": "circle",
+          "x": 12.0,
+          "z": -4.0,
+          "width": 6.0,
+          "depth": 6.0,
+          "rotation": 0,
+          "elevation": 0,
+          "material": {
+            "id": "wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅橡木地板",
+            "color": "#ffffff"
+          },
+          "wallIds": {
+            "north": "wall_2f_tower_north",
+            "east": "wall_2f_tower_east",
+            "south": "wall_2f_tower_south",
+            "west": "wall_2f_tower_west"
+          }
+        }
+      ]
+    },
+    "walls": [
+      {
+        "id": "wall_1f_hall_north",
+        "floorId": "floor_1",
+        "from": [-4.0, 6.0],
+        "to": [4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_hall_south",
+        "floorId": "floor_1",
+        "from": [-4.0, -6.0],
+        "to": [4.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_hall_east",
+        "floorId": "floor_1",
+        "from": [4.0, -6.0],
+        "to": [4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_hall_west",
+        "floorId": "floor_1",
+        "from": [-4.0, -6.0],
+        "to": [-4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_porch_east",
+        "floorId": "floor_1",
+        "from": [3.0, -9.0],
+        "to": [3.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff99bb"
+      },
+      {
+        "id": "wall_1f_porch_south",
+        "floorId": "floor_1",
+        "from": [-3.0, -9.0],
+        "to": [3.0, -9.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff99bb"
+      },
+      {
+        "id": "wall_1f_porch_west",
+        "floorId": "floor_1",
+        "from": [-3.0, -9.0],
+        "to": [-3.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff99bb",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_living_north",
+        "floorId": "floor_1",
+        "from": [-14.0, 6.0],
+        "to": [-4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_living_south",
+        "floorId": "floor_1",
+        "from": [-14.0, -6.0],
+        "to": [-4.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_living_west",
+        "floorId": "floor_1",
+        "from": [-14.0, -6.0],
+        "to": [-14.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_dining_north",
+        "floorId": "floor_1",
+        "from": [4.0, 6.0],
+        "to": [12.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_dining_east",
+        "floorId": "floor_1",
+        "from": [12.0, -1.0],
+        "to": [12.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_dining_south",
+        "floorId": "floor_1",
+        "from": [4.0, -6.0],
+        "to": [12.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_stair_north",
+        "floorId": "floor_1",
+        "from": [12.0, 6.0],
+        "to": [17.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_stair_east",
+        "floorId": "floor_1",
+        "from": [17.0, -1.0],
+        "to": [17.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_stair_south",
+        "floorId": "floor_1",
+        "from": [12.0, -1.0],
+        "to": [17.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_tower_east",
+        "floorId": "floor_1",
+        "from": [15.0, -7.0],
+        "to": [15.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_tower_south",
+        "floorId": "floor_1",
+        "from": [9.0, -7.0],
+        "to": [15.0, -7.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_tower_west",
+        "floorId": "floor_1",
+        "from": [9.0, -7.0],
+        "to": [9.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_kitchen_north",
+        "floorId": "floor_1",
+        "from": [17.0, 6.0],
+        "to": [25.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_kitchen_east",
+        "floorId": "floor_1",
+        "from": [25.0, -1.0],
+        "to": [25.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2",
+        "wainscotEnabled": true,
+        "wainscotHeight": 2.0,
+        "wainscotMaterialFront": {
+          "id": "brick-mosaic",
+          "kind": "texture",
+          "category": "brick",
+          "name": "马赛克瓷砖",
+          "color": "#ffffff"
+        }
+      },
+      {
+        "id": "wall_1f_kitchen_south",
+        "floorId": "floor_1",
+        "from": [17.0, -1.0],
+        "to": [25.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_guest_east",
+        "floorId": "floor_1",
+        "from": [25.0, -6.0],
+        "to": [25.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_guest_south",
+        "floorId": "floor_1",
+        "from": [17.0, -6.0],
+        "to": [25.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_loggia_east",
+        "floorId": "floor_1",
+        "from": [17.0, -17.0],
+        "to": [17.0, -7.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff99bb"
+      },
+      {
+        "id": "wall_1f_loggia_west",
+        "floorId": "floor_1",
+        "from": [13.0, -17.0],
+        "to": [13.0, -7.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff99bb",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_garage_north",
+        "floorId": "floor_1",
+        "from": [17.0, -17.0],
+        "to": [27.0, -17.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_1f_garage_east",
+        "floorId": "floor_1",
+        "from": [27.0, -25.0],
+        "to": [27.0, -17.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_garage_south",
+        "floorId": "floor_1",
+        "from": [17.0, -25.0],
+        "to": [27.0, -25.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_1f_garage_west",
+        "floorId": "floor_1",
+        "from": [17.0, -25.0],
+        "to": [17.0, -17.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_master_north",
+        "floorId": "floor_2",
+        "from": [-4.0, 6.0],
+        "to": [12.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_master_east",
+        "floorId": "floor_2",
+        "from": [12.0, -6.0],
+        "to": [12.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_master_south",
+        "floorId": "floor_2",
+        "from": [-4.0, -6.0],
+        "to": [12.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_2f_master_west",
+        "floorId": "floor_2",
+        "from": [-4.0, -6.0],
+        "to": [-4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_second_north",
+        "floorId": "floor_2",
+        "from": [-14.0, 6.0],
+        "to": [-4.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_second_south",
+        "floorId": "floor_2",
+        "from": [-14.0, -6.0],
+        "to": [-4.0, -6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_2f_second_west",
+        "floorId": "floor_2",
+        "from": [-14.0, -6.0],
+        "to": [-14.0, 6.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_tower_north",
+        "floorId": "floor_2",
+        "from": [9.0, -1.0],
+        "to": [15.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      },
+      {
+        "id": "wall_2f_tower_east",
+        "floorId": "floor_2",
+        "from": [15.0, -7.0],
+        "to": [15.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_2f_tower_south",
+        "floorId": "floor_2",
+        "from": [9.0, -7.0],
+        "to": [15.0, -7.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#f9fbff",
+        "materialBack": "#ff85a2"
+      },
+      {
+        "id": "wall_2f_tower_west",
+        "floorId": "floor_2",
+        "from": [9.0, -7.0],
+        "to": [9.0, -1.0],
+        "thickness": 0.24,
+        "height": 4.5,
+        "materialFront": "#ff85a2",
+        "materialBack": "#f9fbff"
+      }
+    ],
+    "openings": [
+      {
+        "id": "opening_entry_door",
+        "type": "door",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_porch_south",
+        "t": 0.5,
+        "width": 3.2,
+        "height": 3.8,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff",
+        "panelMaterial": "#ff69b4",
+        "isOpen": false
+      },
+      {
+        "id": "opening_hall_north_door",
+        "type": "door",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_hall_north",
+        "t": 0.5,
+        "width": 2.4,
+        "height": 3.0,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#ffffff",
+        "isOpen": false
+      },
+      {
+        "id": "opening_living_window_south_1",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_living_south",
+        "t": 0.3,
+        "width": 2.2,
+        "height": 2.6,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_living_window_south_2",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_living_south",
+        "t": 0.7,
+        "width": 2.2,
+        "height": 2.6,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_living_window_north",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_living_north",
+        "t": 0.5,
+        "width": 3.0,
+        "height": 2.5,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_living_terrace_door",
+        "type": "door",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_living_west",
+        "t": 0.5,
+        "width": 2.6,
+        "height": 3.2,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_dining_window_south",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_dining_south",
+        "t": 0.5,
+        "width": 2.5,
+        "height": 2.6,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_tower_window_1f",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_tower_south",
+        "t": 0.5,
+        "width": 2.8,
+        "height": 3.5,
+        "sillHeight": 0.4,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_loggia_arch_east",
+        "type": "door",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_loggia_east",
+        "t": 0.5,
+        "width": 2.5,
+        "height": 3.5,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_loggia_arch_west",
+        "type": "door",
+        "shape": "round-arch",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_loggia_west",
+        "t": 0.5,
+        "width": 2.5,
+        "height": 3.5,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_garage_door_1",
+        "type": "door",
+        "shape": "square",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_garage_south",
+        "t": 0.3,
+        "width": 3.8,
+        "height": 3.0,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#ffffff"
+      },
+      {
+        "id": "opening_garage_door_2",
+        "type": "door",
+        "shape": "square",
+        "floorId": "floor_1",
+        "wallId": "wall_1f_garage_south",
+        "t": 0.7,
+        "width": 3.8,
+        "height": 3.0,
+        "sillHeight": 0,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#ffffff"
+      },
+      {
+        "id": "opening_master_window_south_1",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_master_south",
+        "t": 0.25,
+        "width": 1.8,
+        "height": 2.4,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_master_window_south_2",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_master_south",
+        "t": 0.5,
+        "width": 1.8,
+        "height": 2.4,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_master_window_south_3",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_master_south",
+        "t": 0.75,
+        "width": 1.8,
+        "height": 2.4,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_second_window_south_1",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_second_south",
+        "t": 0.3,
+        "width": 2.0,
+        "height": 2.2,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_second_window_south_2",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_second_south",
+        "t": 0.7,
+        "width": 2.0,
+        "height": 2.2,
+        "sillHeight": 0.8,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      },
+      {
+        "id": "opening_tower_window_2f",
+        "type": "window",
+        "shape": "round-arch",
+        "floorId": "floor_2",
+        "wallId": "wall_2f_tower_south",
+        "t": 0.5,
+        "width": 2.8,
+        "height": 3.5,
+        "sillHeight": 0.4,
+        "frameMaterial": "#ffffff",
+        "glassMaterial": "#aaccff"
+      }
+    ],
+    "items": [
+      {
+        "id": "sofa_living",
+        "type": "sofa",
+        "name": "芭比粉豪华云朵沙发组",
+        "floorId": "floor_1",
+        "roomId": "room_1f_living_hall",
+        "x": -9.0,
+        "z": 2.0,
+        "rotation": 0,
+        "elevation": 0,
+        "width": 3.5,
+        "depth": 1.2,
+        "height": 0.95,
+        "colors": {
+          "seat": "#ff85a2",
+          "back": "#ff85a2",
+          "arms": "#ff85a2",
+          "legs": "#8c6c50"
+        },
+        "materials": {
+          "seat": "#ff85a2",
+          "back": "#ff85a2",
+          "arms": "#ff85a2",
+          "legs": "#8c6c50"
+        }
+      },
+      {
+        "id": "coffee_table_living",
+        "type": "coffee_table",
+        "name": "奢华大理石金边茶几",
+        "floorId": "floor_1",
+        "roomId": "room_1f_living_hall",
+        "x": -9.0,
+        "z": -0.8,
+        "rotation": 0,
+        "elevation": 0,
+        "width": 2.0,
+        "depth": 1.0,
+        "height": 0.5,
+        "colors": {
+          "top": "#ffffff",
+          "legs": "#ffd700"
+        },
+        "materials": {
+          "top": "#ffffff",
+          "legs": "#ffd700"
+        }
+      },
+      {
+        "id": "dining_table_set",
+        "type": "dining_table_long",
+        "name": "12人宫廷粉金长餐桌组",
+        "floorId": "floor_1",
+        "roomId": "room_1f_dining_room",
+        "x": 8.0,
+        "z": 0,
+        "rotation": 1.5708,
+        "elevation": 0,
+        "width": 3.6,
+        "depth": 1.4,
+        "height": 0.78,
+        "colors": {
+          "top": "#ffffff",
+          "legs": "#ffd700"
+        },
+        "materials": {
+          "top": "#ffffff",
+          "legs": "#ffd700"
+        }
+      },
+      {
+        "id": "master_canopy_bed",
+        "type": "canopy_bed",
+        "name": "二层主卧顶级浪漫幔帐大床",
+        "floorId": "floor_2",
+        "roomId": "room_2f_master_suite",
+        "x": 0,
+        "z": 2.0,
+        "rotation": 3.1416,
+        "elevation": 0,
+        "width": 2.4,
+        "depth": 2.4,
+        "height": 2.5,
+        "colors": {
+          "frame": "#ffffff",
+          "drapes": "#ff85a2",
+          "bedding": "#ffffff"
+        },
+        "materials": {
+          "frame": "#ffffff",
+          "drapes": "#ff85a2",
+          "bedding": "#ffffff"
+        }
+      },
+      {
+        "id": "vanity_master",
+        "type": "vanity",
+        "name": "二层主卧奢华梳妆台",
+        "floorId": "floor_2",
+        "roomId": "room_2f_master_suite",
+        "x": -4.0,
+        "z": -2.0,
+        "rotation": 1.5708,
+        "elevation": 0,
+        "width": 1.8,
+        "depth": 0.6,
+        "height": 1.6,
+        "colors": {
+          "desk": "#ffffff",
+          "mirror": "#ffd700"
+        },
+        "materials": {
+          "desk": "#ffffff",
+          "mirror": "#ffd700"
+        }
+      },
+      {
+        "id": "deckchair_terrace_1f",
+        "type": "deckchair",
+        "name": "露台粉色休闲躺椅",
+        "floorId": "floor_1",
+        "roomId": "room_1f_terrace",
+        "x": -17.0,
+        "z": 2.0,
+        "rotation": 1.5708,
+        "elevation": 0,
+        "width": 1.0,
+        "depth": 1.8,
+        "height": 0.9
+      },
+      {
+        "id": "fountain_front_yard",
+        "type": "landscape_marble_fountain",
+        "name": "前院中央汉白玉雕塑喷泉",
+        "floorId": "floor_1",
+        "x": 0,
+        "z": -15.0,
+        "rotation": 0,
+        "elevation": 0,
+        "width": 6.5,
+        "depth": 6.5,
+        "height": 3.5
+      }
+    ],
+    "roofs": [
+      {
+        "id": "roof_main_hall",
+        "floorId": "floor_2",
+        "subtype": "hip",
+        "x": 0,
+        "z": 0,
+        "elevation": 4.5,
+        "width": 17.0,
+        "depth": 13.0,
+        "height": 3.8,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_living_wing",
+        "floorId": "floor_2",
+        "subtype": "hip",
+        "x": -9.0,
+        "z": 0,
+        "elevation": 4.5,
+        "width": 11.0,
+        "depth": 13.0,
+        "height": 3.2,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_right_wing",
+        "floorId": "floor_1",
+        "subtype": "hip",
+        "x": 21.0,
+        "z": 0,
+        "elevation": 4.5,
+        "width": 10.0,
+        "depth": 13.0,
+        "height": 2.8,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_porch",
+        "floorId": "floor_1",
+        "subtype": "hip",
+        "x": 0,
+        "z": -7.5,
+        "elevation": 4.5,
+        "width": 6.8,
+        "depth": 3.8,
+        "height": 2.0,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_tower",
+        "floorId": "floor_2",
+        "subtype": "dome",
+        "x": 12.0,
+        "z": -4.0,
+        "elevation": 4.5,
+        "width": 6.8,
+        "depth": 6.8,
+        "height": 4.8,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_loggia",
+        "floorId": "floor_1",
+        "subtype": "hip",
+        "x": 15.0,
+        "z": -12.0,
+        "elevation": 4.5,
+        "width": 4.8,
+        "depth": 10.8,
+        "height": 1.8,
+        "material": "#c85a5a"
+      },
+      {
+        "id": "roof_garage",
+        "floorId": "floor_1",
+        "subtype": "gable",
+        "x": 22.0,
+        "z": -21.0,
+        "elevation": 4.5,
+        "width": 10.8,
+        "depth": 8.8,
+        "height": 3.2,
+        "material": "#c85a5a",
+        "sideMaterial": "#ff85a2"
+      }
+    ],
+    "stairs": [
+      {
+        "id": "stair_main",
+        "floorId": "floor_1",
+        "subtype": "lshape",
+        "x": 14.5,
+        "z": 2.5,
+        "width": 2.0,
+        "depth": 4.0,
+        "height": 4.5,
+        "steps": 18,
+        "rotation": 0,
+        "mirrored": false,
+        "cornerStep": 9,
+        "runBeforeCorner": 4,
+        "runAfterCorner": 2,
+        "treadMaterial": "#ffffff",
+        "riserMaterial": "#ff85a2",
+        "stringerMaterial": "#ffffff",
+        "handrailMaterial": "#ffd700"
+      }
+    ],
+    "fences": [
+      {
+        "id": "fence_front_north",
+        "floorId": "floor_1",
+        "subtype": "iron_ornamental",
+        "from": [-24.0, -28.0],
+        "to": [28.0, -28.0],
+        "height": 1.8,
+        "thickness": 0.12,
+        "frameMaterial": "#ff85a2",
+        "panelMaterial": "#212121"
+      },
+      {
+        "id": "fence_front_west",
+        "floorId": "floor_1",
+        "subtype": "iron_ornamental",
+        "from": [-24.0, -28.0],
+        "to": [-24.0, 8.0],
+        "height": 1.8,
+        "thickness": 0.12,
+        "frameMaterial": "#ff85a2",
+        "panelMaterial": "#212121"
+      },
+      {
+        "id": "fence_front_east",
+        "floorId": "floor_1",
+        "subtype": "iron_ornamental",
+        "from": [28.0, -28.0],
+        "to": [28.0, 8.0],
+        "height": 1.8,
+        "thickness": 0.12,
+        "frameMaterial": "#ff85a2",
+        "panelMaterial": "#212121"
+      },
+      {
+        "id": "fence_2f_terrace_west",
+        "floorId": "floor_2",
+        "subtype": "glass_rail",
+        "from": [-20.0, -6.0],
+        "to": [-20.0, 6.0],
+        "height": 1.1,
+        "thickness": 0.05,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#aaccff"
+      },
+      {
+        "id": "fence_2f_terrace_north",
+        "floorId": "floor_2",
+        "subtype": "glass_rail",
+        "from": [-20.0, 6.0],
+        "to": [-14.0, 6.0],
+        "height": 1.1,
+        "thickness": 0.05,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#aaccff"
+      },
+      {
+        "id": "fence_2f_terrace_south",
+        "floorId": "floor_2",
+        "subtype": "glass_rail",
+        "from": [-20.0, -6.0],
+        "to": [-14.0, -6.0],
+        "height": 1.1,
+        "thickness": 0.05,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#aaccff"
+      },
+      {
+        "id": "fence_2f_master_balcony",
+        "floorId": "floor_2",
+        "subtype": "iron_ornamental",
+        "from": [-4.0, -6.1],
+        "to": [12.0, -6.1],
+        "height": 0.9,
+        "thickness": 0.05,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#ffd700"
+      },
+      {
+        "id": "fence_2f_second_balcony",
+        "floorId": "floor_2",
+        "subtype": "iron_ornamental",
+        "from": [-14.0, -6.1],
+        "to": [-4.0, -6.1],
+        "height": 0.9,
+        "thickness": 0.05,
+        "frameMaterial": "#ffffff",
+        "panelMaterial": "#ffd700"
+      }
+    ],
+    "fenceGates": [
+      {
+        "id": "gate_front_main",
+        "floorId": "floor_1",
+        "fenceId": "fence_front_north",
+        "subtype": "iron_ornamental",
+        "t": 0.43,
+        "width": 4.0,
+        "height": 2.2,
+        "from": [-2.0, -28.0],
+        "to": [2.0, -28.0],
+        "frameMaterial": "#ffd700",
+        "panelMaterial": "#212121"
+      }
+    ],
+    "environment": {
+      "skyMaterial": {
+        "id": "sky_texture",
+        "kind": "texture",
+        "category": "custom",
+        "name": "蓝天白云",
+        "url": "sky.png",
+        "color": "#ffffff"
+      },
+      "groundMaterial": {
+        "id": "stone-grass",
+        "kind": "texture",
+        "category": "stone",
+        "name": "草地",
+        "color": "#ffffff"
+      }
+    }
+  }
+}

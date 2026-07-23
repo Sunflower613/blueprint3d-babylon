@@ -427,15 +427,17 @@ export class Viewer3D {
       material.emissiveTexture?.dispose();
       material.emissiveTexture = null;
       if (skyDescriptor) {
-        const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#d9ecff');
+        const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#ffffff');
         const resolved = resolveMaterialAssetDescriptor(normalized);
-        material.emissiveColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
         if (resolved.kind === 'texture' && resolved.src) {
+          material.emissiveColor = BABYLON.Color3.White();
           material.emissiveTexture = new BABYLON.Texture(resolved.src, this.scene, false, false);
+        } else {
+          material.emissiveColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
         }
       } else {
         material.emissiveColor = BABYLON.Color3.White();
-        material.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene);
+        material.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene, false, false);
       }
     }
 

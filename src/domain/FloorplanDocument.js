@@ -143,10 +143,10 @@ export class FloorplanDocument {
     normalized.environment ||= {};
     normalized.environment.skyMaterial = normalized.environment.skyMaterial
       ? normalizeMaterialDescriptor(normalized.environment.skyMaterial, '#d9ecff')
-      : null;
+      : { id: 'sky_texture', kind: 'texture', category: 'custom', name: '默认天空', url: 'textures/sky.png', color: '#ffffff' };
     normalized.environment.groundMaterial = normalized.environment.groundMaterial
       ? normalizeMaterialDescriptor(normalized.environment.groundMaterial, '#8ca66b')
-      : null;
+      : { id: 'stone-grass', kind: 'texture', category: 'stone', name: '草地', color: '#ffffff' };
     normalized.floor.color ||= DEFAULT_FLOOR_COLOR;
     if (!normalized.floor.material || normalized.floor.material === DEFAULT_FLOOR_COLOR) {
       normalized.floor.material = defaultFloorMaterial;
@@ -892,15 +892,17 @@ export class FloorplanDocument {
     const currRot = room.rotation || 0;
     const dRot = currRot - prevRot;
 
-    const shouldMoveItems = options.moveItems ?? (!('width' in patch) && !('depth' in patch));
+    // 房间移动/变动时：原来属于本房间的家具（item.roomId === room.id）正常跟随移动；
+    // 新家具或未绑定本房间的家具（item.roomId !== room.id）绝对不误带走！
+    const shouldMoveItems = options.moveItems !== false;
     if ((dx || dz || dRot) && shouldMoveItems) {
       const cos = Math.cos(dRot);
       const sin = Math.sin(dRot);
       this.floorplan.items.forEach((item) => {
         if (item.floorId !== room.floorId) return;
-        const belongedToRoom = options.isDragging
-          ? item.roomId === room.id
-          : (item.roomId === room.id || pointInRoom(previous, item.x, item.z));
+        
+        // 核心条件：只有原来显式绑定了该房间 ID 的家具才可以被带走；新家具/未绑定家具不带走
+        const belongedToRoom = item.roomId === room.id;
         if (!belongedToRoom) return;
 
         const lx = item.x - previous.x;
@@ -911,7 +913,6 @@ export class FloorplanDocument {
         item.x = Number((room.x + rx).toFixed(3));
         item.z = Number((room.z + rz).toFixed(3));
         item.rotation = Number(((item.rotation || 0) + dRot).toFixed(4));
-        item.roomId = room.id;
       });
     }
 

@@ -69,8 +69,7 @@ export const coffeeTableFurniture = {
   defaultSize: { width: 28, depth: 28, height: 18 },
   components: [
     { id: 'top', label: '实木面板与搁板', defaultColor: '#c9a882' },
-    { id: 'legs', label: '实木桌腿边框', defaultColor: '#967b61' },
-    { id: 'decor', label: '桌面书刊杂物', defaultColor: '#eae6df' }
+    { id: 'legs', label: '实木桌腿边框', defaultColor: '#967b61' }
   ],
   build(registry, item, node, size) {
     const topH = Math.min(0.045, size.height * 0.12);
@@ -108,17 +107,6 @@ export const coffeeTableFurniture = {
       });
     });
 
-    // 5. 下层置物搁板上的杂志与书籍细节
-    const bookW = size.width * 0.28;
-    const bookD = size.depth * 0.36;
-    const bookH = 0.025;
-    boxComponent(registry, item, coffeeTableFurniture, 'decor', {
-      width: bookW, height: bookH, depth: bookD
-    }, { position: { x: -size.width * 0.18, y: shelfY + shelfH / 2 + bookH / 2, z: size.depth * 0.08 } }, { parent: node });
-
-    boxComponent(registry, item, coffeeTableFurniture, 'decor', {
-      width: bookW * 0.9, height: bookH * 0.8, depth: bookD * 0.95
-    }, { position: { x: -size.width * 0.16, y: shelfY + shelfH / 2 + bookH * 1.4, z: size.depth * 0.06 } }, { parent: node });
   }
 };
 
@@ -191,7 +179,7 @@ export const sideTableFurniture = {
 // 5. 大圆餐桌 (Round Table)
 export const roundTableFurniture = {
   type: 'round_table',
-  name: '圆餐桌',
+  name: '圆桌',
   defaultSize: { width: 54, depth: 54, height: 30 },
   components: [
     { id: 'top', label: '圆桌面', defaultColor: '#f3eedf' },
@@ -299,6 +287,12 @@ export const consoleTableFurniture = {
     boxComponent(registry, item, consoleTableFurniture, 'frame', {
       width: size.width - legW * 2, height: 0.02, depth: 0.02
     }, { position: { x: 0, y: legH * 0.2, z: 0 } }, { parent: node });
+    // 底部纵向加固条
+    [-1, 1].forEach((x) => {
+      boxComponent(registry, item, consoleTableFurniture, 'frame', {
+        width: 0.02, height: 0.02, depth: size.depth - legW * 2
+      }, { position: { x: x * (size.width / 2 - 0.01), y: legH * 0.2, z: 0 } }, { parent: node });
+    });
   }
 };
 
@@ -428,7 +422,7 @@ export const patioDiningTableFurniture = {
 // 12. 庭院小圆桌 (Bistro Table)
 export const bistroTableFurniture = {
   type: 'bistro_table',
-  name: '圆桌',
+  name: '玻璃圆桌',
   defaultSize: { width: 26, depth: 26, height: 28 },
   components: [
     { id: 'glass', label: '玻璃台面', defaultColor: '#e0f2f1' },
@@ -532,14 +526,14 @@ export const gardenSideTableFurniture = {
   name: '花园边几',
   defaultSize: { width: 18, depth: 18, height: 22 },
   components: [
-    { id: 'top', label: '方形台面', defaultColor: '#f5f1eb' },
-    { id: 'legs', label: '中心放射三角形木板腿', defaultColor: '#d6cbbe' }
+    { id: 'top', label: '桌面', defaultColor: '#f5f1eb' },
+    { id: 'legs', label: '桌腿', defaultColor: '#d6cbbe' }
   ],
   build(registry, item, node, size) {
     const topH = Math.min(0.04, size.height * 0.1);
     const topY = size.height - topH / 2;
 
-    // 1. 干净平整的方形桌面（取消桌面饰花）
+    // 1. 方形桌面
     boxComponent(registry, item, gardenSideTableFurniture, 'top', {
       width: size.width, height: topH, depth: size.depth
     }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
@@ -577,8 +571,7 @@ export const gardenSideTableFurniture = {
         }
       }, { parent: node });
 
-      legPlate.rotation.y = -angle;
-      legPlate.rotation.z = 0.22;
+      legPlate.rotation.y = angle;
     }
   }
 };

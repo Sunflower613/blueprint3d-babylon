@@ -2115,6 +2115,14 @@ input:checked + .slider .lock-icon {
 .item-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 6px !important;
+  /* The virtual list uses absolutely positioned rows, so the grid needs its
+     own viewport; otherwise its height collapses and no scrollbar is created. */
+  height: calc(100vh - 250px) !important;
+  min-height: 180px !important;
+  max-height: calc(100vh - 210px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  align-content: start !important;
 }
 
 .furniture-item-btn {

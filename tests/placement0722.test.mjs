@@ -97,7 +97,7 @@ test('0722：新增壁挂家具立即获得安全标高且不会穿过天花板'
   assert.equal(wallShelf.elevation, 0.85);
 });
 
-test('0722：窗帘吸附窗户时按窗顶对齐', () => {
+test('0722：窗帘移动时离地默认保持 0 贴地', () => {
   const wall = { id: 'wall-1', from: [0, 0], to: [4, 0] };
   const opening = { id: 'window-1', type: 'window', wallId: wall.id, t: 0.5, sillHeight: 1.05, height: 0.85 };
   const curtain = {
@@ -109,8 +109,8 @@ test('0722：窗帘吸附窗户时按窗顶对齐', () => {
   manager.moveItemTo(curtain.id, 2, 0.1, true);
 
   const patch = updates.at(-1).patch;
-  assert.equal(Number(patch.elevation.toFixed(2)), 0.4);
-  assert.equal(Number((patch.elevation + curtain.height).toFixed(2)), 1.9);
+  const currentElevation = patch.elevation ?? curtain.elevation;
+  assert.equal(currentElevation, 0);
 });
 
 test('0722：修改窗帘高度时保持顶部锚点', () => {

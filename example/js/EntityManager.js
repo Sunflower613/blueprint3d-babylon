@@ -197,73 +197,30 @@ export class EntityManager {
       let bestAngle = item.rotation || 0;
       let bestWall = null;
 
-      // 窗帘/百叶窗自动吸附至最近窗户附近
-      let nearWindow = null;
-      let minWinDist = 0.6; // 吸附范围门槛（约 0.6 米）
-      let bestWinProjX = snapped.x;
-      let bestWinProjZ = snapped.z;
-      let bestWinAngle = item.rotation || 0;
-      let bestWinWall = null;
-
-      if (isCurtain) {
-        const openings = this.opts.testMap.getEntities('opening');
-        if (openings.length) {
-          openings.forEach((opening) => {
-            if (opening.type === 'door') return; // 排除门，只吸附窗户
-            const wall = this.opts.getWalls().find(w => w.id === opening.wallId);
-            if (!wall) return;
-            
-            // 计算该窗户在墙体上的实际世界坐标
-            const winX = wall.from[0] + (wall.to[0] - wall.from[0]) * (opening.t ?? 0.5);
-            const winZ = wall.from[1] + (wall.to[1] - wall.from[1]) * (opening.t ?? 0.5);
-            const dist = Math.hypot(snapped.x - winX, snapped.z - winZ);
-            
-            if (dist < minWinDist) {
-              minWinDist = dist;
-              nearWindow = opening;
-              bestWinProjX = winX;
-              bestWinProjZ = winZ;
-              
-              const dx = wall.to[0] - wall.from[0];
-              const dz = wall.to[1] - wall.from[1];
-              bestWinAngle = -Math.atan2(dz, dx);
-              bestWinWall = wall;
-            }
-          });
+      // 寻找距离光标最近的墙壁
+      this.opts.getWalls().forEach((wall) => {
+        const [x1, z1] = wall.from;
+        const [x2, z2] = wall.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const len2 = dx * dx + dz * dz;
+        if (len2 === 0) return;
+        let t = ((snapped.x - x1) * dx + (snapped.z - z1) * dz) / len2;
+        t = Math.max(0.02, Math.min(0.98, t));
+        const projX = x1 + t * dx;
+        const projZ = z1 + t * dz;
+        const dist = Math.hypot(snapped.x - projX, snapped.z - projZ);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestProjX = projX;
+          bestProjZ = projZ;
+          bestAngle = -Math.atan2(dz, dx);
+          bestWall = wall;
         }
-      }
-
-      if (nearWindow && bestWinWall) {
-        bestProjX = bestWinProjX;
-        bestProjZ = bestWinProjZ;
-        bestAngle = bestWinAngle;
-        bestWall = bestWinWall;
-      } else {
-        // 如果没有触发窗户吸附，执行常规寻找最近墙壁逻辑
-        this.opts.getWalls().forEach((wall) => {
-          const [x1, z1] = wall.from;
-          const [x2, z2] = wall.to;
-          const dx = x2 - x1;
-          const dz = z2 - z1;
-          const len2 = dx * dx + dz * dz;
-          if (len2 === 0) return;
-          let t = ((snapped.x - x1) * dx + (snapped.z - z1) * dz) / len2;
-          t = Math.max(0.08, Math.min(0.92, t));
-          const projX = x1 + t * dx;
-          const projZ = z1 + t * dz;
-          const dist = Math.hypot(snapped.x - projX, snapped.z - projZ);
-          if (dist < minDistance) {
-            minDistance = dist;
-            bestProjX = projX;
-            bestProjZ = projZ;
-            bestAngle = -Math.atan2(dz, dx);
-            bestWall = wall;
-          }
-        });
-      }
+      });
 
       if (bestWall) {
-        if (isCurtain && snapEnabled && snapSize && !nearWindow) {
+        if (snapEnabled && snapSize) {
           const [x1, z1] = bestWall.from;
           const [x2, z2] = bestWall.to;
           const dx = x2 - x1;
@@ -274,7 +231,7 @@ export class EntityManager {
             snapEnabled,
             snapSize
           );
-          const t = Math.max(0.08, Math.min(0.92,
+          const t = Math.max(0.02, Math.min(0.98,
             ((gridPoint.x - x1) * dx + (gridPoint.z - z1) * dz) / len2
           ));
           bestProjX = x1 + t * dx;
@@ -339,9 +296,10 @@ export class EntityManager {
 
       const itemHeight = (item.height ?? definitionSizeInMetres(definition, 'height')) * Number(item.scale || 1);
       const wallHeight = Number(this.opts.testMap.getProjectMetadata().wallHeight || 2.8);
-      if (isCurtain && nearWindow) {
-        const openingTop = Number(nearWindow.sillHeight ?? 1.05) + Number(nearWindow.height ?? 0.85);
-        patch.elevation = Math.max(0, Math.min(openingTop - itemHeight, Math.max(0, wallHeight - itemHeight)));
+      if (isCurtain) {
+        if (item.elevation === undefined) {
+          patch.elevation = 0;
+        }
       } else if (item.elevation === undefined || item.elevation === 0) {
         patch.elevation = defaultWallElevation(itemHeight, wallHeight);
       }

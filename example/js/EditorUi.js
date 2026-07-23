@@ -1143,6 +1143,8 @@ export function initUiEventListeners() {
       const ceilingHeight = testMap.getSnapshot().wallHeight || 2.8;
       const itemHeight = definition.unit === 'm' ? (definition.defaultSize.height || 0) : (definition.defaultSize.height || 0) / INCHES_PER_UNIT;
       elevation = ceilingHeight - itemHeight;
+    } else if (definition.placeType === 'wall' && (definition.type.includes('curtain') || definition.type.includes('blind'))) {
+      elevation = 0;
     } else if (canPlaceOnTable({ x, z, floorId: testMap.getCurrentFloorId(), width: definition.defaultSize.width, depth: definition.defaultSize.depth }, definition)) {
       // 检查当前选中的物品是否是多层架子柜
       const selectedItem = selection.selectedItemId ? testMap.getEntity('item', selection.selectedItemId) : null;

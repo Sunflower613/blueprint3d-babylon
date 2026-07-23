@@ -1,5 +1,5 @@
 import { pointInRoom, Topology } from '../../src/index.js';
-const { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition } = Topology;
+const { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition, snapToGridSegmentCenter } = Topology;
 
 const INCHES_PER_UNIT = 39.37;
 
@@ -161,8 +161,12 @@ export class EntityManager {
 
     const snapEnabled = this.opts.getSnapEnabled();
     const snapSize = this.opts.getSnapSize();
+    const isCurtain = definition.placeType === 'wall'
+      && (item.type.toLowerCase().includes('curtain') || item.type.toLowerCase().includes('blind'));
 
-    if (snapEnabled && snapSize) {
+    // Curtains travel on a wall track, so their grid position is resolved after
+    // projection onto that wall (the same half-cell rule used by openings).
+    if (snapEnabled && snapSize && !isCurtain) {
       const snappedPos = calculateSnappedPosition({
         item,
         definition,
@@ -194,7 +198,6 @@ export class EntityManager {
       let bestWall = null;
 
       // 窗帘/百叶窗自动吸附至最近窗户附近
-      const isCurtain = item.type.toLowerCase().includes('curtain') || item.type.toLowerCase().includes('blind');
       let nearWindow = null;
       let minWinDist = 0.6; // 吸附范围门槛（约 0.6 米）
       let bestWinProjX = snapped.x;
@@ -260,6 +263,24 @@ export class EntityManager {
       }
 
       if (bestWall) {
+        if (isCurtain && snapEnabled && snapSize && !nearWindow) {
+          const [x1, z1] = bestWall.from;
+          const [x2, z2] = bestWall.to;
+          const dx = x2 - x1;
+          const dz = z2 - z1;
+          const len2 = dx * dx + dz * dz;
+          const gridPoint = snapToGridSegmentCenter(
+            { x: bestProjX, z: bestProjZ },
+            snapEnabled,
+            snapSize
+          );
+          const t = Math.max(0.08, Math.min(0.92,
+            ((gridPoint.x - x1) * dx + (gridPoint.z - z1) * dz) / len2
+          ));
+          bestProjX = x1 + t * dx;
+          bestProjZ = z1 + t * dz;
+        }
+
         const wallThickness = this.opts.testMap.getProjectMetadata().wallThickness;
         const itemScale = Number(item.scale || 1);
         const itemDepth = (item.depth ?? (definition.defaultSize.depth / INCHES_PER_UNIT)) * itemScale;
@@ -272,17 +293,37 @@ export class EntityManager {
         let offsetZ = 0;
         const offsetDist = wallThickness / 2 + itemDepth / 2 + 0.002;
 
-        if (vLen > 0.0001) {
+        const [x1, z1] = bestWall.from;
+        const [x2, z2] = bestWall.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const len = Math.hypot(dx, dz) || 1;
+        const normalX = -dz / len;
+        const normalZ = dx / len;
+
+        if (isCurtain) {
+          const rooms = this.opts.getRooms?.() || [];
+          const eligibleRooms = rooms.filter((room) => !item.floorId || !room.floorId || room.floorId === item.floorId);
+          const positiveInside = eligibleRooms.some((room) => pointInRoom(
+            room,
+            bestProjX + normalX * offsetDist,
+            bestProjZ + normalZ * offsetDist
+          ));
+          const negativeInside = eligibleRooms.some((room) => pointInRoom(
+            room,
+            bestProjX - normalX * offsetDist,
+            bestProjZ - normalZ * offsetDist
+          ));
+          let side = (vx * normalX + vz * normalZ) >= 0 ? 1 : -1;
+          if (positiveInside !== negativeInside) side = positiveInside ? 1 : -1;
+          offsetX = normalX * offsetDist * side;
+          offsetZ = normalZ * offsetDist * side;
+        } else if (vLen > 0.0001) {
           offsetX = (vx / vLen) * offsetDist;
           offsetZ = (vz / vLen) * offsetDist;
         } else {
-          const [x1, z1] = bestWall.from;
-          const [x2, z2] = bestWall.to;
-          const dx = x2 - x1;
-          const dz = z2 - z1;
-          const len = Math.hypot(dx, dz) || 1;
-          offsetX = (-dz / len) * offsetDist;
-          offsetZ = (dx / len) * offsetDist;
+          offsetX = normalX * offsetDist;
+          offsetZ = normalZ * offsetDist;
         }
 
         patch.x = bestProjX + offsetX;
@@ -393,6 +434,11 @@ export class EntityManager {
     const room = this.opts.testMap.getRoomAt(updatedX, updatedZ);
     if (room) {
       patch.roomId = room.id;
+    } else {
+      patch.roomId = null;
+      if (definition.placeType !== 'wall' && definition.placeType !== 'ceiling') {
+        patch.elevation = 0;
+      }
     }
 
     let requiresRuntimeRebuild = false;

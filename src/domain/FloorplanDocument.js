@@ -384,6 +384,17 @@ export class FloorplanDocument {
         item.elevation = Number(item.elevation || 0);
       }
 
+      // Older saves can retain a room assignment (and tabletop elevation) after
+      // an item has been dragged outdoors. Rebuild the spatial link from its
+      // actual position and ground ordinary floor furniture when no room owns it.
+      const containingRoom = normalized.floor.rooms.find((candidate) => (
+        candidate.floorId === item.floorId && pointInRoom(candidate, item.x, item.z)
+      ));
+      item.roomId = containingRoom?.id ?? null;
+      if (!containingRoom && definition.placeType !== 'wall' && definition.placeType !== 'ceiling') {
+        item.elevation = 0;
+      }
+
       delete item.localX;
       delete item.localZ;
       item.colors ||= {};

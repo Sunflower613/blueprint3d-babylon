@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { FURNITURE_DEFINITIONS, Topology } from '../src/index.js';
+import { FURNITURE_DEFINITIONS, Topology, pointInRoom } from '../src/index.js';
+import { FloorplanDocument } from '../src/domain/FloorplanDocument.js';
 import { EntityManager } from '../example/js/EntityManager.js';
 
-function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls = [], openings = [], wallHeight = 2.8 } = {}) {
+function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls = [], openings = [], rooms = [], wallHeight = 2.8, snapEnabled = false, snapSize = 1 } = {}) {
   const entities = new Map(items.map((item) => [item.id, item]));
   const updates = [];
   const testMap = {
@@ -11,7 +12,7 @@ function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls 
     getEntity: (_kind, id) => entities.get(id),
     getEntities: (kind) => kind === 'opening' ? openings : (kind === 'item' ? [...entities.values()] : []),
     getProjectMetadata: () => ({ wallHeight, wallThickness: 0.15 }),
-    getRoomAt: () => null,
+    getRoomAt: (x, z) => rooms.find((room) => pointInRoom(room, x, z)) || null,
     syncEntityPreview() {},
     executeCommand(command, payload) {
       if (command === 'addItem') {
@@ -31,11 +32,11 @@ function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls 
 
   const manager = new EntityManager({
     testMap,
-    getSnapEnabled: () => false,
-    getSnapSize: () => 1,
+    getSnapEnabled: () => snapEnabled,
+    getSnapSize: () => snapSize,
     inchesToWorld: (value) => value / 39.37,
     getWalls: () => walls,
-    getRooms: () => [],
+    getRooms: () => rooms,
     getSelectedItemId: () => null,
     setSelectedItemId() {},
     pushHistory() {},
@@ -124,4 +125,68 @@ test('0722：修改窗帘高度时保持顶部锚点', () => {
   const patch = updates.at(-1).patch;
   assert.equal(Number(patch.elevation.toFixed(2)), 0.7);
   assert.equal(Number((patch.elevation + patch.height).toFixed(2)), 1.9);
+});
+
+test('0723: curtains use half-cell wall movement and stay on the room-facing side', () => {
+  const room = {
+    id: 'room-1', floorId: 'floor-1', x: 2, z: 2,
+    width: 4, depth: 4, rotation: 0, shape: 'square'
+  };
+  const wall = { id: 'wall-1', floorId: 'floor-1', from: [0, 0], to: [4, 0] };
+  const curtain = {
+    id: 'curtain-1', type: 'curtain', floorId: 'floor-1', roomId: 'room-1',
+    x: 2, z: 0.1, width: 1.2, depth: 0.05, height: 1.5,
+    elevation: 0.4, scale: 1, rotation: 0
+  };
+  const { manager, updates } = createManager({
+    items: [curtain], walls: [wall], rooms: [room], snapEnabled: true, snapSize: 1
+  });
+
+  manager.moveItemTo(curtain.id, 1.1, -0.25, true);
+
+  const patch = updates.at(-1).patch;
+  assert.equal(patch.x, 1, 'curtain center should move in half-cell increments along the wall');
+  assert.equal(Number(patch.z.toFixed(3)), 0.102, 'curtain should be offset fully inside the room');
+  assert.equal(patch.roomId, room.id);
+});
+
+test('0723: moving floor furniture outdoors clears room ownership and grounds it', () => {
+  const room = {
+    id: 'room-1', floorId: 'floor-1', x: 0, z: 0,
+    width: 4, depth: 4, rotation: 0, shape: 'square'
+  };
+  const sofa = {
+    id: 'sofa-1', type: 'sofa', floorId: 'floor-1', roomId: room.id,
+    x: 0, z: 0, width: 2, depth: 0.9, height: 0.8,
+    elevation: 0.7, scale: 1, rotation: 0
+  };
+  const { manager, updates } = createManager({ items: [sofa], rooms: [room] });
+
+  manager.moveItemTo(sofa.id, 10, 10, true);
+
+  const patch = updates.at(-1).patch;
+  assert.equal(patch.roomId, null);
+  assert.equal(patch.elevation, 0);
+});
+
+test('0723: legacy outdoor floor furniture is normalized to an unassigned grounded item', () => {
+  const document = new FloorplanDocument({
+    unit: 'm', currentFloorId: 'floor-1', wallHeight: 2.8, floorHeight: 0.2,
+    floors: [{ id: 'floor-1', name: '1F', level: 0 }],
+    floor: {
+      rooms: [{
+        id: 'room-1', floorId: 'floor-1', x: 0, z: 0,
+        width: 4, depth: 4, rotation: 0, shape: 'square'
+      }]
+    },
+    walls: [], openings: [], roofs: [], stairs: [], fences: [], fenceGates: [],
+    items: [{
+      id: 'chair-1', type: 'chair', floorId: 'floor-1', roomId: 'room-1',
+      x: 8, z: 8, elevation: 0.75
+    }]
+  });
+
+  const item = document.floorplan.items[0];
+  assert.equal(item.roomId, null);
+  assert.equal(item.elevation, 0);
 });

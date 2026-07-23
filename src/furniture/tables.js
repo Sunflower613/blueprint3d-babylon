@@ -533,20 +533,19 @@ export const gardenSideTableFurniture = {
   defaultSize: { width: 18, depth: 18, height: 22 },
   components: [
     { id: 'top', label: '方形台面', defaultColor: '#f5f1eb' },
-    { id: 'legs', label: '中心放射四脚', defaultColor: '#d6cbbe' },
-    { id: 'decor', label: '台面花饰点缀', defaultColor: '#e0d8cc' }
+    { id: 'legs', label: '中心放射三角形木板腿', defaultColor: '#d6cbbe' }
   ],
   build(registry, item, node, size) {
     const topH = Math.min(0.04, size.height * 0.1);
     const topY = size.height - topH / 2;
 
-    // 1. 方形边几桌面
+    // 1. 干净平整的方形桌面（取消桌面饰花）
     boxComponent(registry, item, gardenSideTableFurniture, 'top', {
       width: size.width, height: topH, depth: size.depth
     }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
 
     // 2. 桌面底部中心结合 Hub
-    const hubH = size.height * 0.08;
+    const hubH = size.height * 0.06;
     const hubY = size.height - topH - hubH / 2;
     cylinderComponent(registry, item, gardenSideTableFurniture, 'legs', {
       diameterTop: Math.min(0.08, size.width * 0.22),
@@ -555,45 +554,31 @@ export const gardenSideTableFurniture = {
       tessellation: 16
     }, { position: { x: 0, y: hubY, z: 0 } }, { parent: node });
 
-    // 3. 从中心向外放射斜撑的 4 根脚
-    const legH = size.height - topH - hubH * 0.6;
-    const legDTop = Math.min(0.04, size.width * 0.1);
-    const legDBottom = Math.min(0.025, size.width * 0.06);
-    const radius = size.width * 0.38;
+    // 3. 从中心向 4 个方向放射延伸的三角形斜切木板腿
+    const legH = size.height - topH - hubH * 0.5;
+    const plateThickness = Math.min(0.04, size.width * 0.08);
+    const plateWidth = size.width * 0.38;
 
     for (let index = 0; index < 4; index += 1) {
       const angle = (index * Math.PI) / 2 + Math.PI / 4;
-      const endX = Math.cos(angle) * radius;
-      const endZ = Math.sin(angle) * radius;
+      const midRadius = plateWidth * 0.38;
+      const posX = Math.cos(angle) * midRadius;
+      const posZ = Math.sin(angle) * midRadius;
 
-      const leg = cylinderComponent(registry, item, gardenSideTableFurniture, 'legs', {
-        diameterTop: legDTop,
-        diameterBottom: legDBottom,
+      const legPlate = boxComponent(registry, item, gardenSideTableFurniture, 'legs', {
+        width: plateThickness,
         height: legH,
-        tessellation: 12
+        depth: plateWidth
       }, {
         position: {
-          x: endX * 0.5,
+          x: posX,
           y: legH / 2,
-          z: endZ * 0.5
+          z: posZ
         }
       }, { parent: node });
 
-      leg.rotation.z = -Math.cos(angle) * 0.26;
-      leg.rotation.x = Math.sin(angle) * 0.26;
-    }
-
-    // 4. 台面风信子/四叶花饰物细节
-    const decorH = 0.035;
-    const decorW = size.width * 0.26;
-    for (let i = 0; i < 4; i += 1) {
-      const angle = (i * Math.PI) / 2;
-      const petal = boxComponent(registry, item, gardenSideTableFurniture, 'decor', {
-        width: decorW, height: decorH, depth: decorW * 0.3
-      }, {
-        position: { x: 0, y: size.height + decorH / 2, z: 0 }
-      }, { parent: node });
-      petal.rotation.y = angle + Math.PI / 8;
+      legPlate.rotation.y = -angle;
+      legPlate.rotation.z = 0.22;
     }
   }
 };

@@ -61,7 +61,7 @@ const {
 } = UiControls;
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
-import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp } from './js/Dialogs.js';
+import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp, showAiBuildingHelp } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
 import { handleHotkeys } from './js/Hotkeys.js';
 import { Store, showToast, formatTimestamp, readLocalSave } from './js/Store.js';
@@ -367,6 +367,7 @@ const appState = {
   set materialLibrary(v) { materialLibrary = v; },
   renderMaterialLibrary: (shouldReset) => renderMaterialLibrary(shouldReset),
   showFurnitureUploadHelp: () => showFurnitureUploadHelp(),
+  showAiBuildingHelp: () => showAiBuildingHelp(),
   restoreFloorplanMaterials: (data) => restoreFloorplanMaterials(data),
   get floorPanelCollapsed() { return floorPanelCollapsed; },
   set floorPanelCollapsed(v) { floorPanelCollapsed = v; },

@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { getEditHandleNodes } from './Viewer3DHandles.js';
-import { showLoading } from './Dialogs.js';
+import { showLoading, showAiBuildingHelp } from './Dialogs.js';
 import {
   Tools,
   createBuildingFileName,
@@ -60,6 +60,13 @@ export function initFileManager(appContext) {
 
   if (buildingFileInput) {
     buildingFileInput.addEventListener('change', onFileInputChange);
+  }
+
+  const btnAiGenerateBuilding = document.getElementById('btn-ai-generate-building');
+  if (btnAiGenerateBuilding) {
+    btnAiGenerateBuilding.addEventListener('click', () => {
+      showAiBuildingHelp();
+    });
   }
 
   const btnOpenLocal = document.getElementById('btn-open-local');

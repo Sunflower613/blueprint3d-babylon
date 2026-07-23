@@ -1,6 +1,8 @@
 import { formatTimestamp } from './Store.js';
 import furnitureUploadExampleSource from '../downloads/custom-furniture-example.js?raw';
 import furnitureUploadSkillSource from '../../skills/furniture-upload/SKILL.md?raw';
+import buildingExampleSource from '../downloads/loft-building-example.b3dbuilding.json?raw';
+import buildingSkillSource from '../../skills/create-buildings/SKILL.md?raw';
 
 // ==========================================
 // 自定义弹窗系统 (已去除磨砂玻璃)
@@ -445,6 +447,64 @@ export function showFurnitureUploadHelp() {
     downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
   });
   backdrop.querySelector('#btn-close-furniture-upload-help').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) cleanup();
+  });
+  window.addEventListener('keydown', handleKeyDown);
+}
+
+export function showAiBuildingHelp() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'custom-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="custom-modal-container furniture-upload-modal" role="dialog" aria-modal="true" aria-labelledby="ai-building-modal-title">
+      <div class="custom-modal-header">
+        <h3 id="ai-building-modal-title" class="custom-modal-title">AI 生成 3D 建筑</h3>
+      </div>
+      <div class="custom-modal-body furniture-upload-modal-body">
+        <p>结合 AI 提示词与规范要求，可将户型图精准转换为符合 <code>blueprint3d-babylon.building.v1</code> 格式的 <code>.b3dbuilding.json</code> 建筑档案并导入系统。</p>
+        <p class="furniture-upload-tip">提示：下载 AI 提示词与范例 JSON 后，可直接配合大模型生成全新的 3D 建筑设计方案。</p>
+        <div class="furniture-upload-links">
+          <button id="btn-download-building-example" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>下载建筑模板
+          </button>
+          <button id="btn-download-building-skill" type="button" class="custom-modal-btn btn-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>下载 AI 提示词
+          </button>
+        </div>
+      </div>
+      <div class="custom-modal-footer">
+        <button id="btn-close-ai-building-help" type="button" class="custom-modal-btn btn-primary">知道了</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  backdrop.getBoundingClientRect();
+  backdrop.classList.add('active');
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    backdrop.classList.remove('active');
+    window.removeEventListener('keydown', handleKeyDown);
+    setTimeout(() => backdrop.remove(), 200);
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cleanup();
+    }
+  };
+
+  backdrop.querySelector('#btn-download-building-example').addEventListener('click', () => {
+    downloadTextFile(buildingExampleSource, 'loft-building-example.b3dbuilding.json', 'application/json;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-download-building-skill').addEventListener('click', () => {
+    downloadTextFile(buildingSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-close-ai-building-help').addEventListener('click', cleanup);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) cleanup();
   });

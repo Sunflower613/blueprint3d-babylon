@@ -1,0 +1,1973 @@
+{
+  "format": "blueprint3d-babylon.building.v1",
+  "version": 1,
+  "name": "loft",
+  "createdAt": "2026-07-23T06:53:40.034Z",
+  "updatedAt": "2026-07-23T06:53:40.034Z",
+  "generator": "blueprint3d-babylon",
+  "babylon": {
+    "engine": "Babylon.js",
+    "renderer": "Blueprint3DTestMap",
+    "coordinateSystem": "Y_UP_XZ_FLOOR",
+    "units": "m",
+    "entry": "Blueprint3DTestMap.loadBuildingFile"
+  },
+  "floorplan": {
+    "name": "CozyLoftApartment",
+    "unit": "m",
+    "wallHeight": 4.5,
+    "wallThickness": 0.18,
+    "floorHeight": 0.06,
+    "floor": {
+      "color": "#e8dfd1",
+      "rooms": [
+        {
+          "id": "loft_bedroom",
+          "name": "卧室",
+          "x": -2,
+          "z": -3,
+          "width": 4,
+          "depth": 2,
+          "wallIds": {},
+          "floorId": "floor_2",
+          "color": "#f9e9d2",
+          "material": {
+            "id": "derived_texture_wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅木长板 (#f9e9d2)",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/wood_plank_oak_light.jpg",
+            "scale": 2,
+            "color": "#f9e9d2",
+            "reflective": false
+          },
+          "locked": false,
+          "shape": "square",
+          "elevation": 0,
+          "rotation": 0,
+          "edgeWidth": 1.8,
+          "edgeDepth": 1.8
+        },
+        {
+          "id": "room_1784648166490",
+          "name": "圆角",
+          "x": -2,
+          "z": -1,
+          "width": 2,
+          "depth": 2,
+          "shape": "sector",
+          "floorId": "floor_2",
+          "locked": false,
+          "wallIds": {},
+          "edgeWidth": 1.8,
+          "edgeDepth": 1.8,
+          "rotation": -4.71238898038469,
+          "color": "#f9e9d2",
+          "material": {
+            "id": "derived_texture_wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅木长板 (#f9e9d2)",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/wood_plank_oak_light.jpg",
+            "scale": 2,
+            "color": "#f9e9d2",
+            "reflective": false
+          },
+          "elevation": 0
+        },
+        {
+          "id": "room_1784648244496",
+          "name": "角",
+          "x": -3.5,
+          "z": -1.5,
+          "width": 1,
+          "depth": 1,
+          "shape": "square",
+          "floorId": "floor_2",
+          "locked": false,
+          "wallIds": {},
+          "edgeWidth": 0.8,
+          "edgeDepth": 0.8,
+          "rotation": 0,
+          "color": "#f9e9d2",
+          "material": {
+            "id": "derived_texture_wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅木长板 (#f9e9d2)",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/wood_plank_oak_light.jpg",
+            "scale": 2,
+            "color": "#f9e9d2",
+            "reflective": false
+          },
+          "elevation": 0
+        },
+        {
+          "id": "room_1784650876560",
+          "name": "卫生间",
+          "x": -2.5,
+          "z": -3,
+          "width": 3,
+          "depth": 2,
+          "shape": "square",
+          "floorId": "floor_1",
+          "locked": false,
+          "wallIds": {
+            "north": "room_1784650876560_north",
+            "east": "room_1784650876560_east",
+            "south": "room_1784650876560_south",
+            "west": "room_1784650876560_west"
+          },
+          "edgeWidth": 2,
+          "edgeDepth": 1.8,
+          "rotation": 0,
+          "color": "#ffffff",
+          "material": {
+            "id": "brick-mosaic",
+            "kind": "texture",
+            "category": "brick",
+            "name": "马赛克砖",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/brick_mosaic.jpg",
+            "scale": 1.5,
+            "color": "#ffffff",
+            "physicalTileSize": 0.25,
+            "reflective": false
+          },
+          "elevation": 0
+        },
+        {
+          "id": "room_1784650923909",
+          "name": "客厅与厨房",
+          "x": -1,
+          "z": -1.5,
+          "width": 6,
+          "depth": 5,
+          "shape": "l-shape",
+          "floorId": "floor_1",
+          "locked": false,
+          "wallIds": {
+            "edge_1": "room_1784650923909_edge_1",
+            "edge_4": "room_1784650923909_edge_4"
+          },
+          "edgeWidth": 3,
+          "edgeDepth": 2,
+          "rotation": -3.141592653589793,
+          "color": "#f9e9d2",
+          "material": {
+            "id": "derived_texture_wood-plank-oak-light",
+            "kind": "texture",
+            "category": "wood",
+            "name": "浅木长板 (#f9e9d2)",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/wood_plank_oak_light.jpg",
+            "scale": 2,
+            "color": "#f9e9d2",
+            "reflective": false
+          },
+          "elevation": 0
+        }
+      ],
+      "material": {
+        "id": "wood-light-fine",
+        "name": "精细浅木",
+        "category": "wood",
+        "kind": "texture",
+        "src": "/blueprint3d-babylon/src/textures/light_fine_wood.jpg",
+        "scale": 3,
+        "color": "#e5c4a3"
+      }
+    },
+    "walls": [
+      {
+        "id": "wall_1784647961975",
+        "from": [
+          -4,
+          -4
+        ],
+        "to": [
+          -4,
+          1
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_2",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": false,
+        "wainscotHeight": 1,
+        "materialBack": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorBack": "#dfd2bc",
+        "materialFront": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorFront": "#dfd2bc"
+      },
+      {
+        "id": "wall_1784647965226",
+        "from": [
+          -4,
+          -4
+        ],
+        "to": [
+          2,
+          -4
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_2",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": false,
+        "wainscotHeight": 1,
+        "materialFront": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorFront": "#dfd2bc"
+      },
+      {
+        "id": "room_1784650876560_north",
+        "from": [
+          -4,
+          -4
+        ],
+        "to": [
+          -1,
+          -4
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650876560",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": true,
+        "wainscotHeight": 2,
+        "wainscotMaterialFront": {
+          "id": "derived_texture_derived_texture_brick-square",
+          "name": "广场方砖 (#cde7f4)",
+          "src": "http://localhost:3001/blueprint3d-babylon/src/textures/brick_square.jpg",
+          "scale": 1.8,
+          "color": "#cde7f4",
+          "category": "brick",
+          "kind": "texture",
+          "derivedFrom": "brick-square"
+        },
+        "wainscotColorFront": "#cde7f4"
+      },
+      {
+        "id": "room_1784650876560_east",
+        "from": [
+          -1,
+          -4
+        ],
+        "to": [
+          -1,
+          -2
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650876560",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": true,
+        "wainscotHeight": 2,
+        "materialBack": {
+          "id": "fabric-weave-dark",
+          "name": "编织面料",
+          "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/fabric_weave_dark-CoSx6fDU.jpg",
+          "scale": 2.4,
+          "color": "#ffffff",
+          "category": "fabric",
+          "kind": "texture"
+        },
+        "colorBack": "#ffffff",
+        "materialFront": {
+          "id": "paint-soft-white",
+          "name": "柔白涂料",
+          "category": "paint",
+          "color": "#f9fbff"
+        },
+        "colorFront": "#f9fbff",
+        "wainscotMaterialFront": {
+          "id": "derived_texture_derived_texture_brick-square",
+          "name": "广场方砖 (#cde7f4)",
+          "src": "http://localhost:3001/blueprint3d-babylon/src/textures/brick_square.jpg",
+          "scale": 1.8,
+          "color": "#cde7f4",
+          "category": "brick",
+          "kind": "texture",
+          "derivedFrom": "brick-square"
+        },
+        "wainscotColorFront": "#cde7f4",
+        "wainscotMaterialBack": {
+          "id": "fabric-weave-dark",
+          "name": "编织面料",
+          "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/fabric_weave_dark-CoSx6fDU.jpg",
+          "scale": 2.4,
+          "color": "#ffffff",
+          "category": "fabric",
+          "kind": "texture"
+        },
+        "wainscotColorBack": "#ffffff"
+      },
+      {
+        "id": "room_1784650876560_south",
+        "from": [
+          -1,
+          -2
+        ],
+        "to": [
+          -4,
+          -2
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650876560",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": true,
+        "wainscotHeight": 2,
+        "materialBack": {
+          "id": "fabric-weave-dark",
+          "name": "编织面料",
+          "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/fabric_weave_dark-CoSx6fDU.jpg",
+          "scale": 2.4,
+          "color": "#ffffff",
+          "category": "fabric",
+          "kind": "texture"
+        },
+        "colorBack": "#ffffff",
+        "materialFront": {
+          "id": "paint-soft-white",
+          "name": "柔白涂料",
+          "category": "paint",
+          "color": "#f9fbff"
+        },
+        "colorFront": "#f9fbff",
+        "wainscotMaterialFront": {
+          "id": "derived_texture_derived_texture_brick-square",
+          "name": "广场方砖 (#cde7f4)",
+          "src": "http://localhost:3001/blueprint3d-babylon/src/textures/brick_square.jpg",
+          "scale": 1.8,
+          "color": "#cde7f4",
+          "category": "brick",
+          "kind": "texture",
+          "derivedFrom": "brick-square"
+        },
+        "wainscotColorFront": "#cde7f4",
+        "wainscotMaterialBack": {
+          "id": "fabric-weave-dark",
+          "name": "编织面料",
+          "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/fabric_weave_dark-CoSx6fDU.jpg",
+          "scale": 2.4,
+          "color": "#ffffff",
+          "category": "fabric",
+          "kind": "texture"
+        },
+        "wainscotColorBack": "#ffffff"
+      },
+      {
+        "id": "room_1784650876560_west",
+        "from": [
+          -4,
+          -2
+        ],
+        "to": [
+          -4,
+          -4
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650876560",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": true,
+        "wainscotHeight": 2,
+        "materialFront": {
+          "id": "paint-soft-white",
+          "name": "柔白涂料",
+          "category": "paint",
+          "color": "#f9fbff"
+        },
+        "colorFront": "#f9fbff",
+        "materialBack": {
+          "id": "paint-soft-white",
+          "name": "柔白涂料",
+          "category": "paint",
+          "color": "#f9fbff"
+        },
+        "colorBack": "#f9fbff",
+        "wainscotMaterialFront": {
+          "id": "derived_texture_derived_texture_brick-square",
+          "name": "广场方砖 (#cde7f4)",
+          "src": "http://localhost:3001/blueprint3d-babylon/src/textures/brick_square.jpg",
+          "scale": 1.8,
+          "color": "#cde7f4",
+          "category": "brick",
+          "kind": "texture",
+          "derivedFrom": "brick-square"
+        },
+        "wainscotColorFront": "#cde7f4",
+        "wainscotMaterialBack": {
+          "id": "paint-soft-white",
+          "name": "柔白涂料",
+          "category": "paint",
+          "color": "#f9fbff"
+        },
+        "wainscotColorBack": "#f9fbff"
+      },
+      {
+        "id": "room_1784650923909_edge_1",
+        "from": [
+          -4,
+          1
+        ],
+        "to": [
+          -4,
+          -2
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": false,
+        "wainscotHeight": 1,
+        "materialFront": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorFront": "#dfd2bc",
+        "materialBack": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorBack": "#dfd2bc"
+      },
+      {
+        "id": "room_1784650923909_edge_4",
+        "from": [
+          -1,
+          -4
+        ],
+        "to": [
+          2,
+          -4
+        ],
+        "color": "#f9fbff",
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "material": "#f9fbff",
+        "baseboardEnabled": false,
+        "baseboardHeight": 0.1,
+        "wainscotEnabled": false,
+        "wainscotHeight": 1,
+        "materialFront": {
+          "id": "paint-oatmeal-yellow",
+          "name": "燕麦黄",
+          "category": "paint",
+          "color": "#dfd2bc"
+        },
+        "colorFront": "#dfd2bc"
+      }
+    ],
+    "openings": [
+      {
+        "id": "door_kitchen_back",
+        "type": "door",
+        "wallId": "room_1784650876560_south",
+        "t": 0.16666666666666666,
+        "width": 0.9,
+        "height": 2.05,
+        "floorId": "floor_1",
+        "locked": false,
+        "shape": "square",
+        "isOpen": false,
+        "panelHidden": false,
+        "glassHidden": false,
+        "panelMaterial": {
+          "id": "wood-oak-natural-light",
+          "name": "浅色原木直纹",
+          "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/wood_oak_natural_light-BN3OmKry.jpg",
+          "scale": 2,
+          "color": "#ffffff",
+          "category": "wood",
+          "kind": "texture"
+        },
+        "frameMaterial": {
+          "id": "paint-d6ab7b",
+          "name": "吸取颜色 (#d6ab7b)",
+          "category": "paint",
+          "kind": "paint",
+          "color": "#d6ab7b"
+        },
+        "glassMaterial": {
+          "id": "paint-8c6c50",
+          "name": "吸取颜色 (#8c6c50)",
+          "category": "paint",
+          "kind": "paint",
+          "color": "#8c6c50"
+        },
+        "material": {
+          "id": "paint-d6ab7b",
+          "name": "吸取颜色 (#d6ab7b)",
+          "category": "paint",
+          "kind": "paint",
+          "color": "#d6ab7b"
+        },
+        "color": "#d6ab7b",
+        "isFlippedLR": true
+      },
+      {
+        "id": "window_1784648423252",
+        "type": "window",
+        "shape": "square",
+        "wallId": "wall_1784647961975",
+        "t": 0.1,
+        "width": 0.9,
+        "floorId": "floor_2",
+        "locked": false,
+        "height": 1.5,
+        "panelHidden": false,
+        "glassHidden": false,
+        "sillHeight": 0.4
+      },
+      {
+        "id": "window_1784650706787",
+        "type": "window",
+        "shape": "square",
+        "wallId": "room_1784650876560_north",
+        "t": 0.5,
+        "width": 0.8,
+        "floorId": "floor_1",
+        "locked": false,
+        "height": 1.5,
+        "panelHidden": false,
+        "glassHidden": false,
+        "sillHeight": 1.05
+      },
+      {
+        "id": "window_1784651426749",
+        "type": "window",
+        "shape": "square",
+        "wallId": "wall_1784647961975",
+        "t": 0.5,
+        "width": 0.9,
+        "floorId": "floor_2",
+        "locked": false,
+        "height": 1.5,
+        "sillHeight": 0.4,
+        "panelHidden": false,
+        "glassHidden": false
+      },
+      {
+        "id": "window_1784651429816",
+        "type": "window",
+        "shape": "square",
+        "wallId": "wall_1784647961975",
+        "t": 0.7,
+        "width": 0.9,
+        "floorId": "floor_2",
+        "locked": false,
+        "height": 1.5,
+        "sillHeight": 0.4,
+        "panelHidden": false,
+        "glassHidden": false
+      },
+      {
+        "id": "window_1784651434666",
+        "type": "window",
+        "shape": "square",
+        "wallId": "wall_1784647961975",
+        "t": 0.3,
+        "width": 0.9,
+        "floorId": "floor_2",
+        "locked": false,
+        "height": 1.5,
+        "sillHeight": 0.4,
+        "panelHidden": false,
+        "glassHidden": false
+      }
+    ],
+    "items": [
+      {
+        "id": "sofa_living",
+        "type": "sofa",
+        "name": "云朵沙发",
+        "x": 1.425,
+        "z": -2.9,
+        "elevation": 0,
+        "width": 1.8,
+        "depth": 0.85,
+        "height": 0.8,
+        "rotation": 4.7124,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "seat": "#ffffff",
+          "back": "#ffffff",
+          "arms": "#ffffff",
+          "legs": "#8c6c50"
+        },
+        "materials": {
+          "seat": "#ffffff",
+          "back": "#ffffff",
+          "arms": "#ffffff",
+          "legs": "#8c6c50"
+        }
+      },
+      {
+        "id": "armchair_living",
+        "type": "armchair",
+        "name": "沙发",
+        "x": -0.301,
+        "z": -1.19,
+        "elevation": 0,
+        "width": 0.8,
+        "depth": 0.8,
+        "height": 0.8,
+        "rotation": 2.1293,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "seat": "#ffffff",
+          "back": "#ffffff",
+          "arms": "#ffffff",
+          "legs": "#8c6c50"
+        },
+        "materials": {
+          "seat": "#ffffff",
+          "back": "#ffffff",
+          "arms": "#ffffff",
+          "legs": "#8c6c50"
+        }
+      },
+      {
+        "id": "tv_console",
+        "type": "console",
+        "name": "电视柜",
+        "x": -0.76,
+        "z": -2.911,
+        "elevation": 0,
+        "width": 1.6,
+        "depth": 0.4,
+        "height": 0.5,
+        "rotation": 1.5708,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "cabinet": "#f5f5f5",
+          "legs": "#8c6c50"
+        },
+        "materials": {
+          "cabinet": "#f5f5f5",
+          "legs": "#8c6c50"
+        },
+        "locked": true
+      },
+      {
+        "id": "tv_screen",
+        "type": "tv",
+        "name": "电视机",
+        "x": -0.801,
+        "z": -2.923,
+        "elevation": 0.5,
+        "width": 1.2,
+        "depth": 0.1,
+        "height": 0.7,
+        "rotation": 1.5708,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "body": "#1c1d1f",
+          "screen": "#2d3033",
+          "stand": "#cfd4d9"
+        },
+        "materials": {
+          "body": "#1c1d1f",
+          "screen": "#2d3033",
+          "stand": "#cfd4d9"
+        },
+        "isOn": true
+      },
+      {
+        "id": "floor_lamp",
+        "type": "floor_lamp_light",
+        "name": "落地灯",
+        "x": -0.589,
+        "z": -1.701,
+        "elevation": 0,
+        "width": 0.4,
+        "depth": 0.4,
+        "height": 1.6,
+        "rotation": 0,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "lightOn": true,
+        "colors": {
+          "base": "#ffffff",
+          "shade": "#ffffff",
+          "pole": "#1d1d1d",
+          "glow": "#fffae6"
+        },
+        "materials": {
+          "base": "#ffffff",
+          "pole": "#1d1d1d",
+          "shade": "#ffffff",
+          "glow": "#fffae6"
+        }
+      },
+      {
+        "id": "dining_chair_1",
+        "type": "chair",
+        "name": "椅子",
+        "x": 0.294,
+        "z": 0.53,
+        "elevation": 0,
+        "width": 0.45,
+        "depth": 0.45,
+        "height": 0.8,
+        "rotation": 2.3911,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "seat": "#dfd2bc",
+          "back": "#dfd2bc",
+          "legs": "#d6ab7b"
+        },
+        "materials": {
+          "seat": {
+            "id": "paint-oatmeal-yellow",
+            "kind": "color",
+            "category": "paint",
+            "name": "燕麦黄",
+            "color": "#dfd2bc"
+          },
+          "legs": "#d6ab7b",
+          "back": {
+            "id": "paint-oatmeal-yellow",
+            "kind": "color",
+            "category": "paint",
+            "name": "燕麦黄",
+            "color": "#dfd2bc"
+          }
+        }
+      },
+      {
+        "id": "dining_chair_2",
+        "type": "chair",
+        "name": "椅子",
+        "x": 1.418,
+        "z": -0.604,
+        "elevation": 0,
+        "width": 0.45,
+        "depth": 0.45,
+        "height": 0.8,
+        "rotation": 5.4978,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "seat": "#dfd2bc",
+          "back": "#dfd2bc",
+          "legs": "#d6ab7b"
+        },
+        "materials": {
+          "seat": {
+            "id": "paint-oatmeal-yellow",
+            "kind": "color",
+            "category": "paint",
+            "name": "燕麦黄",
+            "color": "#dfd2bc"
+          },
+          "legs": "#d6ab7b",
+          "back": {
+            "id": "paint-oatmeal-yellow",
+            "kind": "color",
+            "category": "paint",
+            "name": "燕麦黄",
+            "color": "#dfd2bc"
+          }
+        }
+      },
+      {
+        "id": "kitchen_stove",
+        "type": "stove",
+        "name": "燃气灶",
+        "x": -2.5,
+        "z": -1.61,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.6,
+        "height": 0.9,
+        "rotation": 0,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "cabinet": "#ffffff",
+          "cooktop": "#2c2c2c",
+          "burners": "#00a2ff",
+          "oven_frame": "#30343a",
+          "oven_glass": "#141a20",
+          "oven_handle": "#b7bcc0"
+        },
+        "materials": {
+          "cabinet": "#ffffff",
+          "cooktop": "#2c2c2c",
+          "burners": "#00a2ff",
+          "oven_frame": "#30343a",
+          "oven_glass": "#141a20",
+          "oven_handle": "#b7bcc0"
+        },
+        "locked": false
+      },
+      {
+        "id": "kitchen_counter",
+        "type": "cabinet_kitchen",
+        "name": "橱柜",
+        "x": -3.5,
+        "z": -1.61,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.6,
+        "height": 0.9,
+        "rotation": 0,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "counter": "#e5c4a3",
+          "doors": "#ffffff",
+          "handles": "#cccccc"
+        },
+        "materials": {
+          "counter": "#e5c4a3",
+          "doors": "#ffffff",
+          "handles": "#cccccc"
+        }
+      },
+      {
+        "id": "fridge",
+        "type": "fridge",
+        "name": "冰箱",
+        "x": -3.56,
+        "z": -0.375,
+        "elevation": 0,
+        "width": 0.75,
+        "depth": 0.7,
+        "height": 1.75,
+        "rotation": 1.5708,
+        "floorId": "floor_1",
+        "roomId": "room_1784650923909",
+        "colors": {
+          "body": "#ffffff",
+          "handles": "#cccccc",
+          "display": "#1f2224"
+        },
+        "materials": {
+          "body": "#ffffff",
+          "display": "#1f2224",
+          "handles": "#cccccc"
+        }
+      },
+      {
+        "id": "double_bed",
+        "type": "bed_double",
+        "name": "双人床",
+        "x": -2.1,
+        "z": -2.86,
+        "elevation": 0,
+        "width": 1.8,
+        "depth": 2.1,
+        "height": 1,
+        "rotation": 0,
+        "floorId": "floor_2",
+        "roomId": "loft_bedroom",
+        "colors": {
+          "frame": "#6e5948",
+          "mattress": "#ffffff",
+          "blanket": "#e8dfd1",
+          "pillow": "#ffffff",
+          "headboard": "#544437"
+        },
+        "materials": {
+          "frame": "#6e5948",
+          "mattress": "#ffffff",
+          "blanket": "#e8dfd1",
+          "pillow": "#ffffff",
+          "headboard": "#544437"
+        },
+        "locked": false
+      },
+      {
+        "id": "nightstand_left",
+        "type": "nightstand",
+        "name": "床头柜",
+        "x": -3.685,
+        "z": -3.71,
+        "elevation": 0,
+        "width": 0.45,
+        "depth": 0.4,
+        "height": 0.5,
+        "rotation": 0,
+        "floorId": "floor_2",
+        "roomId": "loft_bedroom",
+        "colors": {
+          "cabinet": "#ffffff",
+          "legs": "#6e5948",
+          "drawer": "#bcaea0"
+        },
+        "materials": {
+          "cabinet": "#ffffff",
+          "drawer": "#bcaea0",
+          "legs": "#6e5948"
+        }
+      },
+      {
+        "id": "dresser_loft",
+        "type": "chest_drawers",
+        "name": "五斗柜",
+        "x": -0.5,
+        "z": -3.685,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.45,
+        "height": 0.8,
+        "rotation": 0,
+        "floorId": "floor_2",
+        "roomId": "loft_bedroom",
+        "colors": {
+          "cabinet": "#ffffff",
+          "drawers": "#ffffff",
+          "knobs": "#594c3d"
+        },
+        "materials": {
+          "cabinet": "#ffffff",
+          "drawers": "#ffffff",
+          "knobs": "#594c3d"
+        },
+        "locked": true
+      },
+      {
+        "id": "house_plant_loft",
+        "type": "monstera",
+        "name": "龟背竹",
+        "x": -1.27,
+        "z": -3.653,
+        "elevation": 0,
+        "width": 0.5,
+        "depth": 0.5,
+        "height": 0.9,
+        "rotation": 0,
+        "floorId": "floor_2",
+        "roomId": "loft_bedroom",
+        "colors": {
+          "monstera-pot": "#ffffff",
+          "monstera-leaf": "#2e7d32",
+          "monstera-stem": "#4caf50"
+        },
+        "materials": {
+          "monstera-pot": "#ffffff",
+          "monstera-stem": "#4caf50",
+          "monstera-leaf": "#2e7d32"
+        }
+      },
+      {
+        "id": "rug_1784648310102",
+        "type": "rug",
+        "name": "方形地毯",
+        "x": -2.5,
+        "z": -2.5,
+        "elevation": 0,
+        "width": 3,
+        "depth": 2.13,
+        "height": 0.05,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "fabric": "#ffffff"
+        },
+        "materials": {
+          "fabric": {
+            "id": "fabric-square",
+            "kind": "texture",
+            "category": "fabric",
+            "name": "边框毯",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/fabric_square.jpg",
+            "scale": 2,
+            "color": "#ffffff",
+            "reflective": false
+          }
+        }
+      },
+      {
+        "id": "single_blackout_curtain_1784648503340",
+        "type": "single_blackout_curtain",
+        "name": "单开帘",
+        "x": -3.868,
+        "z": -2,
+        "elevation": 0,
+        "width": 4,
+        "depth": 0.08,
+        "height": 2.03,
+        "rotation": 1.5707963267948966,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784648244496",
+        "floorId": "floor_2",
+        "colors": {
+          "rod": "#544437",
+          "fabric": "#fffdf8"
+        },
+        "materials": {
+          "rod": {
+            "id": "paint-544437",
+            "kind": "color",
+            "category": "paint",
+            "name": "吸取颜色 (#544437)",
+            "color": "#544437"
+          },
+          "fabric": {
+            "id": "fabric-organza-white",
+            "kind": "texture",
+            "category": "fabric",
+            "name": "欧根纱",
+            "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/fabric_organza_white-BvROFUNU.png",
+            "scale": 2.2,
+            "color": "#fffdf8",
+            "alpha": 0.48,
+            "reflective": false
+          }
+        },
+        "mirrored": true
+      },
+      {
+        "id": "cabinet_kitchen_1784649186527",
+        "type": "cabinet_kitchen",
+        "name": "橱柜",
+        "x": -3.7,
+        "z": -1.41,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.6,
+        "height": 0.9,
+        "rotation": 1.5708,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "counter": "#e5c4a3",
+          "doors": "#ffffff",
+          "handles": "#cccccc"
+        },
+        "materials": {
+          "counter": "#e5c4a3",
+          "doors": "#ffffff",
+          "handles": "#cccccc"
+        }
+      },
+      {
+        "id": "oval_rug_1784649287091",
+        "type": "oval_rug",
+        "name": "圆形地毯",
+        "x": 0.954,
+        "z": 0.009,
+        "elevation": 0,
+        "width": 1.5,
+        "depth": 1.5,
+        "height": 0.05,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "fabric": "#ffffff"
+        },
+        "materials": {
+          "fabric": {
+            "id": "fabric-circle",
+            "kind": "texture",
+            "category": "fabric",
+            "name": "圆花毯",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/fabric_circle.jpg",
+            "scale": 2,
+            "color": "#ffffff",
+            "reflective": false
+          }
+        }
+      },
+      {
+        "id": "kitchen_hooks_1784649661094",
+        "type": "kitchen_hooks",
+        "name": "挂钩架",
+        "x": -2.495,
+        "z": -1.883,
+        "elevation": 1.47,
+        "width": 0.69,
+        "depth": 0.08,
+        "height": 0.15,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "bar": "#37474f",
+          "hook": "#b0bec5"
+        },
+        "materials": {
+          "bar": "#37474f",
+          "hook": "#b0bec5"
+        }
+      },
+      {
+        "id": "shower_cabin_1784650698712",
+        "type": "shower_cabin",
+        "name": "淋浴房",
+        "x": -3.453,
+        "z": -3.453,
+        "elevation": 0,
+        "width": 0.9144018288036576,
+        "depth": 0.9144018288036576,
+        "height": 2.0320040640081283,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650876560",
+        "floorId": "floor_1",
+        "colors": {
+          "tray": "#ffffff",
+          "glass": "#d6efff",
+          "shower": "#cccccc"
+        },
+        "materials": {
+          "tray": "#ffffff",
+          "glass": "#d6efff",
+          "shower": "#cccccc"
+        }
+      },
+      {
+        "id": "toilet_1784650732973",
+        "type": "toilet",
+        "name": "马桶",
+        "x": -3.572,
+        "z": -2.513,
+        "elevation": 0,
+        "width": 0.4572009144018288,
+        "depth": 0.7112014224028449,
+        "height": 0.7620015240030481,
+        "rotation": 1.5708,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650876560",
+        "floorId": "floor_1",
+        "colors": {
+          "bowl": "#f7f9fa",
+          "tank": "#f0f2f5",
+          "lid": "#ffffff",
+          "water": "#aae3ff"
+        },
+        "materials": {
+          "bowl": "#f7f9fa",
+          "tank": "#f0f2f5",
+          "lid": "#ffffff",
+          "water": "#aae3ff"
+        }
+      },
+      {
+        "id": "sink_bathroom_1784650747323",
+        "type": "sink_bathroom",
+        "name": "洗手台",
+        "x": -1.49,
+        "z": -3.61,
+        "elevation": 0,
+        "width": 0.8,
+        "depth": 0.6,
+        "height": 0.86,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650876560",
+        "floorId": "floor_1",
+        "colors": {
+          "basin": "#f2f6f7",
+          "pillar": "#e1e6e8",
+          "faucet": "#b3bdc4",
+          "water": "#aae3ff"
+        },
+        "materials": {
+          "basin": "#f2f6f7",
+          "pillar": "#e1e6e8",
+          "faucet": "#b3bdc4",
+          "water": "#aae3ff"
+        }
+      },
+      {
+        "id": "mirror_bathroom_1784650762573",
+        "type": "mirror_bathroom",
+        "name": "卫浴镜",
+        "x": -1.5,
+        "z": -3.852,
+        "elevation": 1.26,
+        "width": 0.61,
+        "depth": 0.05,
+        "height": 0.61,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650876560",
+        "floorId": "floor_1",
+        "colors": {
+          "mirror": "#edf3f7",
+          "frame": "#fffae6"
+        },
+        "materials": {
+          "mirror": "#edf3f7",
+          "frame": "#fffae6"
+        }
+      },
+      {
+        "id": "rug_1784651191167",
+        "type": "rug",
+        "name": "方形地毯",
+        "x": 0.5,
+        "z": -2.5,
+        "elevation": 0,
+        "width": 2.13,
+        "depth": 2.13,
+        "height": 0.05,
+        "rotation": 1.5707963267948966,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "fabric": "#ffffff"
+        },
+        "materials": {
+          "fabric": {
+            "id": "fabric-triangle",
+            "kind": "texture",
+            "category": "fabric",
+            "name": "三角毯",
+            "src": "http://localhost:3001/blueprint3d-babylon/src/textures/fabric_triangle.jpg",
+            "scale": 2,
+            "color": "#ffffff",
+            "reflective": false
+          }
+        }
+      },
+      {
+        "id": "mirror_framed_wall_1784651483344",
+        "type": "mirror_framed_wall",
+        "name": "墙镜",
+        "x": -0.5,
+        "z": -3.893,
+        "elevation": 0.98,
+        "width": 0.61,
+        "depth": 0.05,
+        "height": 0.81,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "mirror": "#edf7f6",
+          "border": "#222222"
+        },
+        "materials": {
+          "mirror": "#edf7f6",
+          "border": "#222222"
+        }
+      },
+      {
+        "id": "modern_slat_screen_1784651726117",
+        "type": "modern_slat_screen",
+        "name": "木格栅墙",
+        "x": -0.406,
+        "z": -3.905,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.15,
+        "height": 2.5,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "base": "#e8dfd1",
+          "slats": "#e8dfd1"
+        },
+        "materials": {
+          "base": {
+            "id": "wood-light-fine",
+            "name": "精细浅木",
+            "category": "wood",
+            "kind": "texture",
+            "src": "/blueprint3d-babylon/src/textures/light_fine_wood.jpg",
+            "scale": 3,
+            "color": "#e5c4a3"
+          },
+          "slats": {
+            "id": "wood-light-fine",
+            "name": "精细浅木",
+            "category": "wood",
+            "kind": "texture",
+            "src": "/blueprint3d-babylon/src/textures/light_fine_wood.jpg",
+            "scale": 3,
+            "color": "#e5c4a3"
+          }
+        }
+      },
+      {
+        "id": "modern_slat_screen_1784651748607",
+        "type": "modern_slat_screen",
+        "name": "木格栅墙",
+        "x": 1.038,
+        "z": -3.893,
+        "elevation": 0,
+        "width": 2,
+        "depth": 0.15,
+        "height": 5,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "base": "#e8dfd1",
+          "slats": "#e8dfd1"
+        },
+        "materials": {
+          "base": {
+            "id": "wood-light-fine",
+            "name": "精细浅木",
+            "category": "wood",
+            "kind": "texture",
+            "src": "/blueprint3d-babylon/src/textures/light_fine_wood.jpg",
+            "scale": 3,
+            "color": "#e5c4a3"
+          },
+          "slats": {
+            "id": "wood-light-fine",
+            "name": "精细浅木",
+            "category": "wood",
+            "kind": "texture",
+            "src": "/blueprint3d-babylon/src/textures/light_fine_wood.jpg",
+            "scale": 3,
+            "color": "#e5c4a3"
+          }
+        }
+      },
+      {
+        "id": "fern_1784653039371",
+        "type": "fern",
+        "name": "垂耳蕨",
+        "x": 0.966,
+        "z": -0.023,
+        "elevation": 0.7,
+        "width": 0.391,
+        "depth": 0.391,
+        "height": 0.363,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "fern-pot": "#b0bec5",
+          "fern-leaves": "#1b5e20"
+        },
+        "materials": {
+          "fern-pot": "#b0bec5",
+          "fern-leaves": "#1b5e20"
+        }
+      },
+      {
+        "id": "books_stack_1784653087676",
+        "type": "books_stack",
+        "name": "书堆",
+        "x": 0.205,
+        "z": -2.817,
+        "elevation": 0.45,
+        "width": 0.335,
+        "depth": 0.274,
+        "height": 0.152,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "book-bottom": "#f5f5f5",
+          "book-mid": "#8c6c50",
+          "book-top": "#f5f5f5"
+        },
+        "materials": {
+          "book-bottom": {
+            "id": "paint-f5f5f5",
+            "name": "吸取颜色 (#f5f5f5)",
+            "category": "paint",
+            "kind": "paint",
+            "color": "#f5f5f5"
+          },
+          "book-mid": {
+            "id": "paint-8c6c50",
+            "name": "吸取颜色 (#8c6c50)",
+            "category": "paint",
+            "kind": "paint",
+            "color": "#8c6c50"
+          },
+          "book-top": {
+            "id": "paint-f5f5f5",
+            "name": "吸取颜色 (#f5f5f5)",
+            "category": "paint",
+            "kind": "paint",
+            "color": "#f5f5f5"
+          }
+        }
+      },
+      {
+        "id": "luxury_perfumes_1784653160815",
+        "type": "luxury_perfumes",
+        "name": "香水瓶",
+        "x": -0.251,
+        "z": -3.576,
+        "elevation": 0.8,
+        "width": 0.20320040640081283,
+        "depth": 0.15240030480060962,
+        "height": 0.15240030480060962,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "bottleA": "#f48fb1",
+          "bottleB": "#ffe082",
+          "cap": "#ffffff"
+        },
+        "materials": {
+          "bottleA": "#f48fb1",
+          "bottleB": "#ffe082",
+          "cap": "#ffffff"
+        }
+      },
+      {
+        "id": "skincare_set_1784653176279",
+        "type": "skincare_set",
+        "name": "护肤套装",
+        "x": -0.778,
+        "z": -3.789,
+        "elevation": 0.8,
+        "width": 0.20320040640081283,
+        "depth": 0.20320040640081283,
+        "height": 0.20320040640081283,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "holder": "#cfd8dc",
+          "lotion": "#e0f2f1",
+          "toner": "#b2dfdb"
+        },
+        "materials": {
+          "holder": "#cfd8dc",
+          "lotion": "#e0f2f1",
+          "toner": "#b2dfdb"
+        }
+      },
+      {
+        "id": "makeup_brushes_1784653185061",
+        "type": "makeup_brushes",
+        "name": "化妆刷筒",
+        "x": -0.491,
+        "z": -3.783,
+        "elevation": 0.8,
+        "width": 0.15240030480060962,
+        "depth": 0.15240030480060962,
+        "height": 0.20320040640081283,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "holder": "#efebe9",
+          "brush": "#3e2723",
+          "bristle": "#ffe0b2"
+        },
+        "materials": {
+          "holder": "#efebe9",
+          "brush": "#3e2723",
+          "bristle": "#ffe0b2"
+        }
+      },
+      {
+        "id": "cosmetics_1784653191445",
+        "type": "cosmetics",
+        "name": "化妆品",
+        "x": -0.202,
+        "z": -3.752,
+        "elevation": 0.8,
+        "width": 0.25400050800101603,
+        "depth": 0.20320040640081283,
+        "height": 0.20320040640081283,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "tray": "#d4af37",
+          "perfume": "#fff3cd",
+          "lipstick": "#dc3545"
+        },
+        "materials": {
+          "tray": "#d4af37",
+          "perfume": "#fff3cd",
+          "lipstick": "#dc3545"
+        }
+      },
+      {
+        "id": "landscape_banana_tree_1784733713294",
+        "type": "landscape_banana_tree",
+        "name": "芭蕉丛",
+        "x": -5.5,
+        "z": -2.5,
+        "elevation": 0,
+        "width": 2.56,
+        "depth": 2.134,
+        "height": 4.267,
+        "rotation": 1.5707963267948966,
+        "locked": false,
+        "scale": 1,
+        "roomId": null,
+        "floorId": "floor_1",
+        "colors": {
+          "banana-stem": "#4e342e",
+          "banana-leaves": "#1b5e20"
+        },
+        "materials": {
+          "banana-stem": {
+            "id": "paint-4e342e",
+            "name": "吸取颜色 (#4e342e)",
+            "category": "paint",
+            "kind": "paint",
+            "color": "#4e342e"
+          },
+          "banana-leaves": {
+            "id": "paint-1b5e20",
+            "kind": "color",
+            "category": "paint",
+            "name": "吸取颜色 (#1b5e20)",
+            "color": "#1b5e20"
+          }
+        }
+      },
+      {
+        "id": "landscape_courtyard_pine_tree_1784733746344",
+        "type": "landscape_courtyard_pine_tree",
+        "name": "迎客松",
+        "x": -5.5,
+        "z": -1.5,
+        "elevation": 0,
+        "width": 1.6256032512065026,
+        "depth": 1.0160020320040641,
+        "height": 2.235204470408941,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": null,
+        "floorId": "floor_1",
+        "colors": {
+          "pine-trunk": "#4e342e",
+          "pine-foliage": "#1b5e20"
+        },
+        "materials": {
+          "pine-trunk": "#4e342e",
+          "pine-foliage": "#1b5e20"
+        }
+      },
+      {
+        "id": "quad_poster_1784736097547",
+        "type": "quad_poster",
+        "name": "四联拼图海报",
+        "x": -0.8927599695199391,
+        "z": -2.893,
+        "elevation": 1.26,
+        "width": 1.02,
+        "depth": 0.05,
+        "height": 1.02,
+        "rotation": 1.5707963267948966,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "frame": "#2f2b28",
+          "poster": "#ffffff"
+        },
+        "materials": {
+          "frame": "#2f2b28",
+          "poster": {
+            "id": "poster-abstract-arches",
+            "kind": "texture",
+            "category": "wallpaper",
+            "name": "拱形抽象海报",
+            "src": "https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/poster_abstract_arches-MfowpUf-.png",
+            "scale": 1,
+            "color": "#ffffff",
+            "reflective": false
+          }
+        }
+      },
+      {
+        "id": "coffee_table_1784736639182",
+        "type": "coffee_table",
+        "name": "茶几",
+        "x": 0.272,
+        "z": -2.853,
+        "elevation": 0,
+        "width": 0.7112014224028449,
+        "depth": 0.7112014224028449,
+        "height": 0.4572009144018288,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "top": "#dfbd8c",
+          "legs": "#c99b68",
+          "decor": "#eae6df"
+        },
+        "materials": {
+          "top": "#dfbd8c",
+          "legs": "#c99b68",
+          "decor": "#eae6df"
+        }
+      },
+      {
+        "id": "bedside_lamp_light_1784737316740",
+        "type": "bedside_lamp_light",
+        "name": "床头灯",
+        "x": -3.647,
+        "z": -3.653,
+        "elevation": 0.5,
+        "width": 0.25,
+        "depth": 0.25,
+        "height": 0.36,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "ceramic": "#e0dfdb",
+          "glow": "#ffebd2"
+        },
+        "materials": {
+          "ceramic": "#e0dfdb",
+          "glow": "#ffebd2"
+        }
+      },
+      {
+        "id": "ceiling_light_1784737364340",
+        "type": "ceiling_light",
+        "name": "吸顶灯",
+        "x": -0.821,
+        "z": -0.877,
+        "elevation": 2.3,
+        "width": 0.41,
+        "depth": 0.41,
+        "height": 0.1,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": null,
+        "floorId": "floor_2",
+        "colors": {
+          "base": "#dcdcdc",
+          "glow": "#fffae6"
+        },
+        "materials": {
+          "base": "#dcdcdc",
+          "glow": "#fffae6"
+        }
+      },
+      {
+        "id": "triptych_poster_1784738065566",
+        "type": "triptych_poster",
+        "name": "三联海报",
+        "x": -1.98,
+        "z": -3.883,
+        "elevation": 1.08,
+        "width": 1.37,
+        "depth": 0.05,
+        "height": 0.76,
+        "rotation": 0,
+        "locked": true,
+        "scale": 1,
+        "roomId": "loft_bedroom",
+        "floorId": "floor_2",
+        "colors": {
+          "frame": "#2f2b28",
+          "poster": "#ffffff"
+        },
+        "materials": {
+          "frame": "#2f2b28",
+          "poster": {
+            "id": "poster-botanical-sage",
+            "name": "鼠尾草",
+            "category": "wallpaper",
+            "kind": "texture",
+            "scale": 1,
+            "color": "#ffffff"
+          }
+        }
+      },
+      {
+        "id": "round_table_1784738293925",
+        "type": "round_table",
+        "name": "圆桌",
+        "x": 0.96,
+        "z": 0,
+        "elevation": 0,
+        "width": 0.96,
+        "depth": 0.96,
+        "height": 0.7,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "top": "#dfd2bc",
+          "base": "#d6ab7b"
+        },
+        "materials": {
+          "top": {
+            "id": "paint-oatmeal-yellow",
+            "name": "燕麦黄",
+            "category": "paint",
+            "color": "#dfd2bc"
+          },
+          "base": {
+            "id": "paint-d6ab7b",
+            "name": "吸取颜色 (#d6ab7b)",
+            "category": "paint",
+            "kind": "paint",
+            "color": "#d6ab7b"
+          }
+        }
+      },
+      {
+        "id": "sink_cabinet_1784738983237",
+        "type": "sink_cabinet",
+        "name": "带柜水槽",
+        "x": -3.631,
+        "z": 0.5,
+        "elevation": 0,
+        "width": 1,
+        "depth": 0.5588011176022353,
+        "height": 0.9144018288036576,
+        "rotation": 1.5707963267948966,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "cabinet": "#ebe7db",
+          "door": "#d7cec1",
+          "handle": "#546e7a",
+          "counter": "#ffffff",
+          "tub": "#b3bdc4",
+          "faucet": "#ffffff",
+          "water": "#aae3ff"
+        },
+        "materials": {
+          "cabinet": "#ebe7db",
+          "door": "#d7cec1",
+          "handle": "#546e7a",
+          "counter": "#ffffff",
+          "tub": "#b3bdc4",
+          "faucet": "#ffffff",
+          "water": "#aae3ff"
+        }
+      },
+      {
+        "id": "kitchenware_1784739062947",
+        "type": "kitchenware",
+        "name": "餐具架",
+        "x": -3.401,
+        "z": -1.776,
+        "elevation": 0.9,
+        "width": 0.35560071120142245,
+        "depth": 0.25400050800101603,
+        "height": 0.20320040640081283,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "rack": "#78909c",
+          "dishes": "#ffffff"
+        },
+        "materials": {
+          "rack": "#78909c",
+          "dishes": "#ffffff"
+        }
+      },
+      {
+        "id": "knife_block_1784739075696",
+        "type": "knife_block",
+        "name": "刀架",
+        "x": -3.758,
+        "z": -1.735,
+        "elevation": 0.9,
+        "width": 0.15240030480060962,
+        "depth": 0.20320040640081283,
+        "height": 0.25400050800101603,
+        "rotation": 3.141592653589793,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "block": "#a1887f",
+          "handle": "#212121"
+        },
+        "materials": {
+          "block": "#a1887f",
+          "handle": "#212121"
+        }
+      },
+      {
+        "id": "range_hood_1784739145781",
+        "type": "range_hood",
+        "name": "抽油烟机",
+        "x": -2.5,
+        "z": -1.655,
+        "elevation": 1.99,
+        "width": 1,
+        "depth": 0.51,
+        "height": 0.46,
+        "rotation": 0,
+        "locked": false,
+        "scale": 1,
+        "roomId": "room_1784650923909",
+        "floorId": "floor_1",
+        "colors": {
+          "body": "#b0b5b8",
+          "glass": "#3b3e40",
+          "filter": "#4a4d50"
+        },
+        "materials": {
+          "body": "#b0b5b8",
+          "glass": "#3b3e40",
+          "filter": "#4a4d50"
+        }
+      }
+    ],
+    "floors": [
+      {
+        "id": "floor_1",
+        "name": "1F",
+        "level": 0,
+        "wallHeight": 2.5,
+        "floorHeight": 0.2,
+        "hideRoof": false,
+        "hideWall": false,
+        "skyboxEnabled": true
+      },
+      {
+        "id": "floor_2",
+        "name": "2F",
+        "level": 1,
+        "wallHeight": 2.3,
+        "floorHeight": 0.15,
+        "hideRoof": true,
+        "hideWall": false,
+        "skyboxEnabled": true
+      }
+    ],
+    "currentFloorId": "floor_1",
+    "storyHeight": 4.56,
+    "stairs": [
+      {
+        "id": "stairs_loft_main",
+        "floorId": "floor_1",
+        "x": -2.5,
+        "z": 0.5,
+        "width": 1,
+        "depth": 3,
+        "height": 2.2,
+        "steps": 12,
+        "subtype": "lshape",
+        "rotation": 4.71238898038469,
+        "color": "#d6ab7b",
+        "material": "#d6ab7b",
+        "locked": false,
+        "sideColor": "#d6ab7b",
+        "sideMaterial": "#d6ab7b",
+        "sideHidden": true,
+        "mirrored": true,
+        "spiralDegrees": 360,
+        "cornerStep": 8,
+        "uSlotWidth": 0.1,
+        "uVoidLength": 1.7999999999999998,
+        "moveItems": true,
+        "edgeWidth": 0.5,
+        "edgeDepth": 1.4,
+        "runBeforeCorner": 2,
+        "runAfterCorner": 1
+      }
+    ],
+    "fences": [],
+    "roofs": [],
+    "fenceGates": [],
+    "environment": {
+      "skyMaterial": {
+        "id": "paint-oatmeal-yellow",
+        "kind": "color",
+        "category": "paint",
+        "name": "燕麦黄",
+        "color": "#dfd2bc"
+      },
+      "groundMaterial": {
+        "id": "paint-oatmeal-yellow",
+        "kind": "color",
+        "category": "paint",
+        "name": "燕麦黄",
+        "color": "#dfd2bc"
+      }
+    }
+  }
+}

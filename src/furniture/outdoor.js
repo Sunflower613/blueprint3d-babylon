@@ -1,5 +1,24 @@
 import { boxComponent, cylinderComponent, sphereComponent, latheComponent } from './_helpers.js';
 
+// Photo 5 inspired miniature palette: warm, matte and deliberately low saturation.
+export const SOFT_LOW_POLY_OUTDOOR_PALETTE = Object.freeze({
+  warmWood: '#a77b55',
+  darkWood: '#6f5846',
+  cream: '#eadfcd',
+  fabric: '#d9ccb8',
+  sage: '#8fa184',
+  metal: '#777a75',
+  lightMetal: '#b9b8af',
+  stone: '#b8afa2',
+  paleStone: '#d8d0c3',
+  darkStone: '#5e5c58',
+  soil: '#675142',
+  water: '#91c7c9',
+  flower: '#d69aa5',
+  charcoal: '#454743',
+  terracotta: '#b87555'
+});
+
 const lieInteraction = (yRatio = 0.42, zRatio = 0) => ({
   type: 'lie',
   getInteractionPoints(size) {
@@ -60,7 +79,7 @@ const addBikeWheel = (registry, item, definition, center, wheelRadius, wheelThic
       { x: tireInnerR, y: tireHalfH },
       { x: tireInnerR, y: -tireHalfH }
     ],
-    tessellation: 32
+    tessellation: 10
   }, {
     position: center,
     rotation: { x: Math.PI / 2 }
@@ -78,7 +97,7 @@ const addBikeWheel = (registry, item, definition, center, wheelRadius, wheelThic
       { x: rimInnerR, y: rimHalfH },
       { x: rimInnerR, y: -rimHalfH }
     ],
-    tessellation: 32
+    tessellation: 10
   }, {
     position: center,
     rotation: { x: Math.PI / 2 }
@@ -90,7 +109,7 @@ const addBikeWheel = (registry, item, definition, center, wheelRadius, wheelThic
     diameterTop: wheelRadius * 0.12,
     diameterBottom: wheelRadius * 0.12,
     height: wheelThickness * 1.15,
-    tessellation: 20
+    tessellation: 8
   }, {
     position: center,
     rotation: { x: Math.PI / 2 }
@@ -102,9 +121,9 @@ export const outdoorUmbrellaFurniture = {
   name: '遮阳伞',
   defaultSize: { width: 42, depth: 42, height: 88 },
   components: [
-    { id: 'canopy', label: '伞蓬', defaultColor: '#f3e4c8' },
-    { id: 'pole', label: '伞杆', defaultColor: '#6d5b47' },
-    { id: 'base', label: '底座', defaultColor: '#8f8a83' }
+    { id: 'canopy', label: '伞蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
+    { id: 'pole', label: '伞杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'base', label: '底座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone }
   ],
   build(registry, item, node, size) {
     const canopyH = Math.max(0.06, size.height * 0.1);
@@ -113,21 +132,21 @@ export const outdoorUmbrellaFurniture = {
       diameterTop: size.width * 0.2,
       diameterBottom: size.width,
       height: canopyH,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: poleH + canopyH / 2, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, outdoorUmbrellaFurniture, 'pole', {
       diameterTop: 0.05,
       diameterBottom: 0.06,
       height: poleH,
-      tessellation: 16
+      tessellation: 8
     }, { position: { x: 0, y: poleH / 2, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, outdoorUmbrellaFurniture, 'base', {
       diameterTop: size.width * 0.22,
       diameterBottom: size.width * 0.26,
       height: 0.05,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: 0.025, z: 0 } }, { parent: node });
   }
 };
@@ -137,9 +156,9 @@ export const pergolaFurniture = {
   name: '葡萄架',
   defaultSize: { width: 96, depth: 60, height: 96 },
   components: [
-    { id: 'posts', label: '立柱', defaultColor: '#7f6146' },
-    { id: 'beams', label: '横梁', defaultColor: '#8f7053' },
-    { id: 'vines', label: '爬藤', defaultColor: '#7eb16b' }
+    { id: 'posts', label: '立柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'beams', label: '横梁', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'vines', label: '爬藤', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.sage }
   ],
   build(registry, item, node, size) {
     const postW = Math.max(0.08, size.width * 0.03);
@@ -189,8 +208,8 @@ export const flowerArchFurniture = {
   name: '花圈拱门',
   defaultSize: { width: 72, depth: 20, height: 88 },
   components: [
-    { id: 'frame', label: '拱门架', defaultColor: '#e7e0d5' },
-    { id: 'flowers', label: '花艺', defaultColor: '#f2a6bc' }
+    { id: 'frame', label: '拱门架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
+    { id: 'flowers', label: '花艺', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.flower }
   ],
   build(registry, item, node, size) {
     const postW = Math.max(0.05, size.width * 0.025);
@@ -235,9 +254,9 @@ export const gazeboFurniture = {
   name: '凉亭',
   defaultSize: { width: 108, depth: 108, height: 108 },
   components: [
-    { id: 'posts', label: '立柱', defaultColor: '#75614d' },
-    { id: 'roof', label: '顶蓬', defaultColor: '#c38b63' },
-    { id: 'rails', label: '护栏', defaultColor: '#8c7159' }
+    { id: 'posts', label: '立柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'roof', label: '顶蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
+    { id: 'rails', label: '护栏', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
   ],
   build(registry, item, node, size) {
     const postW = Math.max(0.08, size.width * 0.028);
@@ -287,9 +306,9 @@ export const patioSwingFurniture = {
   name: '秋千',
   defaultSize: { width: 78, depth: 52, height: 78 },
   components: [
-    { id: 'frame', label: '支架', defaultColor: '#5f554d' },
-    { id: 'seat', label: '座椅', defaultColor: '#d8b38a' },
-    { id: 'canopy', label: '顶蓬', defaultColor: '#c6d9ef' }
+    { id: 'frame', label: '支架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'seat', label: '座椅', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.fabric },
+    { id: 'canopy', label: '顶蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
   ],
   interaction: {
     type: 'sit',
@@ -361,8 +380,8 @@ export const hammockStandFurniture = {
   name: '吊床架',
   defaultSize: { width: 102, depth: 34, height: 48 },
   components: [
-    { id: 'frame', label: '支架', defaultColor: '#7e6449' },
-    { id: 'bed', label: '吊床', defaultColor: '#f0d7af' }
+    { id: 'frame', label: '支架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'bed', label: '吊床', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
   ],
   interaction: lieInteraction(0.45),
   build(registry, item, node, size) {
@@ -397,30 +416,30 @@ export const firePitFurniture = {
   name: '火盆',
   defaultSize: { width: 30, depth: 30, height: 16 },
   components: [
-    { id: 'bowl', label: '火盆', defaultColor: '#5f5d61' },
-    { id: 'base', label: '底架', defaultColor: '#353539' },
-    { id: 'ring', label: '炉沿', defaultColor: '#9a6a4f' }
+    { id: 'bowl', label: '火盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone },
+    { id: 'base', label: '底架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'ring', label: '炉沿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta }
   ],
   build(registry, item, node, size) {
     cylinderComponent(registry, item, firePitFurniture, 'base', {
       diameterTop: size.width * 0.46,
       diameterBottom: size.width * 0.6,
       height: size.height * 0.32,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: size.height * 0.16, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, firePitFurniture, 'bowl', {
       diameterTop: size.width,
       diameterBottom: size.width * 0.74,
       height: size.height * 0.52,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: size.height * 0.5, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, firePitFurniture, 'ring', {
       diameterTop: size.width * 0.86,
       diameterBottom: size.width * 0.86,
       height: 0.03,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: size.height * 0.73, z: 0 } }, { parent: node });
   }
 };
@@ -430,9 +449,9 @@ export const barbecueGrillFurniture = {
   name: '烧烤架',
   defaultSize: { width: 48, depth: 22, height: 42 },
   components: [
-    { id: 'grill', label: '烤炉', defaultColor: '#3e4146' },
-    { id: 'legs', label: '支腿', defaultColor: '#73777f' },
-    { id: 'shelf', label: '置物板', defaultColor: '#8f6749' }
+    { id: 'grill', label: '烤炉', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'legs', label: '支腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.metal },
+    { id: 'shelf', label: '置物板', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
   ],
   build(registry, item, node, size) {
     const bodyH = size.height * 0.38;
@@ -472,30 +491,30 @@ export const patioHeaterFurniture = {
   name: '取暖器',
   defaultSize: { width: 18, depth: 18, height: 84 },
   components: [
-    { id: 'base', label: '底座', defaultColor: '#7e8085' },
-    { id: 'pole', label: '立杆', defaultColor: '#b8bec6' },
-    { id: 'hood', label: '散热盘', defaultColor: '#ddd4c2' }
+    { id: 'base', label: '底座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.metal },
+    { id: 'pole', label: '立杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.lightMetal },
+    { id: 'hood', label: '散热盘', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
   ],
   build(registry, item, node, size) {
     cylinderComponent(registry, item, patioHeaterFurniture, 'base', {
       diameterTop: size.width * 0.5,
       diameterBottom: size.width * 0.62,
       height: size.height * 0.08,
-      tessellation: 20
+      tessellation: 10
     }, { position: { x: 0, y: size.height * 0.04, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, patioHeaterFurniture, 'pole', {
       diameterTop: 0.04,
       diameterBottom: 0.05,
       height: size.height * 0.76,
-      tessellation: 16
+      tessellation: 8
     }, { position: { x: 0, y: size.height * 0.46, z: 0 } }, { parent: node });
 
     cylinderComponent(registry, item, patioHeaterFurniture, 'hood', {
       diameterTop: size.width * 0.2,
       diameterBottom: size.width,
       height: size.height * 0.12,
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: size.height * 0.9, z: 0 } }, { parent: node });
   }
 };
@@ -506,10 +525,10 @@ export const gardenFountainFurniture = {
   name: '喷泉',
   defaultSize: { width: 32, depth: 32, height: 52 },
   components: [
-    { id: 'base', label: '底盆', defaultColor: '#bcb7ae' },
-    { id: 'column', label: '泉柱', defaultColor: '#a59c8d' },
-    { id: 'top', label: '顶盆', defaultColor: '#d8e6f2' },
-    { id: 'water', label: '水体', defaultColor: '#b2ebf2' }
+    { id: 'base', label: '底盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'column', label: '泉柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone },
+    { id: 'top', label: '顶盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'water', label: '水体', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water }
   ],
   build(registry, item, node, size) {
     // 1. 中空圆形底盆车削结构 (优化替代底板和拼接围板)
@@ -525,7 +544,7 @@ export const gardenFountainFurniture = {
         { x: size.width / 2 - baseWallT, y: baseBottomH },
         { x: 0, y: baseBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
     // 2. 喷泉中央泉柱
@@ -533,7 +552,7 @@ export const gardenFountainFurniture = {
       diameterTop: size.width * 0.16,
       diameterBottom: size.width * 0.22,
       height: size.height * 0.44,
-      tessellation: 18
+      tessellation: 8
     }, { position: { x: 0, y: size.height * 0.44, z: 0 } }, { parent: node });
 
     // 3. 中空圆形顶盆车削结构 (优化替代底板和拼接围板)
@@ -551,7 +570,7 @@ export const gardenFountainFurniture = {
         { x: topDiameter / 2 - topWallT, topBottomH },
         { x: 0, y: topBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: topY, z: 0 } }, { parent: node });
 
     // 4. 喷泉双层凹槽蓄水面 (蓄在盆内部)
@@ -561,7 +580,7 @@ export const gardenFountainFurniture = {
         diameterTop: size.width - baseWallT * 2 - 0.01,
         diameterBottom: size.width - baseWallT * 2 - 0.01,
         height: 0.005,
-        tessellation: 20
+        tessellation: 10
       }, { position: { x: 0, y: baseH - 0.03, z: 0 } }, { parent: node });
 
       // 顶盆水面 (比顶盆边缘矮 0.02米)
@@ -569,7 +588,7 @@ export const gardenFountainFurniture = {
         diameterTop: topDiameter - topWallT * 2 - 0.01,
         diameterBottom: topDiameter - topWallT * 2 - 0.01,
         height: 0.005,
-        tessellation: 16
+        tessellation: 8
       }, { position: { x: 0, y: topY + topH - 0.02, z: 0 } }, { parent: node });
 
       // 7. 8条垂直落水柱 (从顶盆流下到底盆)
@@ -602,9 +621,9 @@ export const birdbathFurniture = {
   name: '鸟浴台',
   defaultSize: { width: 18, depth: 18, height: 34 },
   components: [
-    { id: 'base', label: '台柱', defaultColor: '#b8b0a5' },
-    { id: 'basin', label: '浴盆', defaultColor: '#d5e6ef' },
-    { id: 'water', label: '水体', defaultColor: '#b2ebf2' }
+    { id: 'base', label: '台柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'basin', label: '浴盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'water', label: '水体', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water }
   ],
   build(registry, item, node, size) {
     // 1. 底座台柱
@@ -612,7 +631,7 @@ export const birdbathFurniture = {
       diameterTop: size.width * 0.18,
       diameterBottom: size.width * 0.26,
       height: size.height * 0.72,
-      tessellation: 16
+      tessellation: 8
     }, { position: { x: 0, y: size.height * 0.36, z: 0 } }, { parent: node });
 
     // 2. 中空圆形平底锅状浴盆车削结构
@@ -632,7 +651,7 @@ export const birdbathFurniture = {
         { x: rInnerBottom, y: basinBottomH },
         { x: 0, y: basinBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: basinY, z: 0 } }, { parent: node });
 
     // 3. 鸟浴台蓄水面 (精确计算水面在斜面上的半径，确保完美贴合平底锅斜内壁)
@@ -645,7 +664,7 @@ export const birdbathFurniture = {
         diameterTop: waterR * 2,
         diameterBottom: waterR * 2,
         height: 0.005,
-        tessellation: 20
+        tessellation: 10
       }, { position: { x: 0, y: basinY + waterLocalY, z: 0 } }, { parent: node });
     }
   }
@@ -656,9 +675,9 @@ export const planterBoxFurniture = {
   name: '花箱',
   defaultSize: { width: 30, depth: 14, height: 16 },
   components: [
-    { id: 'box', label: '花槽', defaultColor: '#a4734c' },
-    { id: 'legs', label: '支腿', defaultColor: '#6f5842' },
-    { id: 'soil', label: '泥土', defaultColor: '#5c4033' }
+    { id: 'box', label: '花槽', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
+    { id: 'legs', label: '支腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'soil', label: '泥土', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.soil }
   ],
   build(registry, item, node, size) {
     const boxW = size.width;
@@ -710,9 +729,9 @@ export const raisedGardenBedFurniture = {
   name: '种植箱',
   defaultSize: { width: 54, depth: 26, height: 22 },
   components: [
-    { id: 'box', label: '种植槽', defaultColor: '#9f764f' },
-    { id: 'legs', label: '站腿', defaultColor: '#705740' },
-    { id: 'rail', label: '加固条', defaultColor: '#8f6b49' }
+    { id: 'box', label: '种植槽', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'legs', label: '站腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'rail', label: '加固条', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, raisedGardenBedFurniture, 'box', {
@@ -744,8 +763,8 @@ export const trellisScreenFurniture = {
   name: '花架',
   defaultSize: { width: 40, depth: 6, height: 78 },
   components: [
-    { id: 'frame', label: '外框', defaultColor: '#826448' },
-    { id: 'slats', label: '格栅', defaultColor: '#9c7a58' }
+    { id: 'frame', label: '外框', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'slats', label: '格栅', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
   ],
   build(registry, item, node, size) {
     const fWidth = 0.04; // 框架木条的宽度
@@ -807,8 +826,8 @@ export const outdoorStorageBoxFurniture = {
   name: '收纳箱',
   defaultSize: { width: 42, depth: 22, height: 24 },
   components: [
-    { id: 'box', label: '箱体', defaultColor: '#8d775f' },
-    { id: 'lid', label: '箱盖', defaultColor: '#b39877' }
+    { id: 'box', label: '箱体', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'lid', label: '箱盖', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, outdoorStorageBoxFurniture, 'box', {
@@ -830,9 +849,9 @@ export const gardenBridgeFurniture = {
   name: '小园桥',
   defaultSize: { width: 66, depth: 20, height: 20 },
   components: [
-    { id: 'deck', label: '桥面', defaultColor: '#ab7b50' },
-    { id: 'rails', label: '扣手', defaultColor: '#6e523d' },
-    { id: 'supports', label: '支撑', defaultColor: '#7d6045' }
+    { id: 'deck', label: '桥面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'rails', label: '扣手', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'supports', label: '支撑', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood }
   ],
   build(registry, item, node, size) {
     const w_mid = size.width * 0.4;
@@ -931,9 +950,9 @@ export const canopyTentFurniture = {
   name: '天幕',
   defaultSize: { width: 96, depth: 96, height: 96 },
   components: [
-    { id: 'canopy', label: '天幕', defaultColor: '#f6f1e8' },
-    { id: 'posts', label: '立杆', defaultColor: '#9ca3ab' },
-    { id: 'frame', label: '连接架', defaultColor: '#7e858e' }
+    { id: 'canopy', label: '天幕', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
+    { id: 'posts', label: '立杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.lightMetal },
+    { id: 'frame', label: '连接架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.metal }
   ],
   build(registry, item, node, size) {
     const postW = Math.max(0.04, size.width * 0.02);
@@ -983,9 +1002,9 @@ export const poolsideDaybedFurniture = {
   name: '躺床',
   defaultSize: { width: 78, depth: 34, height: 34 },
   components: [
-    { id: 'bed', label: '躺面', defaultColor: '#d9d2c7' },
-    { id: 'frame', label: '底架', defaultColor: '#87684d' },
-    { id: 'canopy', label: '遮阳帘', defaultColor: '#f8f1df' }
+    { id: 'bed', label: '躺面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.fabric },
+    { id: 'frame', label: '底架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'canopy', label: '遮阳帘', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
   ],
   interaction: lieInteraction(0.48),
   build(registry, item, node, size) {
@@ -1026,9 +1045,9 @@ export const pottingBenchFurniture = {
   name: '操作台',
   defaultSize: { width: 48, depth: 20, height: 60 },
   components: [
-    { id: 'counter', label: '操作台', defaultColor: '#caa57d' },
-    { id: 'shelf', label: '层板', defaultColor: '#b48d63' },
-    { id: 'frame', label: '支架', defaultColor: '#7b6148' }
+    { id: 'counter', label: '操作台', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'shelf', label: '层板', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
+    { id: 'frame', label: '支架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood }
   ],
   build(registry, item, node, size) {
     const legH = size.height * 0.72;
@@ -1067,9 +1086,9 @@ export const sharedBicycleFurniture = {
   name: '共享单车',
   defaultSize: { width: 68, depth: 18, height: 44 },
   components: [
-    { id: 'frame', label: '车架', defaultColor: '#18a0fb' },
-    { id: 'tires', label: '轮胎', defaultColor: '#20252b' },
-    { id: 'metal', label: '金属件', defaultColor: '#cfd8dc' }
+    { id: 'frame', label: '车架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.sage },
+    { id: 'tires', label: '轮胎', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'metal', label: '金属件', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.lightMetal }
   ],
   build(registry, item, node, size) {
     // === 1. 自行车基础几何尺寸与关键控制点计算 ===
@@ -1111,7 +1130,7 @@ export const sharedBicycleFurniture = {
       diameterTop: metalThickness,
       diameterBottom: metalThickness,
       height: size.height * 0.16,
-      tessellation: 16
+      tessellation: 8
     }, {
       position: { x: seatTop.x, y: seatTop.y - size.height * 0.03, z: 0 }
     }, { parent: node });
@@ -1131,7 +1150,7 @@ export const sharedBicycleFurniture = {
       diameterTop: metalThickness,
       diameterBottom: metalThickness,
       height: size.height * 0.16,
-      tessellation: 16
+      tessellation: 8
     }, {
       position: { x: headTop.x, y: headTop.y + size.height * 0.02, z: 0 },
       rotation: { z: Math.PI * 0.08 }
@@ -1162,7 +1181,7 @@ export const sharedBicycleFurniture = {
       diameterTop: wheelRadius * 0.13,
       diameterBottom: wheelRadius * 0.13,
       height: size.depth * 0.46,
-      tessellation: 16
+      tessellation: 8
     }, {
       position: bottomBracket,
       rotation: { x: Math.PI / 2 }
@@ -1299,8 +1318,8 @@ export const landscapeMarbleFountain = {
   name: '跌水喷泉',
   defaultSize: { width: 56, depth: 56, height: 60 },
   components: [
-    { id: 'fountain-marble', label: '汉白玉雕座', defaultColor: '#fafafa' },
-    { id: 'fountain-water', label: '涌动喷泉', defaultColor: '#e0f7fa' }
+    { id: 'fountain-marble', label: '汉白玉雕座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'fountain-water', label: '涌动喷泉', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.18;
@@ -1317,7 +1336,7 @@ export const landscapeMarbleFountain = {
         { x: size.width / 2 - wallT, baseBottomH },
         { x: 0, y: baseBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
     // 2. 底盆水面
@@ -1347,7 +1366,7 @@ export const landscapeMarbleFountain = {
         { x: bowlD / 2 - bowlWallT, baseBottomH },
         { x: 0, y: baseBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: bowlY, z: 0 } }, { parent: node });
 
     // 5. 顶盆水面与涌出水球
@@ -1369,9 +1388,9 @@ export const landscapeEuroPondSculpture = {
   name: '水池雕塑',
   defaultSize: { width: 64, depth: 64, height: 72 },
   components: [
-    { id: 'pond-basin', label: '雕花大石盆', defaultColor: '#d7ccc8' },
-    { id: 'pond-water', label: '池中涟漪', defaultColor: '#80deea' },
-    { id: 'pond-sculpture', label: '古典石雕像', defaultColor: '#efebe9' }
+    { id: 'pond-basin', label: '雕花大石盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'pond-water', label: '池中涟漪', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water },
+    { id: 'pond-sculpture', label: '古典石雕像', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone }
   ],
   build(registry, item, node, size) {
     const basinH = size.height * 0.2;
@@ -1388,13 +1407,13 @@ export const landscapeEuroPondSculpture = {
         { x: size.width / 2 - wallT, baseBottomH },
         { x: 0, y: baseBottomH }
       ],
-      tessellation: 24
+      tessellation: 10
     }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
     // 2. 内嵌水面
     if (item.waterEnabled !== false) {
       cylinderComponent(registry, item, landscapeEuroPondSculpture, 'pond-water', {
-        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 16
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 10
       }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
     }
 
@@ -1420,8 +1439,8 @@ export const landscapeMarbleBridge = {
   name: '石拱桥',
   defaultSize: { width: 72, depth: 30, height: 28 },
   components: [
-    { id: 'bridge-marble', label: '汉白玉石桥', defaultColor: '#eceff1' },
-    { id: 'bridge-railing', label: '石桥栏杆', defaultColor: '#cfd8dc' }
+    { id: 'bridge-marble', label: '汉白玉石桥', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'bridge-railing', label: '石桥栏杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone }
   ],
   build(registry, item, node, size) {
     const deckH = size.height * 0.15;

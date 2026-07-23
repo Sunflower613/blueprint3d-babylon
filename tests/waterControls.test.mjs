@@ -21,7 +21,6 @@ const waterComponents = new Map([
   ['landscape_modern_water_wall', ['water-curtain']],
   ['landscape_water_lily_pond', ['pond-water']],
   ['landscape_taiji_pond', ['taiji-black', 'taiji-white']],
-  ['landscape_winding_stream', ['stream-water']],
   ['landscape_natural_spring', ['spring-water']],
   ['landscape_old_well', ['well-water']],
   ['landscape_marble_fountain', ['fountain-water']],
@@ -56,12 +55,12 @@ function buildComponents(type, waterEnabled) {
 }
 
 test('the exact water furniture inventory exposes the unified capability', () => {
-  assert.equal(waterComponents.size, 22);
+  assert.equal(waterComponents.size, 21);
   for (const type of waterComponents.keys()) {
     assert.equal(isWaterControllable(getFurnitureDefinition(type)), true, `${type} should expose water controls`);
   }
 
-  for (const type of ['toilet', 'landscape_mist_generator', 'landscape_glass_waterfall', 'water_dispenser']) {
+  for (const type of ['toilet', 'landscape_mist_generator', 'landscape_glass_waterfall', 'landscape_winding_stream', 'water_dispenser']) {
     assert.equal(isWaterControllable(getFurnitureDefinition(type)), false, `${type} must stay outside water controls`);
   }
 });

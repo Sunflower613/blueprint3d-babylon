@@ -1,12 +1,44 @@
 import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js';
 
+const LANDSCAPE_COLORS = Object.freeze({
+  paleStone: '#c7c2b5',
+  warmStone: '#aaa89e',
+  deepStone: '#7f8580',
+  water: '#8fcbd1',
+  paleWater: '#c5e3e1',
+  sage: '#86a17d',
+  blush: '#d9a5a2',
+  wood: '#8f745d'
+});
+
+function lowPolyBoulder(registry, item, definition, componentId, options, node) {
+  const {
+    diameter,
+    x = 0,
+    y = 0,
+    z = 0,
+    scaleX = 1,
+    scaleY = 0.72,
+    scaleZ = 0.8,
+    rotationY = 0,
+    segments = 5
+  } = options;
+  const mesh = sphereComponent(registry, item, definition, componentId, {
+    diameter,
+    segments
+  }, { position: { x, y, z } }, { parent: node });
+  mesh.scaling.set(scaleX, scaleY, scaleZ);
+  mesh.rotation.y = rotationY;
+  return mesh;
+}
+
 export const landscapeTaihuStone = {
   type: 'landscape_taihu_stone',
   name: '太湖奇石',
   defaultSize: { width: 36, depth: 24, height: 48 },
   components: [
-    { id: 'stone-base', label: '大理石底座', defaultColor: '#e0e0e0' },
-    { id: 'stone-body', label: '太湖石体', defaultColor: '#757575' }
+    { id: 'stone-base', label: '大理石底座', defaultColor: LANDSCAPE_COLORS.paleStone },
+    { id: 'stone-body', label: '太湖石体', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.12;
@@ -15,17 +47,18 @@ export const landscapeTaihuStone = {
     }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
 
     const stoneY = baseH;
-    sphereComponent(registry, item, landscapeTaihuStone, 'stone-body', {
-      diameter: size.width * 0.7, segments: 8
-    }, { position: { x: 0, y: stoneY + size.height * 0.25, z: 0 } }, { parent: node });
-
-    sphereComponent(registry, item, landscapeTaihuStone, 'stone-body', {
-      diameter: size.width * 0.5, segments: 8
-    }, { position: { x: -size.width * 0.15, y: stoneY + size.height * 0.55, z: size.depth * 0.1 } }, { parent: node });
-
-    sphereComponent(registry, item, landscapeTaihuStone, 'stone-body', {
-      diameter: size.width * 0.4, segments: 8
-    }, { position: { x: size.width * 0.12, y: stoneY + size.height * 0.65, z: -size.depth * 0.1 } }, { parent: node });
+    lowPolyBoulder(registry, item, landscapeTaihuStone, 'stone-body', {
+      diameter: size.width * 0.72, y: stoneY + size.height * 0.23,
+      scaleX: 0.88, scaleY: 0.72, scaleZ: 0.62, rotationY: 0.35
+    }, node);
+    lowPolyBoulder(registry, item, landscapeTaihuStone, 'stone-body', {
+      diameter: size.width * 0.54, x: -size.width * 0.12, y: stoneY + size.height * 0.52,
+      z: size.depth * 0.08, scaleX: 0.62, scaleY: 1.18, scaleZ: 0.55, rotationY: -0.2
+    }, node);
+    lowPolyBoulder(registry, item, landscapeTaihuStone, 'stone-body', {
+      diameter: size.width * 0.42, x: size.width * 0.13, y: stoneY + size.height * 0.69,
+      z: -size.depth * 0.08, scaleX: 0.55, scaleY: 1.25, scaleZ: 0.5, rotationY: 0.6
+    }, node);
   }
 };
 
@@ -35,10 +68,10 @@ export const landscapeRockeryFountain = {
   name: '流水盆景',
   defaultSize: { width: 48, depth: 36, height: 40 },
   components: [
-    { id: 'pool-wall', label: '石雕水池', defaultColor: '#5d4037' },
-    { id: 'water-surface', label: '明净水面', defaultColor: '#4fc3f7' },
-    { id: 'rock-body', label: '青石假山', defaultColor: '#616161' },
-    { id: 'water-cascade', label: '飞瀑流水', defaultColor: '#e0f7fa' }
+    { id: 'pool-wall', label: '石雕水池', defaultColor: LANDSCAPE_COLORS.paleStone },
+    { id: 'water-surface', label: '明净水面', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'rock-body', label: '青石假山', defaultColor: LANDSCAPE_COLORS.deepStone },
+    { id: 'water-cascade', label: '飞瀑流水', defaultColor: LANDSCAPE_COLORS.paleWater }
   ],
   build(registry, item, node, size) {
     const poolH = size.height * 0.25;
@@ -73,13 +106,14 @@ export const landscapeRockeryFountain = {
     }
 
     const rockY = poolH;
-    sphereComponent(registry, item, landscapeRockeryFountain, 'rock-body', {
-      diameter: size.width * 0.45, segments: 8
-    }, { position: { x: -size.width * 0.2, y: rockY + size.height * 0.25, z: -size.depth * 0.1 } }, { parent: node });
-
-    sphereComponent(registry, item, landscapeRockeryFountain, 'rock-body', {
-      diameter: size.width * 0.35, segments: 8
-    }, { position: { x: size.width * 0.15, y: rockY + size.height * 0.4, z: size.depth * 0.15 } }, { parent: node });
+    lowPolyBoulder(registry, item, landscapeRockeryFountain, 'rock-body', {
+      diameter: size.width * 0.46, x: -size.width * 0.2, y: rockY + size.height * 0.2,
+      z: -size.depth * 0.1, scaleX: 1.1, scaleY: 0.9, scaleZ: 0.72, rotationY: 0.3
+    }, node);
+    lowPolyBoulder(registry, item, landscapeRockeryFountain, 'rock-body', {
+      diameter: size.width * 0.38, x: size.width * 0.14, y: rockY + size.height * 0.38,
+      z: size.depth * 0.14, scaleX: 0.72, scaleY: 1.12, scaleZ: 0.68, rotationY: -0.45
+    }, node);
 
     if (item.waterEnabled !== false) {
       cylinderComponent(registry, item, landscapeRockeryFountain, 'water-cascade', {
@@ -94,8 +128,8 @@ export const landscapeZenGravel = {
   name: '枯山水砂石',
   defaultSize: { width: 72, depth: 48, height: 16 },
   components: [
-    { id: 'zen-sand', label: '白砂波纹', defaultColor: '#eeeeee' },
-    { id: 'zen-stone', label: '坐禅置石', defaultColor: '#424242' }
+    { id: 'zen-sand', label: '白砂波纹', defaultColor: '#e8dfcf' },
+    { id: 'zen-stone', label: '坐禅置石', defaultColor: LANDSCAPE_COLORS.deepStone }
   ],
   build(registry, item, node, size) {
     boxComponent(registry, item, landscapeZenGravel, 'zen-sand', {
@@ -103,17 +137,18 @@ export const landscapeZenGravel = {
     }, { position: { x: 0, y: size.height * 0.1, z: 0 } }, { parent: node });
 
     const sandY = size.height * 0.2;
-    sphereComponent(registry, item, landscapeZenGravel, 'zen-stone', {
-      diameter: size.width * 0.18, segments: 8
-    }, { position: { x: -size.width * 0.2, y: sandY + size.height * 0.25, z: -size.depth * 0.15 } }, { parent: node });
-
-    sphereComponent(registry, item, landscapeZenGravel, 'zen-stone', {
-      diameter: size.width * 0.12, segments: 8
-    }, { position: { x: size.width * 0.18, y: sandY + size.height * 0.18, z: size.depth * 0.12 } }, { parent: node });
-
-    sphereComponent(registry, item, landscapeZenGravel, 'zen-stone', {
-      diameter: size.width * 0.08, segments: 8
-    }, { position: { x: size.width * 0.25, y: sandY + size.height * 0.1, z: size.depth * 0.05 } }, { parent: node });
+    lowPolyBoulder(registry, item, landscapeZenGravel, 'zen-stone', {
+      diameter: size.width * 0.19, x: -size.width * 0.2, y: sandY + size.height * 0.18,
+      z: -size.depth * 0.15, scaleX: 1.15, scaleY: 0.72, rotationY: 0.4
+    }, node);
+    lowPolyBoulder(registry, item, landscapeZenGravel, 'zen-stone', {
+      diameter: size.width * 0.13, x: size.width * 0.18, y: sandY + size.height * 0.13,
+      z: size.depth * 0.12, scaleX: 1.2, scaleY: 0.65, rotationY: -0.25
+    }, node);
+    lowPolyBoulder(registry, item, landscapeZenGravel, 'zen-stone', {
+      diameter: size.width * 0.09, x: size.width * 0.26, y: sandY + size.height * 0.08,
+      z: size.depth * 0.04, scaleX: 1.1, scaleY: 0.6, rotationY: 0.15
+    }, node);
   }
 };
 
@@ -123,9 +158,9 @@ export const landscapeKoiPond = {
   name: '锦鲤鱼池',
   defaultSize: { width: 80, depth: 60, height: 18 },
   components: [
-    { id: 'pond-wall', label: '青砖池壁', defaultColor: '#455a64' },
-    { id: 'pond-water', label: '池塘清波', defaultColor: '#00acc1' },
-    { id: 'pond-koi', label: '红白锦鲤', defaultColor: '#ff5722' }
+    { id: 'pond-wall', label: '青砖池壁', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'pond-water', label: '池塘清波', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'pond-koi', label: '红白锦鲤', defaultColor: '#d88268' }
   ],
   build(registry, item, node, size) {
     const wallT = 0.04;
@@ -179,8 +214,8 @@ export const landscapeStoneTrough = {
   name: '石槽',
   defaultSize: { width: 36, depth: 18, height: 16 },
   components: [
-    { id: 'trough-stone', label: '青石槽体', defaultColor: '#4f5b66' },
-    { id: 'trough-water', label: '槽中蓄水', defaultColor: '#80deea' }
+    { id: 'trough-stone', label: '青石槽体', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'trough-water', label: '槽中蓄水', defaultColor: LANDSCAPE_COLORS.water }
   ],
   build(registry, item, node, size) {
     const wallThick = size.width * 0.08;
@@ -215,9 +250,9 @@ export const landscapeScreenWall = {
   name: '照壁',
   defaultSize: { width: 84, depth: 16, height: 64 },
   components: [
-    { id: 'wall-base', label: '须弥座底座', defaultColor: '#37474f' },
-    { id: 'wall-body', label: '砖雕壁身', defaultColor: '#90a4ae' },
-    { id: 'wall-roof', label: '灰瓦屋檐', defaultColor: '#263238' }
+    { id: 'wall-base', label: '须弥座底座', defaultColor: LANDSCAPE_COLORS.deepStone },
+    { id: 'wall-body', label: '砖雕壁身', defaultColor: '#d7d0c0' },
+    { id: 'wall-roof', label: '灰瓦屋檐', defaultColor: '#747a77' }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.16;
@@ -242,8 +277,8 @@ export const landscapeTaishanStone = {
   name: '石敢当',
   defaultSize: { width: 18, depth: 12, height: 32 },
   components: [
-    { id: 'tablet-base', label: '粗凿石座', defaultColor: '#78909c' },
-    { id: 'tablet-body', label: '石敢当碑身', defaultColor: '#455a64' }
+    { id: 'tablet-base', label: '粗凿石座', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'tablet-body', label: '石敢当碑身', defaultColor: LANDSCAPE_COLORS.deepStone }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.15;
@@ -264,8 +299,8 @@ export const landscapeCascadingTerrace = {
   name: '跌水石台',
   defaultSize: { width: 52, depth: 52, height: 36 },
   components: [
-    { id: 'stone-levels', label: '叠水石台', defaultColor: '#607d8b' },
-    { id: 'water-curtain', label: '溢流跌水', defaultColor: '#b2ebf2' }
+    { id: 'stone-levels', label: '叠水石台', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'water-curtain', label: '溢流跌水', defaultColor: LANDSCAPE_COLORS.paleWater }
   ],
   build(registry, item, node, size) {
     const h1 = size.height * 0.35;
@@ -297,9 +332,9 @@ export const landscapeShishiOdoshi = {
   name: '鹿打',
   defaultSize: { width: 24, depth: 24, height: 28 },
   components: [
-    { id: 'stone-basin', label: '手工石钵', defaultColor: '#78909c' },
-    { id: 'basin-water', label: '钵中清泉', defaultColor: '#00e5ff' },
-    { id: 'bamboo-pipes', label: '流水竹架', defaultColor: '#81c784' }
+    { id: 'stone-basin', label: '手工石钵', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'basin-water', label: '钵中清泉', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'bamboo-pipes', label: '流水竹架', defaultColor: '#9bae72' }
   ],
   build(registry, item, node, size) {
     const basinH = size.height * 0.36;
@@ -307,7 +342,7 @@ export const landscapeShishiOdoshi = {
 
     // 底板
     cylinderComponent(registry, item, landscapeShishiOdoshi, 'stone-basin', {
-      diameterTop: size.width - 0.03, diameterBottom: size.width - 0.03, height: baseBottomH, tessellation: 16
+      diameterTop: size.width - 0.03, diameterBottom: size.width - 0.03, height: baseBottomH, tessellation: 10
     }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
 
     // 8段环状拼成凹槽池壁
@@ -350,9 +385,9 @@ export const landscapeGlassWaterfall = {
   name: '玻璃水幕',
   defaultSize: { width: 56, depth: 18, height: 72 },
   components: [
-    { id: 'waterfall-base', label: '不锈钢水槽', defaultColor: '#37474f' },
-    { id: 'waterfall-glass', label: '幕墙玻璃', defaultColor: '#e0f7fa' },
-    { id: 'waterfall-frame', label: '边框框架', defaultColor: '#455a64' }
+    { id: 'waterfall-base', label: '不锈钢水槽', defaultColor: LANDSCAPE_COLORS.deepStone },
+    { id: 'waterfall-glass', label: '幕墙玻璃', defaultColor: LANDSCAPE_COLORS.paleWater },
+    { id: 'waterfall-frame', label: '边框框架', defaultColor: '#79817e' }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.15;
@@ -384,8 +419,8 @@ export const landscapeStreamRockery = {
   name: '溪流假山',
   defaultSize: { width: 84, depth: 36, height: 18 },
   components: [
-    { id: 'stream-water', label: '潺潺小溪', defaultColor: '#00b0ff' },
-    { id: 'stream-pebbles', label: '护岸卵石', defaultColor: '#90a4ae' }
+    { id: 'stream-water', label: '潺潺小溪', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'stream-pebbles', label: '护岸卵石', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
   build(registry, item, node, size) {
     if (item.waterEnabled !== false) {
@@ -409,9 +444,11 @@ export const landscapeStreamRockery = {
 
     stoneCoords.forEach((coord, i) => {
       const stoneD = size.width * 0.12 + Math.sin(i) * 0.03;
-      sphereComponent(registry, item, landscapeStreamRockery, 'stream-pebbles', {
-        diameter: stoneD, segments: 6
-      }, { position: { x: coord.x, y: size.height * 0.15, z: coord.z } }, { parent: node });
+      lowPolyBoulder(registry, item, landscapeStreamRockery, 'stream-pebbles', {
+        diameter: stoneD, x: coord.x, y: size.height * 0.13, z: coord.z,
+        scaleX: 1.15, scaleY: 0.6 + (i % 3) * 0.08, scaleZ: 0.82,
+        rotationY: i * 0.52
+      }, node);
     });
   }
 };
@@ -422,9 +459,9 @@ export const landscapeLotusPond = {
   name: '荷花池',
   defaultSize: { width: 64, depth: 48, height: 16 },
   components: [
-    { id: 'lotus-water', label: '池塘碧水与围壁', defaultColor: '#00838f' },
-    { id: 'lotus-leaf', label: '翠绿荷叶', defaultColor: '#2e7d32' },
-    { id: 'lotus-flower', label: '出水芙蓉', defaultColor: '#f48fb1' }
+    { id: 'lotus-water', label: '池塘碧水与围壁', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'lotus-leaf', label: '翠绿荷叶', defaultColor: LANDSCAPE_COLORS.sage },
+    { id: 'lotus-flower', label: '出水芙蓉', defaultColor: LANDSCAPE_COLORS.blush }
   ],
   build(registry, item, node, size) {
     const wallT = 0.04;
@@ -487,7 +524,7 @@ export const landscapeSteppingStones = {
   name: '汀步路',
   defaultSize: { width: 72, depth: 24, height: 4 },
   components: [
-    { id: 'stepping-stone', label: '青石汀步', defaultColor: '#546e7a' }
+    { id: 'stepping-stone', label: '青石汀步', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
   build(registry, item, node, size) {
     const steps = [
@@ -498,10 +535,18 @@ export const landscapeSteppingStones = {
       { x: size.width * 0.36, z: -size.depth * 0.12, w: size.width * 0.18, d: size.depth * 0.6 }
     ];
 
-    steps.forEach((st) => {
-      boxComponent(registry, item, landscapeSteppingStones, 'stepping-stone', {
-        width: st.w, height: size.height, depth: st.d
-      }, { position: { x: st.x, y: size.height / 2, z: st.z } }, { parent: node });
+    steps.forEach((st, index) => {
+      lowPolyBoulder(registry, item, landscapeSteppingStones, 'stepping-stone', {
+        diameter: st.w,
+        x: st.x,
+        y: size.height * 0.45,
+        z: st.z,
+        scaleX: 1.08,
+        scaleY: Math.max(0.18, size.height / st.w),
+        scaleZ: st.d / st.w,
+        rotationY: index % 2 === 0 ? 0.18 : -0.22,
+        segments: 6
+      }, node);
     });
   }
 };
@@ -511,8 +556,8 @@ export const landscapeMistGenerator = {
   name: '雾森器',
   defaultSize: { width: 28, depth: 28, height: 32 },
   components: [
-    { id: 'mist-base', label: '金属雾化器', defaultColor: '#37474f' },
-    { id: 'mist-fog', label: '飘逸雾霭', defaultColor: '#ffffff' }
+    { id: 'mist-base', label: '金属雾化器', defaultColor: '#858d89' },
+    { id: 'mist-fog', label: '飘逸雾霭', defaultColor: '#f2f0e9' }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.35;
@@ -536,34 +581,38 @@ export const landscapeRockeryCave = {
   name: '溶洞拱门',
   defaultSize: { width: 72, depth: 36, height: 60 },
   components: [
-    { id: 'cave-rocks', label: '堆叠溶岩石', defaultColor: '#455a64' }
+    { id: 'cave-rocks', label: '堆叠溶岩石', defaultColor: LANDSCAPE_COLORS.deepStone }
   ],
   build(registry, item, node, size) {
     const postW = size.width * 0.28;
     const postH = size.height * 0.72;
-    boxComponent(registry, item, landscapeRockeryCave, 'cave-rocks', {
-      width: postW, height: postH, depth: size.depth
-    }, { position: { x: -size.width / 2 + postW / 2, y: postH / 2, z: 0 } }, { parent: node });
-
-    boxComponent(registry, item, landscapeRockeryCave, 'cave-rocks', {
-      width: postW, height: postH, depth: size.depth
-    }, { position: { x: size.width / 2 - postW / 2, y: postH / 2, z: 0 } }, { parent: node });
-
-    const archW = size.width - postW * 2 + 0.08;
-    const archH = size.height - postH;
-    boxComponent(registry, item, landscapeRockeryCave, 'cave-rocks', {
-      width: archW, height: archH, depth: size.depth
-    }, { position: { x: 0, y: postH + archH / 2, z: 0 } }, { parent: node });
-
-    const details = [
-      { x: -size.width * 0.25, y: postH * 0.8, d: size.width * 0.25 },
-      { x: size.width * 0.25, y: postH * 0.8, d: size.width * 0.25 },
-      { x: 0, y: size.height, d: size.width * 0.3 }
-    ];
-    details.forEach((det) => {
-      sphereComponent(registry, item, landscapeRockeryCave, 'cave-rocks', {
-        diameter: det.d, segments: 6
-      }, { position: { x: det.x, y: det.y, z: 0 } }, { parent: node });
+    [-1, 1].forEach((side) => {
+      for (let level = 0; level < 3; level++) {
+        lowPolyBoulder(registry, item, landscapeRockeryCave, 'cave-rocks', {
+          diameter: postW * (1.15 - level * 0.08),
+          x: side * (size.width / 2 - postW * (0.5 + level * 0.04)),
+          y: postH * (0.17 + level * 0.31),
+          z: (level % 2 === 0 ? -1 : 1) * size.depth * 0.04,
+          scaleX: 1.05,
+          scaleY: 1.22,
+          scaleZ: size.depth / postW,
+          rotationY: side * (0.18 + level * 0.12),
+          segments: 5
+        }, node);
+      }
+    });
+    [-1, 0, 1].forEach((offset, index) => {
+      lowPolyBoulder(registry, item, landscapeRockeryCave, 'cave-rocks', {
+        diameter: size.width * 0.3,
+        x: offset * size.width * 0.22,
+        y: postH + size.height * (index === 1 ? 0.22 : 0.14),
+        z: (index - 1) * size.depth * 0.03,
+        scaleX: 1.12,
+        scaleY: 0.72,
+        scaleZ: size.depth / (size.width * 0.3),
+        rotationY: offset * 0.3,
+        segments: 5
+      }, node);
     });
   }
 };
@@ -573,7 +622,7 @@ export const landscapeSlatePath = {
   name: '青石板路',
   defaultSize: { width: 80, depth: 32, height: 2 },
   components: [
-    { id: 'slate-body', label: '青石板面', defaultColor: '#4f5d65' }
+    { id: 'slate-body', label: '青石板面', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
   build(registry, item, node, size) {
     const slates = [
@@ -597,9 +646,9 @@ export const landscapeModernWaterWall = {
   name: '金属水幕',
   defaultSize: { width: 48, depth: 16, height: 72 },
   components: [
-    { id: 'metal-body', label: '拉丝不锈钢底座与框', defaultColor: '#b0bec5' },
-    { id: 'metal-sheet', label: '不锈钢出水壁板', defaultColor: '#90a4ae' },
-    { id: 'water-curtain', label: '溢流波纹', defaultColor: '#e0f7fa' }
+    { id: 'metal-body', label: '拉丝不锈钢底座与框', defaultColor: '#aaaead' },
+    { id: 'metal-sheet', label: '不锈钢出水壁板', defaultColor: '#c1c3bd' },
+    { id: 'water-curtain', label: '溢流波纹', defaultColor: LANDSCAPE_COLORS.paleWater }
   ],
   build(registry, item, node, size) {
     const baseH = size.height * 0.15;
@@ -626,17 +675,17 @@ export const landscapeWaterLilyPond = {
   name: '睡莲池',
   defaultSize: { width: 56, depth: 56, height: 16 },
   components: [
-    { id: 'pond-basin', label: '水池石围', defaultColor: '#78909c' },
-    { id: 'pond-water', label: '池中净水', defaultColor: '#00acc1' },
-    { id: 'lily-pad', label: '浮水睡莲叶', defaultColor: '#33691e' },
-    { id: 'lily-flower', label: '含苞睡莲花', defaultColor: '#e040fb' }
+    { id: 'pond-basin', label: '水池石围', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'pond-water', label: '池中净水', defaultColor: LANDSCAPE_COLORS.water },
+    { id: 'lily-pad', label: '浮水睡莲叶', defaultColor: LANDSCAPE_COLORS.sage },
+    { id: 'lily-flower', label: '含苞睡莲花', defaultColor: LANDSCAPE_COLORS.blush }
   ],
   build(registry, item, node, size) {
     const baseBottomH = 0.02;
 
     // 底板
     cylinderComponent(registry, item, landscapeWaterLilyPond, 'pond-basin', {
-      diameterTop: size.width - 0.04, diameterBottom: size.width - 0.04, height: baseBottomH, tessellation: 16
+      diameterTop: size.width - 0.04, diameterBottom: size.width - 0.04, height: baseBottomH, tessellation: 10
     }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
 
     // 8段环状拼接成凹槽圆池壁
@@ -657,7 +706,7 @@ export const landscapeWaterLilyPond = {
     // 水面
     if (item.waterEnabled !== false) {
       cylinderComponent(registry, item, landscapeWaterLilyPond, 'pond-water', {
-        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 10
       }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
     }
 
@@ -684,13 +733,13 @@ export const landscapeTaijiPond = {
   name: '风水池',
   defaultSize: { width: 60, depth: 60, height: 12 },
   components: [
-    { id: 'taiji-base', label: '黑白理石围合', defaultColor: '#e0e0e0' },
-    { id: 'taiji-black', label: '阴仪玄水', defaultColor: '#212121' },
-    { id: 'taiji-white', label: '阳仪碧波', defaultColor: '#e0f7fa' }
+    { id: 'taiji-base', label: '黑白理石围合', defaultColor: LANDSCAPE_COLORS.paleStone },
+    { id: 'taiji-black', label: '阴仪玄水', defaultColor: '#687472' },
+    { id: 'taiji-white', label: '阳仪碧波', defaultColor: LANDSCAPE_COLORS.paleWater }
   ],
   build(registry, item, node, size) {
     cylinderComponent(registry, item, landscapeTaijiPond, 'taiji-base', {
-      diameterTop: size.width, diameterBottom: size.width, height: size.height, tessellation: 24
+      diameterTop: size.width, diameterBottom: size.width, height: size.height, tessellation: 12
     }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
 
     const innerRadius = size.width * 0.92;
@@ -708,21 +757,29 @@ export const landscapeTaijiPond = {
 
 export const landscapeWindingStream = {
   type: 'landscape_winding_stream',
-  waterControllable: true,
   name: '溪流',
   defaultSize: { width: 90, depth: 36, height: 1.8 },
   components: [
-    { id: 'stream-water', label: '溪水镜面', defaultColor: '#29b6f6' }
+    { id: 'stream-water', label: '溪水镜面', defaultColor: LANDSCAPE_COLORS.water }
   ],
   build(registry, item, node, size) {
     if (item.waterEnabled === false) return;
-    const segments = 3;
+    const segments = 5;
     const segW = size.width / segments;
     for (let idx = 0; idx < segments; idx++) {
-      const zOffset = idx % 2 === 0 ? size.depth * 0.12 : -size.depth * 0.12;
-      boxComponent(registry, item, landscapeWindingStream, 'stream-water', {
-        width: segW * 1.05, height: size.height, depth: size.depth * 0.6
-      }, { position: { x: -size.width / 2 + segW * 0.5 + idx * segW, y: size.height / 2, z: zOffset } }, { parent: node });
+      const progress = idx / (segments - 1);
+      const zOffset = Math.sin(progress * Math.PI * 2) * size.depth * 0.17;
+      const water = cylinderComponent(registry, item, landscapeWindingStream, 'stream-water', {
+        diameterTop: segW * 1.35,
+        diameterBottom: segW * 1.35,
+        height: size.height,
+        tessellation: 10
+      }, { position: {
+        x: -size.width / 2 + segW * 0.5 + idx * segW,
+        y: size.height / 2,
+        z: zOffset
+      } }, { parent: node });
+      water.scaling.z = size.depth * 0.62 / (segW * 1.35);
     }
   }
 };
@@ -733,13 +790,13 @@ export const landscapeNaturalSpring = {
   name: '泉眼',
   defaultSize: { width: 44, depth: 44, height: 18 },
   components: [
-    { id: 'spring-water', label: '涌泉清水', defaultColor: '#e0f7fa' },
-    { id: 'spring-rocks', label: '护泉驳石', defaultColor: '#78909c' }
+    { id: 'spring-water', label: '涌泉清水', defaultColor: LANDSCAPE_COLORS.paleWater },
+    { id: 'spring-rocks', label: '护泉驳石', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
   build(registry, item, node, size) {
     if (item.waterEnabled !== false) {
       cylinderComponent(registry, item, landscapeNaturalSpring, 'spring-water', {
-        diameterTop: size.width * 0.72, diameterBottom: size.width * 0.72, height: size.height * 0.75, tessellation: 16
+        diameterTop: size.width * 0.72, diameterBottom: size.width * 0.72, height: size.height * 0.3, tessellation: 10
       }, { position: { x: 0, y: size.height * 0.375, z: 0 } }, { parent: node });
     }
 
@@ -755,9 +812,11 @@ export const landscapeNaturalSpring = {
 
     pebbleCoords.forEach((coord, i) => {
       const rockD = size.width * 0.2 + Math.cos(i) * 0.05;
-      sphereComponent(registry, item, landscapeNaturalSpring, 'spring-rocks', {
-        diameter: rockD, segments: 6
-      }, { position: { x: coord.x, y: size.height * 0.45, z: coord.z } }, { parent: node });
+      lowPolyBoulder(registry, item, landscapeNaturalSpring, 'spring-rocks', {
+        diameter: rockD, x: coord.x, y: size.height * 0.28, z: coord.z,
+        scaleX: 1.05, scaleY: 0.58 + (i % 2) * 0.1, scaleZ: 0.85,
+        rotationY: i * 0.47
+      }, node);
     });
   }
 };
@@ -768,10 +827,10 @@ export const landscapeOldWell = {
   name: '古井',
   defaultSize: { width: 28, depth: 28, height: 42 },
   components: [
-    { id: 'well-stone', label: '青砖井台', defaultColor: '#90a4ae' },
-    { id: 'well-water', label: '深井水影', defaultColor: '#006064' },
-    { id: 'well-wood', label: '辘轳与支架', defaultColor: '#5d4037' },
-    { id: 'well-roof', label: '覆瓦井顶', defaultColor: '#37474f' }
+    { id: 'well-stone', label: '青砖井台', defaultColor: LANDSCAPE_COLORS.warmStone },
+    { id: 'well-water', label: '深井水影', defaultColor: '#789b9c' },
+    { id: 'well-wood', label: '辘轳与支架', defaultColor: LANDSCAPE_COLORS.wood },
+    { id: 'well-roof', label: '覆瓦井顶', defaultColor: '#767b75' }
   ],
   build(registry, item, node, size) {
     const wellH = size.height * 0.35;
@@ -779,7 +838,7 @@ export const landscapeOldWell = {
 
     // 底板
     cylinderComponent(registry, item, landscapeOldWell, 'well-stone', {
-      diameterTop: size.width - 0.03, diameterBottom: size.width - 0.03, height: baseBottomH, tessellation: 16
+      diameterTop: size.width - 0.03, diameterBottom: size.width - 0.03, height: baseBottomH, tessellation: 10
     }, { position: { x: 0, y: baseBottomH / 2, z: 0 } }, { parent: node });
 
     // 8段拼接成圆型中空井圈
@@ -800,7 +859,7 @@ export const landscapeOldWell = {
     // 内嵌井水面
     if (item.waterEnabled !== false) {
       cylinderComponent(registry, item, landscapeOldWell, 'well-water', {
-        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 10
       }, { position: { x: 0, y: wellH - 0.04, z: 0 } }, { parent: node });
     }
 
@@ -809,22 +868,26 @@ export const landscapeOldWell = {
     const postD = size.width * 0.06;
     [-1, 1].forEach((side) => {
       cylinderComponent(registry, item, landscapeOldWell, 'well-wood', {
-        diameterTop: postD, diameterBottom: postD, height: postH, tessellation: 8
+        diameterTop: postD, diameterBottom: postD, height: postH, tessellation: 6
       }, { position: { x: side * (size.width / 2 - 0.04), y: postH / 2, z: 0 } }, { parent: node });
     });
 
     // 辘轳轴
     const axisW = size.width * 0.8;
     const axis = cylinderComponent(registry, item, landscapeOldWell, 'well-wood', {
-      diameterTop: 0.02, diameterBottom: 0.03, height: axisW, tessellation: 8
+      diameterTop: 0.02, diameterBottom: 0.03, height: axisW, tessellation: 6
     }, { position: { x: 0, y: size.height * 0.62, z: 0 } }, { parent: node });
     axis.rotation.z = Math.PI / 2;
 
     // 井顶盖
     const roofY = size.height * 0.9;
     const roofH = size.height * 0.12;
-    boxComponent(registry, item, landscapeOldWell, 'well-roof', {
-      width: size.width * 1.1, height: roofH, depth: size.depth * 1.1
+    const roof = cylinderComponent(registry, item, landscapeOldWell, 'well-roof', {
+      diameterTop: roofH * 0.25,
+      diameterBottom: size.depth * 1.1,
+      height: size.width * 1.1,
+      tessellation: 4
     }, { position: { x: 0, y: roofY, z: 0 } }, { parent: node });
+    roof.rotation.z = Math.PI / 2;
   }
 };

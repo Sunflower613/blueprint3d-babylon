@@ -41,6 +41,12 @@ const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg
 const fabricKnitChevronCreamUrl = new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href;
 const fabricWeaveDarkUrl = new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href;
 const fabricOrganzaWhiteUrl = new URL('../textures/fabric_organza_white.jpg', import.meta.url).href;
+const fabricRugGeometricUrl = new URL('../textures/fabric_rug_geometric.jpg', import.meta.url).href;
+const fabricFoamPanelUrl = new URL('../textures/fabric_foam_panel.jpg', import.meta.url).href;
+const fabricLongPileUrl = new URL('../textures/fabric_long_pile.jpg', import.meta.url).href;
+const fabricFlowerUrl = new URL('../textures/fabric_flower.jpg', import.meta.url).href;
+const fabricSquareUrl = new URL('../textures/fabric_square.jpg', import.meta.url).href;
+const fabricTriangleUrl = new URL('../textures/fabric_triangle.jpg', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
 const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
@@ -94,7 +100,13 @@ const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-knit-cable-white', name: '白麻花', src: fabricKnitCableWhiteUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-knit-chevron-cream', name: '人字针织', src: fabricKnitChevronCreamUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-weave-dark', name: '编织面料', src: fabricWeaveDarkUrl, scale: 2.4, color: '#ffffff' },
-  { id: 'fabric-organza-white', name: '欧根纱', src: fabricOrganzaWhiteUrl, scale: 2.2, color: '#fffdf8', alpha: 0.48 }
+  { id: 'fabric-organza-white', name: '欧根纱', src: fabricOrganzaWhiteUrl, scale: 2.2, color: '#fffdf8', alpha: 0.48 },
+  { id: 'fabric-rug-geometric', name: '几何毯', src: fabricRugGeometricUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-foam-panel', name: '泡沫板', src: fabricFoamPanelUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-long-pile', name: '长毛绒', src: fabricLongPileUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-flower', name: '花卉毯', src: fabricFlowerUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-square', name: '边框毯', src: fabricSquareUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-triangle', name: '三角毯', src: fabricTriangleUrl, scale: 2, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'fabric',

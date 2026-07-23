@@ -53,7 +53,7 @@ function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls 
 }
 
 test('0722：地毯不会吸附到桌面，靠枕仍可放在桌面', () => {
-  for (const type of ['rug', 'oval_rug', 'rounded_rug']) {
+  for (const type of ['rug', 'oval_rug', 'rounded_rug', 'irregular_rug', 'biscuit_rug']) {
     assert.equal(Topology.canPlaceOnTable({}, FURNITURE_DEFINITIONS[type]), false, `${type} 不应上桌`);
   }
   assert.equal(Topology.canPlaceOnTable({}, FURNITURE_DEFINITIONS.cushion), true);

@@ -976,3 +976,6 @@ function getSnapSize() {
 function setSnapSize(val) {
   snapSize = val;
 }
+
+// 家具缩略图捕获脚本需要复用编辑器已经初始化好的运行时，避免再创建第二套场景。
+export { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, entityManager, BABYLON };

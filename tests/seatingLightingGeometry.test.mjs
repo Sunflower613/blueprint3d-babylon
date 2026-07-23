@@ -22,12 +22,14 @@ function build(type) {
   return { definition, engine, scene, node, meshes: node.getChildMeshes() };
 }
 
-test('rounded sofa definitions preserve component IDs and use cloud-like cushions', () => {
+test('sofa definitions preserve component IDs and use continuous upholstered bodies', () => {
   for (const type of ['sofa', 'armchair']) {
     const built = build(type);
     const ids = new Set(built.meshes.map((mesh) => mesh.metadata?.blueprintFurnitureComponentId));
     assert.deepEqual(ids, new Set(['seat', 'back', 'arms', 'legs']));
-    assert.ok(built.meshes.filter((mesh) => !mesh.metadata?.isCylinder).every((mesh) => mesh.getTotalVertices() > 100));
+    assert.equal(built.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'seat').length, 1);
+    assert.equal(built.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'back').length, 1);
+    assert.equal(built.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'arms').length, 2);
     built.scene.dispose();
     built.engine.dispose();
   }

@@ -371,14 +371,16 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
 
     const texture = baseTexture.clone();
     const textureScale = resolvePatternTextureScale(normalized, options, normalized.scale || 1);
+    const physicalSurfaceHeight = Number(options.surfaceHeight) > 0
+      ? Number(options.surfaceHeight)
+      : Number(options.surfaceDepth);
     if (
-      options.isFloor &&
       normalized.physicalTileSize > 0 &&
       Number(options.surfaceWidth) > 0 &&
-      Number(options.surfaceDepth) > 0
+      physicalSurfaceHeight > 0
     ) {
       textureScale.uScale = Number(options.surfaceWidth) / normalized.physicalTileSize;
-      textureScale.vScale = Number(options.surfaceDepth) / normalized.physicalTileSize;
+      textureScale.vScale = physicalSurfaceHeight / normalized.physicalTileSize;
     }
     texture.uScale = textureScale.uScale;
     texture.vScale = textureScale.vScale;

@@ -1,4 +1,228 @@
-import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js';
+import { Mesh, VertexData } from '../core/babylon.js';
+import {
+  boxComponent,
+  cylinderComponent,
+  getComponentMaterial,
+  markComponent
+} from './_helpers.js';
+
+function createIrregularRugMesh(registry, item, definition, node, size, height) {
+  const segmentCount = 32;
+  const rawOutline = [];
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const angle = (index / segmentCount) * Math.PI * 2;
+    const radialVariation = 1
+      + 0.105 * Math.sin(angle * 3 + 0.45)
+      + 0.055 * Math.cos(angle * 5 - 0.7);
+    rawOutline.push({
+      x: Math.cos(angle) * radialVariation,
+      z: Math.sin(angle) * radialVariation
+    });
+  }
+
+  const minX = Math.min(...rawOutline.map((point) => point.x));
+  const maxX = Math.max(...rawOutline.map((point) => point.x));
+  const minZ = Math.min(...rawOutline.map((point) => point.z));
+  const maxZ = Math.max(...rawOutline.map((point) => point.z));
+  const outline = rawOutline.map((point) => ({
+    x: ((point.x - minX) / (maxX - minX) - 0.5) * size.width,
+    z: ((point.z - minZ) / (maxZ - minZ) - 0.5) * size.depth
+  }));
+
+  const positions = [];
+  const indices = [];
+  const uvs = [];
+  const topY = height + 0.002;
+  const bottomY = 0.002;
+
+  const pushVertex = (x, y, z, u, v) => {
+    positions.push(x, y, z);
+    uvs.push(u, v);
+    return positions.length / 3 - 1;
+  };
+
+  const topCenter = pushVertex(0, topY, 0, 0.5, 0.5);
+  const topRing = outline.map((point) => pushVertex(
+    point.x,
+    topY,
+    point.z,
+    point.x / size.width + 0.5,
+    point.z / size.depth + 0.5
+  ));
+  const bottomCenter = pushVertex(0, bottomY, 0, 0.5, 0.5);
+  const bottomRing = outline.map((point) => pushVertex(
+    point.x,
+    bottomY,
+    point.z,
+    point.x / size.width + 0.5,
+    point.z / size.depth + 0.5
+  ));
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const next = (index + 1) % segmentCount;
+    indices.push(topCenter, topRing[next], topRing[index]);
+    indices.push(bottomCenter, bottomRing[index], bottomRing[next]);
+  }
+
+  const edgeLengths = outline.map((point, index) => {
+    const next = outline[(index + 1) % segmentCount];
+    return Math.hypot(next.x - point.x, next.z - point.z);
+  });
+  const perimeter = edgeLengths.reduce((total, length) => total + length, 0);
+  const sideBottom = [];
+  const sideTop = [];
+  let traversed = 0;
+
+  for (let index = 0; index <= segmentCount; index += 1) {
+    const point = outline[index % segmentCount];
+    const u = traversed / perimeter;
+    sideBottom.push(pushVertex(point.x, bottomY, point.z, u, 0));
+    sideTop.push(pushVertex(point.x, topY, point.z, u, 1));
+    if (index < segmentCount) traversed += edgeLengths[index];
+  }
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    indices.push(sideBottom[index], sideTop[index], sideBottom[index + 1]);
+    indices.push(sideTop[index], sideTop[index + 1], sideBottom[index + 1]);
+  }
+
+  const normals = [];
+  VertexData.ComputeNormals(positions, indices, normals);
+  const mesh = new Mesh(`${item.id}_fabric`, registry.scene);
+  const vertexData = new VertexData();
+  vertexData.positions = positions;
+  vertexData.indices = indices;
+  vertexData.normals = normals;
+  vertexData.uvs = uvs;
+  vertexData.applyToMesh(mesh);
+
+  registry.add(mesh, {
+    parent: node,
+    material: getComponentMaterial(registry, item, definition, 'fabric')
+  });
+  return markComponent(mesh, item, 'fabric');
+}
+
+function createPuzzleRugOutline(size) {
+  // One EVA floor tile. Broad dovetail tabs alternate with matching recesses;
+  // the base inset leaves room for the tabs inside the requested footprint.
+  const profile = [
+    [-0.44, 0.44],
+    [-0.39, 0.44],
+    [-0.36, 0.50],
+    [-0.28, 0.50],
+    [-0.25, 0.44],
+    [-0.17, 0.44],
+    [-0.14, 0.38],
+    [-0.06, 0.38],
+    [-0.03, 0.44],
+    [0.04, 0.44],
+    [0.07, 0.50],
+    [0.15, 0.50],
+    [0.18, 0.44],
+    [0.26, 0.44],
+    [0.29, 0.38],
+    [0.37, 0.38],
+    [0.40, 0.44],
+    [0.44, 0.44]
+  ];
+  const outline = [];
+  const appendEdge = (transform) => {
+    for (let index = 0; index < profile.length - 1; index += 1) {
+      const [tangent, outward] = profile[index];
+      const point = transform(tangent, outward);
+      outline.push({
+        x: point.x * size.width,
+        z: point.z * size.depth
+      });
+    }
+  };
+
+  // Counter-clockwise in the x/z plane: bottom, right, top, left.
+  appendEdge((tangent, outward) => ({ x: tangent, z: -outward }));
+  appendEdge((tangent, outward) => ({ x: outward, z: tangent }));
+  appendEdge((tangent, outward) => ({ x: -tangent, z: outward }));
+  appendEdge((tangent, outward) => ({ x: -outward, z: -tangent }));
+  return outline;
+}
+
+function createPuzzleRugMesh(registry, item, definition, node, size, height) {
+  const outline = createPuzzleRugOutline(size);
+  const segmentCount = outline.length;
+  const positions = [];
+  const indices = [];
+  const uvs = [];
+  const topY = height + 0.002;
+  const bottomY = 0.002;
+
+  const pushVertex = (x, y, z, u, v) => {
+    positions.push(x, y, z);
+    uvs.push(u, v);
+    return positions.length / 3 - 1;
+  };
+
+  const topCenter = pushVertex(0, topY, 0, 0.5, 0.5);
+  const topRing = outline.map((point) => pushVertex(
+    point.x,
+    topY,
+    point.z,
+    point.x / size.width + 0.5,
+    point.z / size.depth + 0.5
+  ));
+  const bottomCenter = pushVertex(0, bottomY, 0, 0.5, 0.5);
+  const bottomRing = outline.map((point) => pushVertex(
+    point.x,
+    bottomY,
+    point.z,
+    point.x / size.width + 0.5,
+    point.z / size.depth + 0.5
+  ));
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const next = (index + 1) % segmentCount;
+    indices.push(topCenter, topRing[next], topRing[index]);
+    indices.push(bottomCenter, bottomRing[index], bottomRing[next]);
+  }
+
+  const edgeLengths = outline.map((point, index) => {
+    const next = outline[(index + 1) % segmentCount];
+    return Math.hypot(next.x - point.x, next.z - point.z);
+  });
+  const perimeter = edgeLengths.reduce((total, length) => total + length, 0);
+  const sideBottom = [];
+  const sideTop = [];
+  let traversed = 0;
+
+  for (let index = 0; index <= segmentCount; index += 1) {
+    const point = outline[index % segmentCount];
+    const u = traversed / perimeter;
+    sideBottom.push(pushVertex(point.x, bottomY, point.z, u, 0));
+    sideTop.push(pushVertex(point.x, topY, point.z, u, 1));
+    if (index < segmentCount) traversed += edgeLengths[index];
+  }
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    indices.push(sideBottom[index], sideTop[index], sideBottom[index + 1]);
+    indices.push(sideTop[index], sideTop[index + 1], sideBottom[index + 1]);
+  }
+
+  const normals = [];
+  VertexData.ComputeNormals(positions, indices, normals);
+  const mesh = new Mesh(`${item.id}_fabric`, registry.scene);
+  const vertexData = new VertexData();
+  vertexData.positions = positions;
+  vertexData.indices = indices;
+  vertexData.normals = normals;
+  vertexData.uvs = uvs;
+  vertexData.applyToMesh(mesh);
+
+  registry.add(mesh, {
+    parent: node,
+    material: getComponentMaterial(registry, item, definition, 'fabric')
+  });
+  return markComponent(mesh, item, 'fabric');
+}
 
 export const rugFurniture = {
   type: 'rug',
@@ -68,6 +292,46 @@ export const roundedRugFurniture = {
         diameterTop: 2 * r, diameterBottom: 2 * r, height: h, tessellation: 16
       }, { position: { x: pos.x, y: h / 2 + 0.002, z: pos.z } }, { parent: node });
     });
+  }
+};
+
+export const irregularRugFurniture = {
+  type: 'irregular_rug',
+  name: '异形地毯',
+  unit: 'm',
+  defaultSize: { width: 1.6, depth: 1.2, height: 0.01 },
+  components: [
+    { id: 'fabric', label: '地毯织面', defaultColor: '#cbbd9e' }
+  ],
+  build(registry, item, node, size) {
+    const h = Math.min(0.012, Math.max(0.006, size.height));
+    createIrregularRugMesh(registry, item, irregularRugFurniture, node, size, h);
+  }
+};
+
+export const biscuitRugFurniture = {
+  type: 'biscuit_rug',
+  name: '饼干地毯',
+  unit: 'm',
+  defaultSize: { width: 1, depth: 1, height: 0.01 },
+  components: [
+    {
+      id: 'fabric',
+      label: '地垫表面',
+      defaultColor: '#fffaf0',
+      defaultMaterial: {
+        id: 'fabric-foam-panel',
+        name: '泡沫板',
+        category: 'fabric',
+        kind: 'texture',
+        scale: 2,
+        color: '#ffffff'
+      }
+    }
+  ],
+  build(registry, item, node, size) {
+    const h = Math.min(0.012, Math.max(0.006, size.height));
+    createPuzzleRugMesh(registry, item, biscuitRugFurniture, node, size, h);
   }
 };
 

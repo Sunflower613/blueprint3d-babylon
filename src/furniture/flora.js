@@ -2,115 +2,122 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 import { Vector3, TransformNode } from '../core/babylon.js';
 
 const BABYLON = { Vector3, TransformNode };
+
+// Stable pseudo-random variation keeps authored landscape layouts reproducible
+// across rebuilds while retaining the small irregularities of real planting.
+function seededUnit(index, salt = 0) {
+  const value = Math.sin((index + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
 const APPLE_TREE_SEASONS = Object.freeze({
   spring: { label: '春', foliage: '#b2e08c', blossom: '#ffe5ee', fruit: '#b2e08c', trunk: '#6d4c41' },
-  summer: { label: '夏', foliage: '#2b7a3e', blossom: '#2b7a3e', fruit: '#a2db58', trunk: '#6d4c41' },
-  autumn: { label: '秋', foliage: '#fabc2a', blossom: '#fabc2a', fruit: '#e53935', trunk: '#6d4c41' },
+  summer: { label: '夏', foliage: '#668d69', blossom: '#668d69', fruit: '#a7bc74', trunk: '#806957' },
+  autumn: { label: '秋', foliage: '#c8a768', blossom: '#c8a768', fruit: '#b96d5f', trunk: '#806957' },
   winter: { label: '冬', foliage: '#ffffff', blossom: '#ffffff', fruit: '#ffffff', trunk: '#7d756e' }
 });
 
 const BAMBOO_GROVE_SEASONS = Object.freeze({
-  spring: { culm: '#2e7d32', foliage: '#4caf50' },
-  summer: { culm: '#1b5e20', foliage: '#2e7d32' },
-  autumn: { culm: '#8d6e63', foliage: '#b5b35c' },
+  spring: { culm: '#78966f', foliage: '#91ad86' },
+  summer: { culm: '#5d7f64', foliage: '#6f906f' },
+  autumn: { culm: '#917765', foliage: '#aaa374' },
   winter: { culm: '#7d756e', foliage: '#ffffff' }
 });
 
 const BANANA_TREE_SEASONS = Object.freeze({
-  spring: { stem: '#8bc34a', leaves: '#9ccc65' },
-  summer: { stem: '#689f38', leaves: '#4caf50' },
-  autumn: { stem: '#8d6e63', leaves: '#d4c26a' },
+  spring: { stem: '#91a979', leaves: '#9eb48b' },
+  summer: { stem: '#718d66', leaves: '#789775' },
+  autumn: { stem: '#927965', leaves: '#c0ae78' },
   winter: { stem: '#5d4037', leaves: '#ffffff' }
 });
 
 const COURTYARD_RED_MAPLE_SEASONS = Object.freeze({
-  spring: { trunk: '#3e2723', leaves: '#f8bbd0' },
-  summer: { trunk: '#3e2723', leaves: '#2e7d32' },
-  autumn: { trunk: '#3e2723', leaves: '#c62828' },
+  spring: { trunk: '#6f594d', leaves: '#d8b2b9' },
+  summer: { trunk: '#6f594d', leaves: '#68866b' },
+  autumn: { trunk: '#6f594d', leaves: '#b65f54' },
   winter: { trunk: '#4e342e', leaves: '#ffffff' }
 });
 
 const COURTYARD_PINE_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#4e342e', foliage: '#2e7d32' },
-  summer: { trunk: '#4e342e', foliage: '#1b5e20' },
-  autumn: { trunk: '#4e342e', foliage: '#004d40' },
+  spring: { trunk: '#715d50', foliage: '#617f68' },
+  summer: { trunk: '#715d50', foliage: '#526f5d' },
+  autumn: { trunk: '#715d50', foliage: '#4f6a61' },
   winter: { trunk: '#3e2723', foliage: '#ffffff' }
 });
 
 const GINKGO_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#5d4037', leaves: '#8bc34a' },
-  summer: { trunk: '#4e342e', leaves: '#2e7d32' },
-  autumn: { trunk: '#5d4037', leaves: '#fdd835' },
+  spring: { trunk: '#796356', leaves: '#9eb37c' },
+  summer: { trunk: '#715c50', leaves: '#6a896d' },
+  autumn: { trunk: '#796356', leaves: '#d2b765' },
   winter: { trunk: '#7d756e', leaves: '#ffffff' }
 });
 
 const SHRUB_BALL_SEASONS = Object.freeze({
-  spring: { foliage: '#33691e' },
-  summer: { foliage: '#1b5e20' },
-  autumn: { foliage: '#afb42b' },
+  spring: { foliage: '#66815f' },
+  summer: { foliage: '#55725c' },
+  autumn: { foliage: '#989668' },
   winter: { foliage: '#ffffff' }
 });
 
 const CHERRY_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#4e342e', blossoms: '#f48fb1' },
-  summer: { trunk: '#4e342e', blossoms: '#4caf50' },
-  autumn: { trunk: '#4e342e', blossoms: '#ffb74d' },
+  spring: { trunk: '#735d50', blossoms: '#dca7b5' },
+  summer: { trunk: '#735d50', blossoms: '#749371' },
+  autumn: { trunk: '#735d50', blossoms: '#c89c67' },
   winter: { trunk: '#5d4037', blossoms: '#ffffff' }
 });
 
 const BIRCH_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#eceff1', foliage: '#8bc34a' },
-  summer: { trunk: '#eceff1', foliage: '#43a047' },
-  autumn: { trunk: '#e0e0e0', foliage: '#ffeb3b' },
+  spring: { trunk: '#ddd9d1', foliage: '#9db37c' },
+  summer: { trunk: '#ddd9d1', foliage: '#749473' },
+  autumn: { trunk: '#d7d2c8', foliage: '#d2bb6d' },
   winter: { trunk: '#ffffff', foliage: '#ffffff' }
 });
 
 const WILLOW_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#5d4037', leaves: '#81c784' },
-  summer: { trunk: '#4e342e', leaves: '#2e7d32' },
-  autumn: { trunk: '#5d4037', leaves: '#afb42b' },
+  spring: { trunk: '#796354', leaves: '#91ad8b' },
+  summer: { trunk: '#715c50', leaves: '#698a6f' },
+  autumn: { trunk: '#796354', leaves: '#a09a6c' },
   winter: { trunk: '#7d756e', leaves: '#ffffff' }
 });
 
 const COCONUT_TREE_SEASONS = Object.freeze({
   spring: { trunk: '#8d6e63', leaves: '#4caf50' },
-  summer: { trunk: '#8d6e63', leaves: '#2e7d32' },
-  autumn: { trunk: '#8d6e63', leaves: '#afb42b' },
+  summer: { trunk: '#9a7c62', leaves: '#6c906f' },
+  autumn: { trunk: '#9a7c62', leaves: '#a2a16d' },
   winter: { trunk: '#7d756e', leaves: '#78909c' }
 });
 
 const PALM_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#7e57c2', leaves: '#4caf50' },
-  summer: { trunk: '#7e57c2', leaves: '#1b5e20' },
-  autumn: { trunk: '#8d6e63', leaves: '#558b2f' },
+  spring: { trunk: '#95745f', leaves: '#87a77d' },
+  summer: { trunk: '#8d715c', leaves: '#5f8269' },
+  autumn: { trunk: '#96785f', leaves: '#8b9162' },
   winter: { trunk: '#5d4037', leaves: '#ffffff' }
 });
 
 const GROUND_CACTUS_SEASONS = Object.freeze({
-  spring: { stem: '#8bc34a' },
-  summer: { stem: '#2e7d32' },
-  autumn: { stem: '#1b5e20' },
+  spring: { stem: '#91a878' },
+  summer: { stem: '#66856b' },
+  autumn: { stem: '#5d755f' },
   winter: { stem: '#ffffff' }
 });
 
 const ROSE_BUSH_SEASONS = Object.freeze({
-  spring: { leaves: '#33691e', flowers: '#e91e63' },
-  summer: { leaves: '#2e7d32', flowers: '#ff4081' },
+  spring: { leaves: '#657f61', flowers: '#c9798e' },
+  summer: { leaves: '#66866a', flowers: '#d38399' },
   autumn: { leaves: '#8d6e63', flowers: '#ffe082' },
   winter: { leaves: '#5d4037', flowers: '#ffffff' }
 });
 
 const LAVENDER_FIELD_SEASONS = Object.freeze({
   spring: { base: '#6d4c41', stems: '#8bc34a', spike: '#c8e6c9' },
-  summer: { base: '#6d4c41', stems: '#43a047', spike: '#ba68c8' },
+  summer: { base: '#796457', stems: '#718f70', spike: '#a58aaa' },
   autumn: { base: '#5d4037', stems: '#8d6e63', spike: '#b39ddb' },
   winter: { base: '#4e342e', stems: '#ffffff', spike: '#ffffff' }
 });
 
 const SUNFLOWER_PATCH_SEASONS = Object.freeze({
   spring: { stem: '#8bc34a', head: '#8bc34a', core: '#8bc34a' },
-  summer: { stem: '#4caf50', head: '#ffeb3b', core: '#3e2723' },
-  autumn: { stem: '#8d6e63', head: '#fbc02d', core: '#5d4037' },
+  summer: { stem: '#769372', head: '#d7b85f', core: '#68564b' },
+  autumn: { stem: '#927966', head: '#cba65c', core: '#725d51' },
   winter: { stem: '#ffffff', head: '#ffffff', core: '#ffffff' }
 });
 
@@ -164,8 +171,8 @@ const HYDRANGEA_BUSH_SEASONS = Object.freeze({
 });
 
 const TULIP_FIELD_SEASONS = Object.freeze({
-  spring: { leaves: '#4ea8de', flowers: '#ff1744' },
-  summer: { leaves: '#2e7d32', flowers: '#e0f2f1' },
+  spring: { leaves: '#82a17e', flowers: '#cf7f83' },
+  summer: { leaves: '#66896e', flowers: '#d8ddd5' },
   autumn: { leaves: '#afb42b', flowers: '#bcaaa4' },
   winter: { leaves: '#ffffff', flowers: '#ffffff' }
 });
@@ -412,7 +419,7 @@ export const landscapeBananaTree = {
         
         const budSize = size.width * 0.065;
         const bud = sphereComponent(registry, seasonalItem, landscapeBananaTree, 'banana-leaves', {
-          diameter: budSize * 1.8, segments: 10
+          diameter: budSize * 1.8, segments: 6
         }, { position: { x: curStemPos.x, y: curStemPos.y - pedicelH, z: curStemPos.z } }, { parent: node });
         bud.scaling.y = 1.7;
       }
@@ -486,7 +493,7 @@ export const landscapeCourtyardRedMaple = {
       const lz = cl.z * size.depth;
 
       const leafMesh = sphereComponent(registry, seasonalItem, landscapeCourtyardRedMaple, 'maple-leaves', {
-        diameter: size.width * cl.sizeMult, segments: 10
+        diameter: size.width * cl.sizeMult, segments: 6
       }, {
         position: { x: lx, y: ly, z: lz },
         scaling: { x: 1.35, y: 0.32, z: 0.95 }
@@ -533,7 +540,7 @@ export const landscapeCourtyardPineTree = {
     // 2. 沧桑曲折的大树干 (4段曲折，苍劲有力)
     const trunkH1 = size.height * 0.22;
     cylinderComponent(registry, seasonalItem, landscapeCourtyardPineTree, 'pine-trunk', {
-      diameterTop: size.width * 0.09, diameterBottom: size.width * 0.12, height: trunkH1, tessellation: 10
+      diameterTop: size.width * 0.09, diameterBottom: size.width * 0.12, height: trunkH1, tessellation: 6
     }, { position: { x: -size.width * 0.08, y: trunkH1 / 2, z: 0 }, rotation: { x: 0.05, y: 0, z: -0.15 } }, { parent: node });
 
     const trunkH2 = size.height * 0.20;
@@ -579,7 +586,7 @@ export const landscapeCourtyardPineTree = {
     // 4. 叠翠层叠云状松冠 (共 8 组大云片)
     // 云片 1 - 迎客大臂末端
     sphereComponent(registry, seasonalItem, landscapeCourtyardPineTree, 'pine-foliage', {
-      diameter: size.width * 0.48, segments: 10
+      diameter: size.width * 0.48, segments: 6
     }, { position: { x: -size.width * 0.54, y: trunkH1 - 0.45, z: size.depth * 0.06 }, scaling: { x: 1.42, y: 0.16, z: 1.0 } }, { parent: node });
 
     // 云片 2 - 迎客大臂中段上层
@@ -589,7 +596,7 @@ export const landscapeCourtyardPineTree = {
 
     // 云片 3 - 顶冠主伞 (大)
     sphereComponent(registry, seasonalItem, landscapeCourtyardPineTree, 'pine-foliage', {
-      diameter: size.width * 0.52, segments: 10
+      diameter: size.width * 0.52, segments: 6
     }, { position: { x: size.width * 0.02, y: trunkH1 + trunkH2 + trunkH3 + trunkH4, z: size.depth * 0.05 }, scaling: { x: 1.38, y: 0.16, z: 1.05 } }, { parent: node });
 
     // 云片 4 - 顶部前偏低云片
@@ -745,11 +752,11 @@ export const landscapeShrubBall = {
     const startY = 0;
     
     sphereComponent(registry, seasonalItem, landscapeShrubBall, 'shrub-foliage', {
-      diameter: size.width * 0.72, segments: 12
+      diameter: size.width * 0.72, segments: 6
     }, { position: { x: 0, y: startY + (size.height - startY) * 0.38, z: 0 } }, { parent: node });
 
     sphereComponent(registry, seasonalItem, landscapeShrubBall, 'shrub-foliage', {
-      diameter: size.width * 0.58, segments: 10
+      diameter: size.width * 0.58, segments: 6
     }, { position: { x: size.width * 0.15, y: startY + (size.height - startY) * 0.58, z: -size.depth * 0.12 } }, { parent: node });
 
     sphereComponent(registry, seasonalItem, landscapeShrubBall, 'shrub-foliage', {
@@ -887,7 +894,7 @@ export const landscapeBirchTree = {
     const trunkH = size.height * 0.62;
     // 白色主干
     cylinderComponent(registry, seasonalItem, landscapeBirchTree, 'birch-trunk', {
-      diameterTop: size.width * 0.04, diameterBottom: size.width * 0.07, height: trunkH, tessellation: 12
+      diameterTop: size.width * 0.04, diameterBottom: size.width * 0.07, height: trunkH, tessellation: 6
     }, { position: { x: 0, y: trunkH / 2, z: 0 } }, { parent: node });
 
     // 细直分杈枝
@@ -942,7 +949,7 @@ export const landscapeBirchTree = {
 
     layers.forEach((ly) => {
       cylinderComponent(registry, seasonalItem, landscapeBirchTree, 'birch-foliage', {
-        diameterTop: 0.01, diameterBottom: ly.d, height: ly.h, tessellation: 10
+        diameterTop: 0.01, diameterBottom: ly.d, height: ly.h, tessellation: 6
       }, { position: { x: 0, y: ly.y, z: 0 } }, { parent: node });
     });
   }
@@ -1074,7 +1081,7 @@ export const landscapeWillowTree = {
     }
 
     // 4. 从 4 个大树枝末端各垂挂 6 根柳条，全树共 24 根，柳条加粗以突显 Low-Poly 质感
-    branchEnds.forEach((bEnd) => {
+    branchEnds.forEach((bEnd, branchIndex) => {
       const willowCount = 6;
       for (let w = 0; w < willowCount; w++) {
         // 柳条环状发散角度
@@ -1120,12 +1127,16 @@ export const landscapeWillowTree = {
           }, { parent: node });
 
           // 柳条两侧挂上对生的 Low-Poly 细长扁平柳叶
-          [-1, 1].forEach((sideSign) => {
+          [-1, 1].forEach((sideSign, leafSideIndex) => {
             const leafYaw = globalAngle + sideSign * 0.65;
             const radius = size.width * 0.026;
             const lx = midPos.x + Math.cos(leafYaw) * radius;
             const lz = midPos.z + Math.sin(leafYaw) * radius;
-            const ly = midPos.y + (Math.random() - 0.5) * segH * 0.2;
+            const leafIndex = branchIndex * willowCount * segmentCount * 2
+              + w * segmentCount * 2
+              + s * 2
+              + leafSideIndex;
+            const ly = midPos.y + (seededUnit(leafIndex, 1) - 0.5) * segH * 0.2;
 
             const leaf = sphereComponent(registry, seasonalItem, landscapeWillowTree, 'willow-leaves', {
               diameter: size.width * 0.078, segments: 4
@@ -1204,7 +1215,7 @@ export const landscapeCoconutTree = {
       const cZ = currentPos.z;
       
       const seg = cylinderComponent(registry, seasonalItem, landscapeCoconutTree, 'coconut-trunk', {
-        diameterTop: dTop, diameterBottom: dBot, height: segL, tessellation: 10
+        diameterTop: dTop, diameterBottom: dBot, height: segL, tessellation: 6
       }, { position: { x: cX, y: cY, z: cZ } }, { parent: node });
       
       seg.rotation.z = currentAngleZ;
@@ -1223,17 +1234,17 @@ export const landscapeCoconutTree = {
       const cocoZ = currentPos.z + Math.sin(angle) * offsetDist;
       
       sphereComponent(registry, seasonalItem, landscapeCoconutTree, 'coconut-trunk', {
-        diameter: cocoRadius * 2, segments: 12
+        diameter: cocoRadius * 2, segments: 6
       }, { position: { x: cocoX, y: cocoY, z: cocoZ } }, { parent: node });
     }
 
     // 采用整片椭圆大叶面拼接设计（Low-Poly 优雅风），共 8 大主枝，每枝呈自然拱形悬垂
-    const numLeaves = 8;
+    const numLeaves = 7;
     for (let p = 0; p < numLeaves; p++) {
       const yaw = p * (2 * Math.PI / numLeaves);
       let stemPos = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
       let pitch = -0.12;
-      const numSubSegs = 5;
+      const numSubSegs = 4;
       const subSegL = (size.width * 0.48) / numSubSegs;
       
       for (let k = 0; k < numSubSegs; k++) {
@@ -1308,7 +1319,7 @@ export const landscapePalmTree = {
       'palm-trunk': season.trunk,
       'palm-leaves': season.leaves
     });
-    const numTrunkSegs = 10;
+    const numTrunkSegs = 8;
     const trunkH = size.height * 0.68;
     const segH = (trunkH / numTrunkSegs) * 1.25;
 
@@ -1326,9 +1337,9 @@ export const landscapePalmTree = {
       }, { position: { x: 0, y: yPos, z: 0 } }, { parent: node });
     }
 
-    // 采用双层错落的整片大椭圆扇形叶片设计，共 16 枝，营造高厚度的体量深度
-    const numLeaves = 16;
-    const leafParts = 5;
+    // 双层低面扇叶，以较少而完整的轮廓形成柔和微缩树冠。
+    const numLeaves = 10;
+    const leafParts = 4;
     const leafPartL = (size.width * 0.55) / leafParts;
 
     for (let p = 0; p < numLeaves; p++) {
@@ -1433,7 +1444,7 @@ export const landscapeGroundCactus = {
       { name: 'C2_1', parentName: 'C2', pos: { x: 0.38, y: 0.62, z: 0.14 }, scale: { x: 0.13, y: 0.15, z: 0.035 }, rot: { x: -0.2, y: 0.1, z: -0.85 } }
     ];
  
-    pads.forEach((pad) => {
+    pads.forEach((pad, padIndex) => {
       const px = pad.pos.x * size.width;
       const py = pad.pos.y * size.height - potH;
       const pz = pad.pos.z * size.depth;
@@ -1451,8 +1462,9 @@ export const landscapeGroundCactus = {
 
       const needleCount = 5;
       for (let n = 0; n < needleCount; n++) {
-        const phi = Math.random() * Math.PI;
-        const theta = Math.random() * 2 * Math.PI;
+        const needleIndex = padIndex * needleCount + n;
+        const phi = seededUnit(needleIndex, 2) * Math.PI;
+        const theta = seededUnit(needleIndex, 3) * 2 * Math.PI;
         const needleL = size.width * 0.06;
         
         const rx = Math.sin(phi) * Math.cos(theta) * pad.scale.x * size.width * 0.48;
@@ -1563,9 +1575,9 @@ export const landscapeRoseBush = {
     const leafCount = 18;
     for (let i = 0; i < leafCount; i++) {
       const angle = (i * 2 * Math.PI) / leafCount;
-      const rX = Math.cos(angle) * (0.2 + Math.random() * 0.15);
-      const rZ = Math.sin(angle) * (0.2 + Math.random() * 0.15);
-      const rY = 0.3 + Math.random() * 0.5;
+      const rX = Math.cos(angle) * (0.2 + seededUnit(i, 4) * 0.15);
+      const rZ = Math.sin(angle) * (0.2 + seededUnit(i, 5) * 0.15);
+      const rY = 0.3 + seededUnit(i, 6) * 0.5;
 
       const leaf = sphereComponent(registry, seasonalItem, landscapeRoseBush, 'bush-leaves', {
         diameter: size.width * 0.08, segments: 6
@@ -1676,16 +1688,17 @@ export const landscapeLavenderField = {
 
       const stemsCount = 3;
       for (let j = 0; j < stemsCount; j++) {
-        const localX = (Math.random() - 0.5) * size.width * 0.03;
-        const localZ = (Math.random() - 0.5) * size.depth * 0.03;
-        const stalkH = size.height * (0.45 + Math.random() * 0.15);
+        const seed = i * stemsCount + j;
+        const localX = (seededUnit(seed, 7) - 0.5) * size.width * 0.03;
+        const localZ = (seededUnit(seed, 8) - 0.5) * size.depth * 0.03;
+        const stalkH = size.height * (0.45 + seededUnit(seed, 9) * 0.15);
         const stalkD = 0.015 * size.width;
 
         const stem = cylinderComponent(registry, seasonalItem, landscapeLavenderField, 'lavender-stems', {
           diameterTop: stalkD * 0.7, diameterBottom: stalkD, height: stalkH, tessellation: 6
         }, { position: { x: localX, y: stalkH / 2, z: localZ } }, { parent: clusterNode });
-        stem.rotation.z = (Math.random() - 0.5) * 0.15;
-        stem.rotation.x = (Math.random() - 0.5) * 0.15;
+        stem.rotation.z = (seededUnit(seed, 10) - 0.5) * 0.15;
+        stem.rotation.x = (seededUnit(seed, 11) - 0.5) * 0.15;
 
         const spikeStart = stalkH;
         const segmentCount = 3;
@@ -1749,21 +1762,22 @@ export const landscapeSunflowerPatch = {
         const pctX = (c - (cols - 1) / 2) / (cols - 1 || 1);
         const pctZ = (r - (rows - 1) / 2) / (rows - 1 || 1);
         
-        const jitterX = (Math.random() - 0.5) * 0.25;
-        const jitterZ = (Math.random() - 0.5) * 0.25;
+        const seed = c * rows + r;
+        const jitterX = (seededUnit(seed, 12) - 0.5) * 0.25;
+        const jitterZ = (seededUnit(seed, 13) - 0.5) * 0.25;
         const px = (pctX + jitterX) * size.width * 0.38;
         const pz = (pctZ + jitterZ) * size.depth * 0.38;
-        const stemH = size.height * (0.75 + Math.random() * 0.2);
+        const stemH = size.height * (0.75 + seededUnit(seed, 14) * 0.2);
         
         const stem = cylinderComponent(registry, seasonalItem, landscapeSunflowerPatch, 'sunflower-stem', {
           diameterTop: size.width * 0.02, diameterBottom: size.width * 0.035, height: stemH, tessellation: 8
         }, { position: { x: px, y: stemH / 2, z: pz } }, { parent: node });
-        stem.rotation.x = (Math.random() - 0.5) * 0.08;
-        stem.rotation.z = (Math.random() - 0.5) * 0.08;
+        stem.rotation.x = (seededUnit(seed, 15) - 0.5) * 0.08;
+        stem.rotation.z = (seededUnit(seed, 16) - 0.5) * 0.08;
         
         for (let l = 0; l < 2; l++) {
           const leafY = stemH * (0.35 + l * 0.25);
-          const leafRot = l * Math.PI * 0.7 + Math.random() * 0.2;
+          const leafRot = l * Math.PI * 0.7 + seededUnit(seed * 2 + l, 17) * 0.2;
           const leafL = size.width * 0.15;
           
           const leaf = sphereComponent(registry, seasonalItem, landscapeSunflowerPatch, 'sunflower-stem', {
@@ -1780,20 +1794,20 @@ export const landscapeSunflowerPatch = {
         headNode.position = new BABYLON.Vector3(px, stemH, pz);
         
         // 统一朝向前侧，并且加入极细微的自然扰动，实现宏观朝向完全一致
-        const yaw = 0.25 + (Math.random() - 0.5) * 0.12;
-        const pitch = Math.PI * 0.22 + (Math.random() - 0.5) * 0.06;
+        const yaw = 0.25 + (seededUnit(seed, 18) - 0.5) * 0.12;
+        const pitch = Math.PI * 0.22 + (seededUnit(seed, 19) - 0.5) * 0.06;
         headNode.rotation.y = yaw;
         headNode.rotation.x = -pitch;
 
         const headRadius = size.width * 0.11;
         const headBase = cylinderComponent(registry, seasonalItem, landscapeSunflowerPatch, 'sunflower-head', {
-          diameterTop: headRadius * 2, diameterBottom: headRadius * 2, height: size.width * 0.02, tessellation: 12
+          diameterTop: headRadius * 2, diameterBottom: headRadius * 2, height: size.width * 0.02, tessellation: 8
         }, { position: { x: 0, y: 0, z: 0 } }, { parent: headNode });
         headBase.rotation.x = Math.PI / 2;
 
         const coreRadius = headRadius * 0.55;
         const core = cylinderComponent(registry, seasonalItem, landscapeSunflowerPatch, 'sunflower-core', {
-          diameterTop: coreRadius * 2, diameterBottom: coreRadius * 2, height: size.width * 0.022, tessellation: 12
+          diameterTop: coreRadius * 2, diameterBottom: coreRadius * 2, height: size.width * 0.022, tessellation: 8
         }, { position: { x: 0, y: 0, z: size.width * 0.005 } }, { parent: headNode });
         core.rotation.x = Math.PI / 2;
 
@@ -1854,10 +1868,10 @@ export const landscapeReedMarsh = {
 
     const count = 15;
     for (let i = 0; i < count; i++) {
-      const px = (Math.random() - 0.5) * size.width * 0.85;
-      const pz = (Math.random() - 0.5) * size.depth * 0.85;
+      const px = (seededUnit(i, 20) - 0.5) * size.width * 0.85;
+      const pz = (seededUnit(i, 21) - 0.5) * size.depth * 0.85;
       
-      const plantH = size.height * (0.72 + Math.random() * 0.28);
+      const plantH = size.height * (0.72 + seededUnit(i, 22) * 0.28);
       const stemH = plantH * 0.78;
       const plumeH = plantH * 0.22;
       const stemD = size.width * 0.012;
@@ -1865,9 +1879,9 @@ export const landscapeReedMarsh = {
       const reedNode = new BABYLON.TransformNode(`reed_${i}`, scene);
       reedNode.parent = node;
       reedNode.position = new BABYLON.Vector3(px, 0, pz);
-      reedNode.rotation.x = (Math.random() - 0.5) * 0.18;
-      reedNode.rotation.z = (Math.random() - 0.5) * 0.18;
-      reedNode.rotation.y = Math.random() * Math.PI * 2;
+      reedNode.rotation.x = (seededUnit(i, 23) - 0.5) * 0.18;
+      reedNode.rotation.z = (seededUnit(i, 24) - 0.5) * 0.18;
+      reedNode.rotation.y = seededUnit(i, 25) * Math.PI * 2;
 
       cylinderComponent(registry, seasonalItem, landscapeReedMarsh, 'reed-culm', {
         diameterTop: stemD * 0.6, diameterBottom: stemD, height: stemH, tessellation: 6
@@ -1880,8 +1894,8 @@ export const landscapeReedMarsh = {
         }, { position: { x: 0, y: stemH * (0.3 + l * 0.2), z: 0 } }, { parent: reedNode });
         
         leaf.scaling = new BABYLON.Vector3(0.06, 1, 0.15);
-        leaf.rotation.z = 0.4 + Math.random() * 0.2;
-        leaf.rotation.y = l * Math.PI * 0.8 + Math.random() * 0.5;
+        leaf.rotation.z = 0.4 + seededUnit(i * 2 + l, 26) * 0.2;
+        leaf.rotation.y = l * Math.PI * 0.8 + seededUnit(i * 2 + l, 27) * 0.5;
       }
 
       const plumeCenterY = stemH + plumeH / 2;
@@ -1894,8 +1908,8 @@ export const landscapeReedMarsh = {
         
         segPlume.scaling = new BABYLON.Vector3(plumeRadius / plumeH, 1, (plumeRadius * 0.85) / plumeH);
         segPlume.rotation.y = p * 1.1;
-        segPlume.rotation.x = (Math.random() - 0.5) * 0.12;
-        segPlume.rotation.z = (Math.random() - 0.5) * 0.12;
+        segPlume.rotation.x = (seededUnit(i * 3 + p, 28) - 0.5) * 0.12;
+        segPlume.rotation.z = (seededUnit(i * 3 + p, 29) - 0.5) * 0.12;
       }
     }
   }
@@ -2016,23 +2030,24 @@ export const landscapeGrassLawn = {
 
     const grassCount = 16;
     for (let g = 0; g < grassCount; g++) {
-      const px = (Math.random() - 0.5) * size.width * 0.9;
-      const pz = (Math.random() - 0.5) * size.depth * 0.9;
+      const px = (seededUnit(g, 30) - 0.5) * size.width * 0.9;
+      const pz = (seededUnit(g, 31) - 0.5) * size.depth * 0.9;
       const py = size.height * 0.5;
 
       const grassNode = new BABYLON.TransformNode(`grass_tuft_${g}`, scene);
       grassNode.parent = node;
       grassNode.position = new BABYLON.Vector3(px, py, pz);
-      grassNode.rotation.y = Math.random() * Math.PI * 2;
+      grassNode.rotation.y = seededUnit(g, 32) * Math.PI * 2;
 
-      const bladesCount = 3 + Math.floor(Math.random() * 2);
-      const tuftHeight = size.height * (2.5 + Math.random() * 2.5);
+      const bladesCount = 3 + Math.floor(seededUnit(g, 33) * 2);
+      const tuftHeight = size.height * (2.5 + seededUnit(g, 34) * 2.5);
 
       for (let b = 0; b < bladesCount; b++) {
-        const angle = (b * Math.PI * 2) / bladesCount + (Math.random() - 0.5) * 0.3;
+        const seed = g * 5 + b;
+        const angle = (b * Math.PI * 2) / bladesCount + (seededUnit(seed, 35) - 0.5) * 0.3;
         
         const bladeW = size.width * 0.015;
-        const bladeH = tuftHeight * (0.8 + Math.random() * 0.3);
+        const bladeH = tuftHeight * (0.8 + seededUnit(seed, 36) * 0.3);
         const bladeD = bladeW * 0.2;
 
         const blade = sphereComponent(registry, seasonalItem, landscapeGrassLawn, 'lawn-grass', {
@@ -2045,8 +2060,8 @@ export const landscapeGrassLawn = {
 
         blade.scaling = new BABYLON.Vector3(bladeW / bladeH, 1, bladeD / bladeH);
         blade.rotation.y = -angle;
-        blade.rotation.z = 0.25 + Math.random() * 0.25;
-        blade.rotation.x = (Math.random() - 0.5) * 0.1;
+        blade.rotation.z = 0.25 + seededUnit(seed, 37) * 0.25;
+        blade.rotation.x = (seededUnit(seed, 38) - 0.5) * 0.1;
       }
     }
   }
@@ -2191,8 +2206,8 @@ export const landscapeDandelionPatch = {
       const stem = cylinderComponent(registry, seasonalItem, landscapeDandelionPatch, 'dandelion-leaves', {
         diameterTop: size.width * 0.01, diameterBottom: size.width * 0.015, height: pf.h, tessellation: 6
       }, { position: { x: pf.x, y: pf.h / 2, z: pf.z } }, { parent: node });
-      stem.rotation.z = (Math.random() - 0.5) * 0.15;
-      stem.rotation.x = (Math.random() - 0.5) * 0.15;
+      stem.rotation.z = (seededUnit(idx, 39) - 0.5) * 0.15;
+      stem.rotation.x = (seededUnit(idx, 40) - 0.5) * 0.15;
 
       const hx = pf.x + Math.sin(stem.rotation.z) * pf.h * 0.5;
       const hz = pf.z - Math.sin(stem.rotation.x) * pf.h * 0.5;
@@ -2241,8 +2256,8 @@ export const landscapeDandelionPatch = {
       const stem = cylinderComponent(registry, seasonalItem, landscapeDandelionPatch, 'dandelion-leaves', {
         diameterTop: size.width * 0.01, diameterBottom: size.width * 0.015, height: fl.h, tessellation: 6
       }, { position: { x: fl.x, y: fl.h / 2, z: fl.z } }, { parent: node });
-      stem.rotation.z = (Math.random() - 0.5) * 0.18;
-      stem.rotation.x = (Math.random() - 0.5) * 0.18;
+      stem.rotation.z = (seededUnit(idx, 41) - 0.5) * 0.18;
+      stem.rotation.x = (seededUnit(idx, 42) - 0.5) * 0.18;
 
       const hx = fl.x + Math.sin(stem.rotation.z) * fl.h * 0.5;
       const hz = fl.z - Math.sin(stem.rotation.x) * fl.h * 0.5;
@@ -2252,7 +2267,7 @@ export const landscapeDandelionPatch = {
       flNode.parent = node;
       flNode.position = new BABYLON.Vector3(hx, hy, hz);
       flNode.rotation.x = 0.2;
-      flNode.rotation.y = Math.random() * Math.PI;
+      flNode.rotation.y = seededUnit(idx, 43) * Math.PI;
 
       const layers = 3;
       const flD = size.width * 0.09;
@@ -2474,11 +2489,11 @@ export const landscapeTulipField = {
       const tulipNode = new BABYLON.TransformNode(`tulip_plant_${i}`, scene);
       tulipNode.parent = node;
       tulipNode.position = new BABYLON.Vector3(px, py, pz);
-      tulipNode.rotation.y = Math.random() * Math.PI * 2;
-      tulipNode.rotation.x = (Math.random() - 0.5) * 0.15;
-      tulipNode.rotation.z = (Math.random() - 0.5) * 0.15;
+      tulipNode.rotation.y = seededUnit(i, 44) * Math.PI * 2;
+      tulipNode.rotation.x = (seededUnit(i, 45) - 0.5) * 0.15;
+      tulipNode.rotation.z = (seededUnit(i, 46) - 0.5) * 0.15;
 
-      const stalkH = size.height * (0.45 + Math.random() * 0.2);
+      const stalkH = size.height * (0.45 + seededUnit(i, 47) * 0.2);
       const stalkD = size.width * 0.015;
 
       cylinderComponent(registry, seasonalItem, landscapeTulipField, 'tulip-leaves', {
@@ -2486,8 +2501,9 @@ export const landscapeTulipField = {
       }, { position: { x: 0, y: stalkH / 2, z: 0 } }, { parent: tulipNode });
 
       for (let l = 0; l < 2; l++) {
-        const leafAngle = l * Math.PI + (Math.random() - 0.5) * 0.4;
-        const leafH = stalkH * (0.6 + Math.random() * 0.35);
+        const seed = i * 2 + l;
+        const leafAngle = l * Math.PI + (seededUnit(seed, 48) - 0.5) * 0.4;
+        const leafH = stalkH * (0.6 + seededUnit(seed, 49) * 0.35);
         
         const leaf = sphereComponent(registry, seasonalItem, landscapeTulipField, 'tulip-leaves', {
           diameter: leafH, segments: 6
@@ -2499,7 +2515,7 @@ export const landscapeTulipField = {
 
         leaf.scaling = new BABYLON.Vector3(0.12, 1, 0.3);
         leaf.rotation.y = -leafAngle;
-        leaf.rotation.z = 0.3 + Math.random() * 0.2;
+        leaf.rotation.z = 0.3 + seededUnit(seed, 50) * 0.2;
       }
 
       const flowerY = stalkH;
@@ -2546,7 +2562,7 @@ export const landscapeLarchTree = {
     });
     // 1. 笔直挺拔的主干
     cylinderComponent(registry, seasonalItem, landscapeLarchTree, 'larch-trunk', {
-      diameterTop: size.width * 0.03, diameterBottom: size.width * 0.08, height: size.height, tessellation: 10
+      diameterTop: size.width * 0.03, diameterBottom: size.width * 0.08, height: size.height, tessellation: 6
     }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
 
     // 2. 层层轮生斜向上微翘的放射状松枝
@@ -2729,7 +2745,7 @@ export const appleTreeFurniture = {
       diameterTop: size.width * 0.07,
       diameterBottom: size.width * 0.12,
       height: trunkH,
-      tessellation: 10
+      tessellation: 6
     }, { position: { x: 0, y: trunkH / 2, z: 0 } }, { parent: node });
 
     const branchData = [
@@ -2780,7 +2796,7 @@ export const appleTreeFurniture = {
     canopyData.forEach((cluster) => {
       sphereComponent(registry, seasonalItem, appleTreeFurniture, 'apple-foliage', {
         diameter: size.width * cluster.d,
-        segments: 10
+        segments: 6
       }, {
         position: {
           x: cluster.x * size.width,

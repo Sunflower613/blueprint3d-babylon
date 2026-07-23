@@ -461,7 +461,7 @@ export class BabylonSceneRenderer {
     });
     const bottomOffset = vertices.length;
     triangles.forEach(([a, b, c]) => {
-      indices.push(a, c, b, bottomOffset + a, bottomOffset + b, bottomOffset + c);
+      indices.push(a, b, c, bottomOffset + a, bottomOffset + c, bottomOffset + b);
     });
     vertices.forEach((point, index) => {
       const next = vertices[(index + 1) % vertices.length];
@@ -473,7 +473,11 @@ export class BabylonSceneRenderer {
         point.x, centerY - halfHeight, point.z
       );
       uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-      indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
+      // Room vertices wind around the footprint with the interior on the
+      // left-hand side of each edge. Reverse the side triangles so their
+      // front faces and normals point away from the room. With back-face
+      // culling enabled, inward-facing sides disappear from exterior views.
+      indices.push(sideOffset, sideOffset + 2, sideOffset + 1, sideOffset, sideOffset + 3, sideOffset + 2);
     });
     const normals = [];
     BABYLON.VertexData.ComputeNormals(positions, indices, normals);
@@ -849,6 +853,12 @@ export class BabylonSceneRenderer {
     }
 
     const wallMaterialOptions = { fallbackColor: wall.color || DEFAULT_WALL_COLOR, flatShading: false, backFaceCulling: false };
+    const wallSurfaceWidth = Number(wallNode.metadata?.surfaceWidth)
+      || Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]);
+    const wallFloor = this.document.getFloor(wall.floorId);
+    const wallSurfaceHeight = Number(wallNode.metadata?.surfaceHeight)
+      || this.document.getFloorWallRenderHeight(wall.floorId)
+        + Number(wallFloor?.floorHeight ?? this.floorplan.floorHeight ?? 0.2);
     const materialCache = new Map();
     const getWallFaceMaterial = (side, component) => {
       const cacheKey = `${side}:${component}`;
@@ -856,7 +866,9 @@ export class BabylonSceneRenderer {
       const { descriptor, color } = resolveWallSurfaceDescriptor(wall, side, component);
       const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}_${Date.now()}`, descriptor, {
         ...wallMaterialOptions,
-        fallbackColor: color || wall.color || DEFAULT_WALL_COLOR
+        fallbackColor: color || wall.color || DEFAULT_WALL_COLOR,
+        surfaceWidth: wallSurfaceWidth,
+        surfaceHeight: wallSurfaceHeight
       });
       materialCache.set(cacheKey, material);
       return material;
@@ -1205,8 +1217,8 @@ export class BabylonSceneRenderer {
     });
     const bottomOffset = vertices.length;
     triangles.forEach(([a, b, c]) => {
-      indices.push(a, c, b);
-      indices.push(bottomOffset + a, bottomOffset + b, bottomOffset + c);
+      indices.push(a, b, c);
+      indices.push(bottomOffset + a, bottomOffset + c, bottomOffset + b);
     });
     vertices.forEach((point, index) => {
       const nextIndex = (index + 1) % vertices.length;
@@ -1219,7 +1231,10 @@ export class BabylonSceneRenderer {
         point.x, centerY - halfHeight, point.z
       );
       uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-      indices.push(sideOffset, sideOffset + 1, sideOffset + 2, sideOffset, sideOffset + 2, sideOffset + 3);
+      // Match the preview-update path above: the side's rendered face must
+      // point out of the footprint so exterior cameras survive back-face
+      // culling.
+      indices.push(sideOffset, sideOffset + 2, sideOffset + 1, sideOffset, sideOffset + 3, sideOffset + 2);
     });
 
     const mesh = new BABYLON.Mesh(`floor_${room.id}_${suffix}`, this.scene);
@@ -1367,7 +1382,9 @@ export class BabylonSceneRenderer {
         const { descriptor, color } = resolveWallSurfaceDescriptor(wall, side, component);
         const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}`, descriptor, {
           ...wallMaterialOptions,
-          fallbackColor: color || wall.color || DEFAULT_WALL_COLOR
+          fallbackColor: color || wall.color || DEFAULT_WALL_COLOR,
+          surfaceWidth: X_max - X_min,
+          surfaceHeight: H + FH
         });
         materialCache.set(cacheKey, material);
         return material;
@@ -1528,7 +1545,13 @@ export class BabylonSceneRenderer {
       const wallGroup = new BABYLON.TransformNode(`wall_group_${wall.id}`, this.scene);
       wallGroup.position.set(x1, 0, z1);
       wallGroup.rotation.y = -Math.atan2(dz, dx);
-      wallGroup.metadata = { blueprintWallId: wall.id, floorId: wall.floorId, originalLength: length };
+      wallGroup.metadata = {
+        blueprintWallId: wall.id,
+        floorId: wall.floorId,
+        originalLength: length,
+        surfaceWidth: X_max - X_min,
+        surfaceHeight: H + FH
+      };
       wallGroup.computeWorldMatrix(true);
 
       const applyMiterCutterToCSG = (currentCSG, P, otherP, adjWall) => {

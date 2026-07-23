@@ -136,10 +136,10 @@ test('catalog exposes brick textures', () => {
   });
 });
 
-test('catalog exposes six fabric textures including translucent organza', () => {
+test('catalog exposes twelve fabric textures including rug presets and translucent organza', () => {
   const fabricMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'fabric');
 
-  assert.equal(fabricMaterials.length, 6);
+  assert.equal(fabricMaterials.length, 12);
   assert.deepEqual(
     fabricMaterials.map((entry) => entry.id),
     [
@@ -148,7 +148,13 @@ test('catalog exposes six fabric textures including translucent organza', () => 
       'fabric-knit-cable-white',
       'fabric-knit-chevron-cream',
       'fabric-weave-dark',
-      'fabric-organza-white'
+      'fabric-organza-white',
+      'fabric-rug-geometric',
+      'fabric-foam-panel',
+      'fabric-long-pile',
+      'fabric-flower',
+      'fabric-square',
+      'fabric-triangle'
     ]
   );
 
@@ -162,6 +168,15 @@ test('catalog exposes six fabric textures including translucent organza', () => 
   const organza = fabricMaterials.find((material) => material.id === 'fabric-organza-white');
   assert.equal(organza.name, '欧根纱');
   assert.equal(organza.alpha, 0.48);
+
+  assert.deepEqual(
+    fabricMaterials.slice(-3).map(({ name, scale }) => ({ name, scale })),
+    [
+      { name: '花卉毯', scale: 2 },
+      { name: '边框毯', scale: 2 },
+      { name: '三角毯', scale: 2 }
+    ]
+  );
 });
 
 test('textured organza keeps alpha and renders both sides', () => {
@@ -306,6 +321,25 @@ test('mosaic tiles keep a physical 0.25m image size on room floors', () => {
     assert.equal(mosaic.physicalTileSize, 0.25);
     assert.equal(material.diffuseTexture.uScale, 4);
     assert.equal(material.diffuseTexture.vScale, 6);
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
+});
+
+test('mosaic tiles keep the same physical 0.25m image size on walls', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  try {
+    const mosaic = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'brick-mosaic');
+    const material = createBlueprintMaterial(scene, 'mosaic-wall-test', mosaic, {
+      surfaceWidth: 4,
+      surfaceHeight: 3
+    });
+
+    assert.equal(material.diffuseTexture.uScale, 16);
+    assert.equal(material.diffuseTexture.vScale, 12);
   } finally {
     scene.dispose();
     engine.dispose();

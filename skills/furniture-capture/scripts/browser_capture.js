@@ -112,7 +112,7 @@
     console.log("正在检测缺失缩略图的家具...");
     const checkPromises = FURNITURE_LIST.map(async (def) => {
       try {
-        const response = await fetch(`../src/furniture/image/${def.type}.png`, { method: 'HEAD' });
+        const response = await fetch(`/__furniture-images__/${def.type}.png`, { method: 'HEAD' });
         const contentType = response.headers.get('content-type') || '';
         const exists = response.ok && contentType.startsWith('image/');
         return { def, exists };
@@ -136,8 +136,12 @@
   for (const def of itemsToCapture) {
     console.log(`正在截图: ${def.name} (${def.type})`);
     
+    // 强行开启 3D 渲染使能，避免处于 2D 视图时 buildItem 被 defer 跳过
+    viewer3d.renderingEnabled = true;
+
     // 加载空场景并强行清网格
     testMap.loadJSON(emptyScene);
+    viewer3d.renderingEnabled = true;
     viewer3d.clear3DGrid();
     
     // 自动检测是否被切回了 2D 视图，如果是则点击切回 3D 并等待稳定
@@ -149,8 +153,10 @@
     }
     
     // 直接使用 testMap.addItem，避开 selectItem 高亮选中机制
+    const currentFloorId = testMap.getCurrentFloorId?.() || 'f0';
     const item = testMap.addItem({
       type: def.type,
+      floorId: currentFloorId,
       x: 0,
       z: 0,
       y: 0,
@@ -158,10 +164,36 @@
       scale: 1
     });
     
-    if (!item) continue;
+    if (!item) {
+      console.warn(`[ITEM ADD FAILED] 家具添加失败: ${def.name} (${def.type})`);
+      continue;
+    }
 
-    const node = testMap.itemNodes.get(item.id);
-    if (!node) continue;
+    let node = (viewer3d.itemNodes && viewer3d.itemNodes.get(item.id)) || 
+               (testMap.itemNodes && testMap.itemNodes.get(item.id)) ||
+               scene.getNodeByName(`item_${item.id}`) ||
+               scene.getTransformNodeByName(`item_${item.id}`);
+    
+    if (!node) {
+      try {
+        if (typeof viewer3d.buildItem === 'function') {
+          viewer3d.buildItem(item);
+        } else if (typeof viewer3d.build === 'function') {
+          viewer3d.build({ rebuildType: 'all' });
+        }
+      } catch (err) {
+        console.error(`[BUILDITEM ERROR] ${def.type}:`, err);
+      }
+      node = (viewer3d.itemNodes && viewer3d.itemNodes.get(item.id)) || 
+             (testMap.itemNodes && testMap.itemNodes.get(item.id)) ||
+             scene.getNodeByName(`item_${item.id}`) ||
+             scene.getTransformNodeByName(`item_${item.id}`);
+    }
+
+    if (!node) {
+      console.warn(`[NODE MISSING] 找不到 3D 节点: ${def.name} (${def.type}), item.id=${item.id}`);
+      continue;
+    }
 
     node.computeWorldMatrix(true);
     const bounds = node.getHierarchyBoundingVectors(true);
@@ -212,7 +244,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: def.type, image: dataUrl })
       });
-      await response.json();
+      if (!response.ok) {
+        throw new Error(`Save image failed with status ${response.status}`);
+      }
+      console.log(`[CAPTURE SUCCESS] 缩略图生成并存盘成功: ${def.name} (${def.type})`);
     } catch (err) {
       console.error(`Error capturing ${def.name}:`, err);
     } finally {
@@ -249,4 +284,5 @@
 
   scene.render();
   console.log("✓ 用户场景已成功复位！");
+  window.__CAPTURE_FINISHED__ = true;
 })();

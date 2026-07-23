@@ -43,8 +43,10 @@ const TEXTURE_MAP = {
   'fabric_knit_cable_white.jpg': new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href,
   'fabric_knit_chevron_cream.jpg': new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href,
   'fabric_weave_dark.jpg': new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href,
-  'fabric_organza_white.png': new URL('../textures/fabric_organza_white.png', import.meta.url).href,
-  'wallmap_yellow.png': new URL('../textures/wallmap_yellow.png', import.meta.url).href,
+  'fabric_organza_white.jpg': new URL('../textures/fabric_organza_white.jpg', import.meta.url).href,
+  'fabric_organza_white.png': new URL('../textures/fabric_organza_white.jpg', import.meta.url).href,
+  'wallmap_yellow.jpg': new URL('../textures/wallmap_yellow.jpg', import.meta.url).href,
+  'wallmap_yellow.png': new URL('../textures/wallmap_yellow.jpg', import.meta.url).href,
   'wallpaper_leaf_bluegrey.jpg': new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href,
   'wallpaper_paisley_orange.jpg': new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href,
   'wallpaper_fan_gold.jpg': new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href,
@@ -55,12 +57,18 @@ const TEXTURE_MAP = {
   'wallpaper_ruyi_swirl_yellow.jpg': new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href,
   'wallpaper_floral_blue_white.jpg': new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href,
   'wallpaper_seigaiha_blush.jpg': new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href,
-  'wallpaper_rose.png': new URL('../textures/wallpaper_rose.png', import.meta.url).href,
-  'poster_abstract_arches.png': new URL('../textures/poster_abstract_arches.png', import.meta.url).href,
-  'poster_botanical_sage.png': new URL('../textures/poster_botanical_sage.png', import.meta.url).href,
-  'poster_bauhaus_primary.png': new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href,
-  'poster_mountain_sunrise.png': new URL('../textures/poster_mountain_sunrise.png', import.meta.url).href,
-  'poster_celestial_moons.png': new URL('../textures/poster_celestial_moons.png', import.meta.url).href
+  'wallpaper_rose.jpg': new URL('../textures/wallpaper_rose.jpg', import.meta.url).href,
+  'wallpaper_rose.png': new URL('../textures/wallpaper_rose.jpg', import.meta.url).href,
+  'poster_abstract_arches.jpg': new URL('../textures/poster_abstract_arches.jpg', import.meta.url).href,
+  'poster_abstract_arches.png': new URL('../textures/poster_abstract_arches.jpg', import.meta.url).href,
+  'poster_botanical_sage.jpg': new URL('../textures/poster_botanical_sage.jpg', import.meta.url).href,
+  'poster_botanical_sage.png': new URL('../textures/poster_botanical_sage.jpg', import.meta.url).href,
+  'poster_bauhaus_primary.jpg': new URL('../textures/poster_bauhaus_primary.jpg', import.meta.url).href,
+  'poster_bauhaus_primary.png': new URL('../textures/poster_bauhaus_primary.jpg', import.meta.url).href,
+  'poster_mountain_sunrise.jpg': new URL('../textures/poster_mountain_sunrise.jpg', import.meta.url).href,
+  'poster_mountain_sunrise.png': new URL('../textures/poster_mountain_sunrise.jpg', import.meta.url).href,
+  'poster_celestial_moons.jpg': new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href,
+  'poster_celestial_moons.png': new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href
 };
 
 export function resolveMaterialAssetDescriptor(descriptor) {

@@ -174,6 +174,7 @@ export class MaterialResolver {
         scale: Number(value.scale || 1),
         color: value.color || fallbackColor,
         alpha: value.alpha !== undefined ? Number(value.alpha) : undefined,
+        physicalTileSize: value.physicalTileSize !== undefined ? Number(value.physicalTileSize) : undefined,
         reflective: !!value.reflective,
         reflectionLevel: value.reflectionLevel !== undefined ? Number(value.reflectionLevel) : undefined,
         specularStrength: value.specularStrength !== undefined ? Number(value.specularStrength) : undefined,

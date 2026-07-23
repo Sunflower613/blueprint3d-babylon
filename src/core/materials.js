@@ -371,6 +371,15 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
 
     const texture = baseTexture.clone();
     const textureScale = resolvePatternTextureScale(normalized, options, normalized.scale || 1);
+    if (
+      options.isFloor &&
+      normalized.physicalTileSize > 0 &&
+      Number(options.surfaceWidth) > 0 &&
+      Number(options.surfaceDepth) > 0
+    ) {
+      textureScale.uScale = Number(options.surfaceWidth) / normalized.physicalTileSize;
+      textureScale.vScale = Number(options.surfaceDepth) / normalized.physicalTileSize;
+    }
     texture.uScale = textureScale.uScale;
     texture.vScale = textureScale.vScale;
     texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;

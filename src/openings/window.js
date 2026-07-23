@@ -14,6 +14,11 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
   const glassMat = opening.glassMaterial
     ? createBlueprintMaterial(registry.scene, `win_glass_mat_${opening.id}`, opening.glassMaterial, materialOptions)
     : registry.materials.window;
+  if (opening.glassMaterial && !(typeof opening.glassMaterial === 'object' && opening.glassMaterial.alpha !== undefined)) {
+    glassMat.alpha = 0.38;
+    glassMat.backFaceCulling = false;
+    glassMat.twoSidedLighting = true;
+  }
 
   buildOpeningFrame(registry, opening, parent, {
     width,

@@ -633,7 +633,7 @@ export class BabylonSceneRenderer {
       floor: createFlatMaterial(this.scene, 'blueprintFloor', palette.floor || this.floorplan.floor.color),
       selected: createFlatMaterial(this.scene, 'blueprintSelected', palette.selected || '#36c2ff', { emissive: true }),
       door: createFlatMaterial(this.scene, 'blueprintDoor', palette.door || '#8c5a32'),
-      window: createFlatMaterial(this.scene, 'blueprintWindow', palette.window || '#75d7ff', { alpha: 0.72, emissive: true, backFaceCulling: false }),
+      window: createFlatMaterial(this.scene, 'blueprintWindow', palette.window || '#75d7ff', { alpha: 0.38, emissive: true, backFaceCulling: false }),
       trim: createFlatMaterial(this.scene, 'blueprintTrim', palette.trim || '#b8c4d4'),
       decor: createFlatMaterial(this.scene, 'blueprintDecor', palette.decor || '#ffffff'),
       roof: createFlatMaterial(this.scene, 'blueprintRoof', palette.roof || '#b75b54'),
@@ -1155,6 +1155,21 @@ export class BabylonSceneRenderer {
       shadowCaster: false
     });
     piece.metadata = { blueprintRoomId: room.id, locked: !!room.locked };
+    const positions = piece.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    if (positions) {
+      const roomBounds = getRoomBounds(room);
+      const roomWidth = Math.max(0.001, roomBounds.right - roomBounds.left);
+      const roomDepth = Math.max(0.001, roomBounds.bottom - roomBounds.top);
+      const uvs = new Array((positions.length / 3) * 2);
+      for (let vertex = 0; vertex < positions.length; vertex += 3) {
+        const worldX = positions[vertex] + centerX;
+        const worldZ = positions[vertex + 2] + centerZ;
+        const uvIndex = (vertex / 3) * 2;
+        uvs[uvIndex] = (worldX - roomBounds.left) / roomWidth;
+        uvs[uvIndex + 1] = (worldZ - roomBounds.top) / roomDepth;
+      }
+      piece.setVerticesData(BABYLON.VertexBuffer.UVKind, uvs);
+    }
 
     const ceilingThickness = 0.002;
     const ceilingPiece = createBox(this, `ceiling_${room.id}_${index}`, {
@@ -1229,7 +1244,9 @@ export class BabylonSceneRenderer {
       const floorY = this.document.getFloorElevation(room.floorId);
       const floorMaterial = createBlueprintMaterial(this.scene, `floor_${room.id}`, room.material || this.floorplan.floor.material || room.color || this.floorplan.floor.color, {
         fallbackColor: room.color || this.floorplan.floor.color || DEFAULT_FLOOR_COLOR,
-        isFloor: true
+        isFloor: true,
+        surfaceWidth: room.width,
+        surfaceDepth: room.depth
       });
       const ceilingMaterial = createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
         fallbackColor: '#ffffff'
@@ -2106,7 +2123,11 @@ export class BabylonSceneRenderer {
     definition.build(this, item, node, size);
     this.applyPowerEffect(definition, item, node);
 
-    const isLightOn = item.lightOn !== false && (item.floorId === this.floorplan.currentFloorId);
+    const showAllFloors = typeof window !== 'undefined' && window.showAllFloors === true;
+    const isLightOn = item.lightOn !== false && (
+      item.floorId === this.floorplan.currentFloorId ||
+      (showAllFloors && this.document.isFloorVisible(item.floorId))
+    );
     const emissiveComponents = definition.emissiveComponents || ['bulb', 'glow', 'light', 'flame', 'lava', 'shade'];
 
     node.getChildMeshes().forEach((mesh) => {

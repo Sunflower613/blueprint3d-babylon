@@ -303,3 +303,45 @@ test('Babylon 渲染器：若家具定义声明 unit: "m"，其光源位置及�
   scene.dispose();
   engine.dispose();
 });
+
+test('显示所有楼层时可见楼层的灯具都创建真实光源', () => {
+  FURNITURE_DEFINITIONS.custom_all_floor_light = {
+    type: 'custom_all_floor_light',
+    name: '跨层测试灯',
+    unit: 'm',
+    defaultSize: { width: 0.2, depth: 0.2, height: 0.6 },
+    lightSource: { type: 'point', offset: { x: 0, y: 0.5, z: 0 }, range: 3 },
+    components: [],
+    build() {}
+  };
+  const plan = {
+    unit: 'm', currentFloorId: 'floor_1', floor: { rooms: [] }, walls: [], openings: [], roofs: [], stairs: [], fences: [], fenceGates: [],
+    floors: [
+      { id: 'floor_1', name: '1F', level: 0, wallHeight: 3, floorHeight: 0.1 },
+      { id: 'floor_2', name: '2F', level: 1, wallHeight: 3, floorHeight: 0.1 }
+    ],
+    items: [
+      { id: 'light_1', type: 'custom_all_floor_light', floorId: 'floor_1', x: 0, z: 0, width: 0.2, depth: 0.2, height: 0.6 },
+      { id: 'light_2', type: 'custom_all_floor_light', floorId: 'floor_2', x: 0, z: 0, width: 0.2, depth: 0.2, height: 0.6 }
+    ]
+  };
+  const originalWindow = globalThis.window;
+  globalThis.window = { showAllFloors: true };
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  try {
+    const document = new FloorplanDocument(plan);
+    const renderer = new BabylonSceneRenderer(scene, document);
+    renderer.build();
+    assert.ok(scene.getLightByName('item_light_light_1'));
+    assert.ok(scene.getLightByName('item_light_light_2'));
+    renderer.dispose();
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+    delete FURNITURE_DEFINITIONS.custom_all_floor_light;
+    scene.dispose();
+    engine.dispose();
+  }
+});

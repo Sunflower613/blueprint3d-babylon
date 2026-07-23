@@ -57,3 +57,31 @@ test('hidden window glass keeps a pickable opening proxy', () => {
   scene.dispose();
   engine.dispose();
 });
+
+test('custom window glass stays transparent unless an explicit alpha is supplied', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const registry = createRegistry(scene);
+
+  try {
+    const colorParent = new BABYLON.TransformNode('color-window-parent', scene);
+    buildWindowOpening(registry, {
+      id: 'color-window', type: 'window', shape: 'square', width: 1.2, height: 1,
+      glassMaterial: '#88ccff'
+    }, colorParent);
+    const colorGlass = scene.getMeshByName('win_glass_color-window');
+    assert.equal(colorGlass.material.alpha, 0.38);
+    assert.equal(colorGlass.material.backFaceCulling, false);
+
+    const explicitParent = new BABYLON.TransformNode('explicit-window-parent', scene);
+    buildWindowOpening(registry, {
+      id: 'explicit-window', type: 'window', shape: 'square', width: 1.2, height: 1,
+      glassMaterial: { kind: 'glass', color: '#88ccff', alpha: 0.22 }
+    }, explicitParent);
+    const explicitGlass = scene.getMeshByName('win_glass_explicit-window');
+    assert.equal(explicitGlass.material.alpha, 0.22);
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
+});

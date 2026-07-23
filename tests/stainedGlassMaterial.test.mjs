@@ -215,7 +215,7 @@ test('catalog exposes seventeen wallpaper textures including five built-in poste
     assert.equal(material.category, 'wallpaper');
     assert.equal(material.kind, 'texture');
     assert.ok(
-      String(material.src).includes('wallmap_yellow.png') ||
+      String(material.src).includes('wallmap_yellow.jpg') ||
       String(material.src).includes('wallpaper_') ||
       String(material.src).includes('poster_')
     );
@@ -289,6 +289,27 @@ test('reflective texture descriptors keep reflection controls', () => {
   assert.equal(normalized.specularStrength, 0.74);
   assert.equal(normalized.specularPower, 120);
   assert.ok(String(normalized.src).includes('brick_marble_grey_gloss.jpg'));
+});
+
+test('mosaic tiles keep a physical 0.25m image size on room floors', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  try {
+    const mosaic = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'brick-mosaic');
+    const material = createBlueprintMaterial(scene, 'mosaic-floor-test', mosaic, {
+      isFloor: true,
+      surfaceWidth: 1,
+      surfaceDepth: 1.5
+    });
+
+    assert.equal(mosaic.physicalTileSize, 0.25);
+    assert.equal(material.diffuseTexture.uScale, 4);
+    assert.equal(material.diffuseTexture.vScale, 6);
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
 });
 
 test('texture material descriptors preserve id and tint color', () => {

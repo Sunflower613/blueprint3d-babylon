@@ -9,7 +9,7 @@ const woodChevronOakLightUrl = new URL('../textures/wood_chevron_oak_light.jpg',
 const woodDiagonalPlankLightUrl = new URL('../textures/wood_diagonal_plank_light.jpg', import.meta.url).href;
 const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
 const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
-const wallmapYellowUrl = new URL('../textures/wallmap_yellow.png', import.meta.url).href;
+const wallmapYellowUrl = new URL('../textures/wallmap_yellow.jpg', import.meta.url).href;
 const brickMarbleWarmUrl = new URL('../textures/brick_marble_warm.jpg', import.meta.url).href;
 const brickMarbleGreyGlossUrl = new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href;
 
@@ -40,7 +40,7 @@ const fabricKnitCableGreyUrl = new URL('../textures/fabric_knit_cable_grey.jpg',
 const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href;
 const fabricKnitChevronCreamUrl = new URL('../textures/fabric_knit_chevron_cream.jpg', import.meta.url).href;
 const fabricWeaveDarkUrl = new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href;
-const fabricOrganzaWhiteUrl = new URL('../textures/fabric_organza_white.png', import.meta.url).href;
+const fabricOrganzaWhiteUrl = new URL('../textures/fabric_organza_white.jpg', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
 const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
@@ -51,12 +51,12 @@ const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold
 const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
 const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
 const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
-const wallpaperRoseUrl = new URL('../textures/wallpaper_rose.png', import.meta.url).href;
-const posterAbstractArchesUrl = new URL('../textures/poster_abstract_arches.png', import.meta.url).href;
-const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.png', import.meta.url).href;
-const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.png', import.meta.url).href;
-const posterMountainSunriseUrl = new URL('../textures/poster_mountain_sunrise.png', import.meta.url).href;
-const posterCelestialMoonsUrl = new URL('../textures/poster_celestial_moons.png', import.meta.url).href;
+const wallpaperRoseUrl = new URL('../textures/wallpaper_rose.jpg', import.meta.url).href;
+const posterAbstractArchesUrl = new URL('../textures/poster_abstract_arches.jpg', import.meta.url).href;
+const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.jpg', import.meta.url).href;
+const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.jpg', import.meta.url).href;
+const posterMountainSunriseUrl = new URL('../textures/poster_mountain_sunrise.jpg', import.meta.url).href;
+const posterCelestialMoonsUrl = new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href;
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -153,7 +153,7 @@ const COMMON_BRICK_MATERIALS = [
   { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
   { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 },
   { id: 'brick-black-white', name: '棋盘砖', src: brickBlackWhiteUrl, scale: 2.0, color: '#ffffff' },
   { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff' }
 ].map((material) => ({

@@ -153,6 +153,10 @@ export function isPowerControllable(definition) {
   );
 }
 
+export function isWaterControllable(definition) {
+  return definition?.waterControllable === true;
+}
+
 export function isAppliancePowerOn(item) {
   return item?.isOn === true;
 }

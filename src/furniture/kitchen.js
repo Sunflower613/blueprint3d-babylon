@@ -39,6 +39,7 @@ export const fridgeFurniture = {
 
 export const sinkKitchenFurniture = {
   type: 'sink_kitchen',
+  waterControllable: true,
   name: '厨房水槽',
   defaultSize: { width: 39.37, depth: 22, height: 36 },
   components: [
@@ -695,6 +696,7 @@ export const pairMugsFurniture = {
 
 export const sinkCabinetFurniture = {
   type: 'sink_cabinet',
+  waterControllable: true,
   name: '带柜水槽',
   defaultSize: { width: 39.37, depth: 22, height: 36 },
   snapToEdge: true,
@@ -704,7 +706,8 @@ export const sinkCabinetFurniture = {
     { id: 'handle', label: '拉手', defaultColor: '#546e7a' },
     { id: 'counter', label: '台面', defaultColor: '#ffffff' },
     { id: 'tub', label: '水槽', defaultColor: '#b3bdc4' },
-    { id: 'faucet', label: '龙头', defaultColor: '#ffffff' }
+    { id: 'faucet', label: '龙头', defaultColor: '#ffffff' },
+    { id: 'water', label: '内蓄水', defaultColor: '#aae3ff' }
   ],
   build(registry, item, node, size) {
     const counterTopH = 0.04;
@@ -769,6 +772,12 @@ export const sinkCabinetFurniture = {
     boxComponent(registry, item, sinkCabinetFurniture, 'tub', {
       width: tubW - 2 * t, height: rimH, depth: t
     }, { position: { x: 0, y: centerY + rimH / 2, z: -tubD / 2 + t / 2 } }, { parent: node });
+
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, sinkCabinetFurniture, 'water', {
+        width: tubW - 2 * t - 0.002, height: 0.001, depth: tubD - 2 * t - 0.002
+      }, { position: { x: 0, y: centerY + rimH * 0.7, z: 0 } }, { parent: node });
+    }
 
     cylinderComponent(registry, item, sinkCabinetFurniture, 'faucet', {
       diameterTop: 0.012, diameterBottom: 0.012, height: 0.15, tessellation: 8

@@ -1164,6 +1164,7 @@ export const windChimeFurniture = {
 };
 export const landscapeRockeryAquarium = {
   type: 'landscape_rockery_aquarium',
+  waterControllable: true,
   name: '水族箱',
   defaultSize: { width: 40, depth: 24, height: 48 },
   components: [
@@ -1188,9 +1189,11 @@ export const landscapeRockeryAquarium = {
     }, { position: { x: 0, y: standH + glassH / 2, z: 0 } }, { parent: node });
 
     // 3. 蔚蓝透亮水体
-    boxComponent(registry, item, landscapeRockeryAquarium, 'aquarium-water', {
-      width: size.width * 0.94, height: glassH * 0.9, depth: size.depth * 0.94
-    }, { position: { x: 0, y: standH + glassH * 0.45, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeRockeryAquarium, 'aquarium-water', {
+        width: size.width * 0.94, height: glassH * 0.9, depth: size.depth * 0.94
+      }, { position: { x: 0, y: standH + glassH * 0.45, z: 0 } }, { parent: node });
+    }
 
     // 4. 3个椭圆假山 (主山、配山、护山)，一半埋在底柜里
     // 主山

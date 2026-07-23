@@ -99,6 +99,7 @@ export const toiletFurniture = {
 
 export const bathtubFurniture = {
   type: 'bathtub',
+  waterControllable: true,
   name: '浴缸',
   defaultSize: { width: 32, depth: 64, height: 24 },
   components: [
@@ -148,6 +149,7 @@ export const bathtubFurniture = {
 
 export const sinkBathroomFurniture = {
   type: 'sink_bathroom',
+  waterControllable: true,
   name: '洗手台',
   defaultSize: { width: 20, depth: 18, height: 34 },
   components: [

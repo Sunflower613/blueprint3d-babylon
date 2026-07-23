@@ -590,7 +590,8 @@ export class EntityManager {
    */
   toggleItemWater(itemId) {
     const item = this.opts.testMap.getEntity('item', itemId);
-    if (!item || item.locked) return;
+    const definition = item && this.opts.testMap.getFurnitureDefinition(item.type);
+    if (!item || item.locked || definition?.waterControllable !== true) return;
     this.opts.pushHistory();
     const isWaterOn = item.waterEnabled !== false;
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { waterEnabled: !isWaterOn } });

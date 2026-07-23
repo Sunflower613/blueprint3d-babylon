@@ -31,6 +31,7 @@ export const landscapeTaihuStone = {
 
 export const landscapeRockeryFountain = {
   type: 'landscape_rockery_fountain',
+  waterControllable: true,
   name: '流水盆景',
   defaultSize: { width: 48, depth: 36, height: 40 },
   components: [
@@ -65,9 +66,11 @@ export const landscapeRockeryFountain = {
     }, { position: { x: -size.width / 2 + wallT / 2, y: poolH / 2, z: 0 } }, { parent: node });
 
     // 内嵌水面
-    boxComponent(registry, item, landscapeRockeryFountain, 'water-surface', {
-      width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
-    }, { position: { x: 0, y: poolH - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeRockeryFountain, 'water-surface', {
+        width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
+      }, { position: { x: 0, y: poolH - 0.02, z: 0 } }, { parent: node });
+    }
 
     const rockY = poolH;
     sphereComponent(registry, item, landscapeRockeryFountain, 'rock-body', {
@@ -78,9 +81,11 @@ export const landscapeRockeryFountain = {
       diameter: size.width * 0.35, segments: 8
     }, { position: { x: size.width * 0.15, y: rockY + size.height * 0.4, z: size.depth * 0.15 } }, { parent: node });
 
-    cylinderComponent(registry, item, landscapeRockeryFountain, 'water-cascade', {
-      diameterTop: 0.02, diameterBottom: 0.06, height: size.height * 0.5, tessellation: 8
-    }, { position: { x: 0, y: rockY + size.height * 0.25, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeRockeryFountain, 'water-cascade', {
+        diameterTop: 0.02, diameterBottom: 0.06, height: size.height * 0.5, tessellation: 8
+      }, { position: { x: 0, y: rockY + size.height * 0.25, z: 0 } }, { parent: node });
+    }
   }
 };
 
@@ -114,6 +119,7 @@ export const landscapeZenGravel = {
 
 export const landscapeKoiPond = {
   type: 'landscape_koi_pond',
+  waterControllable: true,
   name: '锦鲤鱼池',
   defaultSize: { width: 80, depth: 60, height: 18 },
   components: [
@@ -146,9 +152,11 @@ export const landscapeKoiPond = {
     }, { position: { x: -size.width / 2 + wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
 
     // 内嵌水面
-    boxComponent(registry, item, landscapeKoiPond, 'pond-water', {
-      width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
-    }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeKoiPond, 'pond-water', {
+        width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
+      }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    }
 
     const fishData = [
       { x: -size.width * 0.2, z: -size.depth * 0.15, r: 0.5 },
@@ -167,6 +175,7 @@ export const landscapeKoiPond = {
 
 export const landscapeStoneTrough = {
   type: 'landscape_stone_trough',
+  waterControllable: true,
   name: '石槽',
   defaultSize: { width: 36, depth: 18, height: 16 },
   components: [
@@ -193,9 +202,11 @@ export const landscapeStoneTrough = {
       width: wallThick, height: size.height * 0.85, depth: size.depth - wallThick * 2
     }, { position: { x: -size.width / 2 + wallThick / 2, y: size.height * 0.575, z: 0 } }, { parent: node });
 
-    boxComponent(registry, item, landscapeStoneTrough, 'trough-water', {
-      width: size.width - wallThick * 2, height: 0.02, depth: size.depth - wallThick * 2
-    }, { position: { x: 0, y: size.height * 0.8, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeStoneTrough, 'trough-water', {
+        width: size.width - wallThick * 2, height: 0.02, depth: size.depth - wallThick * 2
+      }, { position: { x: 0, y: size.height * 0.8, z: 0 } }, { parent: node });
+    }
   }
 };
 
@@ -249,6 +260,7 @@ export const landscapeTaishanStone = {
 
 export const landscapeCascadingTerrace = {
   type: 'landscape_cascading_terrace',
+  waterControllable: true,
   name: '跌水石台',
   defaultSize: { width: 52, depth: 52, height: 36 },
   components: [
@@ -271,14 +283,17 @@ export const landscapeCascadingTerrace = {
       width: size.width * 0.45, height: h3, depth: size.depth * 0.45
     }, { position: { x: 0, y: h1 + h2 + h3 / 2, z: 0 } }, { parent: node });
 
-    boxComponent(registry, item, landscapeCascadingTerrace, 'water-curtain', {
-      width: size.width * 0.65, height: h2, depth: size.width * 0.65
-    }, { position: { x: 0, y: h1 + h2 / 2 + 0.01, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeCascadingTerrace, 'water-curtain', {
+        width: size.width * 0.65, height: h2, depth: size.width * 0.65
+      }, { position: { x: 0, y: h1 + h2 / 2 + 0.01, z: 0 } }, { parent: node });
+    }
   }
 };
 
 export const landscapeShishiOdoshi = {
   type: 'landscape_shishi_odoshi',
+  waterControllable: true,
   name: '鹿打',
   defaultSize: { width: 24, depth: 24, height: 28 },
   components: [
@@ -311,9 +326,11 @@ export const landscapeShishiOdoshi = {
     }
 
     // 内嵌水面
-    cylinderComponent(registry, item, landscapeShishiOdoshi, 'basin-water', {
-      diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
-    }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeShishiOdoshi, 'basin-water', {
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+      }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
+    }
 
     const poleH = size.height * 0.72;
     cylinderComponent(registry, item, landscapeShishiOdoshi, 'bamboo-pipes', {
@@ -363,6 +380,7 @@ export const landscapeGlassWaterfall = {
 
 export const landscapeStreamRockery = {
   type: 'landscape_stream_rockery',
+  waterControllable: true,
   name: '溪流假山',
   defaultSize: { width: 84, depth: 36, height: 18 },
   components: [
@@ -370,9 +388,11 @@ export const landscapeStreamRockery = {
     { id: 'stream-pebbles', label: '护岸卵石', defaultColor: '#90a4ae' }
   ],
   build(registry, item, node, size) {
-    boxComponent(registry, item, landscapeStreamRockery, 'stream-water', {
-      width: size.width, height: size.height * 0.2, depth: size.depth * 0.65
-    }, { position: { x: 0, y: size.height * 0.1, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeStreamRockery, 'stream-water', {
+        width: size.width, height: size.height * 0.2, depth: size.depth * 0.65
+      }, { position: { x: 0, y: size.height * 0.1, z: 0 } }, { parent: node });
+    }
 
     const stoneCoords = [
       { x: -size.width * 0.42, z: -size.depth * 0.38 },
@@ -398,6 +418,7 @@ export const landscapeStreamRockery = {
 
 export const landscapeLotusPond = {
   type: 'landscape_lotus_pond',
+  waterControllable: true,
   name: '荷花池',
   defaultSize: { width: 64, depth: 48, height: 16 },
   components: [
@@ -430,9 +451,11 @@ export const landscapeLotusPond = {
     }, { position: { x: -size.width / 2 + wallT / 2, y: size.height / 2, z: 0 } }, { parent: node });
 
     // 内嵌水面
-    boxComponent(registry, item, landscapeLotusPond, 'lotus-water', {
-      width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
-    }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeLotusPond, 'lotus-water', {
+        width: size.width - wallT * 2, height: 0.02, depth: size.depth - wallT * 2
+      }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    }
 
     const leaves = [
       { x: -size.width * 0.22, z: -size.depth * 0.15, d: size.width * 0.25 },
@@ -570,6 +593,7 @@ export const landscapeSlatePath = {
 
 export const landscapeModernWaterWall = {
   type: 'landscape_modern_water_wall',
+  waterControllable: true,
   name: '金属水幕',
   defaultSize: { width: 48, depth: 16, height: 72 },
   components: [
@@ -588,14 +612,17 @@ export const landscapeModernWaterWall = {
       width: size.width * 0.82, height: bodyH, depth: size.depth * 0.22
     }, { position: { x: 0, y: baseH + bodyH / 2, z: 0 } }, { parent: node });
 
-    boxComponent(registry, item, landscapeModernWaterWall, 'water-curtain', {
-      width: size.width * 0.8, height: bodyH, depth: size.depth * 0.26
-    }, { position: { x: 0, y: baseH + bodyH / 2, z: 0.01 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeModernWaterWall, 'water-curtain', {
+        width: size.width * 0.8, height: bodyH, depth: size.depth * 0.26
+      }, { position: { x: 0, y: baseH + bodyH / 2, z: 0.01 } }, { parent: node });
+    }
   }
 };
 
 export const landscapeWaterLilyPond = {
   type: 'landscape_water_lily_pond',
+  waterControllable: true,
   name: '睡莲池',
   defaultSize: { width: 56, depth: 56, height: 16 },
   components: [
@@ -628,9 +655,11 @@ export const landscapeWaterLilyPond = {
     }
 
     // 水面
-    cylinderComponent(registry, item, landscapeWaterLilyPond, 'pond-water', {
-      diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
-    }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeWaterLilyPond, 'pond-water', {
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+      }, { position: { x: 0, y: size.height - 0.02, z: 0 } }, { parent: node });
+    }
 
     const pads = [
       { x: -size.width * 0.22, z: -size.depth * 0.12, d: size.width * 0.22 },
@@ -651,6 +680,7 @@ export const landscapeWaterLilyPond = {
 
 export const landscapeTaijiPond = {
   type: 'landscape_taiji_pond',
+  waterControllable: true,
   name: '风水池',
   defaultSize: { width: 60, depth: 60, height: 12 },
   components: [
@@ -664,24 +694,28 @@ export const landscapeTaijiPond = {
     }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
 
     const innerRadius = size.width * 0.92;
-    boxComponent(registry, item, landscapeTaijiPond, 'taiji-black', {
-      width: innerRadius, height: 0.02, depth: innerRadius / 2
-    }, { position: { x: 0, y: size.height - 0.01, z: -innerRadius / 4 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      boxComponent(registry, item, landscapeTaijiPond, 'taiji-black', {
+        width: innerRadius, height: 0.02, depth: innerRadius / 2
+      }, { position: { x: 0, y: size.height - 0.01, z: -innerRadius / 4 } }, { parent: node });
 
-    boxComponent(registry, item, landscapeTaijiPond, 'taiji-white', {
-      width: innerRadius, height: 0.02, depth: innerRadius / 2
-    }, { position: { x: 0, y: size.height - 0.01, z: innerRadius / 4 } }, { parent: node });
+      boxComponent(registry, item, landscapeTaijiPond, 'taiji-white', {
+        width: innerRadius, height: 0.02, depth: innerRadius / 2
+      }, { position: { x: 0, y: size.height - 0.01, z: innerRadius / 4 } }, { parent: node });
+    }
   }
 };
 
 export const landscapeWindingStream = {
   type: 'landscape_winding_stream',
+  waterControllable: true,
   name: '溪流',
   defaultSize: { width: 90, depth: 36, height: 1.8 },
   components: [
     { id: 'stream-water', label: '溪水镜面', defaultColor: '#29b6f6' }
   ],
   build(registry, item, node, size) {
+    if (item.waterEnabled === false) return;
     const segments = 3;
     const segW = size.width / segments;
     for (let idx = 0; idx < segments; idx++) {
@@ -695,6 +729,7 @@ export const landscapeWindingStream = {
 
 export const landscapeNaturalSpring = {
   type: 'landscape_natural_spring',
+  waterControllable: true,
   name: '泉眼',
   defaultSize: { width: 44, depth: 44, height: 18 },
   components: [
@@ -702,9 +737,11 @@ export const landscapeNaturalSpring = {
     { id: 'spring-rocks', label: '护泉驳石', defaultColor: '#78909c' }
   ],
   build(registry, item, node, size) {
-    cylinderComponent(registry, item, landscapeNaturalSpring, 'spring-water', {
-      diameterTop: size.width * 0.72, diameterBottom: size.width * 0.72, height: size.height * 0.75, tessellation: 16
-    }, { position: { x: 0, y: size.height * 0.375, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeNaturalSpring, 'spring-water', {
+        diameterTop: size.width * 0.72, diameterBottom: size.width * 0.72, height: size.height * 0.75, tessellation: 16
+      }, { position: { x: 0, y: size.height * 0.375, z: 0 } }, { parent: node });
+    }
 
     const pebbleCoords = [
       { x: -size.width * 0.4, z: -size.width * 0.15 },
@@ -727,6 +764,7 @@ export const landscapeNaturalSpring = {
 
 export const landscapeOldWell = {
   type: 'landscape_old_well',
+  waterControllable: true,
   name: '古井',
   defaultSize: { width: 28, depth: 28, height: 42 },
   components: [
@@ -760,9 +798,11 @@ export const landscapeOldWell = {
     }
 
     // 内嵌井水面
-    cylinderComponent(registry, item, landscapeOldWell, 'well-water', {
-      diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
-    }, { position: { x: 0, y: wellH - 0.04, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeOldWell, 'well-water', {
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+      }, { position: { x: 0, y: wellH - 0.04, z: 0 } }, { parent: node });
+    }
 
     // 两根立柱
     const postH = size.height * 0.85;

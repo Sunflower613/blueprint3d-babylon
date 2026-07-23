@@ -579,7 +579,7 @@ function isItemInteractive(item, def) {
   const isAppliance = def.category === 'appliances';
   const isLightingEntity = !!item.lightId;
   const isSwitchable = !!(isLighting || isAppliance || isLightingEntity || def.powerEffect || def.isSwitchable);
-  const isWaterContainer = item.type.includes('sink') || item.type.includes('bathtub') || item.type.includes('washbasin') || item.type.includes('faucet');
+  const isWaterContainer = def.waterControllable === true;
   const isToilet = item.type.includes('toilet');
   const isCurtain = item.type.toLowerCase().includes('curtain') || item.type.toLowerCase().includes('blind') || item.type.toLowerCase().includes('noren') || item.type.toLowerCase().includes('valance');
 
@@ -776,12 +776,7 @@ function executeInteraction(Context) {
         const isSwitchable = !!(isLighting || isAppliance || isLightingEntity || isCurtain || def?.powerEffect || def?.isSwitchable);
 
         // 区分水槽凹槽放水与马桶开合盖
-        const isWaterContainer = def && (
-          item.type.includes('sink') || 
-          item.type.includes('bathtub') || 
-          item.type.includes('washbasin') ||
-          item.type.includes('faucet')
-        );
+        const isWaterContainer = def?.waterControllable === true;
         const isToilet = def && item.type.includes('toilet');
 
         if (isSwitchable || isToilet) {

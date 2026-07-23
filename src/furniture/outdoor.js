@@ -502,6 +502,7 @@ export const patioHeaterFurniture = {
 
 export const gardenFountainFurniture = {
   type: 'garden_fountain',
+  waterControllable: true,
   name: '喷泉',
   defaultSize: { width: 32, depth: 32, height: 52 },
   components: [
@@ -597,6 +598,7 @@ export const gardenFountainFurniture = {
 
 export const birdbathFurniture = {
   type: 'birdbath',
+  waterControllable: true,
   name: '鸟浴台',
   defaultSize: { width: 18, depth: 18, height: 34 },
   components: [
@@ -1293,6 +1295,7 @@ export const sharedBicycleFurniture = {
 
 export const landscapeMarbleFountain = {
   type: 'landscape_marble_fountain',
+  waterControllable: true,
   name: '跌水喷泉',
   defaultSize: { width: 56, depth: 56, height: 60 },
   components: [
@@ -1318,9 +1321,11 @@ export const landscapeMarbleFountain = {
     }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
     // 2. 底盆水面
-    cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
-      diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
-    }, { position: { x: 0, y: baseH - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 12
+      }, { position: { x: 0, y: baseH - 0.02, z: 0 } }, { parent: node });
+    }
 
     // 3. 中央立柱
     const pillarH = size.height * 0.55;
@@ -1346,18 +1351,21 @@ export const landscapeMarbleFountain = {
     }, { position: { x: 0, y: bowlY, z: 0 } }, { parent: node });
 
     // 5. 顶盆水面与涌出水球
-    cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
-      diameterTop: bowlD - bowlWallT * 2, diameterBottom: bowlD - bowlWallT * 2, height: 0.02, tessellation: 12
-    }, { position: { x: 0, y: bowlY + bowlH - 0.015, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
+        diameterTop: bowlD - bowlWallT * 2, diameterBottom: bowlD - bowlWallT * 2, height: 0.02, tessellation: 12
+      }, { position: { x: 0, y: bowlY + bowlH - 0.015, z: 0 } }, { parent: node });
 
-    sphereComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
-      diameter: size.width * 0.32, segments: 10
-    }, { position: { x: 0, y: size.height - size.height * 0.12, z: 0 } }, { parent: node });
+      sphereComponent(registry, item, landscapeMarbleFountain, 'fountain-water', {
+        diameter: size.width * 0.32, segments: 10
+      }, { position: { x: 0, y: size.height - size.height * 0.12, z: 0 } }, { parent: node });
+    }
   }
 };
 
 export const landscapeEuroPondSculpture = {
   type: 'landscape_euro_pond_sculpture',
+  waterControllable: true,
   name: '水池雕塑',
   defaultSize: { width: 64, depth: 64, height: 72 },
   components: [
@@ -1384,9 +1392,11 @@ export const landscapeEuroPondSculpture = {
     }, { position: { x: 0, y: 0, z: 0 } }, { parent: node });
 
     // 2. 内嵌水面
-    cylinderComponent(registry, item, landscapeEuroPondSculpture, 'pond-water', {
-      diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 16
-    }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
+    if (item.waterEnabled !== false) {
+      cylinderComponent(registry, item, landscapeEuroPondSculpture, 'pond-water', {
+        diameterTop: size.width - wallT * 2, diameterBottom: size.width - wallT * 2, height: 0.02, tessellation: 16
+      }, { position: { x: 0, y: basinH - 0.02, z: 0 } }, { parent: node });
+    }
 
     const pedH = size.height * 0.22;
     boxComponent(registry, item, landscapeEuroPondSculpture, 'pond-sculpture', {

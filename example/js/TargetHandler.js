@@ -132,7 +132,8 @@ export function showObjectContextMenu(target, clientX, clientY) {
   let isWaterOn = true;
   if (target.type === 'item') {
     const item = ctx.testMap.getEntity('item', target.id);
-    if (item && ['bathtub', 'sink_kitchen', 'sink_bathroom', 'birdbath', 'garden_fountain'].includes(item.type)) {
+    const definition = item && ctx.testMap.getFurnitureDefinition(item.type);
+    if (item && definition?.waterControllable === true) {
       isWaterContainer = true;
       isWaterOn = item.waterEnabled !== false;
     }

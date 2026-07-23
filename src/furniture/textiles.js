@@ -105,27 +105,28 @@ function createIrregularRugMesh(registry, item, definition, node, size, height) 
 }
 
 function createPuzzleRugOutline(size) {
-  // One EVA floor tile. Broad dovetail tabs alternate with matching recesses;
-  // the base inset leaves room for the tabs inside the requested footprint.
+  // One EVA floor tile with shallow interlocking tabs.  Keep the tile visually
+  // square: the tabs only use the outer 4% of each side instead of turning the
+  // whole silhouette into a deep saw-tooth/star shape.
   const profile = [
-    [-0.44, 0.44],
-    [-0.39, 0.44],
-    [-0.36, 0.50],
-    [-0.28, 0.50],
-    [-0.25, 0.44],
-    [-0.17, 0.44],
-    [-0.14, 0.38],
-    [-0.06, 0.38],
-    [-0.03, 0.44],
-    [0.04, 0.44],
-    [0.07, 0.50],
-    [0.15, 0.50],
-    [0.18, 0.44],
-    [0.26, 0.44],
-    [0.29, 0.38],
-    [0.37, 0.38],
-    [0.40, 0.44],
-    [0.44, 0.44]
+    [-0.46, 0.46],
+    [-0.40, 0.46],
+    [-0.38, 0.50],
+    [-0.30, 0.50],
+    [-0.28, 0.46],
+    [-0.18, 0.46],
+    [-0.16, 0.50],
+    [-0.08, 0.50],
+    [-0.06, 0.46],
+    [0.06, 0.46],
+    [0.08, 0.50],
+    [0.16, 0.50],
+    [0.18, 0.46],
+    [0.28, 0.46],
+    [0.30, 0.50],
+    [0.38, 0.50],
+    [0.40, 0.46],
+    [0.46, 0.46]
   ];
   const outline = [];
   const appendEdge = (transform) => {
@@ -147,9 +148,66 @@ function createPuzzleRugOutline(size) {
   return outline;
 }
 
+function signedPolygonArea(points) {
+  return points.reduce((area, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return area + point.x * next.z - next.x * point.z;
+  }, 0) * 0.5;
+}
+
+function pointInsideTriangle(point, a, b, c) {
+  const sign = (p1, p2, p3) => (
+    (p1.x - p3.x) * (p2.z - p3.z) - (p2.x - p3.x) * (p1.z - p3.z)
+  );
+  const d1 = sign(point, a, b);
+  const d2 = sign(point, b, c);
+  const d3 = sign(point, c, a);
+  return !((d1 < -1e-10 || d2 < -1e-10 || d3 < -1e-10)
+    && (d1 > 1e-10 || d2 > 1e-10 || d3 > 1e-10));
+}
+
+function triangulateSimplePolygon(points) {
+  const remaining = points.map((_, index) => index);
+  if (signedPolygonArea(points) < 0) remaining.reverse();
+  const triangles = [];
+  let guard = remaining.length * remaining.length;
+
+  while (remaining.length > 3 && guard > 0) {
+    guard -= 1;
+    let clipped = false;
+    for (let index = 0; index < remaining.length; index += 1) {
+      const previous = remaining[(index - 1 + remaining.length) % remaining.length];
+      const current = remaining[index];
+      const next = remaining[(index + 1) % remaining.length];
+      const a = points[previous];
+      const b = points[current];
+      const c = points[next];
+      const cornerCross = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x);
+      if (cornerCross <= 1e-10) continue;
+      if (remaining.some((candidate) => (
+        candidate !== previous
+        && candidate !== current
+        && candidate !== next
+        && pointInsideTriangle(points[candidate], a, b, c)
+      ))) continue;
+      triangles.push([previous, current, next]);
+      remaining.splice(index, 1);
+      clipped = true;
+      break;
+    }
+    if (!clipped) {
+      throw new Error(`Unable to triangulate puzzle rug outline (${remaining.length} vertices remain: ${remaining.join(',')})`);
+    }
+  }
+
+  if (remaining.length === 3) triangles.push([...remaining]);
+  return triangles;
+}
+
 function createPuzzleRugMesh(registry, item, definition, node, size, height) {
   const outline = createPuzzleRugOutline(size);
   const segmentCount = outline.length;
+  const faceTriangles = triangulateSimplePolygon(outline);
   const positions = [];
   const indices = [];
   const uvs = [];
@@ -162,7 +220,6 @@ function createPuzzleRugMesh(registry, item, definition, node, size, height) {
     return positions.length / 3 - 1;
   };
 
-  const topCenter = pushVertex(0, topY, 0, 0.5, 0.5);
   const topRing = outline.map((point) => pushVertex(
     point.x,
     topY,
@@ -170,7 +227,6 @@ function createPuzzleRugMesh(registry, item, definition, node, size, height) {
     point.x / size.width + 0.5,
     point.z / size.depth + 0.5
   ));
-  const bottomCenter = pushVertex(0, bottomY, 0, 0.5, 0.5);
   const bottomRing = outline.map((point) => pushVertex(
     point.x,
     bottomY,
@@ -179,11 +235,12 @@ function createPuzzleRugMesh(registry, item, definition, node, size, height) {
     point.z / size.depth + 0.5
   ));
 
-  for (let index = 0; index < segmentCount; index += 1) {
-    const next = (index + 1) % segmentCount;
-    indices.push(topCenter, topRing[next], topRing[index]);
-    indices.push(bottomCenter, bottomRing[index], bottomRing[next]);
-  }
+  faceTriangles.forEach(([a, b, c]) => {
+    // A counter-clockwise polygon in x/z has a downward Babylon cross product,
+    // so reverse the top and retain that winding on the underside.
+    indices.push(topRing[a], topRing[c], topRing[b]);
+    indices.push(bottomRing[a], bottomRing[b], bottomRing[c]);
+  });
 
   const edgeLengths = outline.map((point, index) => {
     const next = outline[(index + 1) % segmentCount];

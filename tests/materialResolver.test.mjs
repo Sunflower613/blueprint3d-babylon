@@ -98,3 +98,12 @@ test('resolveMaterialAssetDescriptor strips cross-origin origins to prevent CORS
   }
 });
 
+test('four rug textures (fabric_triangle, fabric_circle, fabric_flower, fabric_square) stretch without tile repeat', () => {
+  const rugIds = ['fabric-triangle', 'fabric-circle', 'fabric-flower', 'fabric-square'];
+  for (const id of rugIds) {
+    const normalized = MaterialResolver.normalizeMaterialDescriptor({ id, kind: 'texture' });
+    const scale = MaterialResolver.resolvePatternTextureScale(normalized, { surfaceWidth: 10, surfaceHeight: 2 });
+    assert.deepEqual(scale, { uScale: 1, vScale: 1 }, `${id} should stay un-boosted and un-tiled (uScale=1, vScale=1)`);
+  }
+});
+

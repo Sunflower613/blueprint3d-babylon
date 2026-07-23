@@ -137,17 +137,84 @@ test('biscuit rug is one closed puzzle-edged EVA tile mesh', () => {
   assert.ok(bounds.maximumWorld.y < 0.02);
 
   const topY = bounds.maximumWorld.y;
-  const topOutline = [];
+  const topTriangles = [];
   for (let index = 0; index < positions.length / 3; index += 1) {
-    const x = positions[index * 3];
-    const y = positions[index * 3 + 1];
-    const z = positions[index * 3 + 2];
-    if (Math.abs(y - topY) < 1e-6 && (Math.abs(x) > 1e-6 || Math.abs(z) > 1e-6)) {
-      topOutline.push([x, z]);
+    assert.ok(Number.isFinite(positions[index * 3]));
+  }
+  for (let offset = 0; offset < indices.length; offset += 3) {
+    const triangle = indices.slice(offset, offset + 3);
+    if (triangle.every((index) => Math.abs(positions[index * 3 + 1] - topY) < 1e-6)) {
+      topTriangles.push(triangle);
     }
   }
+  assert.ok(topTriangles.length > 40, 'concave top is triangulated without a center fan');
+
+  const topEdgeCounts = new Map();
+  const topEdgeVertices = new Map();
+  for (const triangle of topTriangles) {
+    const points = triangle.map((index) => [
+      positions[index * 3],
+      positions[index * 3 + 1],
+      positions[index * 3 + 2]
+    ]);
+    const ab = points[1].map((value, axis) => value - points[0][axis]);
+    const ac = points[2].map((value, axis) => value - points[0][axis]);
+    const normalY = ab[2] * ac[0] - ab[0] * ac[2];
+    assert.ok(normalY > 1e-10, 'every top triangle must face upward');
+    for (const [from, to] of [[triangle[0], triangle[1]], [triangle[1], triangle[2]], [triangle[2], triangle[0]]]) {
+      const edge = [from, to].sort((a, b) => a - b).join(':');
+      topEdgeCounts.set(edge, (topEdgeCounts.get(edge) || 0) + 1);
+      topEdgeVertices.set(edge, [from, to]);
+    }
+  }
+
+  const boundaryEdges = [...topEdgeCounts]
+    .filter(([, count]) => count === 1)
+    .map(([edge]) => topEdgeVertices.get(edge));
+  const adjacency = new Map();
+  for (const [a, b] of boundaryEdges) {
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    if (!adjacency.has(b)) adjacency.set(b, []);
+    adjacency.get(a).push(b);
+    adjacency.get(b).push(a);
+  }
+  assert.ok([...adjacency.values()].every((neighbors) => neighbors.length === 2));
+  const outlineIndices = [];
+  let previous = null;
+  let current = boundaryEdges[0][0];
+  do {
+    outlineIndices.push(current);
+    const candidates = adjacency.get(current);
+    const next = candidates[0] === previous ? candidates[1] : candidates[0];
+    previous = current;
+    current = next;
+  } while (current !== outlineIndices[0] && outlineIndices.length <= boundaryEdges.length);
+  assert.equal(outlineIndices.length, boundaryEdges.length);
+
+  const topOutline = outlineIndices.map((index) => [
+    positions[index * 3],
+    positions[index * 3 + 2]
+  ]);
+  const pointInPolygon = ([x, z]) => {
+    let inside = false;
+    for (let index = 0, previousIndex = topOutline.length - 1; index < topOutline.length; previousIndex = index, index += 1) {
+      const [xi, zi] = topOutline[index];
+      const [xj, zj] = topOutline[previousIndex];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  for (const triangle of topTriangles) {
+    const centroid = [0, 2].map((axis) => (
+      triangle.reduce((sum, index) => sum + positions[index * 3 + axis], 0) / 3
+    ));
+    assert.ok(pointInPolygon(centroid), 'top triangle must not bridge across a concave tab shoulder');
+  }
+
   assert.ok(topOutline.some(([x, z]) => Math.abs(Math.abs(z) - 0.5) < 1e-6 && Math.abs(x) < 0.4), 'outline includes outward tabs');
-  assert.ok(topOutline.some(([x, z]) => Math.abs(Math.abs(z) - 0.38) < 1e-6 && Math.abs(x) < 0.4), 'outline includes recessed sockets');
+  assert.ok(topOutline.some(([x, z]) => Math.abs(Math.abs(z) - 0.46) < 1e-6 && Math.abs(x) < 0.4), 'outline returns to its square edge');
+  const tabDepth = 0.5 - Math.min(...topOutline.filter(([x]) => Math.abs(x) < 0.4).map(([, z]) => Math.abs(z)));
+  assert.ok(tabDepth <= 0.05, 'interlocking teeth stay shallow relative to the one metre tile');
 
   built.scene.dispose();
   built.engine.dispose();

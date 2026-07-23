@@ -1,6 +1,6 @@
 import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
 import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
-import { MaterialResolver } from '../domain/MaterialResolver.js';
+import { MaterialResolver, isSingleTileTexture } from '../domain/MaterialResolver.js';
 import { resolveMaterialAssetDescriptor, toSameOriginUrl } from './materialAssets.js';
 
 const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
@@ -370,11 +370,13 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     }
 
     const texture = baseTexture.clone();
-    const textureScale = resolvePatternTextureScale(normalized, options, normalized.scale || 1);
+    const isStretched = isSingleTileTexture(normalized);
+    const textureScale = isStretched ? { uScale: 1, vScale: 1 } : resolvePatternTextureScale(normalized, options, normalized.scale || 1);
     const physicalSurfaceHeight = Number(options.surfaceHeight) > 0
       ? Number(options.surfaceHeight)
       : Number(options.surfaceDepth);
     if (
+      !isStretched &&
       normalized.physicalTileSize > 0 &&
       Number(options.surfaceWidth) > 0 &&
       physicalSurfaceHeight > 0
@@ -384,8 +386,8 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     }
     texture.uScale = textureScale.uScale;
     texture.vScale = textureScale.vScale;
-    texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
-    texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapU = isStretched ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapV = isStretched ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
 
     const applyTextureToMaterial = () => {
       if (!material.isDisposed) {

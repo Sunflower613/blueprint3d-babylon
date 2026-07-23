@@ -105,10 +105,10 @@ const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-rug-geometric', name: '几何毯', src: fabricRugGeometricUrl, scale: 2, color: '#ffffff' },
   { id: 'fabric-foam-panel', name: '泡沫板', src: fabricFoamPanelUrl, scale: 2, color: '#ffffff' },
   { id: 'fabric-long-pile', name: '长毛绒', src: fabricLongPileUrl, scale: 2, color: '#ffffff' },
-  { id: 'fabric-flower', name: '花卉毯', src: fabricFlowerUrl, scale: 2, color: '#ffffff' },
-  { id: 'fabric-square', name: '边框毯', src: fabricSquareUrl, scale: 2, color: '#ffffff' },
-  { id: 'fabric-circle', name: '圆花毯', src: fabricCircleUrl, scale: 2, color: '#ffffff' },
-  { id: 'fabric-triangle', name: '三角毯', src: fabricTriangleUrl, scale: 2, color: '#ffffff' }
+  { id: 'fabric-flower', name: '花卉毯', src: fabricFlowerUrl, scale: 2, stretch: true, color: '#ffffff' },
+  { id: 'fabric-square', name: '边框毯', src: fabricSquareUrl, scale: 2, stretch: true, color: '#ffffff' },
+  { id: 'fabric-circle', name: '圆花毯', src: fabricCircleUrl, scale: 2, stretch: true, color: '#ffffff' },
+  { id: 'fabric-triangle', name: '三角毯', src: fabricTriangleUrl, scale: 2, stretch: true, color: '#ffffff' }
 ].map((material) => ({
   ...material,
   category: 'fabric',
@@ -268,6 +268,7 @@ export function createTextureMaterialDescriptor({
   fileName,
   scale = 1,
   color = '#ffffff',
+  stretch = false,
   reflective = false,
   reflectionLevel,
   specularStrength,
@@ -282,6 +283,7 @@ export function createTextureMaterialDescriptor({
     src,
     scale,
     color,
+    stretch,
     reflective,
     reflectionLevel,
     specularStrength,

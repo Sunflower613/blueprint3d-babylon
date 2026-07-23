@@ -19,6 +19,17 @@ const DEFAULT_FLOOR_ID = 'floor_1';
 const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
 const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
 
+export function isSingleTileTexture(descriptor) {
+  if (!descriptor || typeof descriptor !== 'object') return false;
+  if (descriptor.stretch === true || descriptor.fit === true) return true;
+  const id = descriptor.id || '';
+  const src = descriptor.src || descriptor.url || descriptor.fileName || '';
+  const targetIds = ['fabric-triangle', 'fabric-circle', 'fabric-flower', 'fabric-square'];
+  const targetFiles = ['fabric_triangle', 'fabric_circle', 'fabric_flower', 'fabric_square'];
+
+  return targetIds.includes(id) || targetFiles.some((file) => String(src).includes(file));
+}
+
 export class MaterialResolver {
   static get WALL_SURFACE_FIELD_MAP() {
     return WALL_SURFACE_FIELD_MAP;
@@ -175,6 +186,7 @@ export class MaterialResolver {
         color: value.color || fallbackColor,
         alpha: value.alpha !== undefined ? Number(value.alpha) : undefined,
         physicalTileSize: value.physicalTileSize !== undefined ? Number(value.physicalTileSize) : undefined,
+        stretch: value.stretch !== undefined ? !!value.stretch : undefined,
         reflective: !!value.reflective,
         reflectionLevel: value.reflectionLevel !== undefined ? Number(value.reflectionLevel) : undefined,
         specularStrength: value.specularStrength !== undefined ? Number(value.specularStrength) : undefined,
@@ -203,6 +215,10 @@ export class MaterialResolver {
   }
 
   static resolvePatternTextureScale(normalized, options = {}, baseScale = 1) {
+    if (isSingleTileTexture(normalized)) {
+      return { uScale: 1, vScale: 1 };
+    }
+
     const scale = Number(baseScale || 1);
     let uScale = scale;
     let vScale = scale;

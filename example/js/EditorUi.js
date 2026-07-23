@@ -512,7 +512,7 @@ export function updateEditor() {
     const waterField = document.getElementById('item-water-field');
     if (waterField) {
       const waterInput = document.getElementById('item-water-enabled');
-      const isWaterContainer = ctx.testMap.getFurnitureDefinition(item.type)?.waterControllable === true;
+      const isWaterContainer = def?.waterControllable === true;
       if (isWaterContainer) {
         waterField.classList.remove('hidden');
         waterInput.checked = item.waterEnabled !== false;

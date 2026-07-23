@@ -110,7 +110,8 @@ export {
 } from '../core/materialCatalog.js';
 
 export {
-  resolveMaterialAssetDescriptor
+  resolveMaterialAssetDescriptor,
+  toSameOriginUrl
 } from '../core/materialAssets.js';
 
 export {

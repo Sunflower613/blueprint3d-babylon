@@ -45,6 +45,10 @@ const TEXTURE_MAP = {
   'fabric_weave_dark.jpg': new URL('../textures/fabric_weave_dark.jpg', import.meta.url).href,
   'fabric_organza_white.jpg': new URL('../textures/fabric_organza_white.jpg', import.meta.url).href,
   'fabric_organza_white.png': new URL('../textures/fabric_organza_white.jpg', import.meta.url).href,
+  'fabric_square.jpg': new URL('../textures/fabric_square.jpg', import.meta.url).href,
+  'fabric_square.png': new URL('../textures/fabric_square.jpg', import.meta.url).href,
+  'fabric_circle.jpg': new URL('../textures/fabric_circle.jpg', import.meta.url).href,
+  'fabric_circle.png': new URL('../textures/fabric_circle.jpg', import.meta.url).href,
   'wallmap_yellow.jpg': new URL('../textures/wallmap_yellow.jpg', import.meta.url).href,
   'wallmap_yellow.png': new URL('../textures/wallmap_yellow.jpg', import.meta.url).href,
   'wallpaper_leaf_bluegrey.jpg': new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href,
@@ -71,6 +75,22 @@ const TEXTURE_MAP = {
   'poster_celestial_moons.png': new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href
 };
 
+export function toSameOriginUrl(url) {
+  if (typeof url !== 'string' || !url) return url;
+  if (typeof window === 'undefined' || !window.location) return url;
+
+  try {
+    if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+    const parsed = new URL(url, window.location.href);
+    if (parsed.origin !== window.location.origin) {
+      return parsed.pathname + parsed.search + parsed.hash;
+    }
+  } catch (e) {
+    // 忽略无法解析的路径
+  }
+  return url;
+}
+
 export function resolveMaterialAssetDescriptor(descriptor) {
   if (!descriptor || typeof descriptor !== 'object') return descriptor;
   if (descriptor.kind !== 'texture' && !descriptor.src && !descriptor.url) return descriptor;
@@ -83,6 +103,8 @@ export function resolveMaterialAssetDescriptor(descriptor) {
     const fileName = src.split('/').pop()?.split('?')[0];
     src = TEXTURE_MAP[fileName] || src;
   }
+
+  src = toSameOriginUrl(src);
 
   return src === descriptor.src ? descriptor : { ...descriptor, src };
 }

@@ -74,3 +74,27 @@ test('resolveMaterialAssetDescriptor correctly updates legacy hardcoded port URL
   assert.notEqual(resolved.src, legacyPortUrl);
   assert.match(resolved.src, /brick_diamond\.jpg/);
 });
+
+test('resolveMaterialAssetDescriptor strips cross-origin origins to prevent CORS errors', () => {
+  const crossOriginUrl = 'https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/wood_plank_oak_light-BxwmhA5Q.jpg';
+  
+  // 模拟浏览器 window.location.origin
+  globalThis.window = {
+    location: {
+      origin: 'http://localhost:3001',
+      href: 'http://localhost:3001/'
+    }
+  };
+
+  try {
+    const resolved = resolveMaterialAssetDescriptor({
+      kind: 'texture',
+      src: crossOriginUrl
+    });
+    assert.doesNotMatch(resolved.src, /^https:\/\/3000thvvtest\.frp\.pengyg\.top/);
+    assert.match(resolved.src, /wood_plank_oak_light/);
+  } finally {
+    delete globalThis.window;
+  }
+});
+

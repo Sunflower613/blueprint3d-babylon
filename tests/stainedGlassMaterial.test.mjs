@@ -136,10 +136,10 @@ test('catalog exposes brick textures', () => {
   });
 });
 
-test('catalog exposes twelve fabric textures including rug presets and translucent organza', () => {
+test('catalog exposes thirteen fabric textures including rug presets and translucent organza', () => {
   const fabricMaterials = DEFAULT_MATERIAL_PACKS.filter((entry) => entry.category === 'fabric');
 
-  assert.equal(fabricMaterials.length, 12);
+  assert.equal(fabricMaterials.length, 13);
   assert.deepEqual(
     fabricMaterials.map((entry) => entry.id),
     [
@@ -154,6 +154,7 @@ test('catalog exposes twelve fabric textures including rug presets and transluce
       'fabric-long-pile',
       'fabric-flower',
       'fabric-square',
+      'fabric-circle',
       'fabric-triangle'
     ]
   );
@@ -170,10 +171,11 @@ test('catalog exposes twelve fabric textures including rug presets and transluce
   assert.equal(organza.alpha, 0.48);
 
   assert.deepEqual(
-    fabricMaterials.slice(-3).map(({ name, scale }) => ({ name, scale })),
+    fabricMaterials.slice(-4).map(({ name, scale }) => ({ name, scale })),
     [
       { name: '花卉毯', scale: 2 },
       { name: '边框毯', scale: 2 },
+      { name: '圆花毯', scale: 2 },
       { name: '三角毯', scale: 2 }
     ]
   );

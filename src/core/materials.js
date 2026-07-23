@@ -1,7 +1,7 @@
 import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
 import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
 import { MaterialResolver } from '../domain/MaterialResolver.js';
-import { resolveMaterialAssetDescriptor } from './materialAssets.js';
+import { resolveMaterialAssetDescriptor, toSameOriginUrl } from './materialAssets.js';
 
 const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
 

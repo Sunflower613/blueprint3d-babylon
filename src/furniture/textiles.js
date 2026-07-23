@@ -229,7 +229,19 @@ export const rugFurniture = {
   name: '方形地毯',
   defaultSize: { width: 60, depth: 84, height: 0.4 },
   components: [
-    { id: 'fabric', label: '地毯织面', defaultColor: '#8fa6cc' }
+    {
+      id: 'fabric',
+      label: '地毯织面',
+      defaultColor: '#ffffff',
+      defaultMaterial: {
+        id: 'fabric-square',
+        name: '边框毯',
+        category: 'fabric',
+        kind: 'texture',
+        scale: 2,
+        color: '#ffffff'
+      }
+    }
   ],
   build(registry, item, node, size) {
     const rugThickness = 0.008;
@@ -244,7 +256,19 @@ export const ovalRugFurniture = {
   name: '圆形地毯',
   defaultSize: { width: 60, depth: 84, height: 0.4 },
   components: [
-    { id: 'fabric', label: '地毯织面', defaultColor: '#8fa6cc' }
+    {
+      id: 'fabric',
+      label: '地毯织面',
+      defaultColor: '#ffffff',
+      defaultMaterial: {
+        id: 'fabric-circle',
+        name: '圆花毯',
+        category: 'fabric',
+        kind: 'texture',
+        scale: 2,
+        color: '#ffffff'
+      }
+    }
   ],
   build(registry, item, node, size) {
     const rugThickness = 0.008;

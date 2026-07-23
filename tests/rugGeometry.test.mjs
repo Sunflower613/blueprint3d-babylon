@@ -22,6 +22,13 @@ function build(type) {
   return { definition, engine, scene, node, meshes: node.getChildMeshes() };
 }
 
+test('square and oval rugs have correct default materials', () => {
+  const square = getFurnitureDefinition('rug');
+  const oval = getFurnitureDefinition('oval_rug');
+  assert.equal(square.components[0].defaultMaterial?.id, 'fabric-square');
+  assert.equal(oval.components[0].defaultMaterial?.id, 'fabric-circle');
+});
+
 test('irregular and biscuit rugs are registered as metric textile furniture', () => {
   const irregular = getFurnitureDefinition('irregular_rug');
   const biscuit = getFurnitureDefinition('biscuit_rug');

@@ -46,6 +46,7 @@ const fabricFoamPanelUrl = new URL('../textures/fabric_foam_panel.jpg', import.m
 const fabricLongPileUrl = new URL('../textures/fabric_long_pile.jpg', import.meta.url).href;
 const fabricFlowerUrl = new URL('../textures/fabric_flower.jpg', import.meta.url).href;
 const fabricSquareUrl = new URL('../textures/fabric_square.jpg', import.meta.url).href;
+const fabricCircleUrl = new URL('../textures/fabric_circle.jpg', import.meta.url).href;
 const fabricTriangleUrl = new URL('../textures/fabric_triangle.jpg', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
@@ -106,6 +107,7 @@ const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-long-pile', name: '长毛绒', src: fabricLongPileUrl, scale: 2, color: '#ffffff' },
   { id: 'fabric-flower', name: '花卉毯', src: fabricFlowerUrl, scale: 2, color: '#ffffff' },
   { id: 'fabric-square', name: '边框毯', src: fabricSquareUrl, scale: 2, color: '#ffffff' },
+  { id: 'fabric-circle', name: '圆花毯', src: fabricCircleUrl, scale: 2, color: '#ffffff' },
   { id: 'fabric-triangle', name: '三角毯', src: fabricTriangleUrl, scale: 2, color: '#ffffff' }
 ].map((material) => ({
   ...material,

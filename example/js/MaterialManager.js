@@ -495,6 +495,8 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
   } else if (type === 'opening') {
     if (part === 'frame') {
       patch = { frameMaterial: matVal };
+    } else if (part === 'mullion' || part === 'bars') {
+      patch = { mullionMaterial: matVal };
     } else if (part === 'panel') {
       patch = { panelMaterial: matVal };
     } else if (part === 'glass') {
@@ -504,6 +506,7 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
         material: matVal,
         color: color,
         frameMaterial: matVal,
+        mullionMaterial: matVal,
         panelMaterial: matVal
       };
     }
@@ -745,8 +748,12 @@ export function extractMaterial(target, precise = true) {
     } else if (target.type === 'opening') {
       const opening = ctx.testMap.getEntity('opening', target.id);
       if (opening) {
-        const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
-        if (componentId === 'frame') {
+        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
+        if (componentId === 'hbar' || componentId === 'vbar') componentId = 'mullion';
+        if (componentId === 'mullion') {
+          pickedMaterial = opening.mullionMaterial || opening.frameMaterial || opening.material;
+          pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'frame');
+        } else if (componentId === 'frame') {
           pickedMaterial = opening.frameMaterial || opening.material;
           pickedColor = opening.color || getOpeningDefaultColor(opening.type, 'frame');
         } else if (componentId === 'panel') {
@@ -1247,8 +1254,11 @@ export function applyMaterial(target, designMode) {
           updateComponentMaterial('fence_gate', target.id, 'all', activeMaterialDescriptor);
         }
       } else if (target.type === 'opening') {
-        const componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
-        if (componentId === 'frame') {
+        let componentId = target.pick ? findMetadataFromNode(target.pick.pickedMesh, 'blueprintOpeningComponentId') : null;
+        if (componentId === 'hbar' || componentId === 'vbar') componentId = 'mullion';
+        if (componentId === 'mullion') {
+          updateComponentMaterial('opening', target.id, 'mullion', activeMaterialDescriptor);
+        } else if (componentId === 'frame') {
           updateComponentMaterial('opening', target.id, 'frame', activeMaterialDescriptor);
         } else if (componentId === 'panel') {
           updateComponentMaterial('opening', target.id, 'panel', activeMaterialDescriptor);

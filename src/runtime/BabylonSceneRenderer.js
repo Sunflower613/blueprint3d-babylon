@@ -1810,9 +1810,9 @@ export class BabylonSceneRenderer {
         openingGroup.rotation.y = angle;
         openingGroup.metadata = { blueprintOpeningId: opening.id, type: opening.type, shape: opening.shape, wallId: opening.wallId, floorId: opening.floorId, locked: !!opening.locked };
 
-        const wallT = this.floorplan.wallThickness;
-        const frameT = wallT + 0.08;
-        const frameW = 0.14;
+        const wallT = this.floorplan.wallThickness || 0.2;
+        const frameT = opening.frameT ?? (wallT + 0.01);
+        const frameW = opening.frameW ?? (opening.type === 'door' ? 0.04 : 0.035);
         buildOpeningGeometry(this, opening, openingGroup, { width, height, frameT, frameW });
 
         this.openingNodes.set(opening.id, openingGroup);

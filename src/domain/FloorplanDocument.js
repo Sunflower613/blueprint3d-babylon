@@ -103,6 +103,50 @@ function setWallEndpoints(wall, from, to) {
   wall.to = [Number(to[0].toFixed(3)), Number(to[1].toFixed(3))];
 }
 
+function pointToSegmentDistance(p, a, b) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const l2 = dx * dx + dz * dz;
+  if (l2 === 0) return Math.hypot(p.x - a.x, p.z - a.z);
+  let t = ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.z - (a.z + t * dz));
+}
+
+function isWallOnEdge(wall, edgeFrom, edgeTo) {
+  if (!wall || !wall.from || !wall.to) return false;
+  const dx = edgeTo.x - edgeFrom.x;
+  const dz = edgeTo.z - edgeFrom.z;
+  const edgeLen = Math.hypot(dx, dz);
+  if (edgeLen < 0.001) return false;
+
+  const ux = dx / edgeLen;
+  const uz = dz / edgeLen;
+  const nx = -uz;
+  const nz = ux;
+
+  const w1x = wall.from[0], w1z = wall.from[1];
+  const w2x = wall.to[0], w2z = wall.to[1];
+
+  const dist1 = Math.abs((w1x - edgeFrom.x) * nx + (w1z - edgeFrom.z) * nz);
+  const dist2 = Math.abs((w2x - edgeFrom.x) * nx + (w2z - edgeFrom.z) * nz);
+
+  if (dist1 > 0.25 || dist2 > 0.25) return false;
+
+  const p1 = edgeFrom.x * ux + edgeFrom.z * uz;
+  const p2 = edgeTo.x * ux + edgeTo.z * uz;
+  const minP = Math.min(p1, p2);
+  const maxP = Math.max(p1, p2);
+
+  const t1 = w1x * ux + w1z * uz;
+  const t2 = w2x * ux + w2z * uz;
+  const minW = Math.min(t1, t2);
+  const maxW = Math.max(t1, t2);
+
+  const overlap = Math.max(0, Math.min(maxP, maxW) - Math.max(minP, minW));
+  return overlap > 0.05;
+}
+
 export class FloorplanDocument {
   constructor(floorplanData) {
     this.floorplan = this.normalizeFloorplan(floorplanData);
@@ -231,6 +275,8 @@ export class FloorplanDocument {
       if (opening.type === 'window') {
         opening.height = toFinitePositive(opening.height, 0.85, 0.1);
         opening.sillHeight = Math.max(0, toFiniteNumber(opening.sillHeight ?? 1.05, 1.05));
+        opening.horizontalBars = Math.max(0, Math.floor(toFiniteNumber(opening.horizontalBars ?? 0, 0)));
+        opening.verticalBars = Math.max(0, Math.floor(toFiniteNumber(opening.verticalBars ?? 0, 0)));
       }
     });
 
@@ -794,39 +840,83 @@ export class FloorplanDocument {
   syncRoomWalls(room, createMissing = false) {
     const vertices = getRoomVertices(room);
     const keys = getRoomWallKeys(room);
-    const previousWallIds = room.wallIds || {};
+    const previousWallIds = { ...(room.wallIds || {}) };
     const nextWallIds = {};
+
     keys.forEach((key, index) => {
-      const wallId = previousWallIds[key] || `${room.id}_${key}`;
-      let wall = this.getWall(wallId);
-      if (!wall && createMissing) {
-        wall = {
-          id: wallId,
-          from: [0, 0],
-          to: [0, 0],
+      const from = vertices[index];
+      const to = vertices[(index + 1) % vertices.length];
+      const edgeFrom = { x: from.x, z: from.z };
+      const edgeTo = { x: to.x, z: to.z };
+
+      // 1. 优先尝试当前关联的墙
+      let wallId = previousWallIds[key];
+      let wall = wallId ? this.getWall(wallId) : null;
+      let isCurrentMatched = wall && isWallOnEdge(wall, edgeFrom, edgeTo);
+
+      // 2. 如果当前关联的墙不匹配，自动识别场景中在房间边缘上的已有墙（手画墙或共享墙）
+      if (!isCurrentMatched) {
+        const candidates = (this.floorplan.walls || []).filter((candidate) => {
+          if (candidate.floorId && candidate.floorId !== room.floorId) return false;
+          return isWallOnEdge(candidate, edgeFrom, edgeTo);
+        });
+        if (candidates.length > 0) {
+          const preferred = candidates.find((c) => c.id.includes(key))
+            || candidates.find((c) => !c.roomId || c.roomId === room.id)
+            || candidates[0];
+          wall = preferred;
+          wallId = preferred.id;
+          isCurrentMatched = true;
+        }
+      }
+
+      // 3. 检查当前墙是否被其他房间共享
+      const isSharedWithOthers = wall && (this.floorplan.floor.rooms || []).some(
+        (otherRoom) => otherRoom.id !== room.id && Object.values(otherRoom.wallIds || {}).includes(wall.id)
+      );
+
+      if (wall) {
+        // 如果是匹配到的手画墙或共享墙，绑定关联关系，但绝不篡改该墙本身的几何坐标
+        if (isSharedWithOthers || isCurrentMatched) {
+          normalizeWallDecorSettings(wall);
+          nextWallIds[key] = wall.id;
+        } else {
+          // 当前房间专有的孤立墙：随着房间边缘更新端点
+          normalizeWallDecorSettings(wall);
+          setWallEndpoints(wall, [from.x, from.z], [to.x, to.z]);
+          wall.floorId = room.floorId;
+          wall.roomId = room.id;
+          nextWallIds[key] = wall.id;
+        }
+      } else if (createMissing) {
+        // 只有当没有任何墙匹配且允许补全时，才为缺失边创建基础墙段
+        const newWallId = `${room.id}_${key}`;
+        const newWall = {
+          id: newWallId,
+          from: [Number(from.x.toFixed(3)), Number(from.z.toFixed(3))],
+          to: [Number(to.x.toFixed(3)), Number(to.z.toFixed(3))],
           color: DEFAULT_WALL_COLOR,
           floorId: room.floorId,
           roomId: room.id
         };
-        normalizeWallDecorSettings(wall);
-        this.floorplan.walls.push(wall);
-      }
-      if (wall) {
-        normalizeWallDecorSettings(wall);
-        const from = vertices[index];
-        const to = vertices[(index + 1) % vertices.length];
-        setWallEndpoints(wall, [from.x, from.z], [to.x, to.z]);
-        wall.floorId = room.floorId;
-        wall.roomId = room.id;
-        nextWallIds[key] = wallId;
+        normalizeWallDecorSettings(newWall);
+        this.floorplan.walls.push(newWall);
+        nextWallIds[key] = newWallId;
       }
     });
 
+    // 清理清理毫无引用的垃圾孤立墙
     const activeIds = new Set(Object.values(nextWallIds));
-    const staleIds = new Set(Object.values(previousWallIds).filter((id) => !activeIds.has(id)));
+    const staleIds = new Set(Object.values(previousWallIds).filter((id) => id && !activeIds.has(id)));
     if (staleIds.size) {
-      this.floorplan.openings = this.floorplan.openings.filter((opening) => !staleIds.has(opening.wallId));
-      this.floorplan.walls = this.floorplan.walls.filter((wall) => !staleIds.has(wall.id));
+      const idsToRemove = Array.from(staleIds).filter((id) =>
+        !(this.floorplan.floor.rooms || []).some((r) => Object.values(r.wallIds || {}).includes(id))
+      );
+      if (idsToRemove.length > 0) {
+        const removeSet = new Set(idsToRemove);
+        this.floorplan.openings = this.floorplan.openings.filter((opening) => !removeSet.has(opening.wallId));
+        this.floorplan.walls = this.floorplan.walls.filter((w) => !removeSet.has(w.id));
+      }
     }
     room.wallIds = nextWallIds;
     return room;
@@ -1267,6 +1357,12 @@ export class FloorplanDocument {
     opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
     opening.width = Math.max(0.25, Number(opening.width || (opening.type === 'door' ? 0.9 : 1.25)));
     opening.height = Math.max(0.3, Number(opening.height || (opening.type === 'door' ? 2.05 : 0.85)));
+    if (opening.horizontalBars !== undefined) {
+      opening.horizontalBars = Math.max(0, Math.floor(toFiniteNumber(opening.horizontalBars, 0)));
+    }
+    if (opening.verticalBars !== undefined) {
+      opening.verticalBars = Math.max(0, Math.floor(toFiniteNumber(opening.verticalBars, 0)));
+    }
     return opening;
   }
 
@@ -1274,7 +1370,7 @@ export class FloorplanDocument {
     const opening = this.getOpening(openingId);
     if (!opening || opening.locked) return opening;
     const normalized = normalizeMaterialDescriptor(materialDescriptor, '#ffffff');
-    const fieldMap = { frame: 'frameMaterial', panel: 'panelMaterial', glass: 'glassMaterial' };
+    const fieldMap = { frame: 'frameMaterial', panel: 'panelMaterial', glass: 'glassMaterial', mullion: 'mullionMaterial', bars: 'mullionMaterial' };
     const field = fieldMap[componentKey];
     if (!field) return opening;
     opening[field] = normalized;

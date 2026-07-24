@@ -135,3 +135,99 @@ export function createOpeningCutterMesh(scene, opening, options = {}) {
   mesh.computeWorldMatrix(true);
   return mesh;
 }
+
+export function buildWindowMullions(registry, opening, parent, options = {}) {
+  const horizontalBars = Math.max(0, Math.floor(options.horizontalBars ?? opening.horizontalBars ?? 0));
+  const verticalBars = Math.max(0, Math.floor(options.verticalBars ?? opening.verticalBars ?? 0));
+  if (horizontalBars <= 0 && verticalBars <= 0) return;
+
+  const width = options.width ?? opening.width ?? 1.25;
+  const height = options.height ?? opening.height ?? 0.85;
+  const frameW = options.frameW ?? 0.05;
+  const barDepth = options.barDepth ?? 0.05;
+  const barWidth = options.barWidth ?? 0.05;
+  const material = options.material || registry.materials.trim;
+
+  const vertices = getOpeningVertices(opening, width, height);
+
+  // 1. 绘制横条 (Horizontal Bars)
+  if (horizontalBars > 0) {
+    const yMin = frameW;
+    const yMax = height - frameW;
+    const stepY = (yMax - yMin) / (horizontalBars + 1);
+    for (let k = 1; k <= horizontalBars; k += 1) {
+      const targetY = yMin + stepY * k;
+      const xIntersections = [];
+      vertices.forEach((p1, idx) => {
+        const p2 = vertices[(idx + 1) % vertices.length];
+        if ((p1.y <= targetY && p2.y >= targetY) || (p2.y <= targetY && p1.y >= targetY)) {
+          if (Math.abs(p2.y - p1.y) > 1e-6) {
+            const x = p1.x + (p2.x - p1.x) * ((targetY - p1.y) / (p2.y - p1.y));
+            xIntersections.push(x);
+          }
+        }
+      });
+      xIntersections.sort((a, b) => a - b);
+      for (let i = 0; i + 1 < xIntersections.length; i += 2) {
+        const xStart = xIntersections[i] + frameW * 0.5;
+        const xEnd = xIntersections[i + 1] - frameW * 0.5;
+        const barLength = xEnd - xStart;
+        if (barLength > 0.01) {
+          const bar = createBox(registry, `opening_hbar_${opening.id}_${k}_${i}`, {
+            width: barLength,
+            height: barWidth,
+            depth: barDepth
+          }, {
+            position: { x: (xStart + xEnd) / 2, y: targetY - height / 2, z: 0 }
+          }, {
+            material,
+            parent,
+            shadowCaster: false
+          });
+          bar.metadata = { ...bar.metadata, blueprintOpeningComponentId: 'hbar' };
+        }
+      }
+    }
+  }
+
+  // 2. 绘制竖条 (Vertical Bars)
+  if (verticalBars > 0) {
+    const xMin = -width / 2 + frameW;
+    const xMax = width / 2 - frameW;
+    const stepX = (xMax - xMin) / (verticalBars + 1);
+    for (let j = 1; j <= verticalBars; j += 1) {
+      const targetX = xMin + stepX * j;
+      const yIntersections = [];
+      vertices.forEach((p1, idx) => {
+        const p2 = vertices[(idx + 1) % vertices.length];
+        if ((p1.x <= targetX && p2.x >= targetX) || (p2.x <= targetX && p1.x >= targetX)) {
+          if (Math.abs(p2.x - p1.x) > 1e-6) {
+            const y = p1.y + (p2.y - p1.y) * ((targetX - p1.x) / (p2.x - p1.x));
+            yIntersections.push(y);
+          }
+        }
+      });
+      yIntersections.sort((a, b) => a - b);
+      for (let i = 0; i + 1 < yIntersections.length; i += 2) {
+        const yStart = yIntersections[i] + frameW * 0.5;
+        const yEnd = yIntersections[i + 1] - frameW * 0.5;
+        const barLength = yEnd - yStart;
+        if (barLength > 0.01) {
+          const bar = createBox(registry, `opening_vbar_${opening.id}_${j}_${i}`, {
+            width: barWidth,
+            height: barLength,
+            depth: barDepth
+          }, {
+            position: { x: targetX, y: (yStart + yEnd) / 2 - height / 2, z: 0 }
+          }, {
+            material,
+            parent,
+            shadowCaster: false
+          });
+          bar.metadata = { ...bar.metadata, blueprintOpeningComponentId: 'vbar' };
+        }
+      }
+    }
+  }
+}
+

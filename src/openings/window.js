@@ -1,5 +1,5 @@
 import { createBlueprintMaterial } from '../core/materials.js';
-import { buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
+import { buildOpeningFrame, buildWindowMullions, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
 
 export function buildWindowOpening(registry, opening, parent, options = {}) {
   const width = options.width || opening.width || 1.25;
@@ -11,6 +11,11 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
   const frameMat = opening.frameMaterial
     ? createBlueprintMaterial(registry.scene, `win_frame_${opening.id}`, opening.frameMaterial, materialOptions)
     : registry.materials.trim;
+  const mullionMat = opening.mullionMaterial
+    ? createBlueprintMaterial(registry.scene, `win_mullion_${opening.id}`, opening.mullionMaterial, materialOptions)
+    : (opening.frameMaterial
+        ? createBlueprintMaterial(registry.scene, `win_mullion_fallback_${opening.id}`, opening.frameMaterial, materialOptions)
+        : registry.materials.trim);
   const glassMat = opening.glassMaterial
     ? createBlueprintMaterial(registry.scene, `win_glass_mat_${opening.id}`, opening.glassMaterial, materialOptions)
     : registry.materials.window;
@@ -43,4 +48,12 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
     shadowCaster: false
   });
   glassMesh.metadata = { ...glassMesh.metadata, blueprintOpeningComponentId: 'glass' };
+
+  buildWindowMullions(registry, opening, parent, {
+    width,
+    height,
+    frameW,
+    material: mullionMat
+  });
 }
+

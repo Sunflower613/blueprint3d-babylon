@@ -554,7 +554,13 @@ export function copyTarget(target) {
     const targetWall = findMatchingCurrentFloorWall(sourceWall, sourcePoint);
     if (!targetWall) return;
     const nextT = Math.min(0.92, ctx.getWallProjectionT(targetWall, sourcePoint) + 0.08);
+    const copyData = JSON.parse(JSON.stringify(opening));
+    delete copyData.id;
+    delete copyData.wallId;
+    delete copyData.t;
+
     const next = ctx.testMap.executeCommand('addOpening', {
+      ...copyData,
       wallId: targetWall.id,
       type: opening.type,
       t: nextT,
@@ -564,14 +570,7 @@ export function copyTarget(target) {
       ctx.testMap.executeCommand('updateOpening', {
         openingId: next.id,
         patch: {
-          width: opening.width,
-          height: opening.height,
-          sillHeight: opening.sillHeight,
-          isOpen: opening.isOpen,
-          isFlippedLR: opening.isFlippedLR,
-          isFlippedIO: opening.isFlippedIO,
-          panelHidden: opening.panelHidden,
-          glassHidden: opening.glassHidden,
+          ...copyData,
           floorId: ctx.testMap.getCurrentFloorId()
         }
       });

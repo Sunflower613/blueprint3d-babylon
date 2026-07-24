@@ -677,6 +677,12 @@ export function updateEditor() {
     sillField.classList.remove('hidden');
     document.getElementById('opening-height').value = opening.height ?? (opening.type === 'door' ? 2.05 : 0.85);
     document.getElementById('opening-sill-height').value = opening.sillHeight ?? (opening.type === 'door' ? 0 : 1.05);
+    const barsFields = document.getElementById('opening-bars-fields');
+    if (barsFields) {
+      barsFields.classList.toggle('hidden', opening.type === 'door');
+      document.getElementById('opening-horizontal-bars').value = opening.horizontalBars ?? 0;
+      document.getElementById('opening-vertical-bars').value = opening.verticalBars ?? 0;
+    }
 
     const openField = document.getElementById('opening-open-field');
     const flipLrField = document.getElementById('opening-flip-lr-field');
@@ -910,7 +916,7 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
   if (opening) {
     const title = document.createElement('p');
     title.className = 'selection-title';
-    title.textContent = opening.type === 'door' ? '门扇与门框材质' : '窗框与玻璃材质';
+    title.textContent = opening.type === 'door' ? '门扇与门框材质' : '窗框、格条与玻璃材质';
     designSelectionPanel.appendChild(title);
 
     const isDoor = opening.type === 'door';
@@ -924,6 +930,18 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       updateComponentMaterial('opening', opening.id, 'frame', activeMaterialDescriptor);
     }));
     designSelectionPanel.appendChild(groupFrame);
+
+    if (!isDoor) {
+      const groupMullion = document.createElement('div');
+      groupMullion.className = 'component-material-row';
+      groupMullion.appendChild(createColorField('格条材质', opening.mullionMaterial || opening.frameMaterial || '#ffffff', (color) => {
+        updateComponentMaterial('opening', opening.id, 'mullion', color);
+      }, getMaterialFriendlyName(opening.mullionMaterial || opening.frameMaterial), opening.mullionMaterial || opening.frameMaterial));
+      groupMullion.appendChild(createApplyMaterialButton('应用当前材质', () => {
+        updateComponentMaterial('opening', opening.id, 'mullion', activeMaterialDescriptor);
+      }));
+      designSelectionPanel.appendChild(groupMullion);
+    }
 
     const groupContent = document.createElement('div');
     groupContent.className = 'component-material-row';
@@ -1444,6 +1462,14 @@ export function initUiEventListeners() {
 
   document.getElementById('opening-sill-height').addEventListener('change', (event) => {
     updateSelectedOpening({ sillHeight: Number(event.target.value) });
+  });
+
+  document.getElementById('opening-horizontal-bars')?.addEventListener('input', (event) => {
+    updateSelectedOpening({ horizontalBars: Math.max(0, parseInt(event.target.value, 10) || 0) });
+  });
+
+  document.getElementById('opening-vertical-bars')?.addEventListener('input', (event) => {
+    updateSelectedOpening({ verticalBars: Math.max(0, parseInt(event.target.value, 10) || 0) });
   });
 
   document.getElementById('opening-open').addEventListener('change', (event) => {

@@ -222,7 +222,7 @@ function isWallOnEdge(wall, edgeFrom, edgeTo) {
 }
 
 export class FloorplanDocument {
-  constructor(floorplanData) {
+  constructor(floorplanData = {}) {
     this.floorplan = this.normalizeFloorplan(floorplanData);
   }
 
@@ -257,7 +257,8 @@ export class FloorplanDocument {
       color: '#ffffff'
     };
 
-    normalized.floor ||= { rooms: [] };
+    normalized.floor ||= {};
+    normalized.floor.rooms ||= (normalized.rooms || []);
     normalized.environment ||= {};
     normalized.environment.skyMaterial = normalized.environment.skyMaterial
       ? normalizeMaterialDescriptor(normalized.environment.skyMaterial, '#d9ecff')

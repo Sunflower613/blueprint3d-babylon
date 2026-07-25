@@ -3,7 +3,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const toiletFurniture = {
   type: 'toilet',
   name: '马桶',
-  defaultSize: { width: 18, depth: 28, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.7, height: 0.75 },
   components: [
     { id: 'bowl', label: '马桶底座', defaultColor: '#f7f9fa' },
     { id: 'tank', label: '冲水箱', defaultColor: '#f0f2f5' },
@@ -101,7 +102,8 @@ export const bathtubFurniture = {
   type: 'bathtub',
   waterControllable: true,
   name: '浴缸',
-  defaultSize: { width: 32, depth: 64, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 1.65, height: 0.6 },
   components: [
     { id: 'body', label: '外壁', defaultColor: '#f0f7fa' },
     { id: 'water', label: '缸内蓄水', defaultColor: '#aae3ff' }
@@ -151,7 +153,8 @@ export const sinkBathroomFurniture = {
   type: 'sink_bathroom',
   waterControllable: true,
   name: '洗手台',
-  defaultSize: { width: 20, depth: 18, height: 34 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.45, height: 0.85 },
   components: [
     { id: 'basin', label: '洗手盆', defaultColor: '#f2f6f7' },
     { id: 'pillar', label: '洗手台柱', defaultColor: '#e1e6e8' },
@@ -220,7 +223,8 @@ export const sinkBathroomFurniture = {
 export const showerCabinFurniture = {
   type: 'shower_cabin',
   name: '淋浴房',
-  defaultSize: { width: 36, depth: 36, height: 80 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 2.05 },
   components: [
     { id: 'tray', label: '底盘基座', defaultColor: '#ffffff' },
     { id: 'glass', label: '钢化玻璃', defaultColor: '#d6efff' },
@@ -255,7 +259,8 @@ export const showerCabinFurniture = {
 export const mirrorBathroomFurniture = {
   type: 'mirror_bathroom',
   name: '卫浴镜',
-  defaultSize: { width: 24, depth: 2, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.05, height: 0.6 },
   placeType: 'wall',
   isMirror: true,
   components: [
@@ -284,7 +289,8 @@ export const mirrorBathroomFurniture = {
 export const towelRackFurniture = {
   type: 'towel_rack',
   name: '毛巾架',
-  defaultSize: { width: 24, depth: 6, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.15, height: 0.1 },
   placeType: 'wall',
   components: [
     { id: 'holder', label: '支架', defaultColor: '#b0bec5' },
@@ -319,7 +325,8 @@ export const towelRackFurniture = {
 export const toiletriesFurniture = {
   type: 'toiletries',
   name: '洗浴用品',
-  defaultSize: { width: 8, depth: 6, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.15, height: 0.25 },
   components: [
     { id: 'basket', label: '置物篮', defaultColor: '#90a4ae' },
     { id: 'bottles', label: '洗发水沐浴露', defaultColor: '#80cbc4' }
@@ -342,7 +349,8 @@ export const toiletriesFurniture = {
 export const soapDispenserFurniture = {
   type: 'soap_dispenser',
   name: '洗手液',
-  defaultSize: { width: 4, depth: 4, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.1, depth: 0.1, height: 0.2 },
   components: [
     { id: 'body', label: '瓶身', defaultColor: '#eceff1' },
     { id: 'nozzle', label: '出液嘴', defaultColor: '#455a64' }
@@ -361,7 +369,8 @@ export const soapDispenserFurniture = {
 export const bathroomShelfFurniture = {
   type: 'bathroom_shelf',
   name: '置物架',
-  defaultSize: { width: 20, depth: 12, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.3, height: 1.65 },
   components: [
     { id: 'frame', label: '铁艺外框', defaultColor: '#212121' },
     { id: 'shelves', label: '置物板', defaultColor: '#8d6e63' }
@@ -396,7 +405,8 @@ export const bathroomShelfFurniture = {
 export const bathroomMirrorCabinetFurniture = {
   type: 'bathroom_mirror_cabinet',
   name: '浴室柜',
-  defaultSize: { width: 24, depth: 6, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.15, height: 0.75 },
   placeType: 'wall',
   components: [
     { id: 'cabinet', label: '柜体', defaultColor: '#f5f5f5' },

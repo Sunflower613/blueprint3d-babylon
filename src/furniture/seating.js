@@ -4,7 +4,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const sofaFurniture = {
   type: 'sofa',
   name: '云朵沙发',
-  defaultSize: { width: 84, depth: 36, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 2.15, depth: 0.9, height: 0.8 },
   components: [
     { id: 'seat', label: '坐垫', defaultColor: '#f7f4ed' },
     { id: 'back', label: '靠背', defaultColor: '#ede6d8' },
@@ -135,7 +136,8 @@ export const sofaFurniture = {
 export const chairFurniture = {
   type: 'chair',
   name: '椅子',
-  defaultSize: { width: 18, depth: 18, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.8 },
   components: [
     { id: 'seat', label: '座垫', defaultColor: '#d6c5b3' },
     { id: 'legs', label: '椅腿', defaultColor: '#967b61' },
@@ -184,7 +186,8 @@ export const chairFurniture = {
 export const armchairFurniture = {
   type: 'armchair',
   name: '沙发',
-  defaultSize: { width: 36, depth: 32, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.8, height: 0.75 },
   components: [
     { id: 'seat', label: '座垫', defaultColor: '#ebd9c8' },
     { id: 'back', label: '靠背', defaultColor: '#d4c2b0' },
@@ -234,7 +237,8 @@ export const armchairFurniture = {
 export const stoolFurniture = {
   type: 'stool',
   name: '木凳',
-  defaultSize: { width: 14, depth: 14, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.45 },
   components: [
     { id: 'seat', label: '凳面', defaultColor: '#d9ab7e' },
     { id: 'legs', label: '凳腿', defaultColor: '#aa8056' }
@@ -269,7 +273,8 @@ export const stoolFurniture = {
 export const barstoolFurniture = {
   type: 'barstool',
   name: '吧台凳',
-  defaultSize: { width: 15, depth: 15, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.75 },
   components: [
     { id: 'seat', label: '凳面', defaultColor: '#474747' },
     { id: 'legs', label: '凳腿', defaultColor: '#2b2b2b' },
@@ -310,7 +315,8 @@ export const barstoolFurniture = {
 export const benchFurniture = {
   type: 'bench',
   name: '户外长椅',
-  defaultSize: { width: 60, depth: 18, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 1.5, depth: 0.45, height: 0.8 },
   components: [
     { id: 'seat', label: '椅面', defaultColor: '#b57a4c' },
     { id: 'back', label: '靠背', defaultColor: '#b57a4c' },
@@ -356,7 +362,8 @@ export const benchFurniture = {
 export const loveseatFurniture = {
   type: 'loveseat',
   name: '双人沙发',
-  defaultSize: { width: 62, depth: 34, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 1.55, depth: 0.85, height: 0.8 },
   components: [
     { id: 'seat', label: '坐垫', defaultColor: '#ffbfcd' },
     { id: 'back', label: '靠背', defaultColor: '#f09ab0' },
@@ -403,7 +410,8 @@ export const loveseatFurniture = {
 export const officechairFurniture = {
   type: 'officechair',
   name: '办公椅',
-  defaultSize: { width: 24, depth: 24, height: 40 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 1 },
   components: [
     { id: 'seat', label: '座面', defaultColor: '#33373d' },
     { id: 'back', label: '靠背', defaultColor: '#202326' },
@@ -445,7 +453,8 @@ export const officechairFurniture = {
 export const beanbagFurniture = {
   type: 'beanbag',
   name: '懒人豆袋',
-  defaultSize: { width: 28, depth: 28, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 0.5 },
   components: [
     { id: 'body', label: '布袋主体', defaultColor: '#9db5ff' }
   ],
@@ -470,7 +479,8 @@ export const beanbagFurniture = {
 export const deckchairFurniture = {
   type: 'deckchair',
   name: '躺椅',
-  defaultSize: { width: 24, depth: 40, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 1, height: 0.7 },
   components: [
     { id: 'fabric', label: '帆布面', defaultColor: '#ff9a6c' },
     { id: 'frame', label: '折叠架', defaultColor: '#ebd5bd' }
@@ -507,7 +517,8 @@ export const deckchairFurniture = {
 export const adirondackChairFurniture = {
   type: 'adirondack_chair',
   name: '休闲椅',
-  defaultSize: { width: 28, depth: 34, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.85, height: 0.9 },
   components: [
     { id: 'seat', label: '座面', defaultColor: '#c99662' },
     { id: 'back', label: '靠背', defaultColor: '#d6ac78' },
@@ -552,7 +563,8 @@ export const adirondackChairFurniture = {
 export const foldingCampingChairFurniture = {
   type: 'folding_camping_chair',
   name: '露营椅',
-  defaultSize: { width: 22, depth: 24, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.6, height: 0.8 },
   components: [
     { id: 'fabric', label: '布面', defaultColor: '#6ea4c8' },
     { id: 'frame', label: '折叠架', defaultColor: '#70757d' }
@@ -599,7 +611,8 @@ export const foldingCampingChairFurniture = {
 export const rattanLoungeChairFurniture = {
   type: 'rattan_lounge_chair',
   name: '藤椅',
-  defaultSize: { width: 30, depth: 30, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.75, depth: 0.75, height: 0.8 },
   components: [
     { id: 'seat', label: '坐垫', defaultColor: '#efe2cf' },
     { id: 'shell', label: '藤框', defaultColor: '#a6784d' },
@@ -657,7 +670,8 @@ export const rattanLoungeChairFurniture = {
 export const hangingEggChairFurniture = {
   type: 'hanging_egg_chair',
   name: '吊篮椅',
-  defaultSize: { width: 32, depth: 34, height: 70 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.85, height: 1.8 },
   components: [
     { id: 'frame', label: '吊架', defaultColor: '#55585d' },
     { id: 'shell', label: '椅蓝', defaultColor: '#9b6f46' },

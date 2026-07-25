@@ -3,7 +3,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const fridgeFurniture = {
   type: 'fridge',
   name: '冰箱',
-  defaultSize: { width: 39.37, depth: 30, height: 70 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.75, height: 1.8 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#c7cfd6' },
     { id: 'display', label: '控制面板', defaultColor: '#1f2224' },
@@ -41,7 +42,8 @@ export const sinkKitchenFurniture = {
   type: 'sink_kitchen',
   waterControllable: true,
   name: '厨房水槽',
-  defaultSize: { width: 39.37, depth: 22, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.55, height: 0.9 },
   components: [
     { id: 'counter', label: '橱柜台面', defaultColor: '#ede8de' },
     { id: 'tub', label: '钢质水槽', defaultColor: '#b3bdc4' },
@@ -122,7 +124,8 @@ export const sinkKitchenFurniture = {
 export const microwaveFurniture = {
   type: 'microwave',
   name: '微波炉',
-  defaultSize: { width: 20, depth: 15, height: 12 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.4, height: 0.3 },
   components: [
     { id: 'body', label: '机壳', defaultColor: '#3b3f45' },
     { id: 'window', label: '玻璃小窗', defaultColor: '#141517' },
@@ -146,7 +149,8 @@ export const microwaveFurniture = {
 export const stoveFurniture = {
   type: 'stove',
   name: '燃气灶',
-  defaultSize: { width: 39.37, depth: 24, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.6, height: 0.9 },
   components: [
     { id: 'cabinet', label: '底柜', defaultColor: '#ebe7db' },
     { id: 'cooktop', label: '灶具面板', defaultColor: '#1a1a1a' },
@@ -197,7 +201,8 @@ export const stoveFurniture = {
 export const rangeHoodFurniture = {
   type: 'range_hood',
   name: '抽油烟机',
-  defaultSize: { width: 39.37, depth: 20, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.5, height: 0.45 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#b0b5b8' },
     { id: 'glass', label: '钢化玻璃', defaultColor: '#3b3e40' },
@@ -224,7 +229,8 @@ export const rangeHoodFurniture = {
 export const coffeeMakerFurniture = {
   type: 'coffee_maker',
   name: '咖啡机',
-  defaultSize: { width: 12, depth: 12, height: 15 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.4 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#3a2d28' },
     { id: 'pot', label: '咖啡壶', defaultColor: '#eef2f5' },
@@ -257,7 +263,8 @@ export const coffeeMakerFurniture = {
 export const toasterFurniture = {
   type: 'toaster',
   name: '烤面包机',
-  defaultSize: { width: 12, depth: 8, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.2, height: 0.2 },
   components: [
     { id: 'body', label: '外壳', defaultColor: '#e8ecef' },
     { id: 'slots', label: '面包槽', defaultColor: '#3a3a3a' },
@@ -283,7 +290,8 @@ export const toasterFurniture = {
 export const electricKettleFurniture = {
   type: 'electric_kettle',
   name: '电热水壶',
-  defaultSize: { width: 8, depth: 8, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.25 },
   components: [
     { id: 'body', label: '壶身', defaultColor: '#cfd8dc' },
     { id: 'handle', label: '手柄', defaultColor: '#37474f' },
@@ -310,7 +318,8 @@ export const electricKettleFurniture = {
 export const dishwasherFurniture = {
   type: 'dishwasher',
   name: '洗碗机',
-  defaultSize: { width: 39.37, depth: 24, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.6, height: 0.9 },
   snapToEdge: true,
   components: [
     { id: 'body', label: '机身', defaultColor: '#eceff1' },
@@ -335,7 +344,8 @@ export const dishwasherFurniture = {
 export const waterDispenserFurniture = {
   type: 'water_dispenser',
   name: '饮水机',
-  defaultSize: { width: 12, depth: 12, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 1.05 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#ffffff' },
     { id: 'bottle', label: '水桶', defaultColor: '#80deea' },
@@ -363,7 +373,8 @@ export const waterDispenserFurniture = {
 export const riceCookerFurniture = {
   type: 'rice_cooker',
   name: '电饭煲',
-  defaultSize: { width: 11, depth: 13, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.35, height: 0.25 },
   components: [
     { id: 'body', label: '外壳', defaultColor: '#f5f5f5' },
     { id: 'panel', label: '控制屏', defaultColor: '#37474f' },
@@ -387,7 +398,8 @@ export const riceCookerFurniture = {
 export const airFryerFurniture = {
   type: 'air_fryer',
   name: '空气炸锅',
-  defaultSize: { width: 12, depth: 12, height: 14 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.35 },
   components: [
     { id: 'body', label: '锅身', defaultColor: '#212121' },
     { id: 'handle', label: '把手', defaultColor: '#ffd54f' },
@@ -411,7 +423,8 @@ export const airFryerFurniture = {
 export const blenderFurniture = {
   type: 'blender',
   name: '搅拌机',
-  defaultSize: { width: 8, depth: 8, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.4 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#263238' },
     { id: 'cup', label: '搅拌杯', defaultColor: '#b2dfdb' },
@@ -435,7 +448,8 @@ export const blenderFurniture = {
 export const kitchenwareFurniture = {
   type: 'kitchenware',
   name: '餐具架',
-  defaultSize: { width: 14, depth: 10, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.25, height: 0.2 },
   components: [
     { id: 'rack', label: '沥水架', defaultColor: '#78909c' },
     { id: 'dishes', label: '餐盘组合', defaultColor: '#ffffff' }
@@ -468,7 +482,8 @@ export const kitchenwareFurniture = {
 export const knifeBlockFurniture = {
   type: 'knife_block',
   name: '刀架',
-  defaultSize: { width: 6, depth: 8, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.15, depth: 0.2, height: 0.25 },
   components: [
     { id: 'block', label: '刀架木座', defaultColor: '#a1887f' },
     { id: 'handle', label: '刀柄', defaultColor: '#212121' }
@@ -494,7 +509,8 @@ export const knifeBlockFurniture = {
 export const spiceRackFurniture = {
   type: 'spice_rack',
   name: '调料架',
-  defaultSize: { width: 12, depth: 6, height: 12 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.15, height: 0.3 },
   components: [
     { id: 'frame', label: '架体', defaultColor: '#607d8b' },
     { id: 'jar', label: '调料罐', defaultColor: '#ffe0b2' }
@@ -525,7 +541,8 @@ export const spiceRackFurniture = {
 export const kitchenHooksFurniture = {
   type: 'kitchen_hooks',
   name: '挂钩架',
-  defaultSize: { width: 18, depth: 2, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.05, height: 0.1 },
   placeType: 'wall',
   components: [
     { id: 'bar', label: '挂条', defaultColor: '#37474f' },
@@ -548,7 +565,8 @@ export const kitchenHooksFurniture = {
 export const coffeeCupSetFurniture = {
   type: 'coffee_cup_set',
   name: '咖啡杯碟组',
-  defaultSize: { width: 8, depth: 8, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.1 },
   components: [
     { id: 'saucer', label: '杯碟', defaultColor: '#efebe9' },
     { id: 'cup', label: '咖啡杯', defaultColor: '#8d6e63' },
@@ -572,7 +590,8 @@ export const coffeeCupSetFurniture = {
 export const teapotTeaCupsFurniture = {
   type: 'teapot_tea_cups',
   name: '陶瓷茶具',
-  defaultSize: { width: 12, depth: 10, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.25, height: 0.15 },
   components: [
     { id: 'tray', label: '茶盘', defaultColor: '#3e2723' },
     { id: 'pot', label: '茶壶', defaultColor: '#00796b' },
@@ -605,7 +624,8 @@ export const teapotTeaCupsFurniture = {
 export const wineGlassesFurniture = {
   type: 'wine_glasses',
   name: '高脚酒杯',
-  defaultSize: { width: 8, depth: 8, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.2 },
   components: [
     { id: 'glass', label: '高脚杯', defaultColor: '#eef2f5' },
     { id: 'wine', label: '红酒液', defaultColor: '#b71c1c' }
@@ -634,7 +654,8 @@ export const wineGlassesFurniture = {
 export const fruitPlatterFurniture = {
   type: 'fruit_platter',
   name: '小叉果盘',
-  defaultSize: { width: 10, depth: 10, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.1 },
   components: [
     { id: 'plate', label: '果盘', defaultColor: '#e0f2f1' },
     { id: 'fruitA', label: '红苹果', defaultColor: '#d32f2f' },
@@ -669,7 +690,8 @@ export const fruitPlatterFurniture = {
 export const pairMugsFurniture = {
   type: 'pair_mugs',
   name: '双人马克杯',
-  defaultSize: { width: 10, depth: 6, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.15, height: 0.15 },
   components: [
     { id: 'mugRed', label: '情侣红杯', defaultColor: '#e53935' },
     { id: 'mugBlue', label: '情侣蓝杯', defaultColor: '#1e88e5' },
@@ -698,7 +720,8 @@ export const sinkCabinetFurniture = {
   type: 'sink_cabinet',
   waterControllable: true,
   name: '带柜水槽',
-  defaultSize: { width: 39.37, depth: 22, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.55, height: 0.9 },
   snapToEdge: true,
   components: [
     { id: 'cabinet', label: '柜体', defaultColor: '#ebe7db' },

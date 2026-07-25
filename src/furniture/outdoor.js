@@ -119,7 +119,8 @@ const addBikeWheel = (registry, item, definition, center, wheelRadius, wheelThic
 export const outdoorUmbrellaFurniture = {
   type: 'outdoor_umbrella',
   name: '遮阳伞',
-  defaultSize: { width: 42, depth: 42, height: 88 },
+  unit: 'm',
+  defaultSize: { width: 1.05, depth: 1.05, height: 2.25 },
   components: [
     { id: 'canopy', label: '伞蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
     { id: 'pole', label: '伞杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
@@ -154,7 +155,8 @@ export const outdoorUmbrellaFurniture = {
 export const pergolaFurniture = {
   type: 'pergola',
   name: '葡萄架',
-  defaultSize: { width: 96, depth: 60, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 2.45, depth: 1.5, height: 2.45 },
   components: [
     { id: 'posts', label: '立柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'beams', label: '横梁', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
@@ -206,7 +208,8 @@ export const pergolaFurniture = {
 export const flowerArchFurniture = {
   type: 'flower_arch',
   name: '花圈拱门',
-  defaultSize: { width: 72, depth: 20, height: 88 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.5, height: 2.25 },
   components: [
     { id: 'frame', label: '拱门架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
     { id: 'flowers', label: '花艺', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.flower }
@@ -252,7 +255,8 @@ export const flowerArchFurniture = {
 export const gazeboFurniture = {
   type: 'gazebo',
   name: '凉亭',
-  defaultSize: { width: 108, depth: 108, height: 108 },
+  unit: 'm',
+  defaultSize: { width: 2.75, depth: 2.75, height: 2.75 },
   components: [
     { id: 'posts', label: '立柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'roof', label: '顶蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
@@ -304,7 +308,8 @@ export const gazeboFurniture = {
 export const patioSwingFurniture = {
   type: 'patio_swing',
   name: '秋千',
-  defaultSize: { width: 78, depth: 52, height: 78 },
+  unit: 'm',
+  defaultSize: { width: 2, depth: 1.3, height: 2 },
   components: [
     { id: 'frame', label: '支架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'seat', label: '座椅', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.fabric },
@@ -378,7 +383,8 @@ export const patioSwingFurniture = {
 export const hammockStandFurniture = {
   type: 'hammock_stand',
   name: '吊床架',
-  defaultSize: { width: 102, depth: 34, height: 48 },
+  unit: 'm',
+  defaultSize: { width: 2.6, depth: 0.85, height: 1.2 },
   components: [
     { id: 'frame', label: '支架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'bed', label: '吊床', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
@@ -414,7 +420,8 @@ export const hammockStandFurniture = {
 export const firePitFurniture = {
   type: 'fire_pit',
   name: '火盆',
-  defaultSize: { width: 30, depth: 30, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.75, depth: 0.75, height: 0.4 },
   components: [
     { id: 'bowl', label: '火盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone },
     { id: 'base', label: '底架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
@@ -447,7 +454,8 @@ export const firePitFurniture = {
 export const barbecueGrillFurniture = {
   type: 'barbecue_grill',
   name: '烧烤架',
-  defaultSize: { width: 48, depth: 22, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.55, height: 1.05 },
   components: [
     { id: 'grill', label: '烤炉', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
     { id: 'legs', label: '支腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.metal },
@@ -489,7 +497,8 @@ export const barbecueGrillFurniture = {
 export const patioHeaterFurniture = {
   type: 'patio_heater',
   name: '取暖器',
-  defaultSize: { width: 18, depth: 18, height: 84 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 2.15 },
   components: [
     { id: 'base', label: '底座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.metal },
     { id: 'pole', label: '立杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.lightMetal },
@@ -523,7 +532,8 @@ export const gardenFountainFurniture = {
   type: 'garden_fountain',
   waterControllable: true,
   name: '喷泉',
-  defaultSize: { width: 32, depth: 32, height: 52 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.8, height: 1.3 },
   components: [
     { id: 'base', label: '底盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
     { id: 'column', label: '泉柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone },
@@ -619,7 +629,8 @@ export const birdbathFurniture = {
   type: 'birdbath',
   waterControllable: true,
   name: '鸟浴台',
-  defaultSize: { width: 18, depth: 18, height: 34 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.85 },
   components: [
     { id: 'base', label: '台柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
     { id: 'basin', label: '浴盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
@@ -673,7 +684,8 @@ export const birdbathFurniture = {
 export const planterBoxFurniture = {
   type: 'planter_box',
   name: '花箱',
-  defaultSize: { width: 30, depth: 14, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.75, depth: 0.35, height: 0.4 },
   components: [
     { id: 'box', label: '花槽', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
     { id: 'legs', label: '支腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
@@ -727,7 +739,8 @@ export const planterBoxFurniture = {
 export const raisedGardenBedFurniture = {
   type: 'raised_garden_bed',
   name: '种植箱',
-  defaultSize: { width: 54, depth: 26, height: 22 },
+  unit: 'm',
+  defaultSize: { width: 1.35, depth: 0.65, height: 0.55 },
   components: [
     { id: 'box', label: '种植槽', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
     { id: 'legs', label: '站腿', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
@@ -761,7 +774,8 @@ export const raisedGardenBedFurniture = {
 export const trellisScreenFurniture = {
   type: 'trellis_screen',
   name: '花架',
-  defaultSize: { width: 40, depth: 6, height: 78 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.15, height: 2 },
   components: [
     { id: 'frame', label: '外框', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'slats', label: '格栅', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
@@ -824,7 +838,8 @@ export const trellisScreenFurniture = {
 export const outdoorStorageBoxFurniture = {
   type: 'outdoor_storage_box',
   name: '收纳箱',
-  defaultSize: { width: 42, depth: 22, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 1.05, depth: 0.55, height: 0.6 },
   components: [
     { id: 'box', label: '箱体', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
     { id: 'lid', label: '箱盖', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
@@ -847,7 +862,8 @@ export const outdoorStorageBoxFurniture = {
 export const gardenBridgeFurniture = {
   type: 'garden_bridge',
   name: '小园桥',
-  defaultSize: { width: 66, depth: 20, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 1.7, depth: 0.5, height: 0.5 },
   components: [
     { id: 'deck', label: '桥面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
     { id: 'rails', label: '扣手', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
@@ -948,7 +964,8 @@ export const gardenBridgeFurniture = {
 export const canopyTentFurniture = {
   type: 'canopy_tent',
   name: '天幕',
-  defaultSize: { width: 96, depth: 96, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 2.45, depth: 2.45, height: 2.45 },
   components: [
     { id: 'canopy', label: '天幕', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
     { id: 'posts', label: '立杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.lightMetal },
@@ -1000,7 +1017,8 @@ export const canopyTentFurniture = {
 export const poolsideDaybedFurniture = {
   type: 'poolside_daybed',
   name: '躺床',
-  defaultSize: { width: 78, depth: 34, height: 34 },
+  unit: 'm',
+  defaultSize: { width: 2, depth: 0.85, height: 0.85 },
   components: [
     { id: 'bed', label: '躺面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.fabric },
     { id: 'frame', label: '底架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
@@ -1043,7 +1061,8 @@ export const poolsideDaybedFurniture = {
 export const pottingBenchFurniture = {
   type: 'potting_bench',
   name: '操作台',
-  defaultSize: { width: 48, depth: 20, height: 60 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.5, height: 1.5 },
   components: [
     { id: 'counter', label: '操作台', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
     { id: 'shelf', label: '层板', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
@@ -1084,7 +1103,8 @@ export const pottingBenchFurniture = {
 export const sharedBicycleFurniture = {
   type: 'shared_bicycle',
   name: '共享单车',
-  defaultSize: { width: 68, depth: 18, height: 44 },
+  unit: 'm',
+  defaultSize: { width: 1.75, depth: 0.45, height: 1.1 },
   components: [
     { id: 'frame', label: '车架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.sage },
     { id: 'tires', label: '轮胎', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
@@ -1316,7 +1336,8 @@ export const landscapeMarbleFountain = {
   type: 'landscape_marble_fountain',
   waterControllable: true,
   name: '跌水喷泉',
-  defaultSize: { width: 56, depth: 56, height: 60 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 1.4, height: 1.5 },
   components: [
     { id: 'fountain-marble', label: '汉白玉雕座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
     { id: 'fountain-water', label: '涌动喷泉', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water }
@@ -1386,7 +1407,8 @@ export const landscapeEuroPondSculpture = {
   type: 'landscape_euro_pond_sculpture',
   waterControllable: true,
   name: '水池雕塑',
-  defaultSize: { width: 64, depth: 64, height: 72 },
+  unit: 'm',
+  defaultSize: { width: 1.65, depth: 1.65, height: 1.85 },
   components: [
     { id: 'pond-basin', label: '雕花大石盆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
     { id: 'pond-water', label: '池中涟漪', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water },
@@ -1437,7 +1459,8 @@ export const landscapeEuroPondSculpture = {
 export const landscapeMarbleBridge = {
   type: 'landscape_marble_bridge',
   name: '石拱桥',
-  defaultSize: { width: 72, depth: 30, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.75, height: 0.7 },
   components: [
     { id: 'bridge-marble', label: '汉白玉石桥', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
     { id: 'bridge-railing', label: '石桥栏杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone }
@@ -1476,7 +1499,8 @@ export const landscapeMarbleBridge = {
 export const outdoorStoneChessTable = {
   type: 'outdoor_stone_chess_table',
   name: '石头象棋桌',
-  defaultSize: { width: 32, depth: 32, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.8, height: 0.7 },
   components: [
     { id: 'table-base', label: '雕花石底座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
     { id: 'table-top', label: '石质台面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
@@ -1527,7 +1551,8 @@ export const outdoorStoneChessTable = {
 export const outdoorStoneStool = {
   type: 'outdoor_stone_stool',
   name: '石墩子',
-  defaultSize: { width: 14, depth: 14, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.4 },
   components: [
     { id: 'stone-body', label: '石墩鼓身', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
     { id: 'stone-seat', label: '光滑坐面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },

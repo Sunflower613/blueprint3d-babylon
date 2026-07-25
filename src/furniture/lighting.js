@@ -5,7 +5,8 @@ export const ceilingLight = {
   type: 'ceiling_light',
   name: '吸顶灯',
   placeType: 'ceiling',
-  defaultSize: { width: 16, depth: 16, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.1 },
   emissiveComponents: ['bulb', 'glow'],
   lightColorComponent: 'glow',
   lightSource: {
@@ -40,7 +41,8 @@ export const chandelierLight = {
   type: 'chandelier_light',
   name: '吊灯',
   placeType: 'ceiling',
-  defaultSize: { width: 24, depth: 24, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 0.8 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
   lightSource: {
@@ -107,7 +109,8 @@ export const chandelierLight = {
 export const wallSconceLight = {
   type: 'wall_sconce_light',
   name: '壁灯',
-  defaultSize: { width: 8, depth: 10, height: 12 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.25, height: 0.3 },
   placeType: 'wall',
   emissiveComponents: ['bulb', 'glow'],
   lightColorComponent: 'bulb',
@@ -162,7 +165,8 @@ export const wallSconceLight = {
 export const floorLampLight = {
   type: 'floor_lamp_light',
   name: '落地灯',
-  defaultSize: { width: 14, depth: 14, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 1.65 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
   lightSource: {
@@ -209,7 +213,8 @@ export const floorLampLight = {
 export const arcFloorLampLight = {
   type: 'arc_floor_lamp_light',
   name: '弧形落地灯',
-  defaultSize: { width: 36, depth: 16, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.4, height: 1.65 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
   lightSource: {
@@ -274,7 +279,8 @@ export const arcFloorLampLight = {
 export const deskLampLight = {
   type: 'desk_lamp_light',
   name: '台灯',
-  defaultSize: { width: 8, depth: 10, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.25, height: 0.4 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
   lightSource: {
@@ -333,7 +339,8 @@ export const deskLampLight = {
 export const bedsideLampLight = {
   type: 'bedside_lamp_light',
   name: '床头灯',
-  defaultSize: { width: 10, depth: 10, height: 14 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.35 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
   lightSource: {
@@ -368,7 +375,8 @@ export const trackLight = {
   type: 'track_light',
   name: '轨道灯',
   placeType: 'ceiling',
-  defaultSize: { width: 36, depth: 4, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.1, height: 0.2 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
   lightSource: {
@@ -417,7 +425,8 @@ export const trackLight = {
 export const neonSignLight = {
   type: 'neon_sign_light',
   name: '霓虹灯',
-  defaultSize: { width: 20, depth: 2, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.05, height: 0.5 },
   placeType: 'wall',
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
@@ -474,7 +483,8 @@ export const globePendantLight = {
   type: 'globe_pendant_light',
   name: '纸吊灯',
   placeType: 'ceiling',
-  defaultSize: { width: 18, depth: 18, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.9 },
   emissiveComponents: ['glow'],
   lightColorComponent: 'glow',
   lightSource: {
@@ -508,7 +518,8 @@ export const globePendantLight = {
 export const lavaLampLight = {
   type: 'lava_lamp_light',
   name: '熔岩灯',
-  defaultSize: { width: 6, depth: 6, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.15, depth: 0.15, height: 0.45 },
   emissiveComponents: ['glow', 'lava'],
   lightColorComponent: 'lava',
   lightSource: {
@@ -565,7 +576,8 @@ export const lavaLampLight = {
 export const gardenLanternPostFurniture = {
   type: 'garden_lantern_post',
   name: '庭院灯柱',
-  defaultSize: { width: 14, depth: 14, height: 84 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 2.15 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
   lightSource: {
@@ -642,7 +654,8 @@ export const gardenLanternPostFurniture = {
 export const gardenBollardLightFurniture = {
   type: 'garden_bollard_light',
   name: '庭院地灯',
-  defaultSize: { width: 8, depth: 8, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.5 },
   emissiveComponents: ['bulb'],
   lightColorComponent: 'bulb',
   lightSource: {
@@ -716,7 +729,8 @@ export const gardenBollardLightFurniture = {
 export const gardenLanternFurniture = {
   type: 'garden_lantern',
   name: '庭院灯笼',
-  defaultSize: { width: 12, depth: 12, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.6 },
   emissiveComponents: ['paper'],
   lightColorComponent: 'paper',
   lightSource: {
@@ -768,7 +782,8 @@ export const gardenLanternFurniture = {
 export const lampFurniture = {
   type: 'lamp',
   name: '落地灯',
-  defaultSize: { width: 14, depth: 14, height: 62 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 1.55 },
   components: [
     { id: 'shade', label: '灯罩', defaultColor: '#fffae6' },
     { id: 'pole', label: '灯杆', defaultColor: '#3d3d3d' },
@@ -796,7 +811,8 @@ export const lampFurniture = {
 export const chandelierFurniture = {
   type: 'chandelier',
   name: '吸顶吊灯',
-  defaultSize: { width: 20, depth: 20, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.5, height: 0.9 },
   placeType: 'ceiling',
   components: [
     { id: 'shade', label: '设计灯罩', defaultColor: '#ffffff' },
@@ -828,7 +844,8 @@ export const chandelierFurniture = {
 export const landscapeStoneLantern = {
   type: 'landscape_stone_lantern',
   name: '石灯笼',
-  defaultSize: { width: 16, depth: 16, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.9 },
   components: [
     { id: 'lantern-stone', label: '花岗岩石材', defaultColor: '#b0bec5' },
     { id: 'lantern-light', label: '火舍灯光', defaultColor: '#ffe082' }

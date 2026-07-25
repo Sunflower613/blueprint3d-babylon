@@ -3,7 +3,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const plantFurniture = {
   type: 'plant',
   name: '绿植',
-  defaultSize: { width: 28, depth: 28, height: 46 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 1.15 },
   components: [
     { id: 'leaf-upper', label: '顶部叶冠', defaultColor: '#a8c8a0' },
     { id: 'leaf-mid', label: '中部叶冠', defaultColor: '#88ad86' },
@@ -46,7 +47,8 @@ export const plantFurniture = {
 export const plantPotFurniture = {
   type: 'plant_pot',
   name: '吊兰',
-  defaultSize: { width: 16, depth: 16, height: 40 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 1 },
   placeType: 'ceiling',
   components: [
     { id: 'leaf', label: '吊兰绿叶', defaultColor: '#7fc995' },
@@ -77,7 +79,8 @@ export const plantPotFurniture = {
 export const cactusFurniture = {
   type: 'cactus',
   name: '仙人球',
-  defaultSize: { width: 14, depth: 14, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.4 },
   components: [
     { id: 'cactus-body', label: '仙人掌球', defaultColor: '#4caf50' },
     { id: 'cactus-pot', label: '红陶小花盆', defaultColor: '#d7ccc8' },
@@ -105,7 +108,8 @@ export const cactusFurniture = {
 export const monsteraFurniture = {
   type: 'monstera',
   name: '龟背竹',
-  defaultSize: { width: 32, depth: 32, height: 48 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.8, height: 1.2 },
   components: [
     { id: 'monstera-pot', label: '极简白瓷盆', defaultColor: '#e8dfd2' },
     { id: 'monstera-stem', label: '龟背竹叶茎', defaultColor: '#71906f' },
@@ -149,7 +153,8 @@ export const monsteraFurniture = {
 export const succulentFurniture = {
   type: 'succulent',
   name: '多肉',
-  defaultSize: { width: 10, depth: 10, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.25 },
   components: [
     { id: 'succulent-pot', label: '马卡龙矮盆', defaultColor: '#ffffff' },
     { id: 'succulent-leaves', label: '多肉饱满叶瓣', defaultColor: '#80cbc4' }
@@ -181,7 +186,8 @@ export const succulentFurniture = {
 export const bambooFurniture = {
   type: 'bamboo',
   name: '富贵竹',
-  defaultSize: { width: 16, depth: 16, height: 54 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 1.35 },
   components: [
     { id: 'bamboo-vase', label: '玻璃水培瓶', defaultColor: '#e0f7fa' },
     { id: 'bamboo-stem', label: '富贵竹青干', defaultColor: '#388e3c' }
@@ -213,7 +219,8 @@ export const bambooFurniture = {
 export const fernFurniture = {
   type: 'fern',
   name: '垂耳蕨',
-  defaultSize: { width: 28, depth: 28, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 0.65 },
   components: [
     { id: 'fern-pot', label: '红陶阔口盆', defaultColor: '#b0bec5' },
     { id: 'fern-leaves', label: '下垂羽状蕨叶', defaultColor: '#1b5e20' }
@@ -244,7 +251,8 @@ export const fernFurniture = {
 export const bonsaiFurniture = {
   type: 'bonsai',
   name: '松树盆景',
-  defaultSize: { width: 36, depth: 24, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.6, height: 0.8 },
   components: [
     { id: 'bonsai-pot', label: '紫砂长方浅盆', defaultColor: '#5d4037' },
     { id: 'bonsai-trunk', label: '苍劲曲折树干', defaultColor: '#3e2723' },
@@ -362,7 +370,8 @@ export const bonsaiFurniture = {
 export const flowerRoseFurniture = {
   type: 'flower_rose',
   name: '玫瑰盆栽',
-  defaultSize: { width: 18, depth: 18, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.7 },
   components: [
     { id: 'rose-pot', label: '北欧浮雕白盆', defaultColor: '#f5f5f5' },
     { id: 'rose-stem', label: '带刺青绿枝条', defaultColor: '#2e7d32' },
@@ -404,7 +413,8 @@ export const flowerRoseFurniture = {
 export const snakePlantFurniture = {
   type: 'snake_plant',
   name: '虎尾兰',
-  defaultSize: { width: 16, depth: 16, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 1.05 },
   components: [
     { id: 'snake-pot', label: '北欧水泥直筒盆', defaultColor: '#cfd8dc' },
     { id: 'snake-leaves', label: '挺拔虎纹剑叶', defaultColor: '#2d5a27' }
@@ -439,7 +449,8 @@ export const snakePlantFurniture = {
 export const sunflowerPotFurniture = {
   type: 'sunflower_pot',
   name: '向日葵',
-  defaultSize: { width: 16, depth: 16, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.9 },
   components: [
     { id: 'pot', label: '陶土花盆', defaultColor: '#c37960' },
     { id: 'stem', label: '花茎绿叶', defaultColor: '#4c9f50' },
@@ -477,7 +488,8 @@ export const sunflowerPotFurniture = {
 export const pachiraTreeFurniture = {
   type: 'pachira_tree',
   name: '发财树',
-  defaultSize: { width: 24, depth: 24, height: 60 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 1.5 },
   components: [
     { id: 'pot', label: '艺术瓷盆', defaultColor: '#ffffff' },
     { id: 'trunk', label: '编织树干', defaultColor: '#8b4513' },
@@ -510,7 +522,8 @@ export const pachiraTreeFurniture = {
 export const lavenderPotFurniture = {
   type: 'lavender_pot',
   name: '薰衣草',
-  defaultSize: { width: 12, depth: 12, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.5 },
   components: [
     { id: 'pot', label: '素烧盆', defaultColor: '#e0dcd3' },
     { id: 'stem', label: '草底', defaultColor: '#43a047' },
@@ -537,7 +550,8 @@ export const lavenderPotFurniture = {
 export const tulipVaseFurniture = {
   type: 'tulip_vase',
   name: '郁金香',
-  defaultSize: { width: 10, depth: 10, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.6 },
   components: [
     { id: 'glass', label: '磨砂花瓶', defaultColor: '#ffffff' },
     { id: 'stem', label: '花梗', defaultColor: '#81c784' },
@@ -571,7 +585,8 @@ export const tulipVaseFurniture = {
 export const orchidPotFurniture = {
   type: 'orchid_pot',
   name: '蝴蝶兰',
-  defaultSize: { width: 16, depth: 16, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.7 },
   components: [
     { id: 'pot', label: '紫砂花盆', defaultColor: '#8d6e63' },
     { id: 'stem', label: '蝴蝶兰枝干', defaultColor: '#4caf50' },
@@ -598,7 +613,8 @@ export const orchidPotFurniture = {
 export const dwarfMonsteraFurniture = {
   type: 'dwarf_monstera',
   name: '矮生龟背竹',
-  defaultSize: { width: 20, depth: 20, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.5, height: 0.6 },
   components: [
     { id: 'pot', label: '水泥花盆', defaultColor: '#c9c1b5' },
     { id: 'leaves', label: '龟背叶片', defaultColor: '#5f8068' }
@@ -622,7 +638,8 @@ export const dwarfMonsteraFurniture = {
 export const largeCactusFurniture = {
   type: 'large_cactus',
   name: '仙人掌',
-  defaultSize: { width: 14, depth: 14, height: 48 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 1.2 },
   components: [
     { id: 'pot', label: '陶罐盆', defaultColor: '#bcaaa4' },
     { id: 'body', label: '多浆茎杆', defaultColor: '#2e7d32' }
@@ -651,7 +668,8 @@ export const largeCactusFurniture = {
 export const eucalyptusVaseFurniture = {
   type: 'eucalyptus_vase',
   name: '尤加利',
-  defaultSize: { width: 12, depth: 12, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.8 },
   components: [
     { id: 'glass', label: '水培瓶', defaultColor: '#80deea' },
     { id: 'leaves', label: '尤加利圆叶', defaultColor: '#546e7a' }
@@ -679,7 +697,8 @@ export const eucalyptusVaseFurniture = {
 export const cherryBlossomBonsaiFurniture = {
   type: 'cherry_blossom_bonsai',
   name: '樱花',
-  defaultSize: { width: 18, depth: 18, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.65 },
   components: [
     { id: 'pot', label: '釉面盆', defaultColor: '#e0f7fa' },
     { id: 'trunk', label: '苍劲树桩', defaultColor: '#5d4037' },
@@ -708,7 +727,8 @@ export const cherryBlossomBonsaiFurniture = {
 export const hangingIvyFurniture = {
   type: 'hanging_ivy',
   name: '常春藤',
-  defaultSize: { width: 16, depth: 10, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.25, height: 0.6 },
   placeType: 'wall',
   components: [
     { id: 'pot', label: '壁挂篮', defaultColor: '#d7ccc8' },
@@ -730,7 +750,8 @@ export const hangingIvyFurniture = {
 export const landscapeWelcomeBonsai = {
   type: 'landscape_welcome_bonsai',
   name: '奇石盆景',
-  defaultSize: { width: 30, depth: 20, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.75, depth: 0.5, height: 0.9 },
   components: [
     { id: 'bonsai-pot', label: '紫砂浅盆', defaultColor: '#4e342e' },
     { id: 'bonsai-stone', label: '漏透嶙峋石', defaultColor: '#37474f' },
@@ -833,7 +854,8 @@ export const landscapeWelcomeBonsai = {
 export const landscapePineBonsai = {
   type: 'landscape_pine_bonsai',
   name: '松景',
-  defaultSize: { width: 44, depth: 32, height: 56 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 0.8, height: 1.4 },
   components: [
     { id: 'pine-pot', label: '宜兴紫砂泥盆', defaultColor: '#5d4037' },
     { id: 'pine-trunk', label: '苍老扭曲主干', defaultColor: '#4e342e' },
@@ -1005,7 +1027,8 @@ export const landscapePineBonsai = {
 export const landscapeMapleBonsai = {
   type: 'landscape_maple_bonsai',
   name: '红枫',
-  defaultSize: { width: 32, depth: 22, height: 44 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.55, height: 1.1 },
   components: [
     { id: 'maple-pot', label: '紫砂方盆', defaultColor: '#5d4037' },
     { id: 'maple-trunk', label: '嶙峋树干', defaultColor: '#3e2723' },
@@ -1036,7 +1059,8 @@ export const landscapeMapleBonsai = {
 export const landscapeMossMicro = {
   type: 'landscape_moss_micro',
   name: '微景观',
-  defaultSize: { width: 14, depth: 14, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.45 },
   components: [
     { id: 'moss-glass', label: '高硼硅玻璃罩', defaultColor: '#e0f2f1' },
     { id: 'moss-green', label: '鲜活苔藓层', defaultColor: '#558b2f' },
@@ -1061,7 +1085,8 @@ export const landscapeMossMicro = {
 export const arecaPalmPlant = {
   type: 'areca_palm_plant',
   name: '散尾葵',
-  defaultSize: { width: 30, depth: 30, height: 56 },
+  unit: 'm',
+  defaultSize: { width: 0.75, depth: 0.75, height: 1.4 },
   components: [
     { id: 'areca-pot', label: '高烤漆方花盆', defaultColor: '#e8dfd2' },
     { id: 'areca-stems', label: '丛生棕茎', defaultColor: '#8a9b69' },

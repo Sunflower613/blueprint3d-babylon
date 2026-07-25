@@ -79,7 +79,7 @@ test('L 楼梯分别保存转角前后长度并用于两段几何', () => {
   engine.dispose();
 });
 
-test('0722 家具包含薄海报、四联拼图以及参考图的桌台和木格栅', () => {
+test('装饰与屏风家具包含薄海报、四联拼图以及参考图的桌台和木格栅', () => {
   const byType = (type) => FURNITURE_LIST.find((definition) => definition.type === type);
   const poster = byType('poster');
   const triptychPoster = byType('triptych_poster');
@@ -96,8 +96,8 @@ test('0722 家具包含薄海报、四联拼图以及参考图的桌台和木格
   assert.equal(poster.components[0].defaultMaterial.id, 'poster-celestial-moons');
   assert.equal(triptychPoster.components[1].defaultMaterial.id, 'poster-botanical-sage');
   assert.equal(quadPoster.components[1].defaultMaterial.id, 'poster-abstract-arches');
-  assert.deepEqual(coffeeTable.defaultSize, { width: 28, depth: 28, height: 18 });
-  assert.deepEqual(sideTable.defaultSize, { width: 18, depth: 18, height: 22 });
+  assert.deepEqual(coffeeTable.defaultSize, { width: 0.7, depth: 0.7, height: 0.45 });
+  assert.deepEqual(sideTable.defaultSize, { width: 0.45, depth: 0.45, height: 0.55 });
   assert.equal(screen.components[0].id, 'base');
   assert.equal(screen.components[1].id, 'slats');
 });

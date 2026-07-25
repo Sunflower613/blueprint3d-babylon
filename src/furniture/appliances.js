@@ -4,7 +4,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const washingMachineFurniture = {
   type: 'washing_machine',
   name: '洗衣机',
-  defaultSize: { width: 26, depth: 26, height: 34 },
+  unit: 'm',
+  defaultSize: { width: 0.65, depth: 0.65, height: 0.85 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#e9ecf0' },
     { id: 'glass', label: '舱门视窗', defaultColor: '#434f5c' },
@@ -37,7 +38,8 @@ export const washingMachineFurniture = {
 export const hairDryerFurniture = {
   type: 'hair_dryer',
   name: '吹风机',
-  defaultSize: { width: 10, depth: 4, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.1, height: 0.25 },
   components: [
     { id: 'body', label: '风筒', defaultColor: '#d81b60' },
     { id: 'handle', label: '手柄', defaultColor: '#212121' },
@@ -69,7 +71,8 @@ export const hairDryerFurniture = {
 export const tvFurniture = {
   type: 'tv',
   name: '电视机',
-  defaultSize: { width: 48, depth: 10, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.25, height: 0.75 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#1c1d1f' },
     { id: 'screen', label: '屏幕', defaultColor: '#2d3033' },
@@ -97,7 +100,8 @@ export const tvFurniture = {
 export const computerFurniture = {
   type: 'computer',
   name: '电脑',
-  defaultSize: { width: 24, depth: 8, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.2, height: 0.45 },
   components: [
     { id: 'body', label: '机身支架', defaultColor: '#e3e8eb' },
     { id: 'screen', label: '显示屏', defaultColor: '#1e2530' },
@@ -130,7 +134,8 @@ export const computerFurniture = {
 export const projectorFurniture = {
   type: 'projector',
   name: '投影仪',
-  defaultSize: { width: 10, depth: 10, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.1 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#f5f5f5' },
     { id: 'lens', label: '镜头镜片', defaultColor: '#1e88e5' }
@@ -156,7 +161,8 @@ export const projectorFurniture = {
 export const gameConsoleFurniture = {
   type: 'game_console',
   name: '游戏主机',
-  defaultSize: { width: 12, depth: 10, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.25, height: 0.2 },
   components: [
     { id: 'console', label: '主机', defaultColor: '#fafafa' },
     { id: 'accent', label: '装饰光条', defaultColor: '#2979ff' },
@@ -180,7 +186,8 @@ export const gameConsoleFurniture = {
 export const smartSpeakerFurniture = {
   type: 'smart_speaker',
   name: '智能音箱',
-  defaultSize: { width: 5, depth: 5, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.13, depth: 0.13, height: 0.2 },
   components: [
     { id: 'body', label: '网布机身', defaultColor: '#37474f' },
     { id: 'top', label: '触控顶盖', defaultColor: '#cfd8dc' }
@@ -199,7 +206,8 @@ export const smartSpeakerFurniture = {
 export const electricFanFurniture = {
   type: 'electric_fan',
   name: '电风扇',
-  defaultSize: { width: 16, depth: 16, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 1.05 },
   components: [
     { id: 'base', label: '底座', defaultColor: '#004d40' },
     { id: 'pole', label: '中立柱', defaultColor: '#b2dfdb' },
@@ -230,7 +238,8 @@ export const electricFanFurniture = {
 export const aromaDiffuserFurniture = {
   type: 'aroma_diffuser',
   name: '香薰机',
-  defaultSize: { width: 6, depth: 6, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.15, depth: 0.15, height: 0.2 },
   components: [
     { id: 'body', label: 'PP磨砂壳', defaultColor: '#fcfcfc' },
     { id: 'base', label: '原木底环', defaultColor: '#bcaaa4' }
@@ -249,7 +258,8 @@ export const aromaDiffuserFurniture = {
 export const vintageRecordPlayerFurniture = {
   type: 'vintage_record_player',
   name: '唱片机',
-  defaultSize: { width: 20, depth: 16, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.4, height: 0.25 },
   components: [
     { id: 'cabinet', label: '胡桃木机箱', defaultColor: '#6d4328' },
     { id: 'platter', label: '唱盘', defaultColor: '#252525' },
@@ -297,7 +307,8 @@ export const vintageRecordPlayerFurniture = {
 export const stereoSpeakerFurniture = {
   type: 'stereo_speaker',
   name: '音响',
-  defaultSize: { width: 14, depth: 12, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.3, height: 0.7 },
   components: [
     { id: 'cabinet', label: '木质箱体', defaultColor: '#75482e' },
     { id: 'grille', label: '织物网罩', defaultColor: '#393735' },
@@ -329,7 +340,8 @@ export const stereoSpeakerFurniture = {
 export const airConditionerWallFurniture = {
   type: 'air_conditioner_wall',
   name: '挂式空调',
-  defaultSize: { width: 32, depth: 8, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.2, height: 0.25 },
   placeType: 'wall',
   components: [
     { id: 'body', label: '机身', defaultColor: '#f5f5f5' },
@@ -355,7 +367,8 @@ export const airConditionerWallFurniture = {
 export const airConditionerFloorFurniture = {
   type: 'air_conditioner_floor',
   name: '立式空调',
-  defaultSize: { width: 14, depth: 14, height: 68 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 1.75 },
   components: [
     { id: 'body', label: '机身', defaultColor: '#f8f9fa' },
     { id: 'vent', label: '出风栅格', defaultColor: '#37474f' },

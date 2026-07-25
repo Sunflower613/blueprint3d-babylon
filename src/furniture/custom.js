@@ -4,7 +4,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const customCubeFurniture = {
   type: 'custom_cube',
   name: '方块',
-  defaultSize: { width: 36, depth: 36, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 0.9 },
   components: [
     { id: 'cube', label: '方块主体', defaultColor: '#e0e0e0' }
   ],
@@ -19,7 +20,8 @@ export const customCubeFurniture = {
 export const customCylinderFurniture = {
   type: 'custom_cylinder',
   name: '圆柱',
-  defaultSize: { width: 36, depth: 36, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 0.9 },
   components: [
     { id: 'cylinder', label: '圆柱主体', defaultColor: '#e0e0e0' }
   ],
@@ -34,7 +36,8 @@ export const customCylinderFurniture = {
 export const customSphereFurniture = {
   type: 'custom_sphere',
   name: '球体',
-  defaultSize: { width: 36, depth: 36, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 0.9 },
   components: [
     { id: 'sphere', label: '球体主体', defaultColor: '#e0e0e0' }
   ],

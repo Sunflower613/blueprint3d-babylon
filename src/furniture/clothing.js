@@ -4,7 +4,8 @@ import { boxComponent, cylinderComponent, sphereComponent } from './_helpers.js'
 export const clothing_mannequin_male = {
   type: 'clothing_mannequin_male',
   name: '男装模特',
-  defaultSize: { width: 16, depth: 8, height: 72 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.2, height: 1.85 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },
     { id: 'base', label: '支架底盘', defaultColor: '#8c6c50' }
@@ -17,7 +18,8 @@ export const clothing_mannequin_male = {
 export const clothing_mannequin_female = {
   type: 'clothing_mannequin_female',
   name: '女装模特',
-  defaultSize: { width: 14, depth: 7, height: 66 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.18, height: 1.7 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },
     { id: 'base', label: '支架底盘', defaultColor: '#8c6c50' }
@@ -30,7 +32,8 @@ export const clothing_mannequin_female = {
 export const clothing_mannequin_child = {
   type: 'clothing_mannequin_child',
   name: '童装模特',
-  defaultSize: { width: 12, depth: 6, height: 44 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.15, height: 1.1 },
   components: [
     { id: 'body', label: '模特本体', defaultColor: '#e0d0c0' },
     { id: 'base', label: '支架底盘', defaultColor: '#8c6c50' }
@@ -559,7 +562,8 @@ export function buildMannequin(registry, item, definition, node, size, gender) {
 export const clothing_t_shirt = {
   type: 'clothing_t_shirt',
   name: 'T恤',
-  defaultSize: { width: 20, depth: 8, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.2, height: 0.6 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#4fc3f7' },
     { id: 'collar', label: '领口配饰', defaultColor: '#ffffff' }
@@ -572,7 +576,8 @@ export const clothing_t_shirt = {
 export const clothing_shirt = {
   type: 'clothing_shirt',
   name: '衬衫',
-  defaultSize: { width: 20, depth: 8, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.2, height: 0.6 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#e0f7fa' },
     { id: 'collar', label: '领口细节', defaultColor: '#b2ebf2' }
@@ -585,7 +590,8 @@ export const clothing_shirt = {
 export const clothing_sweater = {
   type: 'clothing_sweater',
   name: '毛衣',
-  defaultSize: { width: 20, depth: 8, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.2, height: 0.6 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#ffe082' }
   ],
@@ -597,7 +603,8 @@ export const clothing_sweater = {
 export const clothing_coat = {
   type: 'clothing_coat',
   name: '大衣',
-  defaultSize: { width: 22, depth: 9, height: 38 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.23, height: 0.95 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#8d6e63' },
     { id: 'collar', label: '衣领细节', defaultColor: '#5d4037' }
@@ -610,7 +617,8 @@ export const clothing_coat = {
 export const clothing_jacket = {
   type: 'clothing_jacket',
   name: '夹克',
-  defaultSize: { width: 21, depth: 9, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.23, height: 0.65 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#37474f' },
     { id: 'collar', label: '领口饰边', defaultColor: '#263238' }
@@ -623,7 +631,8 @@ export const clothing_jacket = {
 export const clothing_hoodie = {
   type: 'clothing_hoodie',
   name: '卫衣',
-  defaultSize: { width: 22, depth: 9, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.23, height: 0.65 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#a1887f' },
     { id: 'collar', label: '帽兜衬里', defaultColor: '#d7ccc8' }
@@ -636,7 +645,8 @@ export const clothing_hoodie = {
 export const clothing_vest = {
   type: 'clothing_vest',
   name: '无袖背心',
-  defaultSize: { width: 18, depth: 7, height: 22 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.18, height: 0.55 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#e0e0e0' }
   ],
@@ -648,7 +658,8 @@ export const clothing_vest = {
 export const clothing_polo_shirt = {
   type: 'clothing_polo_shirt',
   name: 'Polo衫',
-  defaultSize: { width: 20, depth: 8, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.2, height: 0.6 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#1a237e' },
     { id: 'collar', label: '翻领细节', defaultColor: '#ffffff' }
@@ -661,7 +672,8 @@ export const clothing_polo_shirt = {
 export const clothing_cardigan = {
   type: 'clothing_cardigan',
   name: '开衫',
-  defaultSize: { width: 21, depth: 8, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.2, height: 0.65 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#d1c4e9' },
     { id: 'collar', label: '门襟细节', defaultColor: '#b39ddb' }
@@ -674,7 +686,8 @@ export const clothing_cardigan = {
 export const clothing_tank_top = {
   type: 'clothing_tank_top',
   name: '吊带背心',
-  defaultSize: { width: 18, depth: 7, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.18, height: 0.5 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#ff8a80' },
     { id: 'collar', label: '细吊带色', defaultColor: '#ff5252' }
@@ -689,7 +702,8 @@ export const clothing_tank_top = {
 export const clothing_jeans = {
   type: 'clothing_jeans',
   name: '牛仔裤',
-  defaultSize: { width: 14, depth: 6, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.15, height: 0.8 },
   components: [
     { id: 'fabric', label: '牛仔布面料', defaultColor: '#1565c0' },
     { id: 'detail', label: '皮牌腰头', defaultColor: '#8d6e63' }
@@ -702,7 +716,8 @@ export const clothing_jeans = {
 export const clothing_trousers = {
   type: 'clothing_trousers',
   name: '西裤',
-  defaultSize: { width: 14, depth: 6, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.15, height: 0.8 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#212121' },
     { id: 'detail', label: '腰头饰边', defaultColor: '#424242' }
@@ -715,7 +730,8 @@ export const clothing_trousers = {
 export const clothing_sweatpants = {
   type: 'clothing_sweatpants',
   name: '运动裤',
-  defaultSize: { width: 15, depth: 7, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.18, height: 0.8 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#757575' },
     { id: 'detail', label: '抽绳细节', defaultColor: '#eeeeee' }
@@ -728,7 +744,8 @@ export const clothing_sweatpants = {
 export const clothing_shorts = {
   type: 'clothing_shorts',
   name: '短裤',
-  defaultSize: { width: 14, depth: 6, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.15, height: 0.45 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#81c784' },
     { id: 'detail', label: '腰部纽扣', defaultColor: '#ffffff' }
@@ -741,7 +758,8 @@ export const clothing_shorts = {
 export const clothing_cargo_pants = {
   type: 'clothing_cargo_pants',
   name: '工装裤',
-  defaultSize: { width: 15, depth: 7, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.18, height: 0.8 },
   components: [
     { id: 'fabric', label: '面料主色', defaultColor: '#5d4037' },
     { id: 'detail', label: '大侧袋色', defaultColor: '#4e342e' }
@@ -756,7 +774,8 @@ export const clothing_cargo_pants = {
 export const clothing_pleated_skirt = {
   type: 'clothing_pleated_skirt',
   name: '百褶裙',
-  defaultSize: { width: 14, depth: 12, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.3, height: 0.4 },
   components: [
     { id: 'fabric', label: '褶皱面料', defaultColor: '#e91e63' },
     { id: 'detail', label: '裙勾配饰', defaultColor: '#c2185b' }
@@ -769,7 +788,8 @@ export const clothing_pleated_skirt = {
 export const clothing_denim_skirt = {
   type: 'clothing_denim_skirt',
   name: '牛仔短裙',
-  defaultSize: { width: 14, depth: 10, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.25, height: 0.4 },
   components: [
     { id: 'fabric', label: '牛仔面料', defaultColor: '#1e88e5' },
     { id: 'detail', label: '前置铜扣', defaultColor: '#ffb300' }
@@ -782,7 +802,8 @@ export const clothing_denim_skirt = {
 export const clothing_leather_skirt = {
   type: 'clothing_leather_skirt',
   name: '皮裙',
-  defaultSize: { width: 14, depth: 10, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.25, height: 0.4 },
   components: [
     { id: 'fabric', label: '皮革面料', defaultColor: '#111111' },
     { id: 'detail', label: '金属拉链', defaultColor: '#eeeeee' }
@@ -795,7 +816,8 @@ export const clothing_leather_skirt = {
 export const clothing_a_line_skirt = {
   type: 'clothing_a_line_skirt',
   name: 'A字裙',
-  defaultSize: { width: 14, depth: 11, height: 17 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.3, height: 0.45 },
   components: [
     { id: 'fabric', label: '裙身面料', defaultColor: '#795548' },
     { id: 'detail', label: '腰带配饰', defaultColor: '#3e2723' }
@@ -808,7 +830,8 @@ export const clothing_a_line_skirt = {
 export const clothing_pencil_skirt = {
   type: 'clothing_pencil_skirt',
   name: '一步裙',
-  defaultSize: { width: 13, depth: 9, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.23, height: 0.45 },
   components: [
     { id: 'fabric', label: '裙身面料', defaultColor: '#37474f' },
     { id: 'detail', label: '装饰口袋', defaultColor: '#263238' }
@@ -823,7 +846,8 @@ export const clothing_pencil_skirt = {
 export const clothing_dress = {
   type: 'clothing_dress',
   name: '连衣裙',
-  defaultSize: { width: 20, depth: 10, height: 40 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.25, height: 1 },
   components: [
     { id: 'fabric', label: '裙面布料', defaultColor: '#f48fb1' },
     { id: 'collar', label: '领口束腰', defaultColor: '#f50057' }
@@ -836,7 +860,8 @@ export const clothing_dress = {
 export const clothing_evening_gown = {
   type: 'clothing_evening_gown',
   name: '晚礼服',
-  defaultSize: { width: 22, depth: 12, height: 46 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.3, height: 1.15 },
   components: [
     { id: 'fabric', label: '丝绒礼服面料', defaultColor: '#311b92' },
     { id: 'collar', label: '肩带镶边', defaultColor: '#ea80fc' }
@@ -849,7 +874,8 @@ export const clothing_evening_gown = {
 export const clothing_summer_dress = {
   type: 'clothing_summer_dress',
   name: '碎花裙',
-  defaultSize: { width: 19, depth: 9, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.23, height: 0.9 },
   components: [
     { id: 'fabric', label: '夏日碎花布', defaultColor: '#fff59d' },
     { id: 'collar', label: '细吊带边', defaultColor: '#ff8f00' }
@@ -862,7 +888,8 @@ export const clothing_summer_dress = {
 export const clothing_slip_dress = {
   type: 'clothing_slip_dress',
   name: '丝绸裙',
-  defaultSize: { width: 18, depth: 8, height: 38 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.2, height: 0.95 },
   components: [
     { id: 'fabric', label: '真丝缎面', defaultColor: '#b2dfdb' },
     { id: 'collar', label: '蕾丝领边', defaultColor: '#ffffff' }
@@ -875,7 +902,8 @@ export const clothing_slip_dress = {
 export const clothing_cheongsam = {
   type: 'clothing_cheongsam',
   name: '旗袍',
-  defaultSize: { width: 18, depth: 7, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.18, height: 1.05 },
   components: [
     { id: 'fabric', label: '织锦缎面', defaultColor: '#b71c1c' },
     { id: 'collar', label: '盘扣立领', defaultColor: '#ffd700' }
@@ -888,7 +916,8 @@ export const clothing_cheongsam = {
 export const clothing_lolita_dress = {
   type: 'clothing_lolita_dress',
   name: '蓬蓬裙',
-  defaultSize: { width: 22, depth: 14, height: 38 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.35, height: 0.95 },
   components: [
     { id: 'fabric', label: '花边蓬蓬裙面', defaultColor: '#f8bbd0' },
     { id: 'collar', label: '荷叶蕾丝边', defaultColor: '#ffffff' }
@@ -901,7 +930,8 @@ export const clothing_lolita_dress = {
 export const clothing_lace_dress = {
   type: 'clothing_lace_dress',
   name: '蕾丝裙',
-  defaultSize: { width: 20, depth: 10, height: 40 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.25, height: 1 },
   components: [
     { id: 'fabric', label: '蕾丝外层', defaultColor: '#ffffff' },
     { id: 'collar', label: '内衬配饰', defaultColor: '#fce4ec' }
@@ -914,7 +944,8 @@ export const clothing_lace_dress = {
 export const clothing_floral_dress = {
   type: 'clothing_floral_dress',
   name: '花卉长裙',
-  defaultSize: { width: 20, depth: 10, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.25, height: 1.05 },
   components: [
     { id: 'fabric', label: '印花布料', defaultColor: '#c5e1a5' },
     { id: 'collar', label: '腰带蝴蝶结', defaultColor: '#7cb342' }
@@ -927,7 +958,8 @@ export const clothing_floral_dress = {
 export const clothing_maxi_dress = {
   type: 'clothing_maxi_dress',
   name: '沙滩长裙',
-  defaultSize: { width: 21, depth: 11, height: 44 },
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.3, height: 1.1 },
   components: [
     { id: 'fabric', label: '雪纺面料', defaultColor: '#ffb74d' },
     { id: 'collar', label: '领口流苏', defaultColor: '#f57c00' }
@@ -940,7 +972,8 @@ export const clothing_maxi_dress = {
 export const clothing_knit_dress = {
   type: 'clothing_knit_dress',
   name: '紧身裙',
-  defaultSize: { width: 18, depth: 8, height: 38 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.2, height: 0.95 },
   components: [
     { id: 'fabric', label: '针织布料', defaultColor: '#4e342e' },
     { id: 'collar', label: '罗纹袖口', defaultColor: '#3e2723' }
@@ -955,7 +988,8 @@ export const clothing_knit_dress = {
 export const clothing_baseball_cap = {
   type: 'clothing_baseball_cap',
   name: '棒球帽',
-  defaultSize: { width: 11, depth: 12, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.15 },
   components: [
     { id: 'fabric', label: '帽顶面料', defaultColor: '#e53935' },
     { id: 'brim', label: '遮阳前檐', defaultColor: '#1e88e5' }
@@ -968,7 +1002,8 @@ export const clothing_baseball_cap = {
 export const clothing_beanie = {
   type: 'clothing_beanie',
   name: '毛线帽',
-  defaultSize: { width: 10, depth: 10, height: 7 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.18 },
   components: [
     { id: 'fabric', label: '针织毛线', defaultColor: '#00bcd4' }
   ],
@@ -980,7 +1015,8 @@ export const clothing_beanie = {
 export const clothing_fedora = {
   type: 'clothing_fedora',
   name: '礼帽',
-  defaultSize: { width: 12, depth: 13, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.35, height: 0.15 },
   components: [
     { id: 'fabric', label: '毛呢帽身', defaultColor: '#3e2723' },
     { id: 'brim', label: '平置帽檐', defaultColor: '#3e2723' },
@@ -994,7 +1030,8 @@ export const clothing_fedora = {
 export const clothing_straw_hat = {
   type: 'clothing_straw_hat',
   name: '草帽',
-  defaultSize: { width: 14, depth: 14, height: 5 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.13 },
   components: [
     { id: 'fabric', label: '编织麦秆', defaultColor: '#ffe0b2' },
     { id: 'brim', label: '大圆草檐', defaultColor: '#ffe0b2' },
@@ -1008,7 +1045,8 @@ export const clothing_straw_hat = {
 export const clothing_bucket_hat = {
   type: 'clothing_bucket_hat',
   name: '渔夫帽',
-  defaultSize: { width: 11, depth: 11, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.15 },
   components: [
     { id: 'fabric', label: '纯棉帽顶', defaultColor: '#9e9d24' },
     { id: 'brim', label: '微斜帽檐', defaultColor: '#9e9d24' }
@@ -1021,7 +1059,8 @@ export const clothing_bucket_hat = {
 export const clothing_beret = {
   type: 'clothing_beret',
   name: '贝雷帽',
-  defaultSize: { width: 11, depth: 11, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.1 },
   components: [
     { id: 'fabric', label: '毛呢绒面', defaultColor: '#880e4f' }
   ],
@@ -1033,7 +1072,8 @@ export const clothing_beret = {
 export const clothing_sun_hat = {
   type: 'clothing_sun_hat',
   name: '防晒帽',
-  defaultSize: { width: 15, depth: 15, height: 5 },
+  unit: 'm',
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.13 },
   components: [
     { id: 'fabric', label: '防晒帽顶', defaultColor: '#fff8e1' },
     { id: 'brim', label: '超大帽檐', defaultColor: '#fff8e1' }
@@ -1046,7 +1086,8 @@ export const clothing_sun_hat = {
 export const clothing_cowboy_hat = {
   type: 'clothing_cowboy_hat',
   name: '牛仔帽',
-  defaultSize: { width: 13, depth: 14, height: 7 },
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.18 },
   components: [
     { id: 'fabric', label: '磨砂绒皮', defaultColor: '#a1887f' },
     { id: 'brim', label: '卷边帽檐', defaultColor: '#a1887f' },
@@ -1060,7 +1101,8 @@ export const clothing_cowboy_hat = {
 export const clothing_top_hat = {
   type: 'clothing_top_hat',
   name: '高帽',
-  defaultSize: { width: 12, depth: 12, height: 9 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.23 },
   components: [
     { id: 'fabric', label: '丝绸高帽顶', defaultColor: '#212121' },
     { id: 'brim', label: '弧形帽檐', defaultColor: '#212121' },
@@ -1074,7 +1116,8 @@ export const clothing_top_hat = {
 export const clothing_flat_cap = {
   type: 'clothing_flat_cap',
   name: '鸭舌帽',
-  defaultSize: { width: 11, depth: 12, height: 5 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.13 },
   components: [
     { id: 'fabric', label: '格子呢帽身', defaultColor: '#455a64' },
     { id: 'brim', label: '短小帽舌', defaultColor: '#37474f' }
@@ -1089,7 +1132,8 @@ export const clothing_flat_cap = {
 export const clothing_sneakers = {
   type: 'clothing_sneakers',
   name: '运动鞋',
-  defaultSize: { width: 10, depth: 12, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.1 },
   components: [
     { id: 'fabric', label: '网面鞋面', defaultColor: '#ffffff' },
     { id: 'sole', label: '橡胶防滑底', defaultColor: '#f5f5f5' },
@@ -1103,7 +1147,8 @@ export const clothing_sneakers = {
 export const clothing_leather_shoes = {
   type: 'clothing_leather_shoes',
   name: '皮鞋',
-  defaultSize: { width: 10, depth: 12, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.1 },
   components: [
     { id: 'fabric', label: '牛皮鞋面', defaultColor: '#4e342e' },
     { id: 'sole', label: '硬木叠底', defaultColor: '#2b1b17' },
@@ -1117,7 +1162,8 @@ export const clothing_leather_shoes = {
 export const clothing_boots = {
   type: 'clothing_boots',
   name: '马丁靴',
-  defaultSize: { width: 11, depth: 13, height: 8 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.35, height: 0.2 },
   components: [
     { id: 'fabric', label: '硬质皮革', defaultColor: '#212121' },
     { id: 'sole', label: '生胶厚底', defaultColor: '#3e2723' },
@@ -1131,7 +1177,8 @@ export const clothing_boots = {
 export const clothing_high_heels = {
   type: 'clothing_high_heels',
   name: '高跟鞋',
-  defaultSize: { width: 9, depth: 11, height: 6 },
+  unit: 'm',
+  defaultSize: { width: 0.23, depth: 0.3, height: 0.15 },
   components: [
     { id: 'fabric', label: '亮漆皮鞋面', defaultColor: '#d81b60' },
     { id: 'sole', label: '防滑高跟', defaultColor: '#111111' }
@@ -1144,7 +1191,8 @@ export const clothing_high_heels = {
 export const clothing_sandals = {
   type: 'clothing_sandals',
   name: '凉鞋',
-  defaultSize: { width: 10, depth: 12, height: 3 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.08 },
   components: [
     { id: 'fabric', label: '系带布条', defaultColor: '#ffb300' },
     { id: 'sole', label: '软木凉鞋底', defaultColor: '#d7ccc8' }
@@ -1157,7 +1205,8 @@ export const clothing_sandals = {
 export const clothing_slippers = {
   type: 'clothing_slippers',
   name: '拖鞋',
-  defaultSize: { width: 10, depth: 12, height: 3 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.08 },
   components: [
     { id: 'fabric', label: '棉绒鞋面', defaultColor: '#e8f5e9' },
     { id: 'sole', label: 'EVA鞋底', defaultColor: '#ffffff' }
@@ -1170,7 +1219,8 @@ export const clothing_slippers = {
 export const clothing_running_shoes = {
   type: 'clothing_running_shoes',
   name: '跑鞋',
-  defaultSize: { width: 10, depth: 12, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.1 },
   components: [
     { id: 'fabric', label: '网织透气面', defaultColor: '#00e676' },
     { id: 'sole', label: '缓震中底', defaultColor: '#ffffff' },
@@ -1184,7 +1234,8 @@ export const clothing_running_shoes = {
 export const clothing_loafers = {
   type: 'clothing_loafers',
   name: '乐福鞋',
-  defaultSize: { width: 10, depth: 12, height: 3.5 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.09 },
   components: [
     { id: 'fabric', label: '反绒麂皮', defaultColor: '#37474f' },
     { id: 'sole', label: '牛筋鞋底', defaultColor: '#8d6e63' }
@@ -1197,7 +1248,8 @@ export const clothing_loafers = {
 export const clothing_canvas_shoes = {
   type: 'clothing_canvas_shoes',
   name: '帆布鞋',
-  defaultSize: { width: 10, depth: 12, height: 4.5 },
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.3, height: 0.11 },
   components: [
     { id: 'fabric', label: '帆布面料', defaultColor: '#e53935' },
     { id: 'sole', label: '硫化橡胶底', defaultColor: '#ffffff' },
@@ -1211,7 +1263,8 @@ export const clothing_canvas_shoes = {
 export const clothing_rain_boots = {
   type: 'clothing_rain_boots',
   name: '雨靴',
-  defaultSize: { width: 11, depth: 12, height: 10 },
+  unit: 'm',
+  defaultSize: { width: 0.3, depth: 0.3, height: 0.25 },
   components: [
     { id: 'fabric', label: '防水橡胶身', defaultColor: '#ffeb3b' },
     { id: 'sole', label: '防滑厚胶底', defaultColor: '#f57f17' }

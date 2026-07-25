@@ -10,12 +10,18 @@ const __dirname = path.dirname(__filename);
 const furnitureDir = path.resolve(__dirname, '../../src/furniture');
 
 /**
- * 将英寸转换为米
- * @param {number|string} inch 
+ * 将数值转换为米（自动识别英寸或微小公制薄片）
+ * @param {number|string} val 
  * @returns {number}
  */
-function inchesToMeters(inch) {
-  const raw = Number(inch) / INCHES_PER_UNIT;
+function inchesToMeters(val) {
+  const num = Number(val);
+  // 若本身就是小于 0.1 米的浮点微小厚度（如海报 depth: 0.08），直接保留原始公制数值
+  if (num > 0 && num <= 0.1) {
+    return num;
+  }
+
+  const raw = num / INCHES_PER_UNIT;
   if (raw === 0) return 0;
   
   // 智能分级：小于 25 厘米的微型摆件使用 1 厘米(0.01米)步长；常规家具使用 5 厘米(0.05米)步长
@@ -36,7 +42,15 @@ function inchesToMeters(inch) {
 function convertDefaultSize(content) {
   // 匹配形如 defaultSize: { width: X, depth: Y, height: Z } (允许空格和换行)
   const regex = /defaultSize:\s*\{\s*width:\s*([\d.-]+)\s*,\s*depth:\s*([\d.-]+)\s*,\s*height:\s*([\d.-]+)\s*\}/g;
-  return content.replace(regex, (match, w, d, h) => {
+  return content.replace(regex, (match, w, d, h, offsetInString) => {
+    // 检查匹配位置前/后 250 字符内是否已经标注了 unit: 'm'
+    const offset = typeof offsetInString === 'number' ? offsetInString : 0;
+    const contextSnippet = content.substring(Math.max(0, offset - 250), Math.min(content.length, offset + 250));
+    if (/unit:\s*['"]m['"]/.test(contextSnippet)) {
+      // 已经是以米为单位的预设，原样保留
+      return match;
+    }
+
     const wm = inchesToMeters(w);
     const dm = inchesToMeters(d);
     const hm = inchesToMeters(h);
@@ -55,6 +69,13 @@ function convertLightSources(content) {
   while (true) {
     idx = content.indexOf('lightSource:', idx);
     if (idx === -1) break;
+    
+    // 检查附近上下文是否已经带有 unit: 'm'
+    const contextSnippet = content.substring(Math.max(0, idx - 250), Math.min(content.length, idx + 250));
+    if (/unit:\s*['"]m['"]/.test(contextSnippet)) {
+      idx += 12;
+      continue;
+    }
     
     // 找到 lightSource 标记后的第一个左花括号 "{"
     const startBrace = content.indexOf('{', idx);

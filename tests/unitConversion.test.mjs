@@ -136,8 +136,8 @@ test('单位重构：若家具项未指定尺寸，则应自动使用默认英�
   assert.ok(item.depth > 0, '深度应当被自动填充');
   assert.ok(item.height > 0, '高度应当被自动填充');
 
-  // 例如椅子的 defaultSize.width 是 18 英寸，转换成米是 18 / 39.37 = 0.4572 米
-  assert.equal(item.width, Number((18 / 39.37).toFixed(4)), '默认宽度应当从 18 英寸转换为米制 0.4572');
+  // 例如椅子的 defaultSize.width 是 0.45 米 (unit: 'm')
+  assert.equal(item.width, 0.45, '默认宽度应当直接使用公制 0.45 米');
 });
 
 test('3MF 导出：对于无真实网格的家具，其高程（elevation）不应被二次除以 INCHES_PER_UNIT', () => {

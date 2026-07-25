@@ -35,7 +35,8 @@ function lowPolyBoulder(registry, item, definition, componentId, options, node) 
 export const landscapeTaihuStone = {
   type: 'landscape_taihu_stone',
   name: '太湖奇石',
-  defaultSize: { width: 36, depth: 24, height: 48 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.6, height: 1.2 },
   components: [
     { id: 'stone-base', label: '大理石底座', defaultColor: LANDSCAPE_COLORS.paleStone },
     { id: 'stone-body', label: '太湖石体', defaultColor: LANDSCAPE_COLORS.warmStone }
@@ -66,7 +67,8 @@ export const landscapeRockeryFountain = {
   type: 'landscape_rockery_fountain',
   waterControllable: true,
   name: '流水盆景',
-  defaultSize: { width: 48, depth: 36, height: 40 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.9, height: 1 },
   components: [
     { id: 'pool-wall', label: '石雕水池', defaultColor: LANDSCAPE_COLORS.paleStone },
     { id: 'water-surface', label: '明净水面', defaultColor: LANDSCAPE_COLORS.water },
@@ -126,7 +128,8 @@ export const landscapeRockeryFountain = {
 export const landscapeZenGravel = {
   type: 'landscape_zen_gravel',
   name: '枯山水砂石',
-  defaultSize: { width: 72, depth: 48, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 1.2, height: 0.4 },
   components: [
     { id: 'zen-sand', label: '白砂波纹', defaultColor: '#e8dfcf' },
     { id: 'zen-stone', label: '坐禅置石', defaultColor: LANDSCAPE_COLORS.deepStone }
@@ -156,7 +159,8 @@ export const landscapeKoiPond = {
   type: 'landscape_koi_pond',
   waterControllable: true,
   name: '锦鲤鱼池',
-  defaultSize: { width: 80, depth: 60, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 2.05, depth: 1.5, height: 0.45 },
   components: [
     { id: 'pond-wall', label: '青砖池壁', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'pond-water', label: '池塘清波', defaultColor: LANDSCAPE_COLORS.water },
@@ -212,7 +216,8 @@ export const landscapeStoneTrough = {
   type: 'landscape_stone_trough',
   waterControllable: true,
   name: '石槽',
-  defaultSize: { width: 36, depth: 18, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.45, height: 0.4 },
   components: [
     { id: 'trough-stone', label: '青石槽体', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'trough-water', label: '槽中蓄水', defaultColor: LANDSCAPE_COLORS.water }
@@ -248,7 +253,8 @@ export const landscapeStoneTrough = {
 export const landscapeScreenWall = {
   type: 'landscape_screen_wall',
   name: '照壁',
-  defaultSize: { width: 84, depth: 16, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 2.15, depth: 0.4, height: 1.65 },
   components: [
     { id: 'wall-base', label: '须弥座底座', defaultColor: LANDSCAPE_COLORS.deepStone },
     { id: 'wall-body', label: '砖雕壁身', defaultColor: '#d7d0c0' },
@@ -275,7 +281,8 @@ export const landscapeScreenWall = {
 export const landscapeTaishanStone = {
   type: 'landscape_taishan_stone',
   name: '石敢当',
-  defaultSize: { width: 18, depth: 12, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.3, height: 0.8 },
   components: [
     { id: 'tablet-base', label: '粗凿石座', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'tablet-body', label: '石敢当碑身', defaultColor: LANDSCAPE_COLORS.deepStone }
@@ -297,7 +304,8 @@ export const landscapeCascadingTerrace = {
   type: 'landscape_cascading_terrace',
   waterControllable: true,
   name: '跌水石台',
-  defaultSize: { width: 52, depth: 52, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1.3, depth: 1.3, height: 0.9 },
   components: [
     { id: 'stone-levels', label: '叠水石台', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'water-curtain', label: '溢流跌水', defaultColor: LANDSCAPE_COLORS.paleWater }
@@ -330,7 +338,8 @@ export const landscapeShishiOdoshi = {
   type: 'landscape_shishi_odoshi',
   waterControllable: true,
   name: '鹿打',
-  defaultSize: { width: 24, depth: 24, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 0.7 },
   components: [
     { id: 'stone-basin', label: '手工石钵', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'basin-water', label: '钵中清泉', defaultColor: LANDSCAPE_COLORS.water },
@@ -383,7 +392,8 @@ export const landscapeShishiOdoshi = {
 export const landscapeGlassWaterfall = {
   type: 'landscape_glass_waterfall',
   name: '玻璃水幕',
-  defaultSize: { width: 56, depth: 18, height: 72 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 0.45, height: 1.85 },
   components: [
     { id: 'waterfall-base', label: '不锈钢水槽', defaultColor: LANDSCAPE_COLORS.deepStone },
     { id: 'waterfall-glass', label: '幕墙玻璃', defaultColor: LANDSCAPE_COLORS.paleWater },
@@ -417,7 +427,8 @@ export const landscapeStreamRockery = {
   type: 'landscape_stream_rockery',
   waterControllable: true,
   name: '溪流假山',
-  defaultSize: { width: 84, depth: 36, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 2.15, depth: 0.9, height: 0.45 },
   components: [
     { id: 'stream-water', label: '潺潺小溪', defaultColor: LANDSCAPE_COLORS.water },
     { id: 'stream-pebbles', label: '护岸卵石', defaultColor: LANDSCAPE_COLORS.warmStone }
@@ -457,7 +468,8 @@ export const landscapeLotusPond = {
   type: 'landscape_lotus_pond',
   waterControllable: true,
   name: '荷花池',
-  defaultSize: { width: 64, depth: 48, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 1.65, depth: 1.2, height: 0.4 },
   components: [
     { id: 'lotus-water', label: '池塘碧水与围壁', defaultColor: LANDSCAPE_COLORS.water },
     { id: 'lotus-leaf', label: '翠绿荷叶', defaultColor: LANDSCAPE_COLORS.sage },
@@ -522,7 +534,8 @@ export const landscapeLotusPond = {
 export const landscapeSteppingStones = {
   type: 'landscape_stepping_stones',
   name: '汀步路',
-  defaultSize: { width: 72, depth: 24, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.6, height: 0.1 },
   components: [
     { id: 'stepping-stone', label: '青石汀步', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
@@ -554,7 +567,8 @@ export const landscapeSteppingStones = {
 export const landscapeMistGenerator = {
   type: 'landscape_mist_generator',
   name: '雾森器',
-  defaultSize: { width: 28, depth: 28, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 0.8 },
   components: [
     { id: 'mist-base', label: '金属雾化器', defaultColor: '#858d89' },
     { id: 'mist-fog', label: '飘逸雾霭', defaultColor: '#f2f0e9' }
@@ -579,7 +593,8 @@ export const landscapeMistGenerator = {
 export const landscapeRockeryCave = {
   type: 'landscape_rockery_cave',
   name: '溶洞拱门',
-  defaultSize: { width: 72, depth: 36, height: 60 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.9, height: 1.5 },
   components: [
     { id: 'cave-rocks', label: '堆叠溶岩石', defaultColor: LANDSCAPE_COLORS.deepStone }
   ],
@@ -620,7 +635,8 @@ export const landscapeRockeryCave = {
 export const landscapeSlatePath = {
   type: 'landscape_slate_path',
   name: '青石板路',
-  defaultSize: { width: 80, depth: 32, height: 2 },
+  unit: 'm',
+  defaultSize: { width: 2.05, depth: 0.8, height: 0.05 },
   components: [
     { id: 'slate-body', label: '青石板面', defaultColor: LANDSCAPE_COLORS.warmStone }
   ],
@@ -644,7 +660,8 @@ export const landscapeModernWaterWall = {
   type: 'landscape_modern_water_wall',
   waterControllable: true,
   name: '金属水幕',
-  defaultSize: { width: 48, depth: 16, height: 72 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.4, height: 1.85 },
   components: [
     { id: 'metal-body', label: '拉丝不锈钢底座与框', defaultColor: '#aaaead' },
     { id: 'metal-sheet', label: '不锈钢出水壁板', defaultColor: '#c1c3bd' },
@@ -673,7 +690,8 @@ export const landscapeWaterLilyPond = {
   type: 'landscape_water_lily_pond',
   waterControllable: true,
   name: '睡莲池',
-  defaultSize: { width: 56, depth: 56, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 1.4, height: 0.4 },
   components: [
     { id: 'pond-basin', label: '水池石围', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'pond-water', label: '池中净水', defaultColor: LANDSCAPE_COLORS.water },
@@ -731,7 +749,8 @@ export const landscapeTaijiPond = {
   type: 'landscape_taiji_pond',
   waterControllable: true,
   name: '风水池',
-  defaultSize: { width: 60, depth: 60, height: 12 },
+  unit: 'm',
+  defaultSize: { width: 1.5, depth: 1.5, height: 0.3 },
   components: [
     { id: 'taiji-base', label: '黑白理石围合', defaultColor: LANDSCAPE_COLORS.paleStone },
     { id: 'taiji-black', label: '阴仪玄水', defaultColor: '#687472' },
@@ -758,7 +777,8 @@ export const landscapeTaijiPond = {
 export const landscapeWindingStream = {
   type: 'landscape_winding_stream',
   name: '溪流',
-  defaultSize: { width: 90, depth: 36, height: 1.8 },
+  unit: 'm',
+  defaultSize: { width: 2.3, depth: 0.9, height: 0.05 },
   components: [
     { id: 'stream-water', label: '溪水镜面', defaultColor: LANDSCAPE_COLORS.water }
   ],
@@ -788,7 +808,8 @@ export const landscapeNaturalSpring = {
   type: 'landscape_natural_spring',
   waterControllable: true,
   name: '泉眼',
-  defaultSize: { width: 44, depth: 44, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 1.1, height: 0.45 },
   components: [
     { id: 'spring-water', label: '涌泉清水', defaultColor: LANDSCAPE_COLORS.paleWater },
     { id: 'spring-rocks', label: '护泉驳石', defaultColor: LANDSCAPE_COLORS.warmStone }
@@ -825,7 +846,8 @@ export const landscapeOldWell = {
   type: 'landscape_old_well',
   waterControllable: true,
   name: '古井',
-  defaultSize: { width: 28, depth: 28, height: 42 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 1.05 },
   components: [
     { id: 'well-stone', label: '青砖井台', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'well-water', label: '深井水影', defaultColor: '#789b9c' },
@@ -895,7 +917,8 @@ export const landscapeOldWell = {
 export const landscapeGardenRock = {
   type: 'landscape_garden_rock',
   name: '石头',
-  defaultSize: { width: 32, depth: 26, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.65, height: 0.5 },
   components: [
     { id: 'rock-main', label: '主体原石', defaultColor: LANDSCAPE_COLORS.warmStone },
     { id: 'rock-accent', label: '伴石', defaultColor: LANDSCAPE_COLORS.deepStone },
@@ -955,7 +978,8 @@ export const landscapeGardenRock = {
 export const landscapeGiantTreeStump = {
   type: 'landscape_giant_tree_stump',
   name: '巨树木墩',
-  defaultSize: { width: 36, depth: 36, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 0.6 },
   components: [
     { id: 'stump-bark', label: '粗树皮', defaultColor: '#5c4533' },
     { id: 'stump-wood', label: '截面年轮', defaultColor: '#9e8065' },

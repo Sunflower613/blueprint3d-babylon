@@ -52,21 +52,21 @@ function createManager({ definitions = FURNITURE_DEFINITIONS, items = [], walls 
   return { manager, entities, updates };
 }
 
-test('0722：地毯不会吸附到桌面，靠枕仍可放在桌面', () => {
+test('地毯不会吸附到桌面，靠枕仍可放在桌面', () => {
   for (const type of ['rug', 'oval_rug', 'rounded_rug', 'irregular_rug', 'biscuit_rug']) {
     assert.equal(Topology.canPlaceOnTable({}, FURNITURE_DEFINITIONS[type]), false, `${type} 不应上桌`);
   }
   assert.equal(Topology.canPlaceOnTable({}, FURNITURE_DEFINITIONS.cushion), true);
 });
 
-test('0722：厨房柜体和大家电保持贴墙', () => {
+test('厨房柜体和大家电保持贴墙', () => {
   const { manager } = createManager();
   for (const type of ['stove', 'fridge', 'dishwasher', 'range_hood', 'sink_cabinet']) {
     assert.equal(manager.shouldSnapToEdge(type), true, `${type} 应贴墙`);
   }
 });
 
-test('0722：贴边吸附直接使用米制实例尺寸', () => {
+test('贴边吸附直接使用米制实例尺寸', () => {
   const result = Topology.calculateSnappedPosition({
     item: { width: 1, depth: 0.6, scale: 1, rotation: 0 },
     definition: { defaultSize: { width: 39.37, depth: 24, height: 36 } },
@@ -83,7 +83,7 @@ test('0722：贴边吸附直接使用米制实例尺寸', () => {
   assert.equal(result.z, 0.3);
 });
 
-test('0722：新增壁挂家具立即获得安全标高且不会穿过天花板', () => {
+test('新增壁挂家具立即获得安全标高且不会穿过天花板', () => {
   const { manager } = createManager();
   const curtain = manager.addItem('curtain', 0, 0, {});
   const wallAc = manager.addItem('air_conditioner_wall', 0, 0, {});
@@ -97,7 +97,7 @@ test('0722：新增壁挂家具立即获得安全标高且不会穿过天花板'
   assert.equal(wallShelf.elevation, 0.85);
 });
 
-test('0722：窗帘移动时离地默认保持 0 贴地', () => {
+test('窗帘移动时离地默认保持 0 贴地', () => {
   const wall = { id: 'wall-1', from: [0, 0], to: [4, 0] };
   const opening = { id: 'window-1', type: 'window', wallId: wall.id, t: 0.5, sillHeight: 1.05, height: 0.85 };
   const curtain = {
@@ -113,7 +113,7 @@ test('0722：窗帘移动时离地默认保持 0 贴地', () => {
   assert.equal(currentElevation, 0);
 });
 
-test('0722：修改窗帘高度时保持顶部锚点', () => {
+test('修改窗帘高度时保持顶部锚点', () => {
   const curtain = {
     id: 'curtain-1', type: 'curtain', width: 1.2, depth: 0.05,
     height: 1.5, elevation: 0.4, scale: 1, rotation: 0

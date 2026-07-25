@@ -4,7 +4,8 @@ import { boxComponent, cylinderComponent } from './_helpers.js';
 export const tableFurniture = {
   type: 'table',
   name: '餐桌',
-  defaultSize: { width: 48, depth: 30, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.75, height: 0.75 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#ffffff' },
     { id: 'legs', label: '桌腿', defaultColor: '#c7c1b7' }
@@ -34,7 +35,8 @@ export const tableFurniture = {
 export const deskFurniture = {
   type: 'desk',
   name: '书桌',
-  defaultSize: { width: 55, depth: 24, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 0.6, height: 0.75 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#d6ab7b' },
     { id: 'legs', label: '桌脚', defaultColor: '#8c7151' },
@@ -66,7 +68,8 @@ export const deskFurniture = {
 export const coffeeTableFurniture = {
   type: 'coffee_table',
   name: '茶几',
-  defaultSize: { width: 28, depth: 28, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 0.45 },
   components: [
     { id: 'top', label: '实木面板与搁板', defaultColor: '#c9a882' },
     { id: 'legs', label: '实木桌腿边框', defaultColor: '#967b61' }
@@ -114,7 +117,8 @@ export const coffeeTableFurniture = {
 export const sideTableFurniture = {
   type: 'side_table',
   name: '边几',
-  defaultSize: { width: 18, depth: 18, height: 22 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.55 },
   components: [
     { id: 'top', label: '奶油白防落托盘', defaultColor: '#f7f4ed' },
     { id: 'legs', label: '原木色斜撑腿', defaultColor: '#b08e68' },
@@ -180,7 +184,8 @@ export const sideTableFurniture = {
 export const roundTableFurniture = {
   type: 'round_table',
   name: '圆桌',
-  defaultSize: { width: 54, depth: 54, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.35, depth: 1.35, height: 0.75 },
   components: [
     { id: 'top', label: '圆桌面', defaultColor: '#f3eedf' },
     { id: 'base', label: '圆柱底座', defaultColor: '#7b6754' }
@@ -208,7 +213,8 @@ export const roundTableFurniture = {
 export const diningTableLongFurniture = {
   type: 'dining_table_long',
   name: '长餐桌',
-  defaultSize: { width: 72, depth: 36, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.9, height: 0.75 },
   components: [
     { id: 'top', label: '长桌面', defaultColor: '#b07443' },
     { id: 'legs', label: '粗桌腿', defaultColor: '#784924' },
@@ -259,7 +265,8 @@ export const diningTableLongFurniture = {
 export const consoleTableFurniture = {
   type: 'console_table',
   name: '长条几',
-  defaultSize: { width: 48, depth: 12, height: 32 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.3, height: 0.8 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#ffffff' },
     { id: 'frame', label: '铁底架', defaultColor: '#3d3b38' }
@@ -300,7 +307,8 @@ export const consoleTableFurniture = {
 export const computerDeskFurniture = {
   type: 'computer_desk',
   name: '电脑桌',
-  defaultSize: { width: 55, depth: 26, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 0.65, height: 0.75 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#2b2d30' },
     { id: 'legs', label: '电竞腿', defaultColor: '#ff4d4d' },
@@ -331,7 +339,8 @@ export const computerDeskFurniture = {
 export const bedsideDeskFurniture = {
   type: 'bedside_desk',
   name: '悬浮搁板',
-  defaultSize: { width: 18, depth: 14, height: 4 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.35, height: 0.1 },
   components: [
     { id: 'top', label: '搁板桌身', defaultColor: '#ebd8c8' }
   ],
@@ -347,7 +356,8 @@ export const bedsideDeskFurniture = {
 export const picnicTableFurniture = {
   type: 'picnic_table',
   name: '野餐桌',
-  defaultSize: { width: 60, depth: 60, height: 29 },
+  unit: 'm',
+  defaultSize: { width: 1.5, depth: 1.5, height: 0.75 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#cc966c' },
     { id: 'seats', label: '长凳面', defaultColor: '#cc966c' },
@@ -384,7 +394,8 @@ export const picnicTableFurniture = {
 export const patioDiningTableFurniture = {
   type: 'patio_dining_table',
   name: '露台餐桌',
-  defaultSize: { width: 66, depth: 36, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.7, depth: 0.9, height: 0.75 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#d4b08a' },
     { id: 'legs', label: '桌腿', defaultColor: '#6b6f75' },
@@ -423,7 +434,8 @@ export const patioDiningTableFurniture = {
 export const bistroTableFurniture = {
   type: 'bistro_table',
   name: '玻璃圆桌',
-  defaultSize: { width: 26, depth: 26, height: 28 },
+  unit: 'm',
+  defaultSize: { width: 0.65, depth: 0.65, height: 0.7 },
   components: [
     { id: 'glass', label: '玻璃台面', defaultColor: '#e0f2f1' },
     { id: 'frame', label: '金属框架', defaultColor: '#37474f' }
@@ -504,7 +516,8 @@ export const bistroTableFurniture = {
 export const rattanCoffeeTableFurniture = {
   type: 'rattan_coffee_table',
   name: '藤编茶几',
-  defaultSize: { width: 42, depth: 24, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 1.05, depth: 0.6, height: 0.45 },
   components: [
     { id: 'top', label: '台面', defaultColor: '#cfb390' },
     { id: 'body', label: '藤编框', defaultColor: '#9d744b' }
@@ -524,7 +537,8 @@ export const rattanCoffeeTableFurniture = {
 export const gardenSideTableFurniture = {
   type: 'garden_side_table',
   name: '花园边几',
-  defaultSize: { width: 18, depth: 18, height: 22 },
+  unit: 'm',
+  defaultSize: { width: 0.45, depth: 0.45, height: 0.55 },
   components: [
     { id: 'top', label: '桌面', defaultColor: '#f5f1eb' },
     { id: 'legs', label: '桌腿', defaultColor: '#d6cbbe' }
@@ -579,7 +593,8 @@ export const gardenSideTableFurniture = {
 export const ovalTableFurniture = {
   type: 'oval_table',
   name: '椭圆桌',
-  defaultSize: { width: 50, depth: 32, height: 30 },
+  unit: 'm',
+  defaultSize: { width: 1.25, depth: 0.8, height: 0.75 },
   components: [
     { id: 'top', label: '椭圆桌面', defaultColor: '#ffffff' },
     { id: 'legs', label: '桌腿', defaultColor: '#c7c1b7' }
@@ -612,7 +627,8 @@ export const ovalTableFurniture = {
 export const triangularRoundCoffeeTableFurniture = {
   type: 'triangular_round_coffee_table',
   name: '三角圆茶几',
-  defaultSize: { width: 28, depth: 28, height: 16 },
+  unit: 'm',
+  defaultSize: { width: 0.7, depth: 0.7, height: 0.4 },
   components: [
     { id: 'top', label: '几面', defaultColor: '#e5e0d8' },
     { id: 'legs', label: '三脚架', defaultColor: '#5c544a' }

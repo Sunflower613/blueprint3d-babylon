@@ -208,7 +208,8 @@ function getSeasonalItem(definition, item, overrides) {
 export const landscapeBambooGrove = {
   type: 'landscape_bamboo_grove',
   name: '翠竹',
-  defaultSize: { width: 40, depth: 24, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.6, height: 2.45 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -281,7 +282,8 @@ export const landscapeBambooGrove = {
 export const landscapeBananaTree = {
   type: 'landscape_banana_tree',
   name: '芭蕉丛',
-  defaultSize: { width: 48, depth: 40, height: 80 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 1, height: 2.05 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -430,7 +432,8 @@ export const landscapeBananaTree = {
 export const landscapeCourtyardRedMaple = {
   type: 'landscape_courtyard_red_maple',
   name: '枫树',
-  defaultSize: { width: 48, depth: 48, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 1.2, height: 2.45 },
   defaultSeason: 'autumn',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -509,7 +512,8 @@ export const landscapeCourtyardRedMaple = {
 export const landscapeCourtyardPineTree = {
   type: 'landscape_courtyard_pine_tree',
   name: '迎客松',
-  defaultSize: { width: 64, depth: 40, height: 88 },
+  unit: 'm',
+  defaultSize: { width: 1.65, depth: 1, height: 2.25 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -630,7 +634,8 @@ export const landscapeCourtyardPineTree = {
 export const landscapeGinkgoTree = {
   type: 'landscape_ginkgo_tree',
   name: '银杏树',
-  defaultSize: { width: 44, depth: 44, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 1.1, height: 2.45 },
   defaultSeason: 'autumn',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -732,7 +737,8 @@ export const landscapeGinkgoTree = {
 export const landscapeShrubBall = {
   type: 'landscape_shrub_ball',
   name: '灌木',
-  defaultSize: { width: 24, depth: 24, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 0.6 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -768,7 +774,8 @@ export const landscapeShrubBall = {
 export const landscapeCherryTree = {
   type: 'landscape_cherry_tree',
   name: '樱花树',
-  defaultSize: { width: 52, depth: 52, height: 90 },
+  unit: 'm',
+  defaultSize: { width: 1.3, depth: 1.3, height: 2.3 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -872,7 +879,8 @@ export const landscapeCherryTree = {
 export const landscapeBirchTree = {
   type: 'landscape_birch_tree',
   name: '白桦树',
-  defaultSize: { width: 36, depth: 36, height: 108 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 2.75 },
   defaultSeason: 'autumn',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -958,7 +966,8 @@ export const landscapeBirchTree = {
 export const landscapeWillowTree = {
   type: 'landscape_willow_tree',
   name: '垂柳',
-  defaultSize: { width: 52, depth: 52, height: 90 },
+  unit: 'm',
+  defaultSize: { width: 1.3, depth: 1.3, height: 2.3 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1179,7 +1188,8 @@ export const landscapeWillowTree = {
 export const landscapeCoconutTree = {
   type: 'landscape_coconut_tree',
   name: '椰子树',
-  defaultSize: { width: 40, depth: 40, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 1, height: 2.45 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1300,7 +1310,8 @@ export const landscapeCoconutTree = {
 export const landscapePalmTree = {
   type: 'landscape_palm_tree',
   name: '棕榈树',
-  defaultSize: { width: 44, depth: 44, height: 84 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 1.1, height: 2.15 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1401,7 +1412,8 @@ export const landscapePalmTree = {
 export const landscapeGroundCactus = {
   type: 'landscape_ground_cactus',
   name: '仙人掌丛',
-  defaultSize: { width: 32, depth: 24, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.6, height: 0.9 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1497,7 +1509,8 @@ export const landscapeGroundCactus = {
 export const landscapeRoseBush = {
   type: 'landscape_rose_bush',
   name: '月季',
-  defaultSize: { width: 36, depth: 28, height: 24 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.7, height: 0.6 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1638,7 +1651,8 @@ export const landscapeRoseBush = {
 export const landscapeLavenderField = {
   type: 'landscape_lavender_field',
   name: '薰衣草丛',
-  defaultSize: { width: 48, depth: 36, height: 22 },
+  unit: 'm',
+  defaultSize: { width: 1.2, depth: 0.9, height: 0.55 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1723,7 +1737,8 @@ export const landscapeLavenderField = {
 export const landscapeSunflowerPatch = {
   type: 'landscape_sunflower_patch',
   name: '向日葵丛',
-  defaultSize: { width: 40, depth: 28, height: 48 },
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.7, height: 1.2 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1837,7 +1852,8 @@ export const landscapeSunflowerPatch = {
 export const landscapeReedMarsh = {
   type: 'landscape_reed_marsh',
   name: '芦苇',
-  defaultSize: { width: 44, depth: 24, height: 72 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 0.6, height: 1.85 },
   defaultSeason: 'autumn',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -1918,7 +1934,8 @@ export const landscapeReedMarsh = {
 export const landscapeBananaLeafSingle = {
   type: 'landscape_banana_leaf_single',
   name: '芭蕉',
-  defaultSize: { width: 36, depth: 36, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 1.65 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2006,7 +2023,8 @@ export const landscapeBananaLeafSingle = {
 export const landscapeGrassLawn = {
   type: 'landscape_grass_lawn',
   name: '草坪',
-  defaultSize: { width: 96, depth: 96, height: 1.5 },
+  unit: 'm',
+  defaultSize: { width: 2.45, depth: 2.45, height: 0.04 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2070,7 +2088,8 @@ export const landscapeGrassLawn = {
 export const landscapeMossPath = {
   type: 'landscape_moss_path',
   name: '石板路',
-  defaultSize: { width: 72, depth: 24, height: 2 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.6, height: 0.05 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2147,7 +2166,8 @@ export const landscapeMossPath = {
 export const landscapeDandelionPatch = {
   type: 'landscape_dandelion_patch',
   name: '蒲公英',
-  defaultSize: { width: 36, depth: 24, height: 18 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.6, height: 0.45 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2286,7 +2306,8 @@ export const landscapeDandelionPatch = {
 export const landscapeMorningGloryFence = {
   type: 'landscape_morning_glory_fence',
   name: '竹篱',
-  defaultSize: { width: 72, depth: 8, height: 36 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.2, height: 0.9 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2339,7 +2360,8 @@ export const landscapeMorningGloryFence = {
 export const landscapeHydrangeaBush = {
   type: 'landscape_hydrangea_bush',
   name: '绣球花',
-  defaultSize: { width: 32, depth: 32, height: 26 },
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.8, height: 0.65 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2447,7 +2469,8 @@ export const landscapeHydrangeaBush = {
 export const landscapeTulipField = {
   type: 'landscape_tulip_field',
   name: '郁金香丛',
-  defaultSize: { width: 44, depth: 32, height: 20 },
+  unit: 'm',
+  defaultSize: { width: 1.1, depth: 0.8, height: 0.5 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2541,7 +2564,8 @@ export const landscapeTulipField = {
 export const landscapeLarchTree = {
   type: 'landscape_larch_tree',
   name: '落叶松',
-  defaultSize: { width: 36, depth: 36, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 2.45 },
   defaultSeason: 'autumn',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2617,7 +2641,8 @@ export const landscapeIvyWall = {
   type: 'landscape_ivy_wall',
   name: '爬山虎',
   placeType: 'wall',
-  defaultSize: { width: 72, depth: 3, height: 64 },
+  unit: 'm',
+  defaultSize: { width: 1.85, depth: 0.08, height: 1.65 },
   defaultSeason: 'summer',
   seasonOptions: [
     { value: 'spring', label: '春' },
@@ -2716,7 +2741,8 @@ export const landscapeIvyWall = {
 export const appleTreeFurniture = {
   type: 'apple_tree',
   name: '苹果树',
-  defaultSize: { width: 56, depth: 56, height: 96 },
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 1.4, height: 2.45 },
   defaultSeason: 'spring',
   seasonOptions: [
     { value: 'spring', label: '春' },

@@ -64,6 +64,14 @@ const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.jpg', 
 const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.jpg', import.meta.url).href;
 const posterMountainSunriseUrl = new URL('../textures/poster_mountain_sunrise.jpg', import.meta.url).href;
 const posterCelestialMoonsUrl = new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href;
+const skyUrl = new URL('../textures/sky.png', import.meta.url).href;
+const skyStarryUrl = new URL('../textures/sky_starry.png', import.meta.url).href;
+const skySunsetUrl = new URL('../textures/sky_sunset.png', import.meta.url).href;
+const skyAuroraUrl = new URL('../textures/sky_aurora.png', import.meta.url).href;
+const hackerStreamUrl = new URL('../textures/emissive_hacker_stream.jpg', import.meta.url).href;
+const danceFloorUrl = new URL('../textures/emissive_dance_floor.jpg', import.meta.url).href;
+const fireplaceFlameUrl = new URL('../textures/emissive_fire.jpg', import.meta.url).href;
+const neonSignUrl = new URL('../textures/emissive_neon_sign.jpg', import.meta.url).href;
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -176,6 +184,13 @@ const COMMON_BRICK_MATERIALS = [
   kind: 'texture'
 }));
 
+const COMMON_SKY_MATERIALS = [
+  { id: 'sky_texture', name: '晴天', category: 'emissive', kind: 'emissive', src: skyUrl, scale: 1, color: '#ffffff', skyLightColor: '#d9ecff' },
+  { id: 'sky-starry', name: '星空', category: 'emissive', kind: 'emissive', src: skyStarryUrl, scale: 1, color: '#ffffff', skyLightColor: '#7088c4' },
+  { id: 'sky-sunset', name: '晚霞', category: 'emissive', kind: 'emissive', src: skySunsetUrl, scale: 1, color: '#ffffff', skyLightColor: '#ffb090' },
+  { id: 'sky-aurora', name: '极光', category: 'emissive', kind: 'emissive', src: skyAuroraUrl, scale: 1, color: '#ffffff', skyLightColor: '#79d8d0' }
+];
+
 export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' },
   { id: 'paint-pink', name: '城堡粉', category: 'paint', color: '#ffd1e3' },
@@ -195,6 +210,7 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'paint-morandi-orange', name: '莫兰迪橘', category: 'paint', color: '#cda393' },
   { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' },
 
+  ...COMMON_SKY_MATERIALS,
   ...COMMON_WOOD_MATERIALS,
   ...COMMON_STONE_MATERIALS,
   ...COMMON_BRICK_MATERIALS,
@@ -243,12 +259,16 @@ export const DEFAULT_MATERIAL_PACKS = [
     emissiveStrength: 0.18
   },
 
-  { id: 'emissive-white', name: '自发光-白', category: 'emissive', kind: 'emissive', color: '#ffffff' },
-  { id: 'emissive-warm-white', name: '自发光-暖白', category: 'emissive', kind: 'emissive', color: '#ffebd2' },
-  { id: 'emissive-yellow', name: '自发光-黄', category: 'emissive', kind: 'emissive', color: '#ffeb3b' },
-  { id: 'emissive-red', name: '自发光-红', category: 'emissive', kind: 'emissive', color: '#f44336' },
-  { id: 'emissive-green', name: '自发光-绿', category: 'emissive', kind: 'emissive', color: '#4caf50' },
-  { id: 'emissive-blue', name: '自发光-蓝', category: 'emissive', kind: 'emissive', color: '#2196f3' }
+  { id: 'emissive-white', name: '白光', category: 'emissive', kind: 'emissive', color: '#ffffff' },
+  { id: 'emissive-warm-white', name: '暖白光', category: 'emissive', kind: 'emissive', color: '#ffebd2' },
+  { id: 'emissive-yellow', name: '黄光', category: 'emissive', kind: 'emissive', color: '#ffeb3b' },
+  { id: 'emissive-red', name: '红光', category: 'emissive', kind: 'emissive', color: '#f44336' },
+  { id: 'emissive-green', name: '绿光', category: 'emissive', kind: 'emissive', color: '#4caf50' },
+  { id: 'emissive-blue', name: '蓝光', category: 'emissive', kind: 'emissive', color: '#2196f3' },
+  { id: 'emissive-hacker-stream', name: '数据流', category: 'emissive', kind: 'emissive', src: hackerStreamUrl, scale: 1.1, color: '#ffffff' },
+  { id: 'emissive-dance-floor', name: '舞动', category: 'emissive', kind: 'emissive', src: danceFloorUrl, scale: 1.2, color: '#ffffff' },
+  { id: 'emissive-fireplace-flame', name: '火焰', category: 'emissive', kind: 'emissive', src: fireplaceFlameUrl, scale: 1.5, repeatX: true, stretchY: true, invertY: true, color: '#ffffff' },
+  { id: 'emissive-neon-sign', name: '霓虹灯', category: 'emissive', kind: 'emissive', src: neonSignUrl, scale: 1.1, color: '#ffffff' }
 ];
 
 export function createColorMaterialDescriptor(color, category = 'paint', name = '颜色') {

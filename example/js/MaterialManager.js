@@ -108,6 +108,14 @@ function applySwatchStyle(button, material) {
   }
 
   if (material.kind === 'emissive') {
+    const src = material.src || material.url;
+    if (src) {
+      const resolved = resolveMaterialAssetDescriptor(material);
+      const finalSrc = resolved?.src || src;
+      button.style.backgroundImage = `url(${finalSrc})`;
+      button.style.backgroundPosition = 'center';
+      button.style.backgroundSize = 'cover';
+    }
     button.style.backgroundColor = color;
     button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${color}88`;
     button.style.border = '1px solid rgba(255,255,255,0.4)';

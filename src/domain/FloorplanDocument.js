@@ -261,7 +261,7 @@ export class FloorplanDocument {
     normalized.environment ||= {};
     normalized.environment.skyMaterial = normalized.environment.skyMaterial
       ? normalizeMaterialDescriptor(normalized.environment.skyMaterial, '#d9ecff')
-      : { id: 'sky_texture', kind: 'texture', category: 'custom', name: '默认天空', url: 'textures/sky.png', color: '#ffffff' };
+      : { id: 'sky_texture', kind: 'texture', category: 'custom', name: '晴天', url: 'textures/sky.png', color: '#ffffff' };
     normalized.environment.groundMaterial = normalized.environment.groundMaterial
       ? normalizeMaterialDescriptor(normalized.environment.groundMaterial, '#8ca66b')
       : { id: 'stone-grass', kind: 'texture', category: 'stone', name: '草地', color: '#ffffff' };

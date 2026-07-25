@@ -396,3 +396,38 @@ test('floor texture materials keep their selected tint after texture load', asyn
     engine.dispose();
   }
 });
+
+test('emissive material presets and textures keep their settings and emit light', async () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const textureDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aO7EAAAAASUVORK5CYII=';
+
+  try {
+    // 1. 验证常规纯色自发光
+    const flatEmissive = createBlueprintMaterial(scene, 'flat_emissive', {
+      kind: 'emissive',
+      color: '#ff0000'
+    });
+    assert.equal(flatEmissive.disableLighting, true);
+    assert.equal(flatEmissive.backFaceCulling, false);
+    assert.deepEqual(flatEmissive.diffuseColor, new BABYLON.Color3(0, 0, 0));
+    assert.deepEqual(flatEmissive.emissiveColor, BABYLON.Color3.FromHexString('#ff0000'));
+
+    // 2. 验证带有贴图的自发光材质（如天空贴图）
+    const textureEmissive = createBlueprintMaterial(scene, 'texture_emissive', {
+      kind: 'emissive',
+      src: textureDataUrl,
+      color: '#ffffff',
+      alpha: 0.8
+    });
+    assert.equal(textureEmissive.disableLighting, true);
+    assert.equal(textureEmissive.backFaceCulling, false);
+    assert.equal(textureEmissive.alpha, 0.8);
+    assert.deepEqual(textureEmissive.diffuseColor, new BABYLON.Color3(0, 0, 0));
+    assert.deepEqual(textureEmissive.emissiveColor, new BABYLON.Color3(1, 1, 1));
+    assert.ok(textureEmissive.emissiveTexture, 'should resolve and load emissiveTexture');
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
+});

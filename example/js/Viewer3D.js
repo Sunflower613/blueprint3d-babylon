@@ -1,5 +1,5 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
-const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
+const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 /**
  * Viewer3D — 3D 渲染引擎封装
@@ -413,8 +413,11 @@ export class Viewer3D {
    */
   updateSkyboxColor(colorHex) {
     this._skyboxColor = colorHex;
-    if (this.skybox && this.skybox.material) {
-      this.skybox.material.emissiveColor = BABYLON.Color3.FromHexString(colorHex);
+    if (this.skybox) {
+      const mat = this.skybox.mesh?.material || this.skybox.material;
+      if (mat) {
+        mat.emissiveColor = BABYLON.Color3.FromHexString(colorHex);
+      }
     }
   }
 
@@ -422,22 +425,51 @@ export class Viewer3D {
     this._environmentSkyMaterial = skyDescriptor;
     this._environmentGroundMaterial = groundDescriptor;
 
-    if (this.skybox?.material) {
-      const material = this.skybox.material;
-      material.emissiveTexture?.dispose();
-      material.emissiveTexture = null;
+    if (this.skybox) {
+      let finalSrc = SKY_TEXTURE_URL;
+      let tintColor = null;
+      let skyLightColor = '#d9ecff';
+
       if (skyDescriptor) {
         const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#ffffff');
         const resolved = resolveMaterialAssetDescriptor(normalized);
-        if (resolved.kind === 'texture' && resolved.src) {
-          material.emissiveColor = BABYLON.Color3.White();
-          material.emissiveTexture = new BABYLON.Texture(resolved.src, this.scene, false, false);
-        } else {
-          material.emissiveColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
+        const isSkyTexture = resolved.src && resolved.src.split('/').pop().split('?')[0].includes('sky.png');
+        
+        if ((resolved.kind === 'texture' || resolved.kind === 'emissive') && resolved.src && !isSkyTexture) {
+          finalSrc = resolved.src;
         }
-      } else {
-        material.emissiveColor = BABYLON.Color3.White();
-        material.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene, false, false);
+
+        if (resolved.kind === 'color' && resolved.color && resolved.color.toLowerCase() !== '#ffffff') {
+          tintColor = resolved.color;
+        }
+        if (resolved.skyLightColor) {
+          skyLightColor = resolved.skyLightColor;
+        }
+      }
+
+      const skyLight = BABYLON.Color3.FromHexString(skyLightColor);
+      this.hemi.diffuse = skyLight;
+      this.hemi.groundColor = skyLight.scale(0.45);
+
+      if (this.skybox instanceof BABYLON.PhotoDome || this.skybox.photoTexture !== undefined) {
+        this.skybox.photoTexture = new BABYLON.Texture(finalSrc, this.scene);
+        this.skybox.photoTexture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        this.skybox.photoTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        const domeMat = this.skybox.mesh?.material;
+        if (domeMat) {
+          domeMat.emissiveColor = tintColor ? BABYLON.Color3.FromHexString(tintColor) : skyLight;
+        }
+      } else if (this.skybox.material) {
+        const material = this.skybox.material;
+        material.disableLighting = true;
+        material.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        material.specularColor = new BABYLON.Color3(0, 0, 0);
+        material.emissiveColor = tintColor ? BABYLON.Color3.FromHexString(tintColor) : skyLight;
+
+        material.reflectionTexture?.dispose();
+        const reflection = new BABYLON.Texture(finalSrc, this.scene);
+        reflection.coordinatesMode = BABYLON.Texture.FIXED_EQUIRECTANGULAR_MODE;
+        material.reflectionTexture = reflection;
       }
     }
 
@@ -472,24 +504,22 @@ export class Viewer3D {
   setSkyboxEnabled(enabled) {
     if (enabled) {
       if (!this.skybox) {
-        // 创建天空球，直径设为 1000.0，细分数设为 16
-        this.skybox = BABYLON.MeshBuilder.CreateSphere('skyBox', { segments: 16, diameter: 1000.0 }, this.scene);
-        const skyboxMaterial = new BABYLON.StandardMaterial('skyBox', this.scene);
-        skyboxMaterial.backFaceCulling = false;
-        skyboxMaterial.disableLighting = true;
-        
-        // 加载本地 sky.png 天空背景贴图
-        skyboxMaterial.emissiveTexture = new BABYLON.Texture(SKY_TEXTURE_URL, this.scene);
-        
-        if (this._skyboxColor) {
-          skyboxMaterial.emissiveColor = BABYLON.Color3.FromHexString(this._skyboxColor);
+        // 创建 PhotoDome 360 度全景天空球
+        this.skybox = new BABYLON.PhotoDome('skyBox', SKY_TEXTURE_URL, { resolution: 32, size: 1000.0 }, this.scene);
+        if (this.skybox.mesh) {
+          this.skybox.mesh.rotation.x = Math.PI; // 沿 X 轴旋转 180 度，修正贴图垂直翻转，确保蓝天白云在上方
+          this.skybox.mesh.isPickable = false;
         }
-
-        this.skybox.material = skyboxMaterial;
-        this.skybox.infiniteDistance = true; // 随相机移动，保持无限远
-        this.skybox.isPickable = false; // 排除拾取，避免干扰物体交互
+        if (this.skybox.photoTexture) {
+          this.skybox.photoTexture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+          this.skybox.photoTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        }
       }
-      this.skybox.setEnabled(true);
+      if (this.skybox.mesh) {
+        this.skybox.mesh.setEnabled(true);
+      } else if (typeof this.skybox.setEnabled === 'function') {
+        this.skybox.setEnabled(true);
+      }
 
       if (!this.grassLawn) {
         // 创建 1 楼 grassLawn 草坪，大小从 1000 减小为 120
@@ -509,7 +539,11 @@ export class Viewer3D {
       this.grassLawn.setEnabled(true);
     } else {
       if (this.skybox) {
-        this.skybox.setEnabled(false);
+        if (this.skybox.mesh) {
+          this.skybox.mesh.setEnabled(false);
+        } else if (typeof this.skybox.setEnabled === 'function') {
+          this.skybox.setEnabled(false);
+        }
       }
       if (this.grassLawn) {
         this.grassLawn.setEnabled(false);

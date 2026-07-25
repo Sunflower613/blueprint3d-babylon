@@ -31,6 +31,7 @@ export {
   MirrorTexture,
   Node,
   Plane,
+  PhotoDome,
   PointerEventTypes,
   PointLight,
   RenderTargetTexture,

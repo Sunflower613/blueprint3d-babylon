@@ -169,7 +169,15 @@ export class MaterialResolver {
         kind: 'emissive',
         category: value.category || 'emissive',
         name: value.name || '发光',
-        color: value.color || fallbackColor
+        color: value.color || fallbackColor,
+        src: value.src || value.url,
+        scale: value.scale !== undefined ? Number(value.scale) : undefined,
+        alpha: value.alpha !== undefined ? Number(value.alpha) : undefined,
+        skyLightColor: value.skyLightColor || undefined,
+        stretch: value.stretch !== undefined ? !!value.stretch : undefined,
+        invertY: value.invertY !== undefined ? !!value.invertY : undefined,
+        repeatX: value.repeatX !== undefined ? !!value.repeatX : undefined,
+        stretchY: value.stretchY !== undefined ? !!value.stretchY : undefined
       };
     }
 
@@ -181,7 +189,7 @@ export class MaterialResolver {
         category: value.category || 'custom',
         name: value.name || value.fileName || '自定义材质',
         fileName: value.fileName,
-        src: value.src,
+        src: value.src || value.url,
         scale: Number(value.scale || 1),
         color: value.color || fallbackColor,
         alpha: value.alpha !== undefined ? Number(value.alpha) : undefined,

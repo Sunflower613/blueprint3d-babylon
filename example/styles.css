@@ -749,7 +749,10 @@ body.is-dragging-3d * {
 }
 
 @media (max-width: 860px) {
-  .workspace {
+  .workspace,
+  .workspace:has(.left-panel.collapsed),
+  .workspace:has(.right-panel.collapsed),
+  .workspace:has(.left-panel.collapsed):has(.right-panel.collapsed) {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 0;

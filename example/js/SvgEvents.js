@@ -78,10 +78,15 @@ function onWheel(event) {
   const nextSpanX = currentSpanX * factor;
   if (nextSpanX < 0.05 || nextSpanX > 300) return;
 
-  view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
-  view.maxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
-  view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
-  view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+  const nextMinX = worldCenter.x - factor * (worldCenter.x - view.minX);
+  const nextMaxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
+  const nextMinZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
+  const nextMaxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+
+  view.minX = nextMinX;
+  view.maxX = nextMaxX;
+  view.minZ = nextMinZ;
+  view.maxZ = nextMaxZ;
 
   hasUserZoomedOrPanned = true;
   ctx.setHasUserZoomedOrPanned(true);
@@ -174,10 +179,15 @@ function onPointermove(event) {
       const currentSpanX = view.maxX - view.minX;
       const nextSpanX = currentSpanX * factor;
       if (nextSpanX >= 0.05 && nextSpanX <= 300) {
-        view.minX = worldCenter.x - factor * (worldCenter.x - view.minX);
-        view.maxX = worldCenter.x + factor * (worldCenter.x - view.minX);
-        view.minZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
-        view.maxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+        const nextMinX = worldCenter.x - factor * (worldCenter.x - view.minX);
+        const nextMaxX = worldCenter.x + factor * (view.maxX - worldCenter.x);
+        const nextMinZ = worldCenter.z - factor * (worldCenter.z - view.minZ);
+        const nextMaxZ = worldCenter.z + factor * (view.maxZ - worldCenter.z);
+
+        view.minX = nextMinX;
+        view.maxX = nextMaxX;
+        view.minZ = nextMinZ;
+        view.maxZ = nextMaxZ;
       }
 
       const dx = center.x - prevTouchCenter2D.x;

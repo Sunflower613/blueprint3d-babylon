@@ -1458,7 +1458,7 @@
         "id": "sky_texture",
         "kind": "texture",
         "category": "custom",
-        "name": "蓝天白云",
+        "name": "晴天",
         "url": "sky.png",
         "color": "#ffffff"
       },

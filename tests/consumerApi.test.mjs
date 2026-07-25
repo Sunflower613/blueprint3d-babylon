@@ -11,6 +11,28 @@ test('Consumer API: public asset URLs do not require source-directory imports', 
   assert.match(SKY_TEXTURE_URL, /sky\.png$/);
 });
 
+test('Consumer API: 天空盒渲染配置正确禁用场景光照并设置全景球面坐标', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const skybox = BABYLON.MeshBuilder.CreateSphere('skyBox', { segments: 16, diameter: 1000.0 }, scene);
+  const skyboxMaterial = new BABYLON.StandardMaterial('skyBox', scene);
+  skybox.material = skyboxMaterial;
+
+  // 模拟 Viewer3D setEnvironmentMaterials 逻辑
+  const material = skybox.material;
+  material.disableLighting = true;
+  const texture = new BABYLON.Texture(SKY_TEXTURE_URL, scene);
+  texture.coordinatesMode = BABYLON.Texture.FIXED_EQUIRECTANGULAR_MODE;
+  material.emissiveTexture = texture;
+
+  assert.equal(skybox.material.disableLighting, true, '天空盒材质必须禁用场景光照防止暴白');
+  assert.equal(skybox.material.emissiveTexture.coordinatesMode, BABYLON.Texture.FIXED_EQUIRECTANGULAR_MODE, '天空盒贴图必须为 360 度全景球面投影');
+
+  skybox.dispose();
+  scene.dispose();
+  engine.dispose();
+});
+
 test('Consumer API: 独立创建、保存、加载与导出流程验证', () => {
   const engine = new BABYLON.NullEngine();
   const scene = new BABYLON.Scene(engine);

@@ -311,9 +311,52 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     const color = BABYLON.Color3.FromHexString(baseColor);
     material.diffuseColor = new BABYLON.Color3(0, 0, 0);
     material.specularColor = new BABYLON.Color3(0, 0, 0);
-    material.emissiveColor = color;
+
+    if (normalized.src) {
+      // 自发光贴图
+      material.emissiveColor = BABYLON.Color3.White();
+
+      const invertY = normalized.invertY !== undefined ? normalized.invertY : (options.invertY !== undefined ? options.invertY : true);
+      const textureKey = `${normalized.src}_invY_${invertY}`;
+      let baseTexture = scene._blueprintTextureCache?.get(textureKey);
+
+      if (!baseTexture || baseTexture.isDisposed) {
+        if (!scene._blueprintTextureCache) scene._blueprintTextureCache = new Map();
+        baseTexture = new BABYLON.Texture(
+          normalized.src,
+          scene,
+          false,
+          invertY,
+          BABYLON.Texture.TRILINEAR_SAMPLINGMODE
+        );
+        scene._blueprintTextureCache.set(textureKey, baseTexture);
+      }
+
+      const texture = baseTexture.clone();
+      const textureScale = normalized.repeatX || normalized.stretchY
+        ? {
+            uScale: normalized.repeatX ? Number(normalized.scale || 1) : 1,
+            vScale: normalized.stretchY ? 1 : Number(normalized.scale || 1)
+          }
+        : resolvePatternTextureScale(normalized, options, normalized.scale || 1);
+      texture.uScale = textureScale.uScale;
+      texture.vScale = textureScale.vScale;
+      texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+      texture.wrapV = normalized.stretchY ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
+
+      material.emissiveTexture = texture;
+      // 额外把贴图赋给漫反射，以防某些着色器在 disableLighting = true 时只走 diffuse 通道
+      material.diffuseTexture = texture;
+    } else {
+      // 自发光纯色
+      material.emissiveColor = color;
+    }
+
     material.disableLighting = true;
     material.backFaceCulling = false;
+    if (normalized.alpha !== undefined) {
+      material.alpha = normalized.alpha;
+    }
     material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
     return material;
   }

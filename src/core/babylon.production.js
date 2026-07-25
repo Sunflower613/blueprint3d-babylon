@@ -36,6 +36,7 @@ export { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator.
 export { PointerEventTypes } from '@babylonjs/core/Events/pointerEvents.js';
 export { Tools } from '@babylonjs/core/Misc/tools.js';
 export { ReflectionProbe } from '@babylonjs/core/Probes/reflectionProbe.js';
+export { PhotoDome } from '@babylonjs/core/Helpers/photoDome.js';
 
 
 // 确保在运行时所需的加载器和着色器被提前打包，防止开发环境（如 Vite 依赖预构建）动态导入时出现 404 错误

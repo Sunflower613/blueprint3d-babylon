@@ -1090,7 +1090,7 @@ export function createColorField(label, value, onChange, currentMaterialName = '
     } catch (e) {}
   }
   
-  if (normalized && (normalized.kind === 'texture' || normalized.src)) {
+  if (normalized && (normalized.kind === 'texture' || normalized.kind === 'emissive' || normalized.src)) {
     const resolved = resolveMaterialAssetDescriptor(normalized);
     if (resolved && resolved.src) {
       colorBtn.style.backgroundImage = `url(${resolved.src})`;
@@ -1868,6 +1868,13 @@ function applyStyleToSwatch(button, mat) {
     button.style.background = `linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#d0d0d0 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px`;
   } else if (kind === 'emissive') {
     const c = color || '#ffffff';
+    if (src) {
+      const resolved = resolveMaterialAssetDescriptor(material);
+      const finalSrc = resolved?.src || src;
+      button.style.backgroundImage = `url(${finalSrc})`;
+      button.style.backgroundPosition = 'center';
+      button.style.backgroundSize = 'cover';
+    }
     button.style.backgroundColor = c;
     button.style.boxShadow = `inset 0 0 4px rgba(255,255,255,0.8), 0 0 10px ${c}88`;
     button.style.border = '1px solid rgba(255,255,255,0.4)';

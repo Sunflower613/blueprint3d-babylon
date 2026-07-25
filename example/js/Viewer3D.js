@@ -1,6 +1,19 @@
 import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
+function createSolidColorDataUrl(colorHex) {
+  if (typeof document === 'undefined') {
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSU5EUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 2;
+  canvas.height = 2;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = colorHex || '#d9ecff';
+  ctx.fillRect(0, 0, 2, 2);
+  return canvas.toDataURL('image/png');
+}
+
 /**
  * Viewer3D — 3D 渲染引擎封装
  *
@@ -431,15 +444,20 @@ export class Viewer3D {
       let skyLightColor = '#d9ecff';
 
       if (skyDescriptor) {
-        const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#ffffff');
+        const normalized = MaterialResolver.normalizeMaterialDescriptor(skyDescriptor, '#d9ecff');
         const resolved = resolveMaterialAssetDescriptor(normalized);
         const isSkyTexture = resolved.src && resolved.src.split('/').pop().split('?')[0].includes('sky.png');
         
-        if ((resolved.kind === 'texture' || resolved.kind === 'emissive') && resolved.src && !isSkyTexture) {
+        if (resolved.kind === 'color' || (!resolved.src && resolved.color)) {
+          const colorHex = resolved.color || '#d9ecff';
+          finalSrc = createSolidColorDataUrl(colorHex);
+          tintColor = colorHex;
+          skyLightColor = colorHex;
+        } else if ((resolved.kind === 'texture' || resolved.kind === 'emissive') && resolved.src && !isSkyTexture) {
           finalSrc = resolved.src;
         }
 
-        if (resolved.kind === 'color' && resolved.color && resolved.color.toLowerCase() !== '#ffffff') {
+        if (resolved.kind !== 'color' && resolved.color && resolved.color.toLowerCase() !== '#ffffff') {
           tintColor = resolved.color;
         }
         if (resolved.skyLightColor) {

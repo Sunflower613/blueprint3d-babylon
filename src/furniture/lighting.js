@@ -11,10 +11,10 @@ export const ceilingLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: -2, z: 0 },
+    offset: { x: 0, y: -0.05, z: 0 },
     color: '#fffbe6',
     intensity: 0.9,
-    range: 200
+    range: 4.5
   },
   components: [
     { id: 'base', label: '吸顶底盘', defaultColor: '#dcdcdc' },
@@ -47,10 +47,10 @@ export const chandelierLight = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: -16, z: 0 },
+    offset: { x: 0, y: -0.4, z: 0 },
     color: '#fffae6',
     intensity: 1.0,
-    range: 240
+    range: 5.0
   },
   components: [
     { id: 'rod', label: '金属吊杆', defaultColor: '#434343' },
@@ -116,13 +116,13 @@ export const wallSconceLight = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'spot',
-    offset: { x: 0, y: -2, z: 6 },
+    offset: { x: 0, y: -0.05, z: 0.15 },
     direction: { x: 0, y: -1, z: 0.1 },
     angle: Math.PI / 3,
     exponent: 2.5,
     color: '#fffae6',
     intensity: 0.85,
-    range: 120
+    range: 3.5
   },
   components: [
     { id: 'mount', label: '上墙底座', defaultColor: '#2b2b2b' },
@@ -171,10 +171,10 @@ export const floorLampLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 30, z: 0 },
+    offset: { x: 0, y: 1.4, z: 0 },
     color: '#fffae6',
     intensity: 0.85,
-    range: 160
+    range: 4.0
   },
   components: [
     { id: 'base', label: '落地底座', defaultColor: '#303030' },
@@ -219,10 +219,10 @@ export const arcFloorLampLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 14, y: 48, z: 0 },
+    offset: { x: 0.35, y: 1.4, z: 0 },
     color: '#fffae6',
     intensity: 0.85,
-    range: 160
+    range: 4.0
   },
   components: [
     { id: 'base', label: '落地底座', defaultColor: '#303030' },
@@ -285,13 +285,13 @@ export const deskLampLight = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'spot',
-    offset: { x: 0, y: 7, z: 3 },
+    offset: { x: 0, y: 0.3, z: 0.1 },
     direction: { x: 0.2, y: -1, z: 0.2 },
     angle: Math.PI / 4,
     exponent: 2.0,
     color: '#fffbe6',
     intensity: 0.9,
-    range: 100
+    range: 3.0
   },
   components: [
     { id: 'base', label: '台面底座', defaultColor: '#607d8b' },
@@ -345,10 +345,10 @@ export const bedsideLampLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 3, z: 0 },
+    offset: { x: 0, y: 0.2, z: 0 },
     color: '#ffe6b3',
     intensity: 0.7,
-    range: 120
+    range: 3.0
   },
   components: [
     { id: 'ceramic', label: '陶瓷底座', defaultColor: '#e0dfdb' },
@@ -381,10 +381,10 @@ export const trackLight = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: -6, z: 0 },
+    offset: { x: 0, y: -0.15, z: 0 },
     color: '#ffffff',
     intensity: 0.95,
-    range: 180
+    range: 4.5
   },
   components: [
     { id: 'rail', label: '挂载导轨', defaultColor: '#1a1a1a' },
@@ -432,10 +432,10 @@ export const neonSignLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 0, z: 2 },
+    offset: { x: 0, y: 0, z: 0.05 },
     color: '#33ffcc',
     intensity: 0.7,
-    range: 120
+    range: 3.0
   },
   components: [
     { id: 'mount', label: '壁挂骨架', defaultColor: '#121212' },
@@ -489,10 +489,10 @@ export const globePendantLight = {
   lightColorComponent: 'glow',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: -12, z: 0 },
+    offset: { x: 0, y: -0.45, z: 0 },
     color: '#fffae6',
     intensity: 0.8,
-    range: 180
+    range: 4.5
   },
   components: [
     { id: 'cord', label: '黑色吊绳', defaultColor: '#1d1d1d' },
@@ -524,10 +524,10 @@ export const lavaLampLight = {
   lightColorComponent: 'lava',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 9, z: 0 },
+    offset: { x: 0, y: 0.25, z: 0 },
     color: '#ff33aa',
     intensity: 0.8,
-    range: 100
+    range: 2.5
   },
   components: [
     { id: 'base', label: '金属底盘', defaultColor: '#a1a1a1' },
@@ -582,10 +582,10 @@ export const gardenLanternPostFurniture = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 74, z: 0 },
+    offset: { x: 0, y: 1.9, z: 0 },
     color: '#fffae6',
     intensity: 0.85,
-    range: 160
+    range: 5.0
   },
   components: [
     { id: 'base', label: '底座', defaultColor: '#75777d' },
@@ -660,10 +660,10 @@ export const gardenBollardLightFurniture = {
   lightColorComponent: 'bulb',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 14, z: 0 },
+    offset: { x: 0, y: 0.35, z: 0 },
     color: '#ffebb3',
     intensity: 0.7,
-    range: 120
+    range: 3.5
   },
   components: [
     { id: 'base', label: '底座', defaultColor: '#474747' },
@@ -735,10 +735,10 @@ export const gardenLanternFurniture = {
   lightColorComponent: 'paper',
   lightSource: {
     type: 'point',
-    offset: { x: 0, y: 11, z: 0 },
+    offset: { x: 0, y: 0.3, z: 0 },
     color: '#ffe6b3',
     intensity: 0.8,
-    range: 140
+    range: 3.5
   },
   components: [
     { id: 'base', label: '底座', defaultColor: '#807d79' },

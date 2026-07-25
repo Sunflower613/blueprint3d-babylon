@@ -61,7 +61,7 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
     label: '投影仪',
     glowComponents: ['lens'],
     color: '#d7eeff',
-    lightSource: { type: 'spot', offset: { x: 2.5, y: 2, z: 5 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 120, angle: Math.PI / 5 }
+    lightSource: { type: 'spot', offset: { x: 0.06, y: 0.05, z: 0.13 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 3.0, angle: Math.PI / 5 }
   },
   game_console: { label: '游戏主机', glowComponents: ['accent'], color: '#2979ff', pulse: true },
   smart_speaker: { label: '智能音箱', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },

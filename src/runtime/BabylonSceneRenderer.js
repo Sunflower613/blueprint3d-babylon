@@ -2247,10 +2247,15 @@ export class BabylonSceneRenderer {
       const lightName = `item_light_${item.id}`;
       const offset = lightSourceConfig.offset || { x: 0, y: 0, z: 0 };
       const isMeter = definition.unit === 'm';
+      const parseCoord = (val) => {
+        const v = val ?? 0;
+        if (!isMeter) return inchesToUnits(v);
+        return Math.abs(v) > 5 ? inchesToUnits(v) : v;
+      };
       const localPos = new BABYLON.Vector3(
-        isMeter ? (offset.x ?? 0) : inchesToUnits(offset.x),
-        isMeter ? (offset.y ?? 0) : inchesToUnits(offset.y),
-        isMeter ? (offset.z ?? 0) : inchesToUnits(offset.z)
+        parseCoord(offset.x),
+        parseCoord(offset.y),
+        parseCoord(offset.z)
       );
 
       let light;
@@ -2284,7 +2289,8 @@ export class BabylonSceneRenderer {
       light.diffuse = color;
       light.specular = color;
       light.intensity = intensity;
-      light.range = isMeter ? (lightSourceConfig.range ?? 3.8) : inchesToUnits(lightSourceConfig.range ?? 150);
+      const rawRange = lightSourceConfig.range ?? (isMeter ? 3.8 : 150);
+      light.range = (!isMeter || rawRange > 25) ? inchesToUnits(rawRange) : rawRange;
 
       node.onDisposeObservable.add(() => {
         light.dispose();
@@ -2390,10 +2396,15 @@ export class BabylonSceneRenderer {
       const config = effect.lightSource;
       const offset = config.offset || { x: 0, y: 0, z: 0 };
       const isMeter = definition.unit === 'm';
+      const parseCoord = (val) => {
+        const v = val ?? 0;
+        if (!isMeter) return inchesToUnits(v);
+        return Math.abs(v) > 5 ? inchesToUnits(v) : v;
+      };
       const position = new BABYLON.Vector3(
-        isMeter ? (offset.x ?? 0) : inchesToUnits(offset.x ?? 0),
-        isMeter ? (offset.y ?? 0) : inchesToUnits(offset.y ?? 0),
-        isMeter ? (offset.z ?? 0) : inchesToUnits(offset.z ?? 0)
+        parseCoord(offset.x),
+        parseCoord(offset.y),
+        parseCoord(offset.z)
       );
       const color = BABYLON.Color3.FromHexString(config.color || effect.color || '#ffffff');
 
@@ -2414,7 +2425,8 @@ export class BabylonSceneRenderer {
       light.diffuse = color;
       light.specular = color;
       light.intensity = config.intensity ?? 0.8;
-      light.range = isMeter ? (config.range ?? 3.0) : inchesToUnits(config.range ?? 120);
+      const rawRange = config.range ?? (isMeter ? 3.0 : 120);
+      light.range = (!isMeter || rawRange > 25) ? inchesToUnits(rawRange) : rawRange;
     }
 
     let ownsHealingMusic = false;

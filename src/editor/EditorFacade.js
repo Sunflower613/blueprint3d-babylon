@@ -24,6 +24,16 @@ export class EditorFacade {
     this._disposePromise = null;
   }
 
+  /**
+   * 将 3D 节点添加到场景与渲染器注册列表中
+   * @param {BABYLON.Node} node
+   * @param {Object} [options={}]
+   * @returns {BABYLON.Node}
+   */
+  add(node, options = {}) {
+    return this._renderer.add(node, options);
+  }
+
   /** @returns {Object} 户型平面图数据结构 */
   /** @deprecated Use getSnapshot/getProjectMetadata/getEntities instead. */
   get floorplan() {
@@ -51,6 +61,23 @@ export class EditorFacade {
     this._renderer.renderingEnabled = true;
     if (typeof this._renderer.build === 'function') {
       this._renderer.build();
+    }
+  }
+
+  /** 仅重建场景中的栅栏和栅栏门 3D 节点 */
+  buildFences() {
+    if (this._renderer && typeof this._renderer.buildFences === 'function') {
+      this._renderer.buildFences();
+    }
+  }
+
+  /**
+   * 手动触发 3D 场景重建
+   * @param {Object} [options={}]
+   */
+  build(options = {}) {
+    if (this._renderer && typeof this._renderer.build === 'function') {
+      this._renderer.build(options);
     }
   }
 
@@ -561,6 +588,12 @@ export class EditorFacade {
         );
         if (isPureMaterialPatch) {
           this._renderer.build({ rebuildType: 'wall_material', wallId: args.wallId, patch: args.patch });
+        } else {
+          this._renderer.build({ rebuildType: 'all' });
+        }
+      } else if (['addFence', 'updateFence', 'deleteFence', 'addFenceGate', 'updateFenceGate', 'deleteFenceGate'].includes(name)) {
+        if (typeof this._renderer.buildFences === 'function') {
+          this._renderer.buildFences();
         } else {
           this._renderer.build({ rebuildType: 'all' });
         }

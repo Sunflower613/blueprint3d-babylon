@@ -221,6 +221,7 @@ import {
   Blueprint3DTestMap,
   buildBlueprint3DTestMap,
   FENCE_SUBTYPE_DEFAULTS,
+  STAIR_SUBTYPE_DEFAULTS,
   FURNITURE_DEFINITIONS as PRESET_FURNITURE_DEFINITIONS,
   FURNITURE_LIST as PRESET_FURNITURE_LIST
 } from '../presets/blueprintTestMap.js';
@@ -238,6 +239,7 @@ export const sampleData = {
     class: Blueprint3DTestMap,
     build: buildBlueprint3DTestMap,
     fenceSubtypeDefaults: FENCE_SUBTYPE_DEFAULTS,
+    stairSubtypeDefaults: STAIR_SUBTYPE_DEFAULTS,
     furnitureDefinitions: PRESET_FURNITURE_DEFINITIONS,
     furnitureList: PRESET_FURNITURE_LIST
   }
@@ -255,7 +257,8 @@ export {
   BLUEPRINT3D_TEST_FLOORPLAN,
   Blueprint3DTestMap,
   buildBlueprint3DTestMap,
-  FENCE_SUBTYPE_DEFAULTS
+  FENCE_SUBTYPE_DEFAULTS,
+  STAIR_SUBTYPE_DEFAULTS
 } from '../presets/blueprintTestMap.js';
 
 // ==========================================

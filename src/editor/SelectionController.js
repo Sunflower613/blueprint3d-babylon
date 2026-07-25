@@ -161,12 +161,29 @@ export class SelectionController {
 
   setSelectedFence(fenceId) {
     this.selectedFenceId = fenceId;
+    const targetFence = fenceId ? this.document.getFence(fenceId) : null;
+    const boundSectionId = targetFence?.sectionId;
+
     this.renderer.fenceNodes.forEach((node, id) => {
-      const isSelected = (id === fenceId);
+      let isSelected = (id === fenceId);
+      if (boundSectionId) {
+        const itemFence = this.document.getFence(id);
+        if (itemFence && itemFence.sectionId === boundSectionId) {
+          isSelected = true;
+        }
+      }
       node.getChildMeshes().forEach((mesh) => {
+        if (mesh.visibility === 0 || (mesh.name && mesh.name.includes('pick_proxy'))) {
+          mesh.renderOutline = false;
+          mesh.renderOverlay = false;
+          return;
+        }
         mesh.renderOutline = isSelected;
-        mesh.outlineWidth = 0.04;
+        mesh.outlineWidth = 0.015;
         mesh.outlineColor = BABYLON.Color3.FromHexString('#36c2ff');
+        mesh.renderOverlay = isSelected;
+        mesh.overlayColor = BABYLON.Color3.FromHexString('#36c2ff');
+        mesh.overlayAlpha = 0.3;
       });
     });
   }
@@ -176,9 +193,17 @@ export class SelectionController {
     this.renderer.fenceGateNodes.forEach((node, id) => {
       const isSelected = (id === gateId);
       node.getChildMeshes().forEach((mesh) => {
+        if (mesh.visibility === 0 || (mesh.name && mesh.name.includes('pick_proxy'))) {
+          mesh.renderOutline = false;
+          mesh.renderOverlay = false;
+          return;
+        }
         mesh.renderOutline = isSelected;
-        mesh.outlineWidth = 0.04;
+        mesh.outlineWidth = 0.015;
         mesh.outlineColor = BABYLON.Color3.FromHexString('#36c2ff');
+        mesh.renderOverlay = isSelected;
+        mesh.overlayColor = BABYLON.Color3.FromHexString('#36c2ff');
+        mesh.overlayAlpha = 0.3;
       });
     });
   }

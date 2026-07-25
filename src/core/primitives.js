@@ -2,28 +2,40 @@ import { MeshBuilder, TransformNode, Mesh, Vector3 } from './babylon.js';
 const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3 };
 import { setTransform } from './BlueprintRegistry.js';
 
+function registerOrApplyOptions(registry, node, options = {}) {
+  if (registry && typeof registry.add === 'function') {
+    return registry.add(node, options);
+  }
+  if (node) {
+    if (options.parent) node.parent = options.parent;
+    if (options.material) node.material = options.material;
+    if (options.receiveShadows) node.receiveShadows = true;
+  }
+  return node;
+}
+
 export function createBox(registry, name, size, transform = {}, options = {}) {
-  const mesh = BABYLON.MeshBuilder.CreateBox(name, size, registry.scene);
+  const mesh = BABYLON.MeshBuilder.CreateBox(name, size, registry?.scene || registry?.renderer?.scene);
   setTransform(mesh, transform);
-  return registry.add(mesh, options);
+  return registerOrApplyOptions(registry, mesh, options);
 }
 
 export function createCylinder(registry, name, size, transform = {}, options = {}) {
-  const mesh = BABYLON.MeshBuilder.CreateCylinder(name, size, registry.scene);
+  const mesh = BABYLON.MeshBuilder.CreateCylinder(name, size, registry?.scene || registry?.renderer?.scene);
   setTransform(mesh, transform);
-  return registry.add(mesh, options);
+  return registerOrApplyOptions(registry, mesh, options);
 }
 
 export function createSphere(registry, name, size, transform = {}, options = {}) {
-  const mesh = BABYLON.MeshBuilder.CreateSphere(name, size, registry.scene);
+  const mesh = BABYLON.MeshBuilder.CreateSphere(name, size, registry?.scene || registry?.renderer?.scene);
   setTransform(mesh, transform);
-  return registry.add(mesh, options);
+  return registerOrApplyOptions(registry, mesh, options);
 }
 
 export function createDisc(registry, name, size, transform = {}, options = {}) {
-  const mesh = BABYLON.MeshBuilder.CreateDisc(name, size, registry.scene);
+  const mesh = BABYLON.MeshBuilder.CreateDisc(name, size, registry?.scene || registry?.renderer?.scene);
   setTransform(mesh, transform);
-  return registry.add(mesh, options);
+  return registerOrApplyOptions(registry, mesh, options);
 }
 
 export function createLathe(registry, name, options = {}, transform = {}, registryOptions = {}) {
@@ -44,9 +56,9 @@ export function createLathe(registry, name, options = {}, transform = {}, regist
     });
   }
 
-  const mesh = BABYLON.MeshBuilder.CreateLathe(name, latheOptions, registry.scene);
+  const mesh = BABYLON.MeshBuilder.CreateLathe(name, latheOptions, registry?.scene || registry?.renderer?.scene);
   setTransform(mesh, transform);
-  return registry.add(mesh, registryOptions);
+  return registerOrApplyOptions(registry, mesh, registryOptions);
 }
 
 

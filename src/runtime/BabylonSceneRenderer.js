@@ -641,7 +641,7 @@ export class BabylonSceneRenderer {
       trim: createFlatMaterial(this.scene, 'blueprintTrim', palette.trim || '#b8c4d4'),
       decor: createFlatMaterial(this.scene, 'blueprintDecor', palette.decor || '#ffffff'),
       roof: createFlatMaterial(this.scene, 'blueprintRoof', palette.roof || '#b75b54'),
-      stair: createFlatMaterial(this.scene, 'blueprintStair', palette.stair || '#d8c0a0')
+      stair: createFlatMaterial(this.scene, 'blueprintStair', palette.stair || '#f5b984')
     };
   }
 
@@ -1941,6 +1941,16 @@ export class BabylonSceneRenderer {
 
   buildFences(fenceIds = null) {
     if (this.deferRenderWork()) return;
+    const validFenceIds = new Set((this.floorplan.fences || []).map(f => f.id));
+    this.fenceNodes.forEach((node, id) => {
+      if ((!fenceIds || fenceIds.has(id)) || !validFenceIds.has(id)) {
+        if (node && !node.isDisposed?.()) {
+          node.dispose(false, false);
+        }
+        this.fenceNodes.delete(id);
+      }
+    });
+
     this.floorplan.fences
       .filter((fence) => this.document.isFloorVisible(fence.floorId) && (!fenceIds || fenceIds.has(fence.id)))
       .forEach((fence) => {
@@ -1959,12 +1969,26 @@ export class BabylonSceneRenderer {
 
         const angle = Math.atan2(dz, dx);
         const fenceOffset = this.document.getFenceElevationOffset(fence) + (fence.yOffset || 0);
-        group.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
-        group.rotation.y = -angle;
-        if (fence.tilt) {
-          group.rotation.z = fence.tilt;
+        
+        const stairNode = fence.stairsId ? this.stairNodes.get(fence.stairsId) : null;
+        if (stairNode) {
+          group.parent = stairNode;
+          const worldPos = new BABYLON.Vector3((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
+          const invMatrix = stairNode.getWorldMatrix().clone().invert();
+          const localPos = BABYLON.Vector3.TransformCoordinates(worldPos, invMatrix);
+          group.position.copyFrom(localPos);
+          group.rotation.y = -angle - (stairNode.rotation?.y || 0);
+          if (fence.tilt) {
+            group.rotation.z = fence.tilt;
+          }
+        } else {
+          group.position.set((x1 + x2) / 2, floorY + fenceOffset, (z1 + z2) / 2);
+          group.rotation.y = -angle;
+          if (fence.tilt) {
+            group.rotation.z = fence.tilt;
+          }
+          group.parent = this.root;
         }
-        group.parent = this.root;
         group.metadata = { blueprintFenceId: fence.id, floorId: fence.floorId, originalLength: length, locked: !!fence.locked };
 
         const fenceDefaultColor = fence.subtype === 'concrete' ? DEFAULT_WALL_COLOR : '#8d6e63';
@@ -2046,8 +2070,8 @@ export class BabylonSceneRenderer {
             subGroup,
             {
               ...fence,
-              skipStartPost,
-              skipEndPost
+              skipStartPost: fence.skipStartPost || skipStartPost,
+              skipEndPost: fence.skipEndPost || skipEndPost
             },
             material,
             renderLength,
@@ -2070,6 +2094,16 @@ export class BabylonSceneRenderer {
   buildFenceGates(gateIds = null) {
     if (this.deferRenderWork()) return;
     this.floorplan.fenceGates ||= [];
+    const validGateIds = new Set(this.floorplan.fenceGates.map(g => g.id));
+    this.fenceGateNodes.forEach((node, id) => {
+      if ((!gateIds || gateIds.has(id)) || !validGateIds.has(id)) {
+        if (node && !node.isDisposed?.()) {
+          node.dispose(false, false);
+        }
+        this.fenceGateNodes.delete(id);
+      }
+    });
+
     this.floorplan.fenceGates
       .filter((gate) => this.document.isFloorVisible(gate.floorId) && (!gateIds || gateIds.has(gate.id)))
       .forEach((gate) => {

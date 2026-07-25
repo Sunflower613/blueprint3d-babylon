@@ -473,12 +473,12 @@ export class Viewer3DHandles {
     if (itemId) return { type: 'item', id: itemId, pick };
     const roofId = this.findRoofIdFromNode(mesh);
     if (roofId) return { type: 'roof', id: roofId, pick };
-    const stairsId = this.findStairsIdFromNode(mesh);
-    if (stairsId) return { type: 'stairs', id: stairsId, pick };
     const fenceGateId = this.findFenceGateIdFromNode(mesh);
     if (fenceGateId) return { type: 'fence_gate', id: fenceGateId, pick };
     const fenceId = this.findFenceIdFromNode(mesh);
     if (fenceId) return { type: 'fence', id: fenceId, pick };
+    const stairsId = this.findStairsIdFromNode(mesh);
+    if (stairsId) return { type: 'stairs', id: stairsId, pick };
     const roomId = this.findRoomIdFromNode(mesh);
     if (roomId) return { type: 'room', id: roomId, pick };
     return null;

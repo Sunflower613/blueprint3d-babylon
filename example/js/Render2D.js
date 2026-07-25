@@ -592,13 +592,20 @@ export function renderRoof(roof) {
 
 export function renderStairs(stairs) {
   const subtype = stairs.subtype || 'straight';
-  let wVal = stairs.width || 1.2;
-  let dVal = stairs.depth || 3.2;
+  let wVal = stairs.width || 1;
+  let dVal = stairs.depth || 3;
+
   if (subtype === 'spiral') {
     const size = Math.max(wVal, dVal);
     wVal = size;
     dVal = size;
+  } else if (subtype === 'lshape') {
+    const d2 = stairs.runAfterCorner ?? Math.max(0.2, dVal - wVal);
+    const d1 = stairs.runBeforeCorner ?? Math.max(0.2, dVal - wVal);
+    wVal = wVal + d2;
+    dVal = d1 + (stairs.width || 1);
   }
+
   const a = worldToSvg((stairs.x || 0) - wVal / 2, (stairs.z || 0) - dVal / 2);
   const b = worldToSvg((stairs.x || 0) + wVal / 2, (stairs.z || 0) + dVal / 2);
   const minX = Math.min(a.x, b.x);
@@ -618,173 +625,338 @@ export function renderStairs(stairs) {
     'data-stairs-id': stairs.id
   });
   
-  const rect = createSvgElement('rect', {
-    x: minX,
-    y: minY,
-    width: w,
-    height: h,
-    rx: 4,
-    fill: stairs.color || '#d8c0a0'
-  });
-  group.appendChild(rect);
- 
-  const steps = 6;
- 
-  if (subtype === 'straight') {
-    for (let i = 1; i < steps; i += 1) {
-      const y = minY + (h / steps) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + h * 0.2} M ${centerX - 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2} M ${centerX + 5} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'lshape') {
-    const landSize = w;
-    const subSteps = 3;
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    for (let i = 1; i <= subSteps; i++) {
-      const x = minX + w + ((h - w) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: x, y1: minY,
-        x2: x, y2: minY + w,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + w / 2} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 - 4} L ${minX + h * 0.8} ${minY + w / 2} M ${minX + h * 0.7} ${minY + w / 2 + 4} L ${minX + h * 0.8} ${minY + w / 2}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'ushape') {
-    const landSize = w;
-    const subSteps = 4;
-    group.appendChild(createSvgElement('line', {
-      x1: centerX, y1: minY + landSize,
-      x2: centerX, y2: minY + h,
-      stroke: 'rgba(0,0,0,0.2)',
-      'stroke-width': 1
-    }));
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: minX, y1: y,
-        x2: centerX, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    for (let i = 1; i <= subSteps; i++) {
-      const y = minY + landSize + ((h - landSize) / (subSteps + 1)) * i;
-      group.appendChild(createSvgElement('line', {
-        x1: centerX, y1: y,
-        x2: minX + w, y2: y,
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('path', {
-      d: `M ${minX + w * 0.25} ${minY + h * 0.8} L ${minX + w * 0.25} ${minY + landSize / 2} C ${minX + w * 0.25} ${minY + 6}, ${minX + w * 0.75} ${minY + 6}, ${minX + w * 0.75} ${minY + landSize / 2} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.7} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8} M ${minX + w * 0.8} ${minY + h * 0.75} L ${minX + w * 0.75} ${minY + h * 0.8}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.5
-    }));
-  } else if (subtype === 'spiral') {
-    const r = Math.min(w, h) / 2;
-    group.appendChild(createSvgElement('circle', {
-      cx: centerX, cy: centerY,
-      r: r - 2,
-      stroke: 'rgba(0,0,0,0.2)',
-      fill: 'none',
-      'stroke-width': 1
-    }));
-    for (let i = 0; i < 12; i++) {
-      const angle = (i * 30 * Math.PI) / 180;
-      group.appendChild(createSvgElement('line', {
-        x1: centerX, y1: centerY,
-        x2: centerX + (r - 2) * Math.sin(angle), y2: centerY - (r - 2) * Math.cos(angle),
-        class: 'stairs-step-line'
-      }));
-    }
-    group.appendChild(createSvgElement('circle', {
-      cx: centerX, cy: centerY,
-      r: r * 0.15,
-      fill: 'rgba(0,0,0,0.3)',
-      stroke: 'none'
-    }));
-    group.appendChild(createSvgElement('path', {
-      d: `M ${centerX + r * 0.5} ${centerY} A ${r * 0.5} ${r * 0.5} 0 1 0 ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 + 4} L ${centerX} ${centerY - r * 0.5} M ${centerX - 4} ${centerY - r * 0.5 - 4} L ${centerX} ${centerY - r * 0.5}`,
-      stroke: 'rgba(0,0,0,0.4)',
-      fill: 'none',
-      'stroke-width': 1.2
-    }));
-  } else if (subtype === 'curved') {
+  const fillColor = stairs.color || '#f5b984';
+
+  if (subtype === 'curved') {
+    // 弧形楼梯：绘制 90 度环形扇面背景
     const R = Math.max(w, h);
-    const r = R - w;
-    const segments = 6;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * (Math.PI / 2);
+    const r = Math.max(0, R - Math.min(w, h));
+    const pathD = `M ${minX} ${minY + h - R} A ${R} ${R} 0 0 1 ${minX + R} ${minY + h} L ${minX + r} ${minY + h} A ${r} ${r} 0 0 0 ${minX} ${minY + h - r} Z`;
+    group.appendChild(createSvgElement('path', {
+      d: pathD,
+      fill: fillColor,
+      stroke: 'rgba(0,0,0,0.3)',
+      'stroke-width': 1
+    }));
+
+    const stepsCount = stairs.steps || 12;
+    for (let i = 0; i <= stepsCount; i++) {
+      const angle = (i / stepsCount) * (Math.PI / 2);
       group.appendChild(createSvgElement('line', {
         x1: minX + r * Math.sin(angle), y1: minY + h - r * Math.cos(angle),
         x2: minX + R * Math.sin(angle), y2: minY + h - R * Math.cos(angle),
         class: 'stairs-step-line'
       }));
     }
+
+    // 导向弧形箭头
     const arrowR = (R + r) / 2;
-    const arrowSegments = 20;
-    let pathD = '';
-    for (let i = 0; i <= arrowSegments; i++) {
-      const t = i / arrowSegments;
-      const angle = 0.2 * Math.PI / 2 + t * 0.6 * Math.PI / 2;
-      const ax = minX + arrowR * Math.sin(angle);
-      const ay = minY + h - arrowR * Math.cos(angle);
-      if (i === 0) pathD += `M ${ax} ${ay}`;
-      else pathD += ` L ${ax} ${ay}`;
+    const arrowSegs = 16;
+    let arrowD = '';
+    const startAng = 0.15 * (Math.PI / 2);
+    const endAng = 0.85 * (Math.PI / 2);
+    for (let i = 0; i <= arrowSegs; i++) {
+      const ang = startAng + (i / arrowSegs) * (endAng - startAng);
+      const ax = minX + arrowR * Math.sin(ang);
+      const ay = minY + h - arrowR * Math.cos(ang);
+      if (i === 0) arrowD += `M ${ax} ${ay}`;
+      else arrowD += ` L ${ax} ${ay}`;
     }
+    // 箭头末端尖端 (倒钩)
+    const endX = minX + arrowR * Math.sin(endAng);
+    const endY = minY + h - arrowR * Math.cos(endAng);
+    const dirX = Math.cos(endAng); // 切线方向 X
+    const dirY = Math.sin(endAng); // 切线方向 Y
+    const normalX = -dirY;
+    const normalY = dirX;
+    const headLen = 6;
+    const headW = 4;
+    const p1x = endX - headLen * dirX + headW * normalX;
+    const p1y = endY - headLen * dirY + headW * normalY;
+    const p2x = endX - headLen * dirX - headW * normalX;
+    const p2y = endY - headLen * dirY - headW * normalY;
+    arrowD += ` M ${p1x} ${p1y} L ${endX} ${endY} L ${p2x} ${p2y}`;
+
     group.appendChild(createSvgElement('path', {
-      d: pathD,
-      stroke: 'rgba(0,0,0,0.4)',
+      d: arrowD,
+      stroke: 'rgba(0,0,0,0.45)',
       fill: 'none',
-      'stroke-width': 1.5
+      'stroke-width': 1.5,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
     }));
-  } else if (subtype === 'floating') {
-    rect.setAttribute('fill', 'none');
-    rect.setAttribute('stroke', 'rgba(0,0,0,0.15)');
-    rect.setAttribute('stroke-dasharray', '2,2');
-    for (let i = 0; i < steps; i++) {
-      const sy = minY + (h / steps) * i + 2;
-      const sh = (h / steps) - 4;
-      group.appendChild(createSvgElement('rect', {
-        x: minX + 2,
-        y: sy,
-        width: w - 4,
-        height: sh,
-        rx: 1,
-        fill: '#f0d8b8',
-        stroke: 'rgba(0,0,0,0.2)',
-        'stroke-width': 0.8
+
+  } else if (subtype === 'lshape') {
+    // L 型楼梯：绘制 L 形多边形背景 Path
+    const d2 = stairs.runAfterCorner ?? Math.max(0.2, (stairs.depth || 3) - (stairs.width || 1));
+    const d1 = stairs.runBeforeCorner ?? Math.max(0.2, (stairs.depth || 3) - (stairs.width || 1));
+    const totalW = (stairs.width || 1) + d2;
+    const totalD = d1 + (stairs.width || 1);
+
+    const w1 = w * ((stairs.width || 1) / totalW); // 第一跑 SVG 宽度
+    const h1 = h * ((stairs.width || 1) / totalD); // 平台/第二跑 SVG 高度
+
+    const lPath = `M ${minX} ${minY + h} L ${minX} ${minY} L ${minX + w} ${minY} L ${minX + w} ${minY + h1} L ${minX + w1} ${minY + h1} L ${minX + w1} ${minY + h} Z`;
+    group.appendChild(createSvgElement('path', {
+      d: lPath,
+      fill: fillColor,
+      stroke: 'rgba(0,0,0,0.3)',
+      'stroke-width': 1
+    }));
+
+    const totalSteps = stairs.steps || 12;
+    const n1 = Math.max(1, Math.min(totalSteps - 2, stairs.cornerStep ?? Math.floor(totalSteps / 2)));
+    const n2 = totalSteps - n1;
+
+    // 第一跑踏步线（纵向上升，平分第一跑长度）
+    for (let i = 1; i <= n1; i++) {
+      const y = minY + h - ((h - h1) / n1) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: minX, y1: y,
+        x2: minX + w1, y2: y,
+        class: 'stairs-step-line'
       }));
     }
-    group.appendChild(createSvgElement('line', {
-      x1: centerX, y1: minY,
-      x2: centerX, y2: minY + h,
-      stroke: 'rgba(0,0,0,0.3)',
-      'stroke-width': 3
+
+    // 第二跑踏步线（横向延伸，平分第二跑长度）
+    for (let i = 1; i < n2; i++) {
+      const x = minX + w1 + ((w - w1) / n2) * i;
+      group.appendChild(createSvgElement('line', {
+        x1: x, y1: minY,
+        x2: x, y2: minY + h1,
+        class: 'stairs-step-line'
+      }));
+    }
+
+    // 导向折线箭头
+    const arrowStartX = minX + w1 / 2;
+    const arrowStartY = minY + h - 10;
+    const arrowCornerX = minX + w1 / 2;
+    const arrowCornerY = minY + h1 / 2;
+    const arrowEndX = minX + w - 10;
+    const arrowEndY = minY + h1 / 2;
+
+    const arrowD = `M ${arrowStartX} ${arrowStartY} L ${arrowCornerX} ${arrowCornerY} L ${arrowEndX} ${arrowEndY} M ${arrowEndX - 6} ${arrowEndY - 4} L ${arrowEndX} ${arrowEndY} M ${arrowEndX - 6} ${arrowEndY + 4} L ${arrowEndX} ${arrowEndY}`;
+    group.appendChild(createSvgElement('path', {
+      d: arrowD,
+      stroke: 'rgba(0,0,0,0.45)',
+      fill: 'none',
+      'stroke-width': 1.5,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
     }));
+
+  } else {
+    // 基础矩形背景 (straight, ushape, spiral, floating)
+    const rect = createSvgElement('rect', {
+      x: minX,
+      y: minY,
+      width: w,
+      height: h,
+      rx: 4,
+      fill: fillColor
+    });
+    group.appendChild(rect);
+
+    if (subtype === 'straight') {
+      const stepsCount = stairs.steps || 12;
+      for (let i = 1; i < stepsCount; i++) {
+        const y = minY + (h / stepsCount) * i;
+        group.appendChild(createSvgElement('line', {
+          x1: minX, y1: y,
+          x2: minX + w, y2: y,
+          class: 'stairs-step-line'
+        }));
+      }
+      group.appendChild(createSvgElement('path', {
+        d: `M ${centerX} ${minY + h * 0.85} L ${centerX} ${minY + h * 0.15} M ${centerX - 5} ${minY + h * 0.25} L ${centerX} ${minY + h * 0.15} M ${centerX + 5} ${minY + h * 0.25} L ${centerX} ${minY + h * 0.15}`,
+        stroke: 'rgba(0,0,0,0.45)',
+        fill: 'none',
+        'stroke-width': 1.5,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+
+    } else if (subtype === 'ushape') {
+      const totalSteps = stairs.steps || 12;
+      const halfSteps = Math.floor(totalSteps / 2);
+      const slotW = stairs.uSlotWidth ?? 0;
+      const slotSvgW = w * (slotW / (stairs.width || 2));
+      const landDepth = Math.max(0.4, (stairs.depth || 3) - (stairs.uVoidLength ?? 2));
+      const landSvgH = h * (landDepth / (stairs.depth || 3));
+
+      const wStep = (w - slotSvgW) / 2;
+
+      // 绘制中央隔缝
+      if (slotSvgW > 0.5) {
+        group.appendChild(createSvgElement('rect', {
+          x: minX + wStep, y: minY + landSvgH,
+          width: slotSvgW, height: h - landSvgH,
+          fill: 'rgba(0,0,0,0.06)'
+        }));
+      } else {
+        group.appendChild(createSvgElement('line', {
+          x1: centerX, y1: minY + landSvgH,
+          x2: centerX, y2: minY + h,
+          stroke: 'rgba(0,0,0,0.25)',
+          'stroke-width': 1
+        }));
+      }
+
+      // 第一跑（左侧梯段，向下到达底部）
+      for (let i = 1; i <= halfSteps; i++) {
+        const y = minY + landSvgH + ((h - landSvgH) / halfSteps) * i;
+        group.appendChild(createSvgElement('line', {
+          x1: minX, y1: y,
+          x2: minX + wStep, y2: y,
+          class: 'stairs-step-line'
+        }));
+      }
+
+      // 第二跑（右侧梯段，平分）
+      for (let i = 1; i <= halfSteps; i++) {
+        const y = minY + landSvgH + ((h - landSvgH) / halfSteps) * i;
+        group.appendChild(createSvgElement('line', {
+          x1: minX + wStep + slotSvgW, y1: y,
+          x2: minX + w, y2: y,
+          class: 'stairs-step-line'
+        }));
+      }
+      // U 型折返引导指示箭头
+      const leftArrowX = minX + wStep / 2;
+      const rightArrowX = minX + w - wStep / 2;
+      const arrowTopY = minY + landSvgH / 2;
+      const arrowBottomY = minY + h - 10;
+
+      const arrowD = `M ${leftArrowX} ${arrowBottomY} L ${leftArrowX} ${arrowTopY} C ${leftArrowX} ${minY + 4}, ${rightArrowX} ${minY + 4}, ${rightArrowX} ${arrowTopY} L ${rightArrowX} ${arrowBottomY} M ${rightArrowX - 5} ${arrowBottomY - 6} L ${rightArrowX} ${arrowBottomY} M ${rightArrowX + 5} ${arrowBottomY - 6} L ${rightArrowX} ${arrowBottomY}`;
+
+      group.appendChild(createSvgElement('path', {
+        d: arrowD,
+        stroke: 'rgba(0,0,0,0.45)',
+        fill: 'none',
+        'stroke-width': 1.5,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+
+    } else if (subtype === 'spiral') {
+      const r = Math.min(w, h) / 2;
+      // 外包圆界
+      group.appendChild(createSvgElement('circle', {
+        cx: centerX, cy: centerY,
+        r: r - 2,
+        stroke: 'rgba(0,0,0,0.2)',
+        fill: 'none',
+        'stroke-width': 1
+      }));
+
+      const stepsCount = stairs.steps || 12;
+      const spiralDeg = stairs.spiralDegrees ?? 360;
+      const totalRad = (spiralDeg * Math.PI) / 180;
+      const startAngle = Math.PI / 2; // 起始于 6 点钟方向 (正下方)
+
+      // 踏步分割线（从 6 点钟方向开始，逆时针根据 spiralDeg 划分）
+      for (let i = 0; i <= stepsCount; i++) {
+        const ang = startAngle - (i / stepsCount) * totalRad;
+        const innerR = r * 0.15;
+        const outerR = r - 2;
+        group.appendChild(createSvgElement('line', {
+          x1: centerX + innerR * Math.cos(ang),
+          y1: centerY + innerR * Math.sin(ang),
+          x2: centerX + outerR * Math.cos(ang),
+          y2: centerY + outerR * Math.sin(ang),
+          class: 'stairs-step-line'
+        }));
+      }
+
+      // 中心柱
+      group.appendChild(createSvgElement('circle', {
+        cx: centerX, cy: centerY,
+        r: r * 0.15,
+        fill: 'rgba(0,0,0,0.3)',
+        stroke: 'none'
+      }));
+      // 参数化动态螺旋指示箭头 (从 6 点钟方向起点逆时针环绕延伸至终点)
+      const rArrow = r * 0.55;
+      const sampleCount = 32;
+      let arrowD = '';
+
+      for (let k = 0; k <= sampleCount; k++) {
+        const t = k / sampleCount;
+        const ang = startAngle - t * totalRad;
+        const ax = centerX + rArrow * Math.cos(ang);
+        const ay = centerY + rArrow * Math.sin(ang);
+        if (k === 0) arrowD += `M ${ax} ${ay}`;
+        else arrowD += ` L ${ax} ${ay}`;
+      }
+
+      // 计算终点切线与法线向量以生成完美箭头尖端
+      const endAng = startAngle - totalRad;
+      const endX = centerX + rArrow * Math.cos(endAng);
+      const endY = centerY + rArrow * Math.sin(endAng);
+
+      const tanX = Math.sin(endAng); // 逆时针切线向量 X
+      const tanY = -Math.cos(endAng); // 逆时针切线向量 Y
+      const normX = -tanY;
+      const normY = tanX;
+
+      const headLen = 7;
+      const headW = 4.5;
+      const p1x = endX - headLen * tanX + headW * normX;
+      const p1y = endY - headLen * tanY + headW * normY;
+      const p2x = endX - headLen * tanX - headW * normX;
+      const p2y = endY - headLen * tanY - headW * normY;
+
+      arrowD += ` M ${p1x} ${p1y} L ${endX} ${endY} L ${p2x} ${p2y}`;
+
+      group.appendChild(createSvgElement('path', {
+        d: arrowD,
+        stroke: 'rgba(0,0,0,0.45)',
+        fill: 'none',
+        'stroke-width': 1.4,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+
+    } else if (subtype === 'floating') {
+      rect.setAttribute('fill', 'none');
+      rect.setAttribute('stroke', 'rgba(0,0,0,0.2)');
+      rect.setAttribute('stroke-dasharray', '3,3');
+
+      const stepsCount = stairs.steps || 12;
+      for (let i = 0; i < stepsCount; i++) {
+        const sy = minY + (h / stepsCount) * i + 2;
+        const sh = (h / stepsCount) - 4;
+        group.appendChild(createSvgElement('rect', {
+          x: minX + 2,
+          y: sy,
+          width: w - 4,
+          height: sh,
+          rx: 1,
+          fill: fillColor,
+          stroke: 'rgba(0,0,0,0.25)',
+          'stroke-width': 0.8
+        }));
+      }
+      group.appendChild(createSvgElement('line', {
+        x1: centerX, y1: minY,
+        x2: centerX, y2: minY + h,
+        stroke: 'rgba(0,0,0,0.35)',
+        'stroke-width': 3
+      }));
+
+      // 悬浮向上指示箭头
+      group.appendChild(createSvgElement('path', {
+        d: `M ${centerX} ${minY + h * 0.85} L ${centerX} ${minY + h * 0.15} M ${centerX - 5} ${minY + h * 0.25} L ${centerX} ${minY + h * 0.15} M ${centerX + 5} ${minY + h * 0.25} L ${centerX} ${minY + h * 0.15}`,
+        stroke: 'rgba(0,0,0,0.45)',
+        fill: 'none',
+        'stroke-width': 1.5,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+    }
   }
- 
+
   ctx.attachContextMenuTrigger(group, () => ({ type: 'stairs', id: stairs.id }));
   group.addEventListener('pointerdown', (event) => ctx.beginStructureDrag(event, 'stairs', stairs.id));
   group.addEventListener('click', (event) => {

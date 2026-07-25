@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as BABYLON from '@babylonjs/core';
-import { createEditor, Blueprint3DTestMap, EditorFacade, getFurnitureThumbnailUrl, SKY_TEXTURE_URL } from '../src/index.js';
+import { createEditor, Blueprint3DTestMap, EditorFacade, getFurnitureThumbnailUrl, SKY_TEXTURE_URL, buildFenceGeometry } from '../src/index.js';
 
 test('Consumer API: public asset URLs do not require source-directory imports', () => {
   assert.equal(getFurnitureThumbnailUrl('chair'), './src/furniture/image/chair.png');
@@ -459,6 +459,66 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
 
   editor.executeCommand('deleteFence', { fenceId: fence.id });
   assert.equal(editor.getEntity('fence', fence.id), null, '应该成功删除围栏');
+
+  scene.dispose();
+  engine.dispose();
+});
+
+test('Consumer API: editor.add 与 buildFenceGeometry 兼容性测试', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const editor = createEditor({ scene, floorplan: {} });
+
+  assert.equal(typeof editor.add, 'function', 'EditorFacade 必须暴露 add 方法门面');
+
+  const group = new BABYLON.TransformNode("test_group", scene);
+  const tempFence = { id: 'fence_test_1', subtype: 'picket_wood', height: 1.1, thickness: 0.1 };
+  const material = new BABYLON.StandardMaterial("mat", scene);
+
+  assert.doesNotThrow(() => {
+    buildFenceGeometry(editor, group, tempFence, material, 2.0, 1.1, 0.1);
+  }, '使用 editor 作为 registry 调用 buildFenceGeometry 不应抛出 registry.add is not a function 异常');
+
+  assert.ok(group.getChildMeshes().length > 0, '应该成功构建栅栏网格子节点');
+
+  scene.dispose();
+  engine.dispose();
+});
+
+test('Consumer API: 楼梯不同侧边扶手 (sectionId) 独立删除与跟随楼梯移动测试', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const editor = createEditor({
+    scene,
+    floorplan: {
+      currentFloorId: 'f1',
+      floors: [{ id: 'f1', level: 0, wallHeight: 3 }],
+      stairs: [{ id: 'st1', subtype: 'curved', x: 2, z: 2, width: 1.2, depth: 3.2, rotation: 0 }],
+      fences: []
+    }
+  });
+
+  // 1. 测试绑定不同侧边 sectionId 扶手创建
+  editor.executeCommand('addFence', { id: 'fc_out1', stairsId: 'st1', sectionId: 'st1_outer', from: [1, 1], to: [1, 2] });
+  editor.executeCommand('addFence', { id: 'fc_out2', stairsId: 'st1', sectionId: 'st1_outer', from: [1, 2], to: [1, 3] });
+  editor.executeCommand('addFence', { id: 'fc_in1', stairsId: 'st1', sectionId: 'st1_inner', from: [0.5, 1], to: [0.5, 2] });
+
+  const outerBefore = editor.getEntities('fence').filter(f => f.sectionId === 'st1_outer');
+  const innerBefore = editor.getEntities('fence').filter(f => f.sectionId === 'st1_inner');
+  assert.equal(outerBefore.length, 2, '外侧连续段应该包含 2 个成员');
+  assert.equal(innerBefore.length, 1, '内侧段应该包含 1 个成员');
+
+  // 2. 测试独立删除外侧扶手时，内侧扶手不受任何影响
+  editor.executeCommand('deleteFence', { fenceId: 'fc_out1' });
+  const outerAfterDelete = editor.getEntities('fence').filter(f => f.sectionId === 'st1_outer');
+  const innerAfterDelete = editor.getEntities('fence').filter(f => f.sectionId === 'st1_inner');
+  assert.equal(outerAfterDelete.length, 0, '删除外侧扶手任意小段时，整个外侧扶手被连带删除');
+  assert.equal(innerAfterDelete.length, 1, '内侧扶手应该不受影响，独立完整保留');
+
+  // 3. 测试移动楼梯 updateStairs 时所有留存扶手自动跟随重算
+  editor.executeCommand('updateStairs', { stairsId: 'st1', patch: { x: 5, z: 5, rotation: Math.PI / 4 } });
+  const innerAfterMove = editor.getEntities('fence').filter(f => f.sectionId === 'st1_inner');
+  assert.ok(innerAfterMove.length > 0, '移动楼梯后内侧扶手自动跟随同步计算并留在楼梯上');
 
   scene.dispose();
   engine.dispose();

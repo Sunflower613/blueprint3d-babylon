@@ -574,8 +574,9 @@ export function getStairsRailingSegments(stairs, testMap) {
     const rot = stairs.rotation || 0;
     const cos = Math.cos(rot);
     const sin = Math.sin(rot);
-    const wx = (stairs.x || 0) + lx * cos - lz * sin;
-    const wz = (stairs.z || 0) + lx * sin + lz * cos;
+    // 与 Babylon.js 左手坐标系 (group.rotation.y) 保持严格的 3D 转换一致
+    const wx = (stairs.x || 0) + lx * cos + lz * sin;
+    const wz = (stairs.z || 0) - lx * sin + lz * cos;
     return [wx, wz];
   }
 
@@ -587,6 +588,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     const yOffset = height / 2;
 
     segments.push({
+      sectionId: `${stairs.id}_left`,
       from: getWordPos(-width / 2, -depth / 2),
       to: getWordPos(-width / 2, depth / 2),
       tilt,
@@ -594,6 +596,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_right`,
       from: getWordPos(width / 2, -depth / 2),
       to: getWordPos(width / 2, depth / 2),
       tilt,
@@ -613,6 +616,7 @@ export function getStairsRailingSegments(stairs, testMap) {
 
     // 第一段楼梯
     segments.push({
+      sectionId: `${stairs.id}_l1_left`,
       from: getWordPos(-width / 2, -(runBeforeCorner + width) / 2),
       to: getWordPos(-width / 2, landingZ - width / 2),
       tilt: tilt1,
@@ -620,6 +624,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_l1_right`,
       from: getWordPos(width / 2, -(runBeforeCorner + width) / 2),
       to: getWordPos(width / 2, landingZ - width / 2),
       tilt: tilt1,
@@ -634,6 +639,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     const lxEnd = (width / 2 + runAfterCorner) * flipX;
 
     segments.push({
+      sectionId: `${stairs.id}_l2_front`,
       from: getWordPos(lxStart, landingZ + width / 2),
       to: getWordPos(lxEnd, landingZ + width / 2),
       tilt: tilt2,
@@ -641,6 +647,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_l2_back`,
       from: getWordPos(lxStart, landingZ - width / 2),
       to: getWordPos(lxEnd, landingZ - width / 2),
       tilt: tilt2,
@@ -660,6 +667,7 @@ export function getStairsRailingSegments(stairs, testMap) {
 
     // 第一段楼梯
     segments.push({
+      sectionId: `${stairs.id}_u1_outer`,
       from: getWordPos(-width / 2, -depth / 2),
       to: getWordPos(-width / 2, depth / 2 - landDepth),
       tilt: tilt1,
@@ -667,6 +675,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_u1_inner`,
       from: getWordPos(-slotW / 2, -depth / 2),
       to: getWordPos(-slotW / 2, depth / 2 - landDepth),
       tilt: tilt1,
@@ -678,6 +687,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     const yOffset2 = landHeight + (height - landHeight) / 2;
 
     segments.push({
+      sectionId: `${stairs.id}_u2_inner`,
       from: getWordPos(slotW / 2, depth / 2 - landDepth),
       to: getWordPos(slotW / 2, -depth / 2),
       tilt: tilt2,
@@ -685,6 +695,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_u2_outer`,
       from: getWordPos(width / 2, depth / 2 - landDepth),
       to: getWordPos(width / 2, -depth / 2),
       tilt: tilt2,
@@ -693,6 +704,7 @@ export function getStairsRailingSegments(stairs, testMap) {
 
     // 平台
     segments.push({
+      sectionId: `${stairs.id}_landing`,
       from: getWordPos(-width / 2, depth / 2),
       to: getWordPos(width / 2, depth / 2),
       tilt: 0,
@@ -722,10 +734,13 @@ export function getStairsRailingSegments(stairs, testMap) {
       const yOffset = (y1 + y2) / 2;
 
       segments.push({
+        sectionId: `${stairs.id}_outer`,
         from: fromPos,
         to: toPos,
         tilt: tilt,
-        yOffset: yOffset
+        yOffset: yOffset,
+        skipStartPost: false,
+        skipEndPost: i < N - 1
       });
     }
   } else if (subtype === 'curved') {
@@ -753,10 +768,13 @@ export function getStairsRailingSegments(stairs, testMap) {
       const oyOffset = (y1 + y2) / 2;
 
       segments.push({
+        sectionId: `${stairs.id}_outer`,
         from: ofrom,
         to: oto,
         tilt: otilt,
-        yOffset: oyOffset
+        yOffset: oyOffset,
+        skipStartPost: false,
+        skipEndPost: i < N - 1
       });
 
       // 内侧
@@ -772,10 +790,13 @@ export function getStairsRailingSegments(stairs, testMap) {
       const iyOffset = (y1 + y2) / 2;
 
       segments.push({
+        sectionId: `${stairs.id}_inner`,
         from: ifrom,
         to: ito,
         tilt: itilt,
-        yOffset: iyOffset
+        yOffset: iyOffset,
+        skipStartPost: false,
+        skipEndPost: i < N - 1
       });
     }
   } else {

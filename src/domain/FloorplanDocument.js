@@ -3,6 +3,7 @@ import { getFurnitureDefinition, hasFurnitureDefinition } from './FurnitureCatal
 import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/roomShapes.js';
 import { normalizeOpeningShape } from '../openings/openingShapes.js';
 import { MaterialResolver } from './MaterialResolver.js';
+import { getStairsRailingSegments } from '../editor/Topology.js';
 
 const { materialPreviewColor, normalizeMaterialDescriptor } = MaterialResolver;
 
@@ -14,6 +15,79 @@ const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
 const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
 
 const WALL_SURFACE_FIELD_MAP = MaterialResolver.WALL_SURFACE_FIELD_MAP;
+
+export const STAIR_SUBTYPE_DEFAULTS = {
+  straight: {
+    width: 1,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    color: '#f5b984',
+    material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
+    sideColor: '#f9fbff',
+    sideMaterial: { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' }
+  },
+  lshape: {
+    width: 1,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    cornerStep: 6,
+    runBeforeCorner: 2,
+    runAfterCorner: 2,
+    color: '#f5b984',
+    material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
+    sideColor: '#f9fbff',
+    sideMaterial: { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' }
+  },
+  ushape: {
+    width: 2,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    cornerStep: 4,
+    runBeforeCorner: 2,
+    runAfterCorner: 2,
+    uSlotWidth: 0,
+    uVoidLength: 2,
+    color: '#f5b984',
+    material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
+    sideColor: '#f9fbff',
+    sideMaterial: { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' }
+  },
+  spiral: {
+    width: 3,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    spiralDegrees: 360,
+    color: '#f5b984',
+    material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
+    sideColor: '#d8c0a0',
+    sideMaterial: { id: 'paint-d8c0a0', name: '吸取颜色 (#d8c0a0)', category: 'paint', kind: 'paint', color: '#d8c0a0' }
+  },
+  curved: {
+    width: 1,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    spiralDegrees: 90,
+    color: '#f5b984',
+    material: '#f5b984',
+    sideColor: '#f9fbff',
+    sideMaterial: { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' }
+  },
+  floating: {
+    width: 1,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    color: '#f5b984',
+    material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
+    sideColor: '#d8c0a0',
+    sideMaterial: '#d8c0a0'
+  }
+};
 
 export const FENCE_SUBTYPE_DEFAULTS = {
   picket_wood: {
@@ -307,27 +381,29 @@ export class FloorplanDocument {
     normalized.stairs.forEach((stairs) => {
       stairs.id ||= `stairs_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       stairs.floorId = normalizeFloorId(stairs.floorId || normalized.currentFloorId || DEFAULT_FLOOR_ID, validFloorIds, fallbackFloorId);
+      stairs.subtype ||= 'straight';
+      const subDef = STAIR_SUBTYPE_DEFAULTS[stairs.subtype] || STAIR_SUBTYPE_DEFAULTS.straight;
+
       stairs.x = toFiniteNumber(stairs.x, 0);
       stairs.z = toFiniteNumber(stairs.z, 0);
-      stairs.width = toFinitePositive(stairs.width, 1.2, 0.6);
-      stairs.depth = toFinitePositive(stairs.depth, 3.2, 1.2);
-      stairs.height = toFinitePositive(stairs.height, normalized.storyHeight, 1);
-      stairs.subtype ||= 'straight';
+      stairs.width = toFinitePositive(stairs.width, subDef.width, 0.6);
+      stairs.depth = toFinitePositive(stairs.depth, subDef.depth, 1.2);
+      stairs.height = toFinitePositive(stairs.height, normalized.storyHeight || subDef.height, 1);
       stairs.rotation = toFiniteNumber(stairs.rotation, 0);
-      stairs.color ||= '#d8c0a0';
-      stairs.material ||= stairs.color;
-      stairs.sideColor ||= stairs.color || '#d8c0a0';
-      stairs.sideMaterial ||= stairs.sideColor;
+      stairs.color ||= subDef.color;
+      stairs.material ||= subDef.material || stairs.color;
+      stairs.sideColor ||= subDef.sideColor || stairs.color;
+      stairs.sideMaterial ||= subDef.sideMaterial || stairs.sideColor;
       stairs.sideHidden = !!stairs.sideHidden;
       stairs.locked = !!stairs.locked;
-      stairs.steps = Math.max(3, Math.min(32, toFiniteNumber(stairs.steps, 9)));
+      stairs.steps = Math.max(3, Math.min(32, toFiniteNumber(stairs.steps, subDef.steps)));
       stairs.mirrored = !!stairs.mirrored;
-      stairs.spiralDegrees = toFiniteNumber(stairs.spiralDegrees ?? (stairs.subtype === 'curved' ? 90 : 360), stairs.subtype === 'curved' ? 90 : 360);
-      stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, toFiniteNumber(stairs.cornerStep ?? Math.floor(stairs.steps / 2), Math.floor(stairs.steps / 2))));
-      stairs.runBeforeCorner = toFinitePositive(stairs.runBeforeCorner, Math.max(0.2, stairs.depth - stairs.width), 0.2);
-      stairs.runAfterCorner = toFinitePositive(stairs.runAfterCorner, Math.max(0.2, stairs.depth - stairs.width), 0.2);
-      stairs.uSlotWidth = toFiniteNumber(stairs.uSlotWidth ?? 0.1, 0.1);
-      stairs.uVoidLength = toFiniteNumber(stairs.uVoidLength ?? (stairs.depth - 1), stairs.depth - 1);
+      stairs.spiralDegrees = toFiniteNumber(stairs.spiralDegrees ?? subDef.spiralDegrees ?? (stairs.subtype === 'curved' ? 90 : 360), stairs.subtype === 'curved' ? 90 : 360);
+      stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, toFiniteNumber(stairs.cornerStep ?? subDef.cornerStep ?? Math.floor(stairs.steps / 2), Math.floor(stairs.steps / 2))));
+      stairs.runBeforeCorner = toFinitePositive(stairs.runBeforeCorner, subDef.runBeforeCorner ?? Math.max(0.2, stairs.depth - stairs.width), 0.2);
+      stairs.runAfterCorner = toFinitePositive(stairs.runAfterCorner, subDef.runAfterCorner ?? Math.max(0.2, stairs.depth - stairs.width), 0.2);
+      stairs.uSlotWidth = toFiniteNumber(stairs.uSlotWidth ?? subDef.uSlotWidth ?? 0, 0);
+      stairs.uVoidLength = toFiniteNumber(stairs.uVoidLength ?? subDef.uVoidLength ?? (stairs.depth - 1), 0.1);
     });
 
     normalized.fences.forEach((fence) => {
@@ -1086,25 +1162,37 @@ export class FloorplanDocument {
   }
 
   addStairs(partialStairs = {}) {
+    const subtype = partialStairs.subtype || 'straight';
+    const subDef = STAIR_SUBTYPE_DEFAULTS[subtype] || STAIR_SUBTYPE_DEFAULTS.straight;
+
+    const width = partialStairs.width || subDef.width;
+    const depth = partialStairs.depth || subDef.depth;
+    const height = partialStairs.height || subDef.height || this.floorplan.storyHeight;
+    const steps = partialStairs.steps || subDef.steps;
+
     const stairs = {
       id: partialStairs.id || `stairs_${Date.now()}`,
       floorId: partialStairs.floorId || this.floorplan.currentFloorId,
       x: partialStairs.x ?? 0,
       z: partialStairs.z ?? 0,
-      width: partialStairs.width || 1.2,
-      depth: partialStairs.depth || 3.2,
-      height: partialStairs.height || this.floorplan.storyHeight,
-      steps: partialStairs.steps || 9,
-      subtype: partialStairs.subtype || 'straight',
+      width,
+      depth,
+      height,
+      steps,
+      subtype,
       rotation: partialStairs.rotation || 0,
-      color: partialStairs.color || '#d8c0a0',
-      material: partialStairs.material || partialStairs.color || '#d8c0a0',
-      sideColor: partialStairs.sideColor || partialStairs.color || '#d8c0a0',
-      sideMaterial: partialStairs.sideMaterial || partialStairs.sideColor || partialStairs.color || '#d8c0a0',
-      sideHidden: !!partialStairs.sideHidden,
-      cornerStep: partialStairs.cornerStep,
-      runBeforeCorner: partialStairs.runBeforeCorner ?? Math.max(0.2, (partialStairs.depth || 3.2) - (partialStairs.width || 1.2)),
-      runAfterCorner: partialStairs.runAfterCorner ?? Math.max(0.2, (partialStairs.depth || 3.2) - (partialStairs.width || 1.2)),
+      color: partialStairs.color || subDef.color,
+      material: partialStairs.material || subDef.material || partialStairs.color || subDef.color,
+      sideColor: partialStairs.sideColor || subDef.sideColor,
+      sideMaterial: partialStairs.sideMaterial || subDef.sideMaterial || partialStairs.sideColor || subDef.sideColor,
+      sideHidden: partialStairs.sideHidden !== undefined ? !!partialStairs.sideHidden : !!subDef.sideHidden,
+      cornerStep: partialStairs.cornerStep !== undefined ? partialStairs.cornerStep : subDef.cornerStep,
+      runBeforeCorner: partialStairs.runBeforeCorner !== undefined ? partialStairs.runBeforeCorner : (subDef.runBeforeCorner ?? Math.max(0.2, depth - width)),
+      runAfterCorner: partialStairs.runAfterCorner !== undefined ? partialStairs.runAfterCorner : (subDef.runAfterCorner ?? Math.max(0.2, depth - width)),
+      uSlotWidth: partialStairs.uSlotWidth !== undefined ? partialStairs.uSlotWidth : subDef.uSlotWidth,
+      uVoidLength: partialStairs.uVoidLength !== undefined ? partialStairs.uVoidLength : subDef.uVoidLength,
+      spiralDegrees: partialStairs.spiralDegrees !== undefined ? partialStairs.spiralDegrees : subDef.spiralDegrees,
+      mirrored: !!partialStairs.mirrored,
       locked: !!partialStairs.locked
     };
     this.floorplan.stairs.push(stairs);
@@ -1134,7 +1222,51 @@ export class FloorplanDocument {
     stairs.sideColor ||= stairs.color || '#d8c0a0';
     stairs.sideMaterial ||= stairs.sideColor;
     stairs.sideHidden = !!stairs.sideHidden;
+    this.syncStairsRailing(stairsId);
     return stairs;
+  }
+
+  syncStairsRailing(stairsId) {
+    const stairs = this.getStairs(stairsId);
+    if (!stairs) return;
+
+    const boundFences = (this.floorplan.fences || []).filter(f => f.stairsId === stairsId);
+    if (boundFences.length === 0) return;
+
+    // 获取当前仍然存在的 segment 的 sectionId 集合
+    const existingSections = new Map();
+    boundFences.forEach(f => {
+      if (f.sectionId) existingSections.set(f.sectionId, f);
+    });
+
+    const fenceSubtype = boundFences[0].subtype || 'picket_wood';
+    const stairsOffset = this.getStairsElevationOffset(stairs);
+    const segments = getStairsRailingSegments(stairs, this);
+
+    this.floorplan.fences = (this.floorplan.fences || []).filter(f => f.stairsId !== stairsId);
+
+    segments.forEach(seg => {
+      if (existingSections.has(seg.sectionId)) {
+        const oldFence = existingSections.get(seg.sectionId);
+        this.addFence({
+          id: oldFence.id,
+          floorId: stairs.floorId,
+          stairsId: stairs.id,
+          sectionId: seg.sectionId,
+          from: seg.from,
+          to: seg.to,
+          subtype: oldFence.subtype || fenceSubtype,
+          material: oldFence.material,
+          color: oldFence.color,
+          frameColor: oldFence.frameColor,
+          panelColor: oldFence.panelColor,
+          tilt: seg.tilt,
+          yOffset: (seg.yOffset || 0) + stairsOffset,
+          skipStartPost: !!seg.skipStartPost,
+          skipEndPost: !!seg.skipEndPost
+        });
+      }
+    });
   }
 
   deleteStairs(stairsId) {
@@ -1142,6 +1274,7 @@ export class FloorplanDocument {
     if (!stairs || stairs.locked) return false;
     const before = this.floorplan.stairs.length;
     this.floorplan.stairs = this.floorplan.stairs.filter((stairs) => stairs.id !== stairsId);
+    this.floorplan.fences = (this.floorplan.fences || []).filter((f) => f.stairsId !== stairsId);
     return before !== this.floorplan.stairs.length;
   }
 
@@ -1150,8 +1283,10 @@ export class FloorplanDocument {
     const defaults = FENCE_SUBTYPE_DEFAULTS[subtype] || FENCE_SUBTYPE_DEFAULTS.picket_wood;
     const defaultColor = defaults.color;
     const fence = {
-      id: partialFence.id || `fence_${Date.now()}`,
+      id: partialFence.id || `fence_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       floorId: partialFence.floorId || this.floorplan.currentFloorId,
+      stairsId: partialFence.stairsId || null,
+      sectionId: partialFence.sectionId || null,
       from: partialFence.from ? [...partialFence.from] : [0, 0],
       to: partialFence.to ? [...partialFence.to] : [2, 0],
       subtype,
@@ -1165,7 +1300,9 @@ export class FloorplanDocument {
       panelMaterial: partialFence.panelMaterial || partialFence.material || partialFence.color || defaults.panelColor,
       locked: !!partialFence.locked,
       tilt: Number(partialFence.tilt || 0),
-      yOffset: Number(partialFence.yOffset || 0)
+      yOffset: Number(partialFence.yOffset || 0),
+      skipStartPost: !!partialFence.skipStartPost,
+      skipEndPost: !!partialFence.skipEndPost
     };
     this.floorplan.fences.push(fence);
     return fence;
@@ -1224,9 +1361,22 @@ export class FloorplanDocument {
     const fence = this.getFence(fenceId);
     if (!fence || fence.locked) return false;
     const before = this.floorplan.fences.length;
-    this.floorplan.fences = this.floorplan.fences.filter((f) => f.id !== fenceId);
-    this.floorplan.fenceGates = (this.floorplan.fenceGates || []).filter((gate) => gate.fenceId !== fenceId);
-    return before !== this.floorplan.fences.length;
+
+    if (fence.sectionId) {
+      const secId = fence.sectionId;
+      const boundFenceIds = new Set(this.floorplan.fences.filter(f => f.sectionId === secId).map(f => f.id));
+      this.floorplan.fences = this.floorplan.fences.filter((f) => f.sectionId !== secId);
+      this.floorplan.fenceGates = (this.floorplan.fenceGates || []).filter((gate) => !boundFenceIds.has(gate.fenceId));
+    } else if (fence.stairsId) {
+      const stairsId = fence.stairsId;
+      const boundFenceIds = new Set(this.floorplan.fences.filter(f => f.stairsId === stairsId).map(f => f.id));
+      this.floorplan.fences = this.floorplan.fences.filter((f) => f.stairsId !== stairsId);
+      this.floorplan.fenceGates = (this.floorplan.fenceGates || []).filter((gate) => !boundFenceIds.has(gate.fenceId));
+    } else {
+      this.floorplan.fences = this.floorplan.fences.filter((f) => f.id !== fenceId);
+      this.floorplan.fenceGates = (this.floorplan.fenceGates || []).filter((gate) => gate.fenceId !== fenceId);
+    }
+    return true;
   }
 
   addFenceGate(partialFenceGate = {}) {

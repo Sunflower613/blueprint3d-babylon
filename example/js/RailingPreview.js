@@ -194,21 +194,44 @@ export function update3DStairsRailingPreview(stairsId, fenceSubtype) {
   Context.testMap.attachRuntimeOverlay(Context.stairsRailingPreview3DGroup);
 }
 
+export function removeRailingFromStairs(stairsId) {
+  const fences = Context.testMap.getEntities ? Context.testMap.getEntities('fence') : [];
+  const boundFences = fences.filter(f => f.stairsId === stairsId);
+  if (boundFences.length > 0) {
+    Context.testMap.deleteFence(boundFences[0].id);
+  }
+}
+
 export function addRailingToStairs(stairsId, fenceSubtype) {
   const stairs = Context.testMap.getEntity('stairs', stairsId);
   if (!stairs) return;
 
+  // 添加前先移除该楼梯已有的绑定扶手
+  removeRailingFromStairs(stairsId);
+
+  const stairsOffset = Context.testMap.getEntityElevationOffset ? Context.testMap.getEntityElevationOffset('stairs', stairs) : 0;
   const segments = Topology.getStairsRailingSegments(stairs, Context.testMap);
   segments.forEach(seg => {
     Context.testMap.addFence({
       floorId: stairs.floorId,
+      stairsId: stairs.id,
+      sectionId: seg.sectionId,
       from: seg.from,
       to: seg.to,
       subtype: fenceSubtype,
       tilt: seg.tilt,
-      yOffset: seg.yOffset
+      yOffset: (seg.yOffset || 0) + stairsOffset,
+      skipStartPost: !!seg.skipStartPost,
+      skipEndPost: !!seg.skipEndPost,
+      rebuild: false
     });
   });
+
+  if (typeof Context.testMap.buildFences === 'function') {
+    Context.testMap.buildFences();
+  } else if (typeof Context.testMap.build === 'function') {
+    Context.testMap.build();
+  }
 }
 
 export function clearDrawWallPreview() {

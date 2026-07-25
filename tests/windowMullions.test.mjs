@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import * as BABYLON from '@babylonjs/core';
 import { FloorplanDocument } from '../src/domain/FloorplanDocument.js';
 import { buildWindowMullions } from '../src/openings/geometry.js';

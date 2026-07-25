@@ -18,6 +18,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
   const scene = registry.scene;
   const skipStartPost = !!fence.skipStartPost;
   const skipEndPost = !!fence.skipEndPost;
+  const tilt = fence.tilt || 0;
 
   // 建立一个点击碰撞箱代理长方体 (pick_proxy)，防止射线穿过空隙 (NEW)
   const proxyThickness = Math.max(0.12, thickness * 1.2);
@@ -85,7 +86,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: postHeight,
         depth: postWidth
       }, {
-        position: { x: -length / 2, y: postHeight / 2, z: 0 }
+        position: { x: -length / 2, y: postHeight / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -101,7 +103,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: postHeight,
         depth: postWidth
       }, {
-        position: { x: length / 2, y: postHeight / 2, z: 0 }
+        position: { x: length / 2, y: postHeight / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -117,7 +120,9 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     const activeStartPostWidth = skipStartPost ? 0 : postWidth;
     const activeEndPostWidth = skipEndPost ? 0 : postWidth;
     const totalRailOffset = (activeStartPostWidth + activeEndPostWidth) / 2;
-    const railWidth = length - totalRailOffset;
+    // 若为连续分段，给横梁增加微小重叠延伸量，确保转角夹角处平滑穿插闭合
+    const railOverlap = (skipStartPost || skipEndPost) ? 0.04 : 0;
+    const railWidth = length - totalRailOffset + railOverlap;
     const railX = (activeStartPostWidth - activeEndPostWidth) / 4;
 
     const railBottom = createBox(registry, `rail_bottom_${fence.id}`, {
@@ -148,13 +153,15 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     });
     railTop.metadata = { blueprintFenceComponentId: 'frame' };
 
-    // 垂直尖顶木板，每隔 0.25 米排一块
+    // 垂直尖顶木板，每隔 0.22 米排一块
     const picketSpacing = 0.22;
     const totalPicketOffset = activeStartPostWidth + activeEndPostWidth;
     const activeLen = length - totalPicketOffset;
-    const count = Math.max(1, Math.round(activeLen / picketSpacing));
+    // 微小连续段不强制生成过密的立柱，避免两端挤出多余的独立柱
+    const rawCount = Math.round(activeLen / picketSpacing);
+    const count = (skipStartPost && skipEndPost && activeLen < picketSpacing * 0.8) ? Math.floor(activeLen / picketSpacing) : Math.max(1, rawCount);
     const picketXOffset = (activeStartPostWidth - activeEndPostWidth) / 4;
-    const startX = picketXOffset - (count - 1) * picketSpacing / 2;
+    const startX = count > 1 ? (picketXOffset - (count - 1) * picketSpacing / 2) : picketXOffset;
     
     const picketsToMerge = [];
     for (let i = 0; i < count; i++) {
@@ -166,6 +173,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         depth: 0.02
       }, scene);
       picket.position.set(curX, (height * 0.9) / 2, railThickness / 2 + 0.01);
+      if (tilt) picket.rotation.z = -tilt;
       picketsToMerge.push(picket);
 
       // 尖顶部分 (旋转 45 度的正方体拼接)
@@ -175,7 +183,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         depth: 0.02
       }, scene);
       picketTop.position.set(curX, height * 0.9 + 0.02, railThickness / 2 + 0.01);
-      picketTop.rotation.z = Math.PI / 4;
+      picketTop.rotation.z = Math.PI / 4 - tilt;
       picketsToMerge.push(picketTop);
     }
 
@@ -206,7 +214,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: postHeight,
         depth: postWidth
       }, {
-        position: { x: -length / 2, y: postHeight / 2, z: 0 }
+        position: { x: -length / 2, y: postHeight / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -222,7 +231,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: postHeight,
         depth: postWidth
       }, {
-        position: { x: length / 2, y: postHeight / 2, z: 0 }
+        position: { x: length / 2, y: postHeight / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -277,6 +287,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: height * 0.95
       }, scene);
       bar.position.set(curX, (height * 0.95) / 2, 0);
+      if (tilt) bar.rotation.z = -tilt;
       barsToMerge.push(bar);
 
       // 金色枪尖球
@@ -285,6 +296,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         segments: 8
       }, scene);
       spearBall.position.set(curX, height * 0.95, 0);
+      if (tilt) spearBall.rotation.z = -tilt;
       goldsToMerge.push(spearBall);
 
       // 金色尖锥
@@ -295,6 +307,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         tessellation: 4
       }, scene);
       spearPoint.position.set(curX, height * 0.95 + 0.03, 0);
+      if (tilt) spearPoint.rotation.z = -tilt;
       goldsToMerge.push(spearPoint);
     }
 
@@ -337,7 +350,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: postRadius * 2,
         height: height
       }, {
-        position: { x: -length / 2, y: height / 2, z: 0 }
+        position: { x: -length / 2, y: height / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -353,7 +367,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: postRadius * 2,
         height: height
       }, {
-        position: { x: length / 2, y: height / 2, z: 0 }
+        position: { x: length / 2, y: height / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -493,7 +508,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: pHeight + 0.04,
         depth: pWidth
       }, {
-        position: { x: curX, y: wallH + pHeight / 2, z: 0 }
+        position: { x: curX, y: wallH + pHeight / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -506,7 +522,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       const pillarBall = createSphere(registry, `pillar_ball_${fence.id}_${i}`, {
         diameter: pWidth * 0.72
       }, {
-        position: { x: curX, y: wallH + pHeight + 0.04 + (pWidth * 0.36), z: 0 }
+        position: { x: curX, y: wallH + pHeight + 0.04 + (pWidth * 0.36), z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -561,7 +578,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
             height: pHeight * 0.6,
             depth: 0.015
           }, {
-            position: { x: innerX, y: wallH + pHeight * 0.5, z: 0 }
+            position: { x: innerX, y: wallH + pHeight * 0.5, z: 0 },
+            rotation: { z: -tilt }
           }, {
             material: panelMaterial,
             parent: group,
@@ -586,7 +604,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: mainBambooRad * 2.2,
         height: height * 1.05
       }, {
-        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
+        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -602,7 +621,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: mainBambooRad * 2.2,
         height: height * 1.05
       }, {
-        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
+        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -677,7 +697,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         height: randH
       }, {
         position: { x: curX, y: randH / 2, z: 0 },
-        rotation: { z: angle }
+        rotation: { z: angle - tilt }
       }, {
         material: panelMaterial,
         parent: group,
@@ -694,7 +714,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
           height: 0.015
         }, {
           position: { x: curX, y: height * 0.5, z: 0 },
-          rotation: { x: Math.PI / 2 }
+          rotation: { x: Math.PI / 2, z: -tilt }
         }, {
           material: ropeMaterial,
           parent: group
@@ -720,7 +740,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: postRad * 2,
         height: height
       }, {
-        position: { x: curX, y: height / 2, z: 0 }
+        position: { x: curX, y: height / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -783,7 +804,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
               height: 0.035,
               depth: 0.028
             }, {
-              position: { x: clipX, y: clipY, z: 0 }
+              position: { x: clipX, y: clipY, z: 0 },
+              rotation: { z: -tilt }
             }, {
               material: frameMaterial,
               parent: group
@@ -823,7 +845,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: postRad * 2,
         height: height * 1.05
       }, {
-        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 }
+        position: { x: -length / 2, y: (height * 1.05) / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -835,7 +858,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       const postStartCap = createSphere(registry, `post_start_cap_${fence.id}`, {
         diameter: postRad * 2.2
       }, {
-        position: { x: -length / 2, y: height * 1.05, z: 0 }
+        position: { x: -length / 2, y: height * 1.05, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group
@@ -849,7 +873,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
         diameterBottom: postRad * 2,
         height: height * 1.05
       }, {
-        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 }
+        position: { x: length / 2, y: (height * 1.05) / 2, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group,
@@ -861,7 +886,8 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
       const postEndCap = createSphere(registry, `post_end_cap_${fence.id}`, {
         diameter: postRad * 2.2
       }, {
-        position: { x: length / 2, y: height * 1.05, z: 0 }
+        position: { x: length / 2, y: height * 1.05, z: 0 },
+        rotation: { z: -tilt }
       }, {
         material: frameMaterial,
         parent: group
@@ -909,23 +935,7 @@ export function buildFenceGeometry(registry, group, fence, material, length, hei
     });
   }
 
-  // 后处理：如果栅栏存在倾角(tilt)，将所有垂直构件的局部Z轴旋转抵消该倾角，使其保持直立状态 (NEW)
-  const tilt = fence.tilt || 0;
-  if (tilt !== 0) {
-    group.getChildMeshes().forEach(mesh => {
-      const name = mesh.name.toLowerCase();
-      const isVertical = name.includes('post') ||
-                         name.includes('picket') ||
-                         name.includes('bar') ||
-                         name.includes('spear') ||
-                         name.includes('pillar') ||
-                         name.includes('knot') ||
-                         name.includes('clip');
-      if (isVertical) {
-        mesh.rotation.z = (mesh.rotation.z || 0) - tilt;
-      }
-    });
-  }
+
 
   // 保证所有构件都是可点击的（供 3D 粉刷精确点中）
   group.getChildMeshes().forEach(mesh => {

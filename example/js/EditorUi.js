@@ -1871,7 +1871,8 @@ function applyStyleToSwatch(button, mat) {
     if (src) {
       const resolved = resolveMaterialAssetDescriptor(material);
       const finalSrc = resolved?.src || src;
-      button.style.backgroundImage = `url(${finalSrc})`;
+      button.style.backgroundImage = `linear-gradient(${c}cc, ${c}cc), url(${finalSrc})`;
+      button.style.backgroundBlendMode = 'multiply';
       button.style.backgroundPosition = 'center';
       button.style.backgroundSize = 'cover';
     }

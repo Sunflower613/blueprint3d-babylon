@@ -1,6 +1,9 @@
 import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
+const SKYBOX_SIZE = 1000.0;
+const SKYBOX_HORIZON_OFFSET = SKYBOX_SIZE * 0.1;
+
 function createSolidColorDataUrl(colorHex) {
   if (typeof document === 'undefined') {
     return 'data:image/png;base64,iVBORw0KGgoAAAANSU5EUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -523,9 +526,10 @@ export class Viewer3D {
     if (enabled) {
       if (!this.skybox) {
         // 创建 PhotoDome 360 度全景天空球
-        this.skybox = new BABYLON.PhotoDome('skyBox', SKY_TEXTURE_URL, { resolution: 32, size: 1000.0 }, this.scene);
+        this.skybox = new BABYLON.PhotoDome('skyBox', SKY_TEXTURE_URL, { resolution: 32, size: SKYBOX_SIZE }, this.scene);
         if (this.skybox.mesh) {
           this.skybox.mesh.rotation.x = Math.PI; // 沿 X 轴旋转 180 度，修正贴图垂直翻转，确保蓝天白云在上方
+          this.skybox.mesh.position.y = SKYBOX_HORIZON_OFFSET; // 抬高全景地平线，使天空贴图与草地边界对齐
           this.skybox.mesh.isPickable = false;
         }
         if (this.skybox.photoTexture) {

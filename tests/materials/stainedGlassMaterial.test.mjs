@@ -417,14 +417,14 @@ test('emissive material presets and textures keep their settings and emit light'
     const textureEmissive = createBlueprintMaterial(scene, 'texture_emissive', {
       kind: 'emissive',
       src: textureDataUrl,
-      color: '#ffffff',
+      color: '#00ff80',
       alpha: 0.8
     });
     assert.equal(textureEmissive.disableLighting, true);
     assert.equal(textureEmissive.backFaceCulling, false);
     assert.equal(textureEmissive.alpha, 0.8);
     assert.deepEqual(textureEmissive.diffuseColor, new BABYLON.Color3(0, 0, 0));
-    assert.deepEqual(textureEmissive.emissiveColor, new BABYLON.Color3(1, 1, 1));
+    assert.deepEqual(textureEmissive.emissiveColor, BABYLON.Color3.FromHexString('#00ff80'));
     assert.ok(textureEmissive.emissiveTexture, 'should resolve and load emissiveTexture');
   } finally {
     scene.dispose();

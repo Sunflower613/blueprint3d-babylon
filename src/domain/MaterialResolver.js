@@ -177,7 +177,11 @@ export class MaterialResolver {
         stretch: value.stretch !== undefined ? !!value.stretch : undefined,
         invertY: value.invertY !== undefined ? !!value.invertY : undefined,
         repeatX: value.repeatX !== undefined ? !!value.repeatX : undefined,
-        stretchY: value.stretchY !== undefined ? !!value.stretchY : undefined
+        stretchY: value.stretchY !== undefined ? !!value.stretchY : undefined,
+        spriteColumns: value.spriteColumns !== undefined ? Math.max(1, Number(value.spriteColumns)) : undefined,
+        spriteRows: value.spriteRows !== undefined ? Math.max(1, Number(value.spriteRows)) : undefined,
+        frameDuration: value.frameDuration !== undefined ? Math.max(16, Number(value.frameDuration)) : undefined,
+        uvMode: value.uvMode || undefined
       };
     }
 

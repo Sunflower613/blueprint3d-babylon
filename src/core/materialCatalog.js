@@ -1,3 +1,8 @@
+// =============================================================================
+// 1. 纹理资源 URL 导入 (Texture Resource Imports)
+// =============================================================================
+
+// 木纹贴图 (Wood Textures)
 const woodPanelMouldingLightUrl = new URL('../textures/wood_panel_moulding_light.jpg', import.meta.url).href;
 const woodFlutedOakLightUrl = new URL('../textures/wood_fluted_oak_light.jpg', import.meta.url).href;
 const woodHerringboneOakLightUrl = new URL('../textures/wood_herringbone_oak_light.jpg', import.meta.url).href;
@@ -7,13 +12,23 @@ const woodButcherBlockLightUrl = new URL('../textures/wood_butcher_block_light.j
 const woodBasketParquetLightUrl = new URL('../textures/wood_basket_parquet_light.jpg', import.meta.url).href;
 const woodChevronOakLightUrl = new URL('../textures/wood_chevron_oak_light.jpg', import.meta.url).href;
 const woodDiagonalPlankLightUrl = new URL('../textures/wood_diagonal_plank_light.jpg', import.meta.url).href;
-const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
-const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
-const wallmapYellowUrl = new URL('../textures/wallmap_yellow.jpg', import.meta.url).href;
+
+// 砖块贴图 (Brick & Tile Textures)
 const brickMarbleWarmUrl = new URL('../textures/brick_marble_warm.jpg', import.meta.url).href;
 const brickMarbleGreyGlossUrl = new URL('../textures/brick_marble_grey_gloss.jpg', import.meta.url).href;
+const brickMarbleTilesUrl = new URL('../textures/brick_marble_tiles.jpg', import.meta.url).href;
+const brickLightUrl = new URL('../textures/brick_light.jpg', import.meta.url).href;
+const brickRedUrl = new URL('../textures/brick_red.jpg', import.meta.url).href;
+const brickCubeUrl = new URL('../textures/brick_cube.jpg', import.meta.url).href;
+const brickDiamondUrl = new URL('../textures/brick_diamond.jpg', import.meta.url).href;
+const brickSquareUrl = new URL('../textures/brick_square.jpg', import.meta.url).href;
+const brickStoneUrl = new URL('../textures/brick_stone.jpg', import.meta.url).href;
+const brickMosaicUrl = new URL('../textures/brick_mosaic.jpg', import.meta.url).href;
+const brickBlackWhiteUrl = new URL('../textures/brick_black_white.jpg', import.meta.url).href;
+const brickSmallBlackUrl = new URL('../textures/brick_small_black.png', import.meta.url).href;
 
-// 新加沙石 (分类: stone)
+// 沙石贴图 (Stone & Ground Textures)
+const stoneGrassUrl = new URL('../textures/stone_grass.jpg', import.meta.url).href;
 const stoneEarthUrl = new URL('../textures/stone_earth.jpg', import.meta.url).href;
 const stoneSandUrl = new URL('../textures/stone_sand.jpg', import.meta.url).href;
 const stoneSandStoneUrl = new URL('../textures/stone_sand_stone.jpg', import.meta.url).href;
@@ -24,17 +39,8 @@ const stoneRoadUrl = new URL('../textures/stone_road.jpg', import.meta.url).href
 const stoneRockUrl = new URL('../textures/stone_rock.jpg', import.meta.url).href;
 const stoneTerrazzoUrl = new URL('../textures/stone_terrazzo.jpg', import.meta.url).href;
 const stoneWhiteSandUrl = new URL('../textures/stone_white_sand.jpg', import.meta.url).href;
-const stoneGrassUrl = new URL('../textures/stone_grass.jpg', import.meta.url).href;
 
-// 新加砖块 (分类: brick)
-const brickBlackWhiteUrl = new URL('../textures/brick_black_white.jpg', import.meta.url).href;
-const brickSmallBlackUrl = new URL('../textures/brick_small_black.png', import.meta.url).href;
-const brickMosaicUrl = new URL('../textures/brick_mosaic.jpg', import.meta.url).href;
-const brickRedUrl = new URL('../textures/brick_red.jpg', import.meta.url).href;
-const brickCubeUrl = new URL('../textures/brick_cube.jpg', import.meta.url).href;
-const brickDiamondUrl = new URL('../textures/brick_diamond.jpg', import.meta.url).href;
-const brickSquareUrl = new URL('../textures/brick_square.jpg', import.meta.url).href;
-const brickStoneUrl = new URL('../textures/brick_stone.jpg', import.meta.url).href;
+// 织物贴图 (Fabric & Rug Textures)
 const fabricRopeCableBeigeUrl = new URL('../textures/fabric_rope_cable_beige.jpg', import.meta.url).href;
 const fabricKnitCableGreyUrl = new URL('../textures/fabric_knit_cable_grey.jpg', import.meta.url).href;
 const fabricKnitCableWhiteUrl = new URL('../textures/fabric_knit_cable_white.jpg', import.meta.url).href;
@@ -48,6 +54,10 @@ const fabricFlowerUrl = new URL('../textures/fabric_flower.jpg', import.meta.url
 const fabricSquareUrl = new URL('../textures/fabric_square.jpg', import.meta.url).href;
 const fabricCircleUrl = new URL('../textures/fabric_circle.jpg', import.meta.url).href;
 const fabricTriangleUrl = new URL('../textures/fabric_triangle.jpg', import.meta.url).href;
+
+// 墙纸与海报贴图 (Wallpaper & Poster Textures)
+const wallpaperRoseUrl = new URL('../textures/wallpaper_rose.jpg', import.meta.url).href;
+const wallmapYellowUrl = new URL('../textures/wallmap_yellow.jpg', import.meta.url).href;
 const wallpaperLeafBluegreyUrl = new URL('../textures/wallpaper_leaf_bluegrey.jpg', import.meta.url).href;
 const wallpaperPaisleyOrangeUrl = new URL('../textures/wallpaper_paisley_orange.jpg', import.meta.url).href;
 const wallpaperFanGoldUrl = new URL('../textures/wallpaper_fan_gold.jpg', import.meta.url).href;
@@ -58,20 +68,39 @@ const wallpaperCloudNavyGoldUrl = new URL('../textures/wallpaper_cloud_navy_gold
 const wallpaperRuyiSwirlYellowUrl = new URL('../textures/wallpaper_ruyi_swirl_yellow.jpg', import.meta.url).href;
 const wallpaperFloralBlueWhiteUrl = new URL('../textures/wallpaper_floral_blue_white.jpg', import.meta.url).href;
 const wallpaperSeigaihaBlushUrl = new URL('../textures/wallpaper_seigaiha_blush.jpg', import.meta.url).href;
-const wallpaperRoseUrl = new URL('../textures/wallpaper_rose.jpg', import.meta.url).href;
 const posterAbstractArchesUrl = new URL('../textures/poster_abstract_arches.jpg', import.meta.url).href;
 const posterBotanicalSageUrl = new URL('../textures/poster_botanical_sage.jpg', import.meta.url).href;
 const posterBauhausPrimaryUrl = new URL('../textures/poster_bauhaus_primary.jpg', import.meta.url).href;
 const posterMountainSunriseUrl = new URL('../textures/poster_mountain_sunrise.jpg', import.meta.url).href;
 const posterCelestialMoonsUrl = new URL('../textures/poster_celestial_moons.jpg', import.meta.url).href;
+
+// 天空盒贴图 (Sky Textures)
 const skyUrl = new URL('../textures/sky.png', import.meta.url).href;
 const skyStarryUrl = new URL('../textures/sky_starry.png', import.meta.url).href;
 const skySunsetUrl = new URL('../textures/sky_sunset.png', import.meta.url).href;
 const skyAuroraUrl = new URL('../textures/sky_aurora.png', import.meta.url).href;
+const skyUnderwaterUrl = new URL('../textures/sky_underwater.jpg', import.meta.url).href;
+const skyDesertUrl = new URL('../textures/sky_desert.jpg', import.meta.url).href;
+const skyKarstUrl = new URL('../textures/sky_karst.jpg', import.meta.url).href;
+const skyForestUrl = new URL('../textures/sky_forest.jpg', import.meta.url).href;
+const skyCandyUrl = new URL('../textures/sky_candy.jpg', import.meta.url).href;
+const skyFantasyUrl = new URL('../textures/sky_fantasy.jpg', import.meta.url).href;
+const skyIceUrl = new URL('../textures/sky_ice.jpg', import.meta.url).href;
+const skyBlossomUrl = new URL('../textures/sky_blossom.jpg', import.meta.url).href;
+const skyVolcanoUrl = new URL('../textures/sky_volcano.jpg', import.meta.url).href;
+const skyInkMountainsUrl = new URL('../textures/sky_ink-mountains.jpg', import.meta.url).href;
+
+// 发光贴图 (Emissive Textures)
 const hackerStreamUrl = new URL('../textures/emissive_hacker_stream.jpg', import.meta.url).href;
 const danceFloorUrl = new URL('../textures/emissive_dance_floor.jpg', import.meta.url).href;
 const fireplaceFlameUrl = new URL('../textures/emissive_fire.jpg', import.meta.url).href;
 const neonSignUrl = new URL('../textures/emissive_neon_sign.jpg', import.meta.url).href;
+const cyberNoEntryUrl = new URL('../textures/emissive_cyber_no_entry.png', import.meta.url).href;
+const robotSmileUrl = new URL('../textures/emissive_robot.jpg', import.meta.url).href;
+
+// =============================================================================
+// 2. 材质分类目录 (Material Categories)
+// =============================================================================
 
 export const MATERIAL_CATEGORIES = [
   { id: 'custom', label: '自定义', icon: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>' },
@@ -84,9 +113,54 @@ export const MATERIAL_CATEGORIES = [
   { id: 'wallpaper', label: '墙纸', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 3v5h5"/>' },
   { id: 'fabric', label: '织物', icon: '<path d="M20.38 3.46 16 7.5V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3.5L3.62 3.46c-.9-.85-2.38-.22-2.38 1v14c0 1.1.9 2 2 2h17.5c1.1 0 2-.9 2-2v-14c0-1.22-1.48-1.85-2.38-1Z"/>' },
   { id: 'paint', label: '涂料', icon: '<path d="M12 22c5.523 0 10-2.239 10-5 0-2.761-4.477-5-10-5S2 14.239 2 17c0 2.761 4.477 5 10 5Z"/><path d="M12 12V2"/><path d="M8 2h8"/>' },
+  { id: 'sky', label: '天空', icon: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4a12 12 0 0 1 0 16"/><path d="M12 4a12 12 0 0 0 0 16"/>' },
   { id: 'emissive', label: '发光', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>' }
 ];
 
+// =============================================================================
+// 3. 各分类预设材质定义 (Category Presets)
+// =============================================================================
+
+// 涂料材质 (Paint)
+const COMMON_PAINT_MATERIALS = [
+  { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' },
+  { id: 'paint-pink', name: '城堡粉', category: 'paint', color: '#ffd1e3' },
+  { id: 'paint-minimalist-black', name: '极简黑', category: 'paint', color: '#2c2c2c' },
+  { id: 'paint-pure-white', name: '纯净白', category: 'paint', color: '#ffffff' },
+  { id: 'paint-dusty-pink', name: '烟粉色', category: 'paint', color: '#d5b2b2' },
+  { id: 'paint-haze-blue', name: '雾霾蓝', category: 'paint', color: '#8ba3b5' },
+  { id: 'paint-sage-green', name: '豆沙绿', category: 'paint', color: '#a1a89c' },
+  { id: 'paint-oatmeal-yellow', name: '燕麦黄', category: 'paint', color: '#dfd2bc' },
+  { id: 'paint-clay-purple', name: '灰泥紫', category: 'paint', color: '#b1a6b0' },
+  { id: 'paint-camel', name: '驼色', category: 'paint', color: '#bfa38a' },
+  { id: 'paint-warm-sand', name: '暖砂灰', category: 'paint', color: '#cbd0cc' },
+  { id: 'paint-terracotta', name: '砖红', category: 'paint', color: '#b56b61' },
+  { id: 'paint-classic-grey', name: '高级灰', category: 'paint', color: '#9aa3a6' },
+  { id: 'paint-morandi-green', name: '莫兰迪绿', category: 'paint', color: '#b5c4b1' },
+  { id: 'paint-morandi-blue', name: '莫兰迪蓝', category: 'paint', color: '#8e9fa9' },
+  { id: 'paint-morandi-orange', name: '莫兰迪橘', category: 'paint', color: '#cda393' },
+  { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' }
+];
+
+// 天空盒材质 (Sky)
+const COMMON_SKY_MATERIALS = [
+  { id: 'sky_texture', name: '晴天', category: 'sky', kind: 'texture', src: skyUrl, scale: 1, color: '#ffffff', skyLightColor: '#d9ecff' },
+  { id: 'sky-starry', name: '星空', category: 'sky', kind: 'texture', src: skyStarryUrl, scale: 1, color: '#ffffff', skyLightColor: '#7088c4' },
+  { id: 'sky-sunset', name: '晚霞', category: 'sky', kind: 'texture', src: skySunsetUrl, scale: 1, color: '#ffffff', skyLightColor: '#ffb090' },
+  { id: 'sky-aurora', name: '极光', category: 'sky', kind: 'texture', src: skyAuroraUrl, scale: 1, color: '#ffffff', skyLightColor: '#79d8d0' },
+  { id: 'sky-underwater', name: '海底世界', category: 'sky', kind: 'texture', src: skyUnderwaterUrl, scale: 1, color: '#ffffff', skyLightColor: '#5fb6d6' },
+  { id: 'sky-desert', name: '沙漠落日', category: 'sky', kind: 'texture', src: skyDesertUrl, scale: 1, color: '#ffffff', skyLightColor: '#f0a05e' },
+  { id: 'sky-karst', name: '桂林山水', category: 'sky', kind: 'texture', src: skyKarstUrl, scale: 1, color: '#ffffff', skyLightColor: '#a8c9b5' },
+  { id: 'sky-forest', name: '魔法森林', category: 'sky', kind: 'texture', src: skyForestUrl, scale: 1, color: '#ffffff', skyLightColor: '#8fca9b' },
+  { id: 'sky-candy', name: '糖果世界', category: 'sky', kind: 'texture', src: skyCandyUrl, scale: 1, color: '#ffffff', skyLightColor: '#f2b8d8' },
+  { id: 'sky-fantasy', name: '紫色幻境', category: 'sky', kind: 'texture', src: skyFantasyUrl, scale: 1, color: '#ffffff', skyLightColor: '#9b70d0' },
+  { id: 'sky-ice', name: '冰雪极地', category: 'sky', kind: 'texture', src: skyIceUrl, scale: 1, color: '#ffffff', skyLightColor: '#b9d8f0' },
+  { id: 'sky-blossom', name: '樱花山谷', category: 'sky', kind: 'texture', src: skyBlossomUrl, scale: 1, color: '#ffffff', skyLightColor: '#efb8c8' },
+  { id: 'sky-volcano', name: '熔岩火山', category: 'sky', kind: 'texture', src: skyVolcanoUrl, scale: 1, color: '#ffffff', skyLightColor: '#d4774c' },
+  { id: 'sky-ink-mountains', name: '水墨山河', category: 'sky', kind: 'texture', src: skyInkMountainsUrl, scale: 1, color: '#ffffff', skyLightColor: '#b6b27f' }
+];
+
+// 木纹材质 (Wood)
 const COMMON_WOOD_MATERIALS = [
   { id: 'wood-panel-moulding-light', name: '护墙板', src: woodPanelMouldingLightUrl, scale: 1, color: '#ffffff' },
   { id: 'wood-fluted-oak-light', name: '浅木格栅', src: woodFlutedOakLightUrl, scale: 2, color: '#ffffff' },
@@ -103,6 +177,46 @@ const COMMON_WOOD_MATERIALS = [
   kind: 'texture'
 }));
 
+// 沙石材质 (Stone)
+const COMMON_STONE_MATERIALS = [
+  { id: 'stone-grass', name: '草地', src: stoneGrassUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-earth', name: '泥土', src: stoneEarthUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'stone-sand', name: '黄沙', src: stoneSandUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-sand-stone', name: '沙石', src: stoneSandStoneUrl, scale: 1.8, color: '#ffffff' },
+  { id: 'stone-fine-sand', name: '细沙', src: stoneFineSandUrl, scale: 2.8, color: '#ffffff' },
+  { id: 'stone-natural', name: '天然石面', src: stoneNaturalUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-joint', name: '接缝石板', src: stoneJointUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-road', name: '碎石路', src: stoneRoadUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'stone-rock', name: '岩石', src: stoneRockUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'stone-terrazzo', name: '水磨石', src: stoneTerrazzoUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'stone-white-sand', name: '白砂', src: stoneWhiteSandUrl, scale: 1.2, color: '#ffffff' }
+].map((material) => ({
+  ...material,
+  category: 'stone',
+  kind: 'texture'
+}));
+
+// 砖块材质 (Brick)
+const COMMON_BRICK_MATERIALS = [
+  { id: 'brick-marble-warm', name: '大理石', src: brickMarbleWarmUrl, scale: 2.2, color: '#ffffff' },
+  { id: 'brick-grey-gloss-marble', name: '亮面石', src: brickMarbleGreyGlossUrl, scale: 2.4, color: '#ffffff', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
+  { id: 'brick-marble-tiles', name: '大理石砖', src: brickMarbleTilesUrl, scale: 3.0, color: '#ffffff' },
+  { id: 'brick-light', name: '石砖', src: brickLightUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-red', name: '红砖', src: brickRedUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-cube', name: '魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
+  { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 },
+  { id: 'brick-black-white', name: '棋盘砖', src: brickBlackWhiteUrl, scale: 2.0, color: '#ffffff' },
+  { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff' }
+].map((material) => ({
+  ...material,
+  category: 'brick',
+  kind: 'texture'
+}));
+
+// 织物材质 (Fabric)
 const COMMON_FABRIC_MATERIALS = [
   { id: 'fabric-rope-cable-beige', name: '绳纹针织', src: fabricRopeCableBeigeUrl, scale: 2.2, color: '#ffffff' },
   { id: 'fabric-knit-cable-grey', name: '灰麻花', src: fabricKnitCableGreyUrl, scale: 2.2, color: '#ffffff' },
@@ -123,7 +237,24 @@ const COMMON_FABRIC_MATERIALS = [
   kind: 'texture'
 }));
 
+// 金属材质 (Metal)
+const COMMON_METAL_MATERIALS = [
+  { id: 'metal-gold', name: '金', category: 'metal', kind: 'metal', color: '#d4af37' },
+  { id: 'metal-silver', name: '银', category: 'metal', kind: 'metal', color: '#e6e6e6' },
+  { id: 'metal-copper', name: '铜', category: 'metal', kind: 'metal', color: '#b87333' },
+  { id: 'metal-iron', name: '铁', category: 'metal', kind: 'metal', color: '#43464b' },
+  { id: 'metal-aluminum', name: '铝', category: 'metal', kind: 'metal', color: '#d9d9d9' },
+  { id: 'metal-gold-matte', name: '磨砂金', category: 'metal', kind: 'metal', color: '#d4af37', roughness: 0.6 },
+  { id: 'metal-silver-matte', name: '磨砂银', category: 'metal', kind: 'metal', color: '#e6e6e6', roughness: 0.6 },
+  { id: 'metal-copper-matte', name: '磨砂铜', category: 'metal', kind: 'metal', color: '#b87333', roughness: 0.6 },
+  { id: 'metal-iron-matte', name: '磨砂铁', category: 'metal', kind: 'metal', color: '#43464b', roughness: 0.6 },
+  { id: 'metal-aluminum-matte', name: '磨砂铝', category: 'metal', kind: 'metal', color: '#d9d9d9', roughness: 0.6 }
+];
+
+// 墙纸与海报材质 (Wallpaper & Poster)
 const COMMON_WALLPAPER_MATERIALS = [
+  { id: 'wallpaper-rose', name: '玫瑰', src: wallpaperRoseUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-yellow-flower', name: '花卉', src: wallmapYellowUrl, scale: 1, color: '#f6ecbe' },
   { id: 'wallpaper-leaf-bluegrey', name: '叶影墙纸', src: wallpaperLeafBluegreyUrl, scale: 1, color: '#9aa0b1' },
   { id: 'wallpaper-paisley-orange', name: '佩斯利', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#f1c598' },
   { id: 'wallpaper-fan-gold', name: '金扇纹', src: wallpaperFanGoldUrl, scale: 1, color: '#c6a47d' },
@@ -145,105 +276,16 @@ const COMMON_WALLPAPER_MATERIALS = [
   kind: 'texture'
 }));
 
-const COMMON_STONE_MATERIALS = [
-  { id: 'stone-grass', name: '草地', src: stoneGrassUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'stone-earth', name: '泥土', src: stoneEarthUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'stone-sand', name: '黄沙', src: stoneSandUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'stone-sand-stone', name: '沙石', src: stoneSandStoneUrl, scale: 1.8, color: '#ffffff' },
-  { id: 'stone-fine-sand', name: '细沙', src: stoneFineSandUrl, scale: 2.8, color: '#ffffff' },
-  { id: 'stone-natural', name: '天然石面', src: stoneNaturalUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'stone-joint', name: '接缝石板', src: stoneJointUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'stone-road', name: '碎石路', src: stoneRoadUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'stone-rock', name: '岩石', src: stoneRockUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'stone-terrazzo', name: '水磨石', src: stoneTerrazzoUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'stone-white-sand', name: '白砂', src: stoneWhiteSandUrl, scale: 1.2, color: '#ffffff' }
-].map((material) => ({
-  ...material,
-  category: 'stone',
-  kind: 'texture'
-}));
-
-const COMMON_BRICK_MATERIALS = [
-  { id: 'brick-marble-warm', name: '大理石', src: brickMarbleWarmUrl, scale: 2.2, color: '#ffffff' },
-  { id: 'brick-grey-gloss-marble', name: '亮面石', src: brickMarbleGreyGlossUrl, scale: 2.4, color: '#ffffff', reflective: true, reflectionLevel: 0.55, specularStrength: 0.72, specularPower: 96 },
-  { id: 'brick-marble-tiles', name: '大理石砖', src: brickMarbleTilesUrl, scale: 3.0, color: '#ffffff' },
-  { id: 'brick-light', name: '石砖', src: brickLightUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'brick-red', name: '红砖', src: brickRedUrl, scale: 1.5, color: '#ffffff' },
-
-  // 新加砖块/瓷砖
-  { id: 'brick-cube', name: '魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
-  { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 },
-  { id: 'brick-black-white', name: '棋盘砖', src: brickBlackWhiteUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff' }
-].map((material) => ({
-  ...material,
-  category: 'brick',
-  kind: 'texture'
-}));
-
-const COMMON_SKY_MATERIALS = [
-  { id: 'sky_texture', name: '晴天', category: 'emissive', kind: 'emissive', src: skyUrl, scale: 1, color: '#ffffff', skyLightColor: '#d9ecff' },
-  { id: 'sky-starry', name: '星空', category: 'emissive', kind: 'emissive', src: skyStarryUrl, scale: 1, color: '#ffffff', skyLightColor: '#7088c4' },
-  { id: 'sky-sunset', name: '晚霞', category: 'emissive', kind: 'emissive', src: skySunsetUrl, scale: 1, color: '#ffffff', skyLightColor: '#ffb090' },
-  { id: 'sky-aurora', name: '极光', category: 'emissive', kind: 'emissive', src: skyAuroraUrl, scale: 1, color: '#ffffff', skyLightColor: '#79d8d0' }
-];
-
-export const DEFAULT_MATERIAL_PACKS = [
-  { id: 'paint-soft-white', name: '柔白涂料', category: 'paint', color: '#f9fbff' },
-  { id: 'paint-pink', name: '城堡粉', category: 'paint', color: '#ffd1e3' },
-  { id: 'paint-minimalist-black', name: '极简黑', category: 'paint', color: '#2c2c2c' },
-  { id: 'paint-pure-white', name: '纯净白', category: 'paint', color: '#ffffff' },
-  { id: 'paint-dusty-pink', name: '烟粉色', category: 'paint', color: '#d5b2b2' },
-  { id: 'paint-haze-blue', name: '雾霾蓝', category: 'paint', color: '#8ba3b5' },
-  { id: 'paint-sage-green', name: '豆沙绿', category: 'paint', color: '#a1a89c' },
-  { id: 'paint-oatmeal-yellow', name: '燕麦黄', category: 'paint', color: '#dfd2bc' },
-  { id: 'paint-clay-purple', name: '灰泥紫', category: 'paint', color: '#b1a6b0' },
-  { id: 'paint-camel', name: '驼色', category: 'paint', color: '#bfa38a' },
-  { id: 'paint-warm-sand', name: '暖砂灰', category: 'paint', color: '#cbd0cc' },
-  { id: 'paint-terracotta', name: '砖红', category: 'paint', color: '#b56b61' },
-  { id: 'paint-classic-grey', name: '高级灰', category: 'paint', color: '#9aa3a6' },
-  { id: 'paint-morandi-green', name: '莫兰迪绿', category: 'paint', color: '#b5c4b1' },
-  { id: 'paint-morandi-blue', name: '莫兰迪蓝', category: 'paint', color: '#8e9fa9' },
-  { id: 'paint-morandi-orange', name: '莫兰迪橘', category: 'paint', color: '#cda393' },
-  { id: 'paint-morandi-purple', name: '莫兰迪紫', category: 'paint', color: '#ac9da6' },
-
-  ...COMMON_SKY_MATERIALS,
-  ...COMMON_WOOD_MATERIALS,
-  ...COMMON_STONE_MATERIALS,
-  ...COMMON_BRICK_MATERIALS,
-  ...COMMON_FABRIC_MATERIALS,
-
-  { id: 'metal-gold', name: '金', category: 'metal', kind: 'metal', color: '#d4af37' },
-  { id: 'metal-silver', name: '银', category: 'metal', kind: 'metal', color: '#e6e6e6' },
-  { id: 'metal-copper', name: '铜', category: 'metal', kind: 'metal', color: '#b87333' },
-  { id: 'metal-iron', name: '铁', category: 'metal', kind: 'metal', color: '#43464b' },
-  { id: 'metal-aluminum', name: '铝', category: 'metal', kind: 'metal', color: '#d9d9d9' },
-  { id: 'metal-gold-matte', name: '磨砂金', category: 'metal', kind: 'metal', color: '#d4af37', roughness: 0.6 },
-  { id: 'metal-silver-matte', name: '磨砂银', category: 'metal', kind: 'metal', color: '#e6e6e6', roughness: 0.6 },
-  { id: 'metal-copper-matte', name: '磨砂铜', category: 'metal', kind: 'metal', color: '#b87333', roughness: 0.6 },
-  { id: 'metal-iron-matte', name: '磨砂铁', category: 'metal', kind: 'metal', color: '#43464b', roughness: 0.6 },
-  { id: 'metal-aluminum-matte', name: '磨砂铝', category: 'metal', kind: 'metal', color: '#d9d9d9', roughness: 0.6 },
-
-  { id: 'wallpaper-rose', name: '玫瑰', category: 'wallpaper', kind: 'texture', src: wallpaperRoseUrl, scale: 1, color: '#ffffff' },
-  {
-    id: 'wallpaper-yellow-flower',
-    name: '花卉',
-    category: 'wallpaper',
-    kind: 'texture',
-    src: wallmapYellowUrl,
-    scale: 1,
-    color: '#f6ecbe'
-  },
-  ...COMMON_WALLPAPER_MATERIALS,
-
+// 镜面材质 (Mirror)
+const COMMON_MIRROR_MATERIALS = [
   { id: 'mirror-silver', name: '银镜', category: 'mirror', kind: 'mirror', color: '#e8eef4' },
   { id: 'mirror-gold', name: '金镜', category: 'mirror', kind: 'mirror', color: '#f0e6c8' },
   { id: 'mirror-bronze', name: '青铜镜', category: 'mirror', kind: 'mirror', color: '#c5b8a0' },
-  { id: 'mirror-dark', name: '墨镜', category: 'mirror', kind: 'mirror', color: '#3a3d42' },
+  { id: 'mirror-dark', name: '墨镜', category: 'mirror', kind: 'mirror', color: '#3a3d42' }
+];
 
+// 玻璃材质 (Glass)
+const COMMON_GLASS_MATERIALS = [
   { id: 'glass-clear', name: '透明玻璃', category: 'glass', kind: 'glass', color: '#e8f4ff' },
   { id: 'glass-frosted', name: '磨砂玻璃', category: 'glass', kind: 'glass', color: '#f0f0f0', alpha: 0.55 },
   { id: 'glass-tea', name: '茶色玻璃', category: 'glass', kind: 'glass', color: '#c4a97d' },
@@ -257,8 +299,11 @@ export const DEFAULT_MATERIAL_PACKS = [
     alpha: 0.72,
     patternScale: 1.1,
     emissiveStrength: 0.18
-  },
+  }
+];
 
+// 发光材质 (Emissive)
+const COMMON_EMISSIVE_MATERIALS = [
   { id: 'emissive-white', name: '白光', category: 'emissive', kind: 'emissive', color: '#ffffff' },
   { id: 'emissive-warm-white', name: '暖白光', category: 'emissive', kind: 'emissive', color: '#ffebd2' },
   { id: 'emissive-yellow', name: '黄光', category: 'emissive', kind: 'emissive', color: '#ffeb3b' },
@@ -267,9 +312,33 @@ export const DEFAULT_MATERIAL_PACKS = [
   { id: 'emissive-blue', name: '蓝光', category: 'emissive', kind: 'emissive', color: '#2196f3' },
   { id: 'emissive-hacker-stream', name: '数据流', category: 'emissive', kind: 'emissive', src: hackerStreamUrl, scale: 1.1, color: '#ffffff' },
   { id: 'emissive-dance-floor', name: '舞动', category: 'emissive', kind: 'emissive', src: danceFloorUrl, scale: 1.2, color: '#ffffff' },
-  { id: 'emissive-fireplace-flame', name: '火焰', category: 'emissive', kind: 'emissive', src: fireplaceFlameUrl, scale: 1.5, repeatX: true, stretchY: true, invertY: true, color: '#ffffff' },
-  { id: 'emissive-neon-sign', name: '霓虹灯', category: 'emissive', kind: 'emissive', src: neonSignUrl, scale: 1.1, color: '#ffffff' }
+  { id: 'emissive-fireplace-flame', name: '火焰', category: 'emissive', kind: 'emissive', src: fireplaceFlameUrl, scale: 1.5, repeatX: true, stretchY: true, invertY: true, uvMode: 'box-world', color: '#ffffff' },
+  { id: 'emissive-neon-sign', name: '霓虹灯', category: 'emissive', kind: 'emissive', src: neonSignUrl, scale: 1.1, color: '#ffffff' },
+  { id: 'emissive-cyber-no-entry', name: '赛博禁止通行', category: 'emissive', kind: 'emissive', src: cyberNoEntryUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world' },
+  { id: 'emissive-robot-smile', name: '像素机器人笑脸', category: 'emissive', kind: 'emissive', src: robotSmileUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world', spriteColumns: 3, spriteRows: 3, frameDuration: 320 }
 ];
+
+// =============================================================================
+// 4. 默认材质包导出 (Default Material Packs)
+// =============================================================================
+
+export const DEFAULT_MATERIAL_PACKS = [
+  ...COMMON_PAINT_MATERIALS,
+  ...COMMON_SKY_MATERIALS,
+  ...COMMON_WOOD_MATERIALS,
+  ...COMMON_STONE_MATERIALS,
+  ...COMMON_BRICK_MATERIALS,
+  ...COMMON_FABRIC_MATERIALS,
+  ...COMMON_METAL_MATERIALS,
+  ...COMMON_WALLPAPER_MATERIALS,
+  ...COMMON_MIRROR_MATERIALS,
+  ...COMMON_GLASS_MATERIALS,
+  ...COMMON_EMISSIVE_MATERIALS
+];
+
+// =============================================================================
+// 5. 材质描述符辅助函数 (Descriptor Helpers)
+// =============================================================================
 
 export function createColorMaterialDescriptor(color, category = 'paint', name = '颜色') {
   return {

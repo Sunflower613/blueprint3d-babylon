@@ -1,6 +1,54 @@
-import { MeshBuilder, TransformNode, Mesh, Vector3 } from './babylon.js';
-const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3 };
+import { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer } from './babylon.js';
+const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer };
 import { setTransform } from './BlueprintRegistry.js';
+
+export function orientBoxTextureCoordinates(mesh) {
+  const positions = mesh.getVerticesData?.(BABYLON.VertexBuffer.PositionKind);
+  const normals = mesh.getVerticesData?.(BABYLON.VertexBuffer.NormalKind);
+  const uvs = mesh.getVerticesData?.(BABYLON.VertexBuffer.UVKind);
+  if (!positions || !normals || !uvs || positions.length !== normals.length || positions.length / 3 !== uvs.length / 2) {
+    return;
+  }
+
+  const xs = [];
+  const ys = [];
+  const zs = [];
+  for (let i = 0; i < positions.length; i += 3) {
+    xs.push(positions[i]);
+    ys.push(positions[i + 1]);
+    zs.push(positions[i + 2]);
+  }
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const range = (min, max) => Math.max(0.0001, max - min);
+
+  for (let i = 0; i < positions.length; i += 3) {
+    const uvIndex = (i / 3) * 2;
+    const x = positions[i];
+    const y = positions[i + 1];
+    const z = positions[i + 2];
+    const nx = normals[i];
+    const ny = normals[i + 1];
+    const nz = normals[i + 2];
+
+    if (Math.abs(ny) > 0.5) {
+      uvs[uvIndex] = (x - minX) / range(minX, maxX);
+      uvs[uvIndex + 1] = (z - minZ) / range(minZ, maxZ);
+    } else if (Math.abs(nx) > 0.5) {
+      uvs[uvIndex] = (z - minZ) / range(minZ, maxZ);
+      uvs[uvIndex + 1] = (y - minY) / range(minY, maxY);
+    } else if (Math.abs(nz) > 0.5) {
+      uvs[uvIndex] = (x - minX) / range(minX, maxX);
+      uvs[uvIndex + 1] = (y - minY) / range(minY, maxY);
+    }
+  }
+
+  mesh.setVerticesData(BABYLON.VertexBuffer.UVKind, uvs, false);
+}
 
 function registerOrApplyOptions(registry, node, options = {}) {
   if (registry && typeof registry.add === 'function') {

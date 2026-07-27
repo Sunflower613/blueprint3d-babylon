@@ -55,7 +55,7 @@ export function getActiveMaterialDisplayName(mat) {
 
 function isTextureMaterial(material) {
   if (!material || typeof material === 'string') return false;
-  return material.kind === 'texture' && !!(material.src || material.url);
+  return (material.kind === 'texture' || material.kind === 'emissive') && !!(material.src || material.url);
 }
 
 function applySwatchStyle(button, material) {
@@ -112,7 +112,8 @@ function applySwatchStyle(button, material) {
     if (src) {
       const resolved = resolveMaterialAssetDescriptor(material);
       const finalSrc = resolved?.src || src;
-      button.style.backgroundImage = `url(${finalSrc})`;
+      button.style.backgroundImage = `linear-gradient(${color}cc, ${color}cc), url(${finalSrc})`;
+      button.style.backgroundBlendMode = 'multiply';
       button.style.backgroundPosition = 'center';
       button.style.backgroundSize = 'cover';
     }
@@ -167,7 +168,7 @@ function createTintedTextureDescriptor(material, color) {
   return {
     ...material,
     id: derivedId,
-    kind: 'texture',
+    kind: material.kind || 'texture',
     category: material.category || 'custom',
     src: material.src || material.url,
     color,
@@ -206,7 +207,7 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
   materialLibraryPanel.appendChild(header);
 
   // 如果是发光材质分类，添加自定义取色器卡片
-  if (category === 'emissive') {
+  if (false && category === 'emissive') {
     const customEmissiveContainer = document.createElement('div');
     customEmissiveContainer.className = 'custom-emissive-container';
     customEmissiveContainer.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
@@ -225,10 +226,23 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
     picker.id = 'emissive-color-picker';
 
     const customEmissive = editor.materialLibrary.find(m => m.id && m.id.startsWith('emissive-custom'));
-    picker.value = customEmissive ? customEmissive.color : '#ffffff';
+    const activeTintableEmissive = isTextureMaterial(editor.activeMaterialDescriptor)
+      ? editor.activeMaterialDescriptor
+      : null;
+    picker.value = activeTintableEmissive?.color || customEmissive?.color || '#ffffff';
     picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
 
     const handleColorChange = (color) => {
+      if (activeTintableEmissive) {
+        const tintedDescriptor = createTintedTextureDescriptor(activeTintableEmissive, color);
+        upsertMaterialDescriptor(tintedDescriptor);
+        editor.activeMaterialDescriptor = tintedDescriptor;
+        editor.activeMaterialArray = null;
+        renderMaterialLibrary();
+        ctx.updateEditor();
+        return;
+      }
+
       const customDesc = {
         id: `emissive-custom-${color.replace('#', '')}`,
         name: `自定义发光 (${color})`,

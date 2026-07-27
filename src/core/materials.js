@@ -1,9 +1,44 @@
-import { Color3, DynamicTexture, StandardMaterial, Texture } from './babylon.js';
+import { Color3, DynamicTexture, Material, StandardMaterial, Texture } from './babylon.js';
 import { DEFAULT_MATERIAL_PACKS } from './materialCatalog.js';
 import { MaterialResolver, isSingleTileTexture } from '../domain/MaterialResolver.js';
 import { resolveMaterialAssetDescriptor, toSameOriginUrl } from './materialAssets.js';
 
-const BABYLON = { Color3, DynamicTexture, StandardMaterial, Texture };
+const BABYLON = { Color3, DynamicTexture, Material, StandardMaterial, Texture };
+
+function configureSpriteSheetAnimation(scene, texture, columns, rows, frameDuration) {
+  const columnCount = Math.max(1, Number(columns) || 1);
+  const rowCount = Math.max(1, Number(rows) || 1);
+  const frameCount = columnCount * rowCount;
+  if (frameCount <= 1) return;
+
+  texture.uScale = 1 / columnCount;
+  texture.vScale = 1 / rowCount;
+  texture.uOffset = 0;
+  texture.vOffset = 0;
+
+  let elapsed = 0;
+  let frame = 0;
+  const duration = Math.max(16, Number(frameDuration) || 320);
+  const observer = scene.onBeforeRenderObservable.add(() => {
+    if (texture.isDisposed) return;
+    elapsed += scene.getEngine().getDeltaTime();
+    if (elapsed < duration) return;
+    const steps = Math.floor(elapsed / duration);
+    elapsed -= steps * duration;
+    frame = (frame + steps) % frameCount;
+    texture.uOffset = (frame % columnCount) / columnCount;
+    texture.vOffset = Math.floor(frame / columnCount) / rowCount;
+  });
+  texture.onDisposeObservable.addOnce(() => {
+    scene.onBeforeRenderObservable.remove(observer);
+  });
+}
+
+function configureTextureTransparency(material, texture) {
+  texture.hasAlpha = true;
+  material.useAlphaFromDiffuseTexture = true;
+  material.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+}
 
 const STAINED_GLASS_WARM_COLORS = [
   '#f27462', '#e88972', '#ef5b5b', '#f28a48', '#e36f35', '#ef9f58',
@@ -314,9 +349,10 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
 
     if (normalized.src) {
       // 自发光贴图
-      material.emissiveColor = BABYLON.Color3.White();
+      // Let the selected material color tint the emissive texture, matching ordinary textured materials.
+      material.emissiveColor = color;
 
-      const invertY = normalized.invertY !== undefined ? normalized.invertY : (options.invertY !== undefined ? options.invertY : true);
+      const invertY = options.invertY !== undefined ? options.invertY : (normalized.invertY !== undefined ? normalized.invertY : true);
       const textureKey = `${normalized.src}_invY_${invertY}`;
       let baseTexture = scene._blueprintTextureCache?.get(textureKey);
 
@@ -343,10 +379,16 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
       texture.vScale = textureScale.vScale;
       texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
       texture.wrapV = normalized.stretchY ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
-
+      configureSpriteSheetAnimation(scene, texture, normalized.spriteColumns, normalized.spriteRows, normalized.frameDuration);
       material.emissiveTexture = texture;
       // 额外把贴图赋给漫反射，以防某些着色器在 disableLighting = true 时只走 diffuse 通道
       material.diffuseTexture = texture;
+      if (
+        normalized.id === 'emissive-cyber-no-entry' ||
+        normalized.src?.includes('emissive_cyber_no_entry')
+      ) {
+        configureTextureTransparency(material, texture);
+      }
     } else {
       // 自发光纯色
       material.emissiveColor = color;

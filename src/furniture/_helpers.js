@@ -1,5 +1,5 @@
 import { createBlueprintMaterial, materialPreviewColor } from '../core/materials.js';
-import { createBox, createCylinder, createSphere, createLathe } from '../core/primitives.js';
+import { createBox, createCylinder, createSphere, createLathe, orientBoxTextureCoordinates } from '../core/primitives.js';
 
 export function getComponentColor(item, definition, componentId) {
   const component = definition.components.find((candidate) => candidate.id === componentId);
@@ -18,18 +18,6 @@ export function getComponentMaterial(registry, item, definition, componentId) {
   const options = { fallbackColor: color };
 
   // 对于立面展示型组件（如屏幕、画布、照片、海报等），自定义贴图如果默认 invertY 会导致图片倒立，故设为 false
-  const compIdLower = componentId.toLowerCase();
-  if (
-    compIdLower.includes('screen') ||
-    compIdLower.includes('canvas') ||
-    compIdLower.includes('picture') ||
-    compIdLower.includes('painting') ||
-    compIdLower.includes('poster') ||
-    compIdLower.includes('photo')
-  ) {
-    options.invertY = false;
-  }
-
   // 当组件 ID 包含 'glass' 且描述符还是普通颜色字符串时，自动升级为 kind: 'glass'
   // 这确保了向后兼容：现有家具定义无需修改即可获得玻璃效果
   if (componentId.toLowerCase().includes('glass') && (typeof descriptor === 'string' || descriptor?.kind === 'color')) {
@@ -46,10 +34,9 @@ export function getComponentMaterial(registry, item, definition, componentId) {
     return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}_${Date.now()}`, descriptor, options);
   }
 
-  const invertYVal = options.invertY !== undefined ? options.invertY : '';
   const cacheKey = typeof descriptor === 'string'
-    ? `${descriptor}_invY_${invertYVal}`
-    : `${descriptor.id || JSON.stringify(descriptor)}_invY_${invertYVal}`;
+    ? descriptor
+    : JSON.stringify(descriptor);
 
   registry.materialCache ||= new Map();
   if (registry.materialCache.has(cacheKey)) {
@@ -74,10 +61,14 @@ export function markComponent(mesh, item, componentId) {
 }
 
 export function boxComponent(registry, item, definition, componentId, dimensions, transform, options = {}) {
+  const descriptor = getComponentMaterialDescriptor(item, definition, componentId);
   const mesh = createBox(registry, `${item.id}_${componentId}`, dimensions, transform, {
     ...options,
     material: getComponentMaterial(registry, item, definition, componentId)
   });
+  if (descriptor?.uvMode === 'box-world') {
+    orientBoxTextureCoordinates(mesh);
+  }
   return markComponent(mesh, item, componentId);
 }
 

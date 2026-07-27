@@ -932,6 +932,19 @@ export class FloorplanDocument {
       let wallId = previousWallIds[key];
       let wall = wallId ? this.getWall(wallId) : null;
       let isCurrentMatched = wall && isWallOnEdge(wall, edgeFrom, edgeTo);
+      const isCurrentSharedWithOthers = wall && (this.floorplan.floor.rooms || []).some(
+        (otherRoom) => otherRoom.id !== room.id && Object.values(otherRoom.wallIds || {}).includes(wall.id)
+      );
+
+      // 房间自己创建并独占的墙必须逐帧严格跟随房间。isWallOnEdge 带有手画墙识别所需的
+      // 容差，不能用来决定自有墙是否需要更新，否则小步拖动或沿墙方向移动会跳过端点更新。
+      if (wall?.roomId === room.id && !isCurrentSharedWithOthers) {
+        normalizeWallDecorSettings(wall);
+        setWallEndpoints(wall, [from.x, from.z], [to.x, to.z]);
+        wall.floorId = room.floorId;
+        nextWallIds[key] = wall.id;
+        return;
+      }
 
       // 2. 如果当前关联的墙不匹配，自动识别场景中在房间边缘上的已有墙（手画墙或共享墙）
       if (!isCurrentMatched) {

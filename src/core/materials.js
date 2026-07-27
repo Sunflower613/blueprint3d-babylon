@@ -342,15 +342,19 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
 
   // --- 发光材质 ---
   if (normalized.kind === 'emissive') {
-    const material = new BABYLON.StandardMaterial(name, scene);
     const color = BABYLON.Color3.FromHexString(baseColor);
-    material.diffuseColor = new BABYLON.Color3(0, 0, 0);
-    material.specularColor = new BABYLON.Color3(0, 0, 0);
 
     if (normalized.src) {
-      // 自发光贴图
-      // Let the selected material color tint the emissive texture, matching ordinary textured materials.
-      material.emissiveColor = color;
+      // 自发光贴图 — 利用 linkEmissiveWithDiffuse 实现纹理颜色着色所见即所得。
+      // StandardMaterial 中 emissiveColor + emissiveTexture 是加法关系，着色不生效。
+      // 而 diffuseColor × diffuseTexture 是乘法关系，配合 linkEmissiveWithDiffuse = true
+      // 可将 diffuse 的乘法结果链接到 emissive 通道输出，实现颜色着色效果。
+      const material = new BABYLON.StandardMaterial(name, scene);
+      material.diffuseColor = color;
+      material.specularColor = new BABYLON.Color3(0, 0, 0);
+      material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+      material.linkEmissiveWithDiffuse = true;
+      material.backFaceCulling = false;
 
       const invertY = options.invertY !== undefined ? options.invertY : (normalized.invertY !== undefined ? normalized.invertY : true);
       const textureKey = `${normalized.src}_invY_${invertY}`;
@@ -380,20 +384,27 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
       texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
       texture.wrapV = normalized.stretchY ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
       configureSpriteSheetAnimation(scene, texture, normalized.spriteColumns, normalized.spriteRows, normalized.frameDuration);
-      material.emissiveTexture = texture;
-      // 额外把贴图赋给漫反射，以防某些着色器在 disableLighting = true 时只走 diffuse 通道
       material.diffuseTexture = texture;
+      material.emissiveTexture = texture;
       if (
         normalized.id === 'emissive-cyber-no-entry' ||
         normalized.src?.includes('emissive_cyber_no_entry')
       ) {
         configureTextureTransparency(material, texture);
       }
-    } else {
-      // 自发光纯色
-      material.emissiveColor = color;
+      material.disableLighting = true;
+      if (normalized.alpha !== undefined) {
+        material.alpha = normalized.alpha;
+      }
+      material.metadata = { ...(material.metadata || {}), blueprintMaterial: normalized };
+      return material;
     }
 
+    // 自发光纯色 — 保持 StandardMaterial（纯色不需要乘法着色）
+    const material = new BABYLON.StandardMaterial(name, scene);
+    material.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    material.specularColor = new BABYLON.Color3(0, 0, 0);
+    material.emissiveColor = color;
     material.disableLighting = true;
     material.backFaceCulling = false;
     if (normalized.alpha !== undefined) {

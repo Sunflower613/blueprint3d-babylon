@@ -254,17 +254,17 @@ const COMMON_METAL_MATERIALS = [
 // 墙纸与海报材质 (Wallpaper & Poster)
 const COMMON_WALLPAPER_MATERIALS = [
   { id: 'wallpaper-rose', name: '玫瑰', src: wallpaperRoseUrl, scale: 1, color: '#ffffff' },
-  { id: 'wallpaper-yellow-flower', name: '花卉', src: wallmapYellowUrl, scale: 1, color: '#f6ecbe' },
-  { id: 'wallpaper-leaf-bluegrey', name: '叶影墙纸', src: wallpaperLeafBluegreyUrl, scale: 1, color: '#9aa0b1' },
-  { id: 'wallpaper-paisley-orange', name: '佩斯利', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#f1c598' },
+  { id: 'wallpaper-yellow-flower', name: '花卉', src: wallmapYellowUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-leaf-bluegrey', name: '叶影', src: wallpaperLeafBluegreyUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-paisley-orange', name: '佩斯利', src: wallpaperPaisleyOrangeUrl, scale: 1, color: '#ffffff' },
   { id: 'wallpaper-fan-gold', name: '金扇纹', src: wallpaperFanGoldUrl, scale: 1, color: '#c6a47d' },
-  { id: 'wallpaper-stripe-teal-pink', name: '条纹墙纸', src: wallpaperStripeTealPinkUrl, scale: 1, color: '#7ca8a7' },
-  { id: 'wallpaper-damask-olive', name: '达玛斯', src: wallpaperDamaskOliveUrl, scale: 1, color: '#b8af71' },
-  { id: 'wallpaper-ink-bamboo-mist', name: '水墨竹韵', src: wallpaperInkBambooMistUrl, scale: 1, color: '#d8dde1' },
-  { id: 'wallpaper-cloud-navy-gold', name: '祥云墙纸', src: wallpaperCloudNavyGoldUrl, scale: 1, color: '#d7be8a' },
-  { id: 'wallpaper-ruyi-swirl-yellow', name: '回纹墙纸', src: wallpaperRuyiSwirlYellowUrl, scale: 1, color: '#f0dc75' },
-  { id: 'wallpaper-floral-blue-white', name: '青花纹', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#62789a' },
-  { id: 'wallpaper-seigaiha-blush', name: '青海波', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ecd5d8' },
+  { id: 'wallpaper-stripe-teal-pink', name: '条纹', src: wallpaperStripeTealPinkUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-damask-olive', name: '达玛斯', src: wallpaperDamaskOliveUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-ink-bamboo-mist', name: '水墨竹韵', src: wallpaperInkBambooMistUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-cloud-navy-gold', name: '祥云', src: wallpaperCloudNavyGoldUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-ruyi-swirl-yellow', name: '回纹', src: wallpaperRuyiSwirlYellowUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-floral-blue-white', name: '青花纹', src: wallpaperFloralBlueWhiteUrl, scale: 1, color: '#ffffff' },
+  { id: 'wallpaper-seigaiha-blush', name: '青海波', src: wallpaperSeigaihaBlushUrl, scale: 1, color: '#ffffff' },
   { id: 'poster-abstract-arches', name: '拱形抽象', src: posterAbstractArchesUrl, scale: 1, color: '#ffffff' },
   { id: 'poster-botanical-sage', name: '鼠尾草', src: posterBotanicalSageUrl, scale: 1, color: '#ffffff' },
   { id: 'poster-bauhaus-primary', name: '包豪斯', src: posterBauhausPrimaryUrl, scale: 1, color: '#ffffff' },
@@ -314,8 +314,8 @@ const COMMON_EMISSIVE_MATERIALS = [
   { id: 'emissive-dance-floor', name: '舞动', category: 'emissive', kind: 'emissive', src: danceFloorUrl, scale: 1.2, color: '#ffffff' },
   { id: 'emissive-fireplace-flame', name: '火焰', category: 'emissive', kind: 'emissive', src: fireplaceFlameUrl, scale: 1.5, repeatX: true, stretchY: true, invertY: true, uvMode: 'box-world', color: '#ffffff' },
   { id: 'emissive-neon-sign', name: '霓虹灯', category: 'emissive', kind: 'emissive', src: neonSignUrl, scale: 1.1, color: '#ffffff' },
-  { id: 'emissive-cyber-no-entry', name: '赛博禁止通行', category: 'emissive', kind: 'emissive', src: cyberNoEntryUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world' },
-  { id: 'emissive-robot-smile', name: '像素机器人笑脸', category: 'emissive', kind: 'emissive', src: robotSmileUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world', spriteColumns: 3, spriteRows: 3, frameDuration: 320 }
+  { id: 'emissive-cyber-no-entry', name: '禁止通行', category: 'emissive', kind: 'emissive', src: cyberNoEntryUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world' },
+  { id: 'emissive-robot-smile', name: '笑脸', category: 'emissive', kind: 'emissive', src: robotSmileUrl, scale: 1, color: '#ffffff', invertY: true, uvMode: 'box-world', spriteColumns: 3, spriteRows: 3, frameDuration: 320 }
 ];
 
 // =============================================================================

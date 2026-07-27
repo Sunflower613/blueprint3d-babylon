@@ -103,7 +103,10 @@ import {
   saveCustomMaterialToLocalStorage,
   removeCustomMaterialFromLocalStorage,
   extractMaterial,
-  applyMaterial
+  applyMaterial,
+  loadCustomColorMaterials,
+  setCustomColorMaterials,
+  isCustomColorMaterial
 } from './js/MaterialManager.js';
 import {
   initRender2D,
@@ -855,6 +858,59 @@ if (snapToggleBtn) {
         }
       });
     }
+  }
+
+  // --- 恢复自定义颜色材质并清理未使用的异色派生材质 ---
+  // 1. 加载缓存的自定义颜色材质到材质库
+  const cachedColorMaterials = loadCustomColorMaterials();
+  cachedColorMaterials.forEach((m) => {
+    if (!materialLibrary.some((existing) => existing.id === m.id)) {
+      materialLibrary.push(m);
+    }
+  });
+
+  // 2. 收集地图中所有引用的材质 ID
+  const usedMaterialIds = new Set();
+  let buildingData = {};
+  try {
+    const raw = testMap.stringifyBuildingFile();
+    buildingData = raw ? JSON.parse(raw) : {};
+  } catch (e) {}
+
+  (function collectMaterialIds(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(collectMaterialIds); return; }
+    if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('derived_texture_')) {
+      usedMaterialIds.add(obj.id);
+    }
+    if (obj.derivedFrom && typeof obj.derivedFrom === 'string') {
+      usedMaterialIds.add(obj.id);
+    }
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val && typeof val === 'object') {
+        collectMaterialIds(val);
+      } else if (typeof val === 'string' && val.startsWith('derived_texture_')) {
+        usedMaterialIds.add(val);
+      }
+    }
+  })(buildingData);
+
+  // 3. 清理材质库中未被地图引用的 derived_texture_ 异色派生材质
+  const beforeCount = materialLibrary.length;
+  materialLibrary = materialLibrary.filter((m) => {
+    if (m.id && String(m.id).startsWith('derived_texture_')) {
+      return usedMaterialIds.has(m.id);
+    }
+    return true;
+  });
+  
+  // 核心：强制同步回 editor 对象的全局材质库
+  editor.materialLibrary = materialLibrary;
+
+  const removedCount = beforeCount - materialLibrary.length;
+  if (removedCount > 0) {
+    console.log(`[材质清理] 已成功移除 ${removedCount} 个未使用的异色派生材质`);
   }
 })();
 syncLocalToStore();

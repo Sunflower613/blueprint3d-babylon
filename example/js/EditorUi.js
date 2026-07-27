@@ -63,6 +63,7 @@ import {
   getSelectedStructure
 } from './EditorUiContext.js';
 import { toggleFirstPerson } from './FirstPersonController.js';
+import { getActiveMaterialDisplayName, getActiveMaterialArrayDisplayName } from './MaterialManager.js';
 import { getRoomVertices, MaterialResolver, resolveMaterialAssetDescriptor } from '../../src/index.js';
 
 let lastActiveRoomId = null;
@@ -1897,11 +1898,23 @@ function applyStyleToSwatch(button, mat) {
 // 渲染“当前材质”网格
 export function renderCurrentMaterial() {
   const currentGrid = document.getElementById('current-material-grid');
-  if (!currentGrid) return;
-  currentGrid.innerHTML = '';
+  const currentLabel = document.getElementById('current-material-label') || document.querySelector('#current-material-panel > span');
 
   const activeMaterialDescriptor = editor.activeMaterialDescriptor;
   const activeMaterialArray = editor.activeMaterialArray;
+
+  if (currentLabel) {
+    let nameText = '';
+    if (activeMaterialArray && activeMaterialArray.length > 0) {
+      nameText = getActiveMaterialArrayDisplayName(activeMaterialArray);
+    } else if (activeMaterialDescriptor) {
+      nameText = getActiveMaterialDisplayName(activeMaterialDescriptor);
+    }
+    currentLabel.textContent = nameText ? `当前材质：${nameText}` : '当前材质';
+  }
+
+  if (!currentGrid) return;
+  currentGrid.innerHTML = '';
 
   let materialsToShow = [];
 

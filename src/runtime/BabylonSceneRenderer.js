@@ -2224,6 +2224,18 @@ export class BabylonSceneRenderer {
       const componentId = mesh.metadata?.blueprintFurnitureComponentId;
       if (componentId && (emissiveComponents.includes(componentId) || emissiveComponents.some(c => componentId.toLowerCase().includes(c)))) {
         if (mesh.material) {
+          // 如果材质使用了 linkEmissiveWithDiffuse（贴图类发光材质），
+          // 着色由 diffuseColor × diffuseTexture 驱动，不应被覆盖。
+          if (mesh.material.emissiveTexture) {
+            if (!isLightOn) {
+              mesh.material.linkEmissiveWithDiffuse = false;
+              mesh.material.emissiveColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+            } else {
+              mesh.material.linkEmissiveWithDiffuse = true;
+              mesh.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+            }
+            return;
+          }
           if (isLightOn) {
             const baseColor = mesh.material.diffuseColor || new BABYLON.Color3(1, 1, 1);
             mesh.material.emissiveColor = new BABYLON.Color3(

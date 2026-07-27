@@ -423,8 +423,9 @@ test('emissive material presets and textures keep their settings and emit light'
     assert.equal(textureEmissive.disableLighting, true);
     assert.equal(textureEmissive.backFaceCulling, false);
     assert.equal(textureEmissive.alpha, 0.8);
-    assert.deepEqual(textureEmissive.diffuseColor, new BABYLON.Color3(0, 0, 0));
-    assert.deepEqual(textureEmissive.emissiveColor, BABYLON.Color3.FromHexString('#00ff80'));
+    assert.deepEqual(textureEmissive.diffuseColor, BABYLON.Color3.FromHexString('#00ff80'));
+    assert.deepEqual(textureEmissive.emissiveColor, new BABYLON.Color3(0, 0, 0));
+    assert.equal(textureEmissive.linkEmissiveWithDiffuse, true);
     assert.ok(textureEmissive.emissiveTexture, 'should resolve and load emissiveTexture');
   } finally {
     scene.dispose();

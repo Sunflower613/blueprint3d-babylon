@@ -32,6 +32,58 @@ export function removeCustomMaterialFromLocalStorage(id) {
   }
 }
 
+// --- 自定义颜色材质（涂料/发光纯色）的 localStorage 缓存 ---
+const CUSTOM_COLOR_STORAGE_KEY = 'custom_color_materials';
+
+export function saveCustomColorMaterial(descriptor) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY) || '[]');
+    const idx = stored.findIndex((m) => m.id === descriptor.id);
+    if (idx >= 0) {
+      stored[idx] = descriptor;
+    } else {
+      stored.push(descriptor);
+    }
+    localStorage.setItem(CUSTOM_COLOR_STORAGE_KEY, JSON.stringify(stored));
+  } catch (e) {
+    console.error('保存自定义颜色材质到 localStorage 失败:', e);
+  }
+}
+
+export function removeCustomColorMaterial(id) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY) || '[]');
+    const filtered = stored.filter((m) => m.id !== id);
+    localStorage.setItem(CUSTOM_COLOR_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (e) {
+    console.error('从 localStorage 移除自定义颜色材质失败:', e);
+  }
+}
+
+export function loadCustomColorMaterials() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+export function setCustomColorMaterials(materials) {
+  try {
+    localStorage.setItem(CUSTOM_COLOR_STORAGE_KEY, JSON.stringify(materials));
+  } catch (e) {
+    console.error('保存自定义颜色材质列表到 localStorage 失败:', e);
+  }
+}
+
+const COLOR_PICKER_CATEGORIES = ['paint', 'emissive', 'glass', 'metal', 'mirror'];
+
+/** 判断材质 ID 是否为用户通过颜色选择器创建的自定义颜色材质 */
+export function isCustomColorMaterial(id) {
+  if (typeof id !== 'string') return false;
+  return COLOR_PICKER_CATEGORIES.some((cat) => id.startsWith(`custom-${cat}-`));
+}
+
 export function getActiveMaterialDisplayName(mat) {
   if (!mat) return '未选择材质';
   if (typeof mat === 'string') {
@@ -52,6 +104,17 @@ export function getActiveMaterialDisplayName(mat) {
   }
   return mat.name || '自定义材质';
 }
+
+export function getActiveMaterialArrayDisplayName(matArray) {
+  if (!matArray || matArray.length === 0) return '未选择材质';
+  const names = matArray.map(item => {
+    const mat = item.material || item;
+    return getActiveMaterialDisplayName(mat);
+  });
+  const uniqueNames = [...new Set(names)];
+  return uniqueNames.join('、');
+}
+
 
 function isTextureMaterial(material) {
   if (!material || typeof material === 'string') return false;
@@ -199,87 +262,71 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
   header.className = 'material-library-header';
   let activeName = '未选择材质';
   if (editor.activeMaterialArray && editor.activeMaterialArray.length > 0) {
-    activeName = `已吸取材质数组 (${editor.activeMaterialArray.length}个材质)`;
+    activeName = getActiveMaterialArrayDisplayName(editor.activeMaterialArray);
   } else if (editor.activeMaterialDescriptor) {
     activeName = getActiveMaterialDisplayName(editor.activeMaterialDescriptor);
   }
-  header.innerHTML = `<strong>${activeName}</strong>`;
-  materialLibraryPanel.appendChild(header);
-
-  // 如果是发光材质分类，添加自定义取色器卡片
-  if (false && category === 'emissive') {
-    const customEmissiveContainer = document.createElement('div');
-    customEmissiveContainer.className = 'custom-emissive-container';
-    customEmissiveContainer.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; padding: 10px; background: rgba(42, 65, 92, 0.04); border-radius: 6px; border: 1px solid rgba(42, 65, 92, 0.12);';
-
-    const textWrapper = document.createElement('div');
-    textWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
-
-    const label = document.createElement('span');
-    label.textContent = '自定义发光颜色';
-    label.style.cssText = 'font-size: 13px; font-weight: 500; color: #172033;';
-
-    textWrapper.appendChild(label);
-
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.id = 'emissive-color-picker';
-
-    const customEmissive = editor.materialLibrary.find(m => m.id && m.id.startsWith('emissive-custom'));
-    const activeTintableEmissive = isTextureMaterial(editor.activeMaterialDescriptor)
-      ? editor.activeMaterialDescriptor
-      : null;
-    picker.value = activeTintableEmissive?.color || customEmissive?.color || '#ffffff';
-    picker.style.cssText = 'border: 1px solid rgba(42, 65, 92, 0.16); background: none; width: 44px; height: 28px; cursor: pointer; padding: 0; border-radius: 4px; overflow: hidden;';
-
-    const handleColorChange = (color) => {
-      if (activeTintableEmissive) {
-        const tintedDescriptor = createTintedTextureDescriptor(activeTintableEmissive, color);
-        upsertMaterialDescriptor(tintedDescriptor);
-        editor.activeMaterialDescriptor = tintedDescriptor;
-        editor.activeMaterialArray = null;
-        renderMaterialLibrary();
-        ctx.updateEditor();
-        return;
-      }
-
-      const customDesc = {
-        id: `emissive-custom-${color.replace('#', '')}`,
-        name: `自定义发光 (${color})`,
-        category: 'emissive',
-        kind: 'emissive',
-        color: color
-      };
-
-      const existingIdx = editor.materialLibrary.findIndex(m => m.id && m.id.startsWith('emissive-custom'));
-      if (existingIdx >= 0) {
-        const newLib = [...editor.materialLibrary];
-        newLib[existingIdx] = customDesc;
-        editor.materialLibrary = newLib;
-      } else {
-        editor.materialLibrary = [...editor.materialLibrary, customDesc];
-      }
-
-      editor.activeMaterialDescriptor = customDesc;
-      editor.activeMaterialArray = null; // 清除全量数组
-      renderMaterialLibrary();
-      ctx.updateEditor();
-    };
-
-    picker.addEventListener('change', (e) => {
-      handleColorChange(e.target.value);
-    });
-
-    customEmissiveContainer.appendChild(textWrapper);
-    customEmissiveContainer.appendChild(picker);
-    materialLibraryPanel.appendChild(customEmissiveContainer);
-  }
-
-  const grid = document.createElement('div');
+   const grid = document.createElement('div');
   grid.className = 'material-grid';
 
-  // 仅在非发光分类下，动态创建并插入第一个“+”号上传材质方格
-  if (category !== 'emissive') {
+  // 涂料、发光、玻璃、金属和镜面分类：颜色选择器色块（替代上传按钮）
+  if (COLOR_PICKER_CATEGORIES.includes(category)) {
+    const colorPickerBtn = document.createElement('button');
+    colorPickerBtn.type = 'button';
+    colorPickerBtn.className = 'material-swatch upload-swatch';
+    const categoryTitles = {
+      paint: '自定义涂料颜色',
+      emissive: '自定义发光颜色',
+      glass: '自定义玻璃颜色',
+      metal: '自定义金属颜色',
+      mirror: '自定义镜面颜色'
+    };
+    colorPickerBtn.title = categoryTitles[category] || '自定义颜色';
+    colorPickerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+    // 隐藏的颜色输入框
+    const hiddenColorInput = document.createElement('input');
+    hiddenColorInput.type = 'color';
+    hiddenColorInput.value = '#ffffff';
+    hiddenColorInput.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none;';
+    colorPickerBtn.appendChild(hiddenColorInput);
+    colorPickerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      hiddenColorInput.click();
+    });
+    hiddenColorInput.addEventListener('click', (e) => e.stopPropagation());
+    hiddenColorInput.addEventListener('change', (e) => {
+      const color = e.target.value;
+      const hex = color.replace('#', '');
+      const prefix = `custom-${category}`;
+      const kind = category;
+      const namePrefixes = {
+        paint: '自定义涂料',
+        emissive: '自定义发光',
+        glass: '自定义玻璃',
+        metal: '自定义金属',
+        mirror: '自定义镜面'
+      };
+      const namePrefix = namePrefixes[category] || '自定义材质';
+      const descriptor = {
+        id: `${prefix}-${hex}`,
+        name: `${namePrefix} (${color})`,
+        category,
+        kind,
+        color
+      };
+      // 避免重复添加相同颜色
+      if (!editor.materialLibrary.some((m) => m.id === descriptor.id)) {
+        editor.materialLibrary = [descriptor, ...editor.materialLibrary];
+      }
+      saveCustomColorMaterial(descriptor);
+      editor.activeMaterialDescriptor = descriptor;
+      editor.activeMaterialArray = null;
+      renderMaterialLibrary();
+      ctx.updateEditor();
+    });
+    grid.appendChild(colorPickerBtn);
+  } else {
+    // 其他分类保留上传按钮
     const uploadButton = document.createElement('button');
     uploadButton.type = 'button';
     uploadButton.className = 'material-swatch upload-swatch';
@@ -348,47 +395,43 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
   }
 
   // 当选中了自定义材质时，在列表下方渲染编辑与删除面板
-  const isCustomMaterial = editor.activeMaterialDescriptor && editor.activeMaterialDescriptor.id && String(editor.activeMaterialDescriptor.id).startsWith('custom_');
-  if (isCustomMaterial && category === 'custom') {
-    const fieldLabel = document.createElement('label');
-    fieldLabel.className = 'field';
-    fieldLabel.style.marginTop = '12px';
+  const activeId = editor.activeMaterialDescriptor?.id ? String(editor.activeMaterialDescriptor.id) : '';
+  const isUploadedCustom = activeId.startsWith('custom_') && category === 'custom';
+  const isColorCustom = isCustomColorMaterial(activeId) && COLOR_PICKER_CATEGORIES.includes(category);
+  if (isUploadedCustom || isColorCustom) {
+    // 上传纹理的自定义材质显示重命名输入框
+    if (isUploadedCustom) {
+      const fieldLabel = document.createElement('label');
+      fieldLabel.className = 'field';
+      fieldLabel.style.marginTop = '12px';
 
-    const span = document.createElement('span');
-    span.textContent = '材质名称';
+      const span = document.createElement('span');
+      span.textContent = '材质名称';
 
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = editor.activeMaterialDescriptor.name || '';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = editor.activeMaterialDescriptor.name || '';
 
-    const handleSaveName = () => {
-      const newName = input.value.trim();
-      if (!newName) return;
-      
-      // 更新当前选中的材质名
-      editor.activeMaterialDescriptor.name = newName;
-      
-      // 更新库中对应项 of name
-      const foundInLib = editor.materialLibrary.find(m => m.id === editor.activeMaterialDescriptor.id);
-      if (foundInLib) {
-        foundInLib.name = newName;
-      }
-      
-      ctx.pushHistory();
-      renderMaterialLibrary();
-      ctx.updateEditor();
-    };
+      const handleSaveName = () => {
+        const newName = input.value.trim();
+        if (!newName) return;
+        editor.activeMaterialDescriptor.name = newName;
+        const foundInLib = editor.materialLibrary.find(m => m.id === editor.activeMaterialDescriptor.id);
+        if (foundInLib) foundInLib.name = newName;
+        ctx.pushHistory();
+        renderMaterialLibrary();
+        ctx.updateEditor();
+      };
 
-    input.addEventListener('change', handleSaveName);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        input.blur();
-      }
-    });
+      input.addEventListener('change', handleSaveName);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      });
 
-    fieldLabel.appendChild(span);
-    fieldLabel.appendChild(input);
+      fieldLabel.appendChild(span);
+      fieldLabel.appendChild(input);
+      materialLibraryPanel.appendChild(fieldLabel);
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -398,19 +441,19 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
     deleteBtn.addEventListener('click', async () => {
       const confirmDelete = await ctx.showCustomConfirm('删除材质', `确定要删除自定义材质「${editor.activeMaterialDescriptor.name}」吗？`);
       if (confirmDelete) {
-        removeCustomMaterialFromLocalStorage(editor.activeMaterialDescriptor.id);
+        if (isUploadedCustom) {
+          removeCustomMaterialFromLocalStorage(editor.activeMaterialDescriptor.id);
+        } else {
+          removeCustomColorMaterial(editor.activeMaterialDescriptor.id);
+        }
         editor.materialLibrary = editor.materialLibrary.filter(m => m.id !== editor.activeMaterialDescriptor.id);
-        
-        const remainingCustom = editor.materialLibrary.filter(m => m.category === 'custom');
-        editor.activeMaterialDescriptor = remainingCustom[0] || null;
-        
+        const remaining = editor.materialLibrary.filter(m => m.category === category);
+        editor.activeMaterialDescriptor = remaining[0] || null;
         ctx.pushHistory();
         renderMaterialLibrary();
         ctx.updateEditor();
       }
     });
-
-    materialLibraryPanel.appendChild(fieldLabel);
     materialLibraryPanel.appendChild(deleteBtn);
   }
 }
@@ -656,30 +699,50 @@ function getOpeningDefaultColor(openingType, componentId) {
 
 function tryUpdateToFullMaterial(matOrColor) {
   if (!matOrColor) return null;
+
+  // 1. 如果是带有明确标识 (id / src / kind) 的材质描述符对象，直接返回该对象
+  if (typeof matOrColor === 'object') {
+    if (matOrColor.id || matOrColor.src || (matOrColor.kind && matOrColor.kind !== 'color' && matOrColor.kind !== 'paint')) {
+      return matOrColor;
+    }
+  }
+
   let colorVal = typeof matOrColor === 'string' ? matOrColor : matOrColor.color;
   if (!colorVal) return matOrColor;
 
-  // 1. 如果是对象，且包含明确的高级材质属性 (如 kind 为 metal, mirror, glass, emissive, texture 等)
-  if (typeof matOrColor === 'object' && matOrColor.kind && matOrColor.kind !== 'color' && matOrColor.kind !== 'paint') {
-    return matOrColor;
-  }
+  // 2. 优先在材质库中根据颜色值匹配 Paint 涂料/纯色材质 (如 'paint-pure-white')
+  const foundPaint = editor.materialLibrary.find(m =>
+    m.color === colorVal &&
+    (m.category === 'paint' || m.kind === 'paint' || m.kind === 'color')
+  );
+  if (foundPaint) return foundPaint;
 
-  // 2. 尝试从材质库中根据颜色值匹配具有特殊属性的材质定义 (如金属、镜面、发光、玻璃等)
-  const foundRich = editor.materialLibrary.find(m => m.color === colorVal && m.kind && m.kind !== 'color' && m.kind !== 'paint');
+  // 3. 在材质库中查找其他非天空(sky)、非图片贴图(src)的具有特殊属性的材质定义 (如纯色金属、镜面、玻璃等)
+  const foundRich = editor.materialLibrary.find(m =>
+    m.color === colorVal &&
+    m.category !== 'sky' &&
+    !m.src &&
+    m.kind && m.kind !== 'color' && m.kind !== 'paint'
+  );
   if (foundRich) return foundRich;
 
-  // 3. 如果没找到特殊属性材质，则在整个材质库里查找任何匹配项
-  const foundAny = editor.materialLibrary.find(m => m.color === colorVal);
+  // 4. 查找任何非天空(sky)、非图片贴图(src)的匹配项
+  const foundAny = editor.materialLibrary.find(m =>
+    m.color === colorVal &&
+    m.category !== 'sky' &&
+    !m.src
+  );
   if (foundAny) return foundAny;
 
-  // 4. 仍然找不到 (属于自定义的颜色)，如果是字符串则构建一个默认涂料描述符，是对象则直接返回该对象
+  // 5. 仍未找到 (属于自定义颜色的 HEX)，如果是字符串则构建默认 Paint 描述符，是对象则直接返回
   if (typeof matOrColor === 'string') {
+    const isPureWhite = colorVal.toLowerCase() === '#ffffff';
     return {
-      id: 'paint-' + matOrColor.replace('#', ''),
-      name: `吸取颜色 (${matOrColor})`,
+      id: 'paint-' + colorVal.replace('#', ''),
+      name: isPureWhite ? '纯净白' : `吸取颜色 (${colorVal})`,
       category: 'paint',
       kind: 'paint',
-      color: matOrColor
+      color: colorVal
     };
   }
   return matOrColor;

@@ -662,7 +662,8 @@ export class FloorplanDocument {
   }
 
   isFloorVisible(floorId, currentFloorId) {
-    if (typeof window !== 'undefined' && window.showAllFloors) {
+    const globalObj = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null);
+    if (globalObj && globalObj.showAllFloors) {
       return true;
     }
     if (typeof window !== 'undefined' && window.firstPersonActive) {
@@ -794,11 +795,12 @@ export class FloorplanDocument {
     });
   }
 
-  addItem(partialItem) {
+  addItem(partialItem = {}) {
     const definition = getFurnitureDefinition(partialItem.type || 'table');
     const isMeterDef = definition.unit === 'm';
     const item = {
-      id: partialItem.id || `${definition.type}_${Date.now()}`,
+      ...partialItem,
+      id: partialItem.id || `${definition.type}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       type: definition.type,
       name: partialItem.name || definition.name,
       x: partialItem.x ?? 0,
@@ -808,12 +810,12 @@ export class FloorplanDocument {
       depth: partialItem.depth || (isMeterDef ? Number(definition.defaultSize.depth.toFixed(4)) : Number((definition.defaultSize.depth / INCHES_PER_UNIT).toFixed(4))),
       height: partialItem.height || (isMeterDef ? Number(definition.defaultSize.height.toFixed(4)) : Number((definition.defaultSize.height / INCHES_PER_UNIT).toFixed(4))),
       rotation: partialItem.rotation || 0,
-      locked: false,
+      locked: !!partialItem.locked,
       scale: partialItem.scale || 1,
       roomId: partialItem.roomId,
       floorId: partialItem.floorId || this.floorplan.currentFloorId,
-      colors: {},
-      materials: {}
+      colors: { ...(partialItem.colors || {}) },
+      materials: { ...(partialItem.materials || {}) }
     };
     definition.components.forEach((component) => {
       item.colors[component.id] = partialItem.colors?.[component.id] || component.defaultColor;
@@ -1006,6 +1008,7 @@ export class FloorplanDocument {
     const z = partialRoom.z ?? 0;
     const id = partialRoom.id || `room_${Date.now()}`;
     const room = {
+      ...partialRoom,
       id,
       name: partialRoom.name || '新房间',
       x,
@@ -1479,20 +1482,30 @@ export class FloorplanDocument {
     return before !== this.floorplan.fenceGates.length;
   }
 
-  addOpening(wallId, type = 'door', t = 0.5, shape = 'square') {
+  addOpening(wallIdOrData, type = 'door', t = 0.5, shape = 'square') {
+    let wallId = wallIdOrData;
+    let openingData = {};
+    if (typeof wallIdOrData === 'object' && wallIdOrData !== null) {
+      openingData = wallIdOrData;
+      wallId = openingData.wallId;
+      type = openingData.type || type;
+      t = openingData.t ?? t;
+      shape = openingData.shape || shape;
+    }
     const wall = this.getWall(wallId);
     if (!wall) return null;
     const opening = {
-      id: `${type}_${Date.now()}`,
+      ...openingData,
+      id: openingData.id || `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       type,
       shape: normalizeOpeningShape(shape),
       wallId,
       t: clamp(t, 0.08, 0.92),
-      width: type === 'door' ? 0.9 : 1.25,
+      width: openingData.width || (type === 'door' ? 0.9 : 1.25),
       floorId: wall.floorId || this.floorplan.currentFloorId,
-      locked: false
+      locked: !!openingData.locked
     };
-    if (type === 'window') opening.height = 0.85;
+    if (type === 'window' && openingData.height === undefined) opening.height = 0.85;
     this.floorplan.openings.push(opening);
     return opening;
   }

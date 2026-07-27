@@ -485,10 +485,25 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     texture.wrapU = isStretched ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
     texture.wrapV = isStretched ? BABYLON.Texture.CLAMP_ADDRESSMODE : BABYLON.Texture.WRAP_ADDRESSMODE;
 
+    material.onDisposeObservable.addOnce(() => {
+      if (texture && !texture.isDisposed) {
+        texture.dispose();
+      }
+      if (material.customReflectionProbe) {
+        material.customReflectionProbe.dispose();
+        material.customReflectionProbe = null;
+      }
+      if (material.reflectionTexture && !material.reflectionTexture.isDisposed) {
+        material.reflectionTexture.dispose();
+      }
+    });
+
     const applyTextureToMaterial = () => {
       if (!material.isDisposed) {
         material.diffuseColor = resolvedFloorColor;
         material.diffuseTexture = texture;
+      } else if (texture && !texture.isDisposed) {
+        texture.dispose();
       }
     };
 
@@ -500,12 +515,7 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
       });
     }
 
-    if (options.isFloor) {
-      // 地板材质在开始加载时，先不赋给 diffuseTexture，避免加载完成前的白色或红色格子闪烁，直接渲染底色淡棕色
-      // 等 onLoad 触发成功后再赋值
-    } else {
-      material.diffuseTexture = texture;
-    }
+    material.diffuseTexture = texture;
 
     if (!normalized.reflective) {
       material.specularColor = options.specularColor || new BABYLON.Color3(0.08, 0.08, 0.08);

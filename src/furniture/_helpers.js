@@ -31,7 +31,7 @@ export function getComponentMaterial(registry, item, definition, componentId) {
 
   const isReflective = descriptor && typeof descriptor === 'object' && (descriptor.kind === 'mirror' || descriptor.kind === 'metal');
   if (isReflective) {
-    return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}_${Date.now()}`, descriptor, options);
+    return createBlueprintMaterial(registry.scene, `item_${item.id}_${componentId}`, descriptor, options);
   }
 
   const cacheKey = typeof descriptor === 'string'

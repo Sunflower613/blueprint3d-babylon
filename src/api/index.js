@@ -189,7 +189,8 @@ export {
 } from '../runtime/PinkCastleGenerator.js';
 
 export {
-  BabylonSceneRenderer
+  BabylonSceneRenderer,
+  isNoCeilingRoom
 } from '../runtime/BabylonSceneRenderer.js';
 
 export {

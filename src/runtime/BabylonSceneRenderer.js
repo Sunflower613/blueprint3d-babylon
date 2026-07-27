@@ -34,6 +34,15 @@ function normalizeWallDecorSettings(wall) {
   return MaterialResolver.normalizeWallDecorSettings(wall);
 }
 
+export function isNoCeilingRoom(room) {
+  if (!room) return false;
+  if (room.hasCeiling === false || room.noCeiling === true || room.isOutdoor === true || room.isTerrace === true || room.isBalcony === true) return true;
+  if (room.roomType === 'terrace' || room.roomType === 'balcony' || room.roomType === 'outdoor') return true;
+  if (room.type === 'terrace' || room.type === 'balcony' || room.type === 'outdoor') return true;
+  if (room.name && /露台|阳台|terrace|balcony|outdoor|open[_\s]?air/i.test(room.name)) return true;
+  return false;
+}
+
 function getWallSurfaceFields(side, component = 'main') {
   return MaterialResolver.getWallSurfaceFields(side, component);
 }
@@ -725,8 +734,22 @@ export class BabylonSceneRenderer {
     materials.forEach((material) => {
       if (!material || material.isDisposed || persistentMaterials.has(material) || cachedMaterials.has(material)) return;
       if (usedByOtherMeshes?.has(material)) return;
-      // Material textures are per-material clones. Disposing the wrappers releases
-      // their GPU references while the scene-level base texture cache stays alive.
+      if (material.customReflectionProbe) {
+        try { material.customReflectionProbe.dispose(); } catch (_) {}
+        material.customReflectionProbe = null;
+      }
+      if (material.diffuseTexture && !material.diffuseTexture.isDisposed) {
+        material.diffuseTexture.dispose();
+      }
+      if (material.reflectionTexture && !material.reflectionTexture.isDisposed) {
+        material.reflectionTexture.dispose();
+      }
+      if (material.emissiveTexture && !material.emissiveTexture.isDisposed) {
+        material.emissiveTexture.dispose();
+      }
+      if (material.bumpTexture && !material.bumpTexture.isDisposed) {
+        material.bumpTexture.dispose();
+      }
       material.dispose(false, true);
     });
   }
@@ -775,7 +798,22 @@ export class BabylonSceneRenderer {
       });
       this.materialCache.clear();
     }
+    if (this.scene?.materials) {
+      this.scene.materials.forEach((mat) => {
+        if (mat && !mat.isDisposed && /^(floor|wall|ceiling|roof|item|opening|fence|stairs|gate)_/.test(mat.name)) {
+          builtMaterials.add(mat);
+        }
+      });
+    }
     this.disposeMaterials(builtMaterials);
+    if (this.scene?.reflectionProbes) {
+      const probes = [...this.scene.reflectionProbes];
+      probes.forEach((probe) => {
+        if (probe && typeof probe.dispose === 'function') {
+          try { probe.dispose(); } catch (_) {}
+        }
+      });
+    }
     this.openingDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.fenceGateDragPreviews.forEach((preview) => preview.root?.dispose(false, false));
     this.itemNodes.forEach((node) => node.dispose(false, false));
@@ -864,7 +902,7 @@ export class BabylonSceneRenderer {
       const cacheKey = `${side}:${component}`;
       if (materialCache.has(cacheKey)) return materialCache.get(cacheKey);
       const { descriptor, color } = resolveWallSurfaceDescriptor(wall, side, component);
-      const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}_${Date.now()}`, descriptor, {
+      const material = createBlueprintMaterial(this.scene, `wall_${wall.id}_${side}_${component}`, descriptor, {
         ...wallMaterialOptions,
         fallbackColor: color || wall.color || DEFAULT_WALL_COLOR,
         surfaceWidth: wallSurfaceWidth,
@@ -1178,7 +1216,7 @@ export class BabylonSceneRenderer {
       .filter((hole) => hole.right - hole.left > 0.05 && hole.bottom - hole.top > 0.05);
   }
 
-  buildFloorPiece(group, room, material, ceilingMaterial, rect, index) {
+  buildFloorPiece(group, room, material, ceilingMaterial, rect, index, hasCeiling = true) {
     const width = rect.right - rect.left;
     const depth = rect.bottom - rect.top;
     if (width <= 0.01 || depth <= 0.01) return;
@@ -1216,20 +1254,22 @@ export class BabylonSceneRenderer {
       piece.setVerticesData(BABYLON.VertexBuffer.UVKind, uvs);
     }
 
-    const ceilingThickness = 0.002;
-    const ceilingPiece = createBox(this, `ceiling_${room.id}_${index}`, {
-      width,
-      height: ceilingThickness,
-      depth
-    }, {
-      position: { x: centerX - room.x, y: -currentFloorHeight / 2 - ceilingThickness / 2, z: centerZ - room.z }
-    }, {
-      parent: group,
-      material: ceilingMaterial,
-      receiveShadows: true,
-      shadowCaster: true
-    });
-    ceilingPiece.metadata = { blueprintRoomId: room.id, crossFloorShadowOnly: true, locked: !!room.locked };
+    if (hasCeiling && ceilingMaterial) {
+      const ceilingThickness = 0.002;
+      const ceilingPiece = createBox(this, `ceiling_${room.id}_${index}`, {
+        width,
+        height: ceilingThickness,
+        depth
+      }, {
+        position: { x: centerX - room.x, y: -currentFloorHeight / 2 - ceilingThickness / 2, z: centerZ - room.z }
+      }, {
+        parent: group,
+        material: ceilingMaterial,
+        receiveShadows: true,
+        shadowCaster: true
+      });
+      ceilingPiece.metadata = { blueprintRoomId: room.id, crossFloorShadowOnly: true, locked: !!room.locked };
+    }
   }
 
   buildRoomPolygonMesh(group, room, material, height, centerY, suffix) {
@@ -1296,9 +1336,10 @@ export class BabylonSceneRenderer {
         surfaceWidth: room.width,
         surfaceDepth: room.depth
       });
-      const ceilingMaterial = createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
+      const hasCeilingSkin = !isNoCeilingRoom(room);
+      const ceilingMaterial = hasCeilingSkin ? createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
         fallbackColor: '#ffffff'
-      });
+      }) : null;
       const currentFloorHeight = this.document.getFloorHeight(room.floorId);
 
       const group = new BABYLON.TransformNode(`floor_${room.id}`, this.scene);
@@ -1325,17 +1366,19 @@ export class BabylonSceneRenderer {
             const centerZ = (rect.top + rect.bottom) / 2;
             const insideHole = holes.some((hole) => centerX > hole.left && centerX < hole.right && centerZ > hole.top && centerZ < hole.bottom);
             if (!insideHole) {
-              this.buildFloorPiece(group, room, floorMaterial, ceilingMaterial, rect, pieceIndex);
+              this.buildFloorPiece(group, room, floorMaterial, ceilingMaterial, rect, pieceIndex, hasCeilingSkin);
               pieceIndex += 1;
             }
           }
         }
       } else {
         this.buildRoomPolygonMesh(group, room, floorMaterial, currentFloorHeight, room.elevation || 0, 'shape');
-        const ceilingMesh = this.buildRoomPolygonMesh(group, room, ceilingMaterial, 0.002, -currentFloorHeight / 2 - 0.001, 'ceiling');
-        if (ceilingMesh) {
-          ceilingMesh.metadata.crossFloorShadowOnly = true;
-          this.shadowCasters.push(ceilingMesh);
+        if (hasCeilingSkin && ceilingMaterial) {
+          const ceilingMesh = this.buildRoomPolygonMesh(group, room, ceilingMaterial, 0.002, -currentFloorHeight / 2 - 0.001, 'ceiling');
+          if (ceilingMesh) {
+            ceilingMesh.metadata.crossFloorShadowOnly = true;
+            this.shadowCasters.push(ceilingMesh);
+          }
         }
       }
 
@@ -1639,6 +1682,9 @@ export class BabylonSceneRenderer {
         let cutterCSG = BABYLON.CSG.FromMesh(cutter);
         let newCSG = currentCSG.subtract(cutterCSG);
         cutter.dispose();
+        if (!newCSG || !newCSG.polygons || newCSG.polygons.length === 0) {
+          return currentCSG;
+        }
         return newCSG;
       };
 

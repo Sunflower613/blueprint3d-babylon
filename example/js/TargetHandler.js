@@ -3,6 +3,7 @@ import { selection } from '../store/index.js';
 import { createStoreProxy } from '../store/proxyHelper.js';
 import { extractMaterial } from './MaterialManager.js';
 import { toggleFirstPerson } from './FirstPersonController.js';
+import { getRoomWallKeys, pointInRoom } from '../../src/index.js';
 
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
@@ -502,6 +503,109 @@ export function mirrorTarget(target) {
   ctx.renderPlan();
 }
 
+function calculateFastNonOverlappingPosition(sourceRoom, existingRooms = []) {
+  const currentFloorId = sourceRoom.floorId;
+  const roomsOnFloor = existingRooms.filter(r => r.floorId === currentFloorId && r.id !== sourceRoom.id);
+
+  const w = sourceRoom.width || 4;
+  const d = sourceRoom.depth || 4;
+  const sourceW = sourceRoom.width || 4;
+  const sourceD = sourceRoom.depth || 4;
+  const gap = 0.5;
+  const eps = 0.05;
+
+  const stepX = (w + sourceW) / 2 + gap;
+  const stepZ = (d + sourceD) / 2 + gap;
+
+  const isPositionOverlapping = (cx, cz) => {
+    const minX1 = cx - w / 2;
+    const maxX1 = cx + w / 2;
+    const minZ1 = cz - d / 2;
+    const maxZ1 = cz + d / 2;
+
+    for (const other of roomsOnFloor) {
+      const otherW = other.width || 4;
+      const otherD = other.depth || 4;
+      const minX2 = other.x - otherW / 2;
+      const maxX2 = other.x + otherW / 2;
+      const minZ2 = other.z - otherD / 2;
+      const maxZ2 = other.z + otherD / 2;
+
+      const overlapX = (minX1 + eps < maxX2) && (maxX1 - eps > minX2);
+      const overlapZ = (minZ1 + eps < maxZ2) && (maxZ1 - eps > minZ2);
+      if (overlapX && overlapZ) {
+        return { other, minX2, maxX2, minZ2, maxZ2 };
+      }
+    }
+    return null;
+  };
+
+  const candidateNeighbors = [
+    { x: sourceRoom.x + stepX, z: sourceRoom.z },         // 东 (+X)
+    { x: sourceRoom.x - stepX, z: sourceRoom.z },         // 西 (-X)
+    { x: sourceRoom.x,         z: sourceRoom.z + stepZ }, // 南 (+Z)
+    { x: sourceRoom.x,         z: sourceRoom.z - stepZ }  // 北 (-Z)
+  ];
+
+  for (const pos of candidateNeighbors) {
+    if (!isPositionOverlapping(pos.x, pos.z)) {
+      return pos;
+    }
+  }
+
+  const jumpDirections = [
+    { dirX: 1, dirZ: 0 },
+    { dirX: -1, dirZ: 0 },
+    { dirX: 0, dirZ: 1 },
+    { dirX: 0, dirZ: -1 }
+  ];
+
+  for (const dir of jumpDirections) {
+    let currX = sourceRoom.x + dir.dirX * stepX;
+    let currZ = sourceRoom.z + dir.dirZ * stepZ;
+
+    for (let iter = 0; iter < roomsOnFloor.length + 2; iter++) {
+      const block = isPositionOverlapping(currX, currZ);
+      if (!block) {
+        return { x: currX, z: currZ };
+      }
+      if (dir.dirX > 0) currX = block.maxX2 + w / 2 + gap;
+      else if (dir.dirX < 0) currX = block.minX2 - w / 2 - gap;
+      else if (dir.dirZ > 0) currZ = block.maxZ2 + d / 2 + gap;
+      else if (dir.dirZ < 0) currZ = block.minZ2 - d / 2 - gap;
+    }
+  }
+
+  const candidateAnchors = [];
+  roomsOnFloor.forEach(r => {
+    const rW = r.width || 4;
+    const rD = r.depth || 4;
+    const rMinX = r.x - rW / 2;
+    const rMaxX = r.x + rW / 2;
+    const rMinZ = r.z - rD / 2;
+    const rMaxZ = r.z + rD / 2;
+
+    candidateAnchors.push({ x: rMaxX + w / 2 + gap, z: rMaxZ + d / 2 + gap });
+    candidateAnchors.push({ x: rMinX - w / 2 - gap, z: rMaxZ + d / 2 + gap });
+    candidateAnchors.push({ x: rMaxX + w / 2 + gap, z: rMinZ - d / 2 - gap });
+    candidateAnchors.push({ x: rMinX - w / 2 - gap, z: rMinZ - d / 2 - gap });
+  });
+
+  candidateAnchors.sort((a, b) => {
+    const distA = Math.hypot(a.x - sourceRoom.x, a.z - sourceRoom.z);
+    const distB = Math.hypot(b.x - sourceRoom.x, b.z - sourceRoom.z);
+    return distA - distB;
+  });
+
+  for (const anchor of candidateAnchors) {
+    if (!isPositionOverlapping(anchor.x, anchor.z)) {
+      return anchor;
+    }
+  }
+
+  return { x: sourceRoom.x + stepX, z: sourceRoom.z + stepZ };
+}
+
 export function copyTarget(target) {
   if (!isAllowedTarget(target)) return;
   if (target.type === 'item') {
@@ -615,16 +719,118 @@ export function copyTarget(target) {
   } else if (target.type === 'room') {
     const room = ctx.testMap.getEntity('room', target.id);
     if (!room) return;
-    const copy = ctx.testMap.executeCommand('addRoom', {
-      ...JSON.parse(JSON.stringify(room)),
-      id: undefined,
-      name: room.name,
-      x: room.x + 0.5,
-      z: room.z + 0.5,
+
+    const existingRooms = ctx.testMap.getEntities('room') || [];
+    const targetPos = calculateFastNonOverlappingPosition(room, existingRooms);
+    const dx = Number((targetPos.x - room.x).toFixed(3));
+    const dz = Number((targetPos.z - room.z).toFixed(3));
+
+    const roomCopyData = JSON.parse(JSON.stringify(room));
+    delete roomCopyData.id;
+    delete roomCopyData.wallIds;
+
+    const newRoom = ctx.testMap.executeCommand('addRoom', {
+      ...roomCopyData,
+      x: targetPos.x,
+      z: targetPos.z,
       floorId: ctx.testMap.getCurrentFloorId(),
-      locked: false
+      locked: false,
+      rebuild: false
     });
-    nextSelection = { type: 'room', id: copy.id };
+
+    if (newRoom) {
+      const keys = getRoomWallKeys(room);
+      keys.forEach((key) => {
+        const sourceWallId = room.wallIds?.[key];
+        const targetWallId = newRoom.wallIds?.[key];
+
+        if (!sourceWallId && targetWallId) {
+          ctx.testMap.executeCommand('deleteWall', { wallId: targetWallId, rebuild: false });
+        } else if (sourceWallId && targetWallId) {
+          const sourceWall = ctx.testMap.getEntity('wall', sourceWallId);
+          if (!sourceWall) {
+            ctx.testMap.executeCommand('deleteWall', { wallId: targetWallId, rebuild: false });
+          } else {
+            ctx.testMap.executeCommand('updateWall', {
+              wallId: targetWallId,
+              rebuild: false,
+              patch: {
+                color: sourceWall.color,
+                material: sourceWall.material,
+                materialFront: sourceWall.materialFront,
+                colorFront: sourceWall.colorFront,
+                materialBack: sourceWall.materialBack,
+                colorBack: sourceWall.colorBack,
+                hidden: !!sourceWall.hidden,
+                baseboardEnabled: sourceWall.baseboardEnabled,
+                baseboardHeight: sourceWall.baseboardHeight,
+                baseboardMaterialFront: sourceWall.baseboardMaterialFront,
+                baseboardColorFront: sourceWall.baseboardColorFront,
+                baseboardMaterialBack: sourceWall.baseboardMaterialBack,
+                baseboardColorBack: sourceWall.baseboardColorBack,
+                wainscotEnabled: sourceWall.wainscotEnabled,
+                wainscotHeight: sourceWall.wainscotHeight,
+                wainscotMaterialFront: sourceWall.wainscotMaterialFront,
+                wainscotColorFront: sourceWall.wainscotColorFront,
+                wainscotMaterialBack: sourceWall.wainscotMaterialBack,
+                wainscotColorBack: sourceWall.wainscotColorBack
+              }
+            });
+
+            const allOpenings = ctx.testMap.getEntities('opening') || [];
+            const sourceOpenings = allOpenings.filter((o) => o.wallId === sourceWallId);
+            sourceOpenings.forEach((opening) => {
+              const openingCopy = JSON.parse(JSON.stringify(opening));
+              delete openingCopy.id;
+              delete openingCopy.wallId;
+
+              const newOpening = ctx.testMap.executeCommand('addOpening', {
+                ...openingCopy,
+                wallId: targetWallId,
+                floorId: ctx.testMap.getCurrentFloorId(),
+                rebuild: false
+              });
+
+              if (newOpening) {
+                ctx.testMap.executeCommand('updateOpening', {
+                  openingId: newOpening.id,
+                  rebuild: false,
+                  patch: {
+                    ...openingCopy,
+                    floorId: ctx.testMap.getCurrentFloorId()
+                  }
+                });
+              }
+            });
+          }
+        }
+      });
+
+      const allItems = ctx.testMap.getEntities('item') || [];
+      const roomItems = allItems.filter((item) => {
+        if (item.roomId === room.id) return true;
+        return pointInRoom(room, item.x, item.z);
+      });
+
+      roomItems.forEach((item) => {
+        const itemCopy = JSON.parse(JSON.stringify(item));
+        delete itemCopy.id;
+
+        ctx.testMap.executeCommand('addItem', {
+          ...itemCopy,
+          x: Number((item.x + dx).toFixed(3)),
+          z: Number((item.z + dz).toFixed(3)),
+          roomId: newRoom.id,
+          floorId: ctx.testMap.getCurrentFloorId(),
+          rebuild: false
+        });
+      });
+
+      if (typeof ctx.testMap.build === 'function') {
+        ctx.testMap.build({ rebuildType: 'all' });
+      }
+      nextSelection = { type: 'room', id: newRoom.id };
+    }
   } else if (target.type === 'fence_gate') {
     const gate = ctx.testMap.getEntity('fence_gate', target.id);
     if (!gate) return;

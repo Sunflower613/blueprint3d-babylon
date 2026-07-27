@@ -655,9 +655,9 @@ export class EditorFacade {
     this._renderer.setAdvancedRendering(enabled);
   }
 
-  refreshRendering() {
+  refreshRendering(options = {}) {
     if (this._previewState !== 'idle') return false;
-    this._renderer.build();
+    this._renderer.build(options);
     return true;
   }
 

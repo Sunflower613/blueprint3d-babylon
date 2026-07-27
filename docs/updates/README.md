@@ -5,9 +5,7 @@
 ## 📁 目录文件索引
 
 - **`3D_Design_Software_Full_Test_Plan_V4.xlsx`**: **[当前最新]** 全量测试验证与迭代计划表格（包含 8 大阶段、73 项全量测试用例）。
-- **`3D_Design_Software_Full_Test_Plan_V3.xlsx`**: V3 全量测试计划历史存档（55 项用例）。
-- **`3D_Design_Software_Full_Test_Plan_V2.xlsx`**: V2 需求与测试用例历史存档。
-- **`bug-0627.txt` ~ `bug-0723.txt`**: 原始 Bug 反馈与需求清单记录文件（Source 1 ~ Source 6）。
+- **`bug-[日期].txt`**: 原始 Bug 反馈与需求清单记录文件（Source 1 ~ Source 6）。
 
 ## V4 测试计划摘要
 

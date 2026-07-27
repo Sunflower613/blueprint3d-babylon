@@ -271,9 +271,9 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
 
   // 涂料、发光、玻璃、金属和镜面分类：颜色选择器色块（替代上传按钮）
   if (COLOR_PICKER_CATEGORIES.includes(category)) {
-    const colorPickerBtn = document.createElement('button');
-    colorPickerBtn.type = 'button';
-    colorPickerBtn.className = 'material-swatch upload-swatch';
+    const colorPickerControl = document.createElement('div');
+    colorPickerControl.className = 'material-swatch upload-swatch';
+    colorPickerControl.style.position = 'relative';
     const categoryTitles = {
       paint: '自定义涂料颜色',
       emissive: '自定义发光颜色',
@@ -281,20 +281,18 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
       metal: '自定义金属颜色',
       mirror: '自定义镜面颜色'
     };
-    colorPickerBtn.title = categoryTitles[category] || '自定义颜色';
-    colorPickerBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
-    // 隐藏的颜色输入框
-    const hiddenColorInput = document.createElement('input');
-    hiddenColorInput.type = 'color';
-    hiddenColorInput.value = '#ffffff';
-    hiddenColorInput.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none;';
-    colorPickerBtn.appendChild(hiddenColorInput);
-    colorPickerBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      hiddenColorInput.click();
-    });
-    hiddenColorInput.addEventListener('click', (e) => e.stopPropagation());
-    hiddenColorInput.addEventListener('change', (e) => {
+    const pickerTitle = categoryTitles[category] || '自定义颜色';
+    colorPickerControl.title = pickerTitle;
+    colorPickerControl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+    // 由原生颜色输入直接覆盖整个色块，确保 iPad Safari 将点击识别为用户手势。
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = '#ffffff';
+    colorInput.title = pickerTitle;
+    colorInput.setAttribute('aria-label', pickerTitle);
+    colorInput.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0.001;cursor:pointer;z-index:2;padding:0;border:0;';
+    colorPickerControl.appendChild(colorInput);
+    colorInput.addEventListener('change', (e) => {
       const color = e.target.value;
       const hex = color.replace('#', '');
       const prefix = `custom-${category}`;
@@ -324,7 +322,7 @@ export function renderMaterialLibrary(isSwitchingCategory = false) {
       renderMaterialLibrary();
       ctx.updateEditor();
     });
-    grid.appendChild(colorPickerBtn);
+    grid.appendChild(colorPickerControl);
   } else {
     // 其他分类保留上传按钮
     const uploadButton = document.createElement('button');

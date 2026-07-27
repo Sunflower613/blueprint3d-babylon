@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
 import { MaterialResolver } from '../../src/domain/MaterialResolver.js';
 import { isCustomColorMaterial } from '../../example/js/MaterialManager.js';
 
@@ -75,4 +76,18 @@ test('MaterialResolver 规范化镜面纯色材质并保留镜面分类属性', 
   assert.equal(normalized.kind, 'mirror');
   assert.equal(normalized.category, 'mirror');
   assert.equal(normalized.color, '#e8eef4');
+});
+
+test('材质库自定义颜色入口由原生颜色输入直接覆盖并接收点击', () => {
+  const source = fs.readFileSync(new URL('../../example/js/MaterialManager.js', import.meta.url), 'utf8');
+  const pickerBlock = source.slice(
+    source.indexOf('// 涂料、发光、玻璃、金属和镜面分类'),
+    source.indexOf('// 其他分类保留上传按钮')
+  );
+
+  assert.match(pickerBlock, /colorInput\.type = 'color'/);
+  assert.match(pickerBlock, /inset:0;width:100%;height:100%/);
+  assert.doesNotMatch(pickerBlock, /colorInput\.click\(\)/);
+  assert.doesNotMatch(pickerBlock, /pointer-events:none/);
+  assert.doesNotMatch(pickerBlock, /width:0;height:0/);
 });

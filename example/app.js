@@ -773,6 +773,7 @@ const store = new Store({
     testMap.setSelectedRoof?.(selectedRoofId);
     testMap.setSelectedStairs?.(selectedStairsId);
     refreshShadows();
+    updateSkyboxFromCurrentFloor();
     updateEditor();
     renderPlan();
     syncLocalToStore();

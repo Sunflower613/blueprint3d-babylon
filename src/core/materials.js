@@ -427,6 +427,12 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     blueprintMaterial: normalized
   };
 
+  if (normalized.kind === 'color' && normalized.alpha !== undefined && options.alpha === undefined) {
+    material.alpha = Math.max(0, Math.min(1, normalized.alpha));
+    material.backFaceCulling = false;
+    material.twoSidedLighting = true;
+  }
+
   if (normalized.kind === 'texture' && normalized.src) {
     if (normalized.alpha !== undefined) {
       material.alpha = Math.max(0, Math.min(1, normalized.alpha));
@@ -479,6 +485,10 @@ export function createBlueprintMaterial(scene, name, descriptor, options = {}) {
     ) {
       textureScale.uScale = Number(options.surfaceWidth) / normalized.physicalTileSize;
       textureScale.vScale = physicalSurfaceHeight / normalized.physicalTileSize;
+    } else if (options.isEnvironmentGround && !isStretched && !(normalized.physicalTileSize > 0)) {
+      const groundScaleMultiplier = Math.max(1, Number(normalized.scale || 1) * 40);
+      textureScale.uScale = groundScaleMultiplier;
+      textureScale.vScale = groundScaleMultiplier;
     }
     texture.uScale = textureScale.uScale;
     texture.vScale = textureScale.vScale;

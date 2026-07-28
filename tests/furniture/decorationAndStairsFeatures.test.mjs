@@ -79,6 +79,118 @@ test('L 楼梯分别保存转角前后长度并用于两段几何', () => {
   engine.dispose();
 });
 
+test('直跑楼梯的侧面墙体/底座会被合并为一个单一 Mesh', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const group = new BABYLON.TransformNode('straight-stairs-test', scene);
+  const material = new BABYLON.StandardMaterial('treadMat', scene);
+  const registry = {
+    scene,
+    materialCache: new Map(),
+    add(mesh, options = {}) {
+      mesh.parent = options.parent || group;
+      if (options.material) mesh.material = options.material;
+      return mesh;
+    }
+  };
+
+  const straightStairs = {
+    id: 'st_straight_12',
+    subtype: 'straight',
+    width: 1.2,
+    depth: 3.6,
+    height: 3.0,
+    steps: 12,
+    sideColor: '#f0f0f0'
+  };
+
+  buildStairsGeometry(registry, group, straightStairs, material, straightStairs.width, straightStairs.depth, straightStairs.height, straightStairs.steps);
+
+  const meshes = group.getChildMeshes();
+  const sideMeshes = meshes.filter((m) => m.metadata?.blueprintStairsComponentId === 'side');
+  const treadMeshes = meshes.filter((m) => m.name.includes('stairs_step_tread_'));
+
+  assert.equal(treadMeshes.length, 12, '应有 12 个踏步板 Mesh');
+  assert.equal(sideMeshes.length, 1, '12 个步数的侧面墙体/底座应成功合并为 1 个 Mesh');
+  assert.equal(sideMeshes[0].name, 'stairs_side_base_st_straight_12');
+
+  scene.dispose();
+  engine.dispose();
+});
+
+test('buildStairsGeometry supports ladder and slide subtypes correctly', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const material = new BABYLON.StandardMaterial('treadMat', scene);
+  const group = new BABYLON.TransformNode('stairsGroup', scene);
+
+  const ladderStairs = {
+    id: 'test_ladder',
+    subtype: 'ladder',
+    width: 0.6,
+    depth: 0.2,
+    height: 3,
+    steps: 10
+  };
+
+  const registry = {
+    scene,
+    materialCache: new Map(),
+    add(mesh, options = {}) {
+      mesh.parent = options.parent || group;
+      if (options.material) mesh.material = options.material;
+      return mesh;
+    }
+  };
+
+  buildStairsGeometry(registry, group, ladderStairs, material, ladderStairs.width, ladderStairs.depth, ladderStairs.height, ladderStairs.steps);
+  const rungs = group.getChildMeshes().filter((mesh) => mesh.name.includes('stairs_rung_'));
+  assert.equal(rungs.length, 10);
+  assert.equal(rungs[0].metadata?.blueprintStairsComponentId, 'top');
+
+  group.dispose();
+  const groupSlide = new BABYLON.TransformNode('slideGroup', scene);
+  const slideStairs = {
+    id: 'test_slide',
+    subtype: 'slide',
+    width: 0.9,
+    depth: 3,
+    height: 1.8,
+    steps: 1
+  };
+
+  buildStairsGeometry(registry, groupSlide, slideStairs, material, slideStairs.width, slideStairs.depth, slideStairs.height, slideStairs.steps);
+  const chute = groupSlide.getChildMeshes().find((mesh) => mesh.name.includes('stairs_slide_chute_'));
+  const rails = groupSlide.getChildMeshes().filter((mesh) => mesh.name.includes('stairs_slide_rail_'));
+  assert.ok(chute);
+  assert.equal(chute.metadata?.blueprintStairsComponentId, 'top');
+  assert.equal(rails.length, 2);
+  assert.equal(rails[0].metadata?.blueprintStairsComponentId, 'side');
+
+  const hitbox = groupSlide.getChildMeshes().find((mesh) => mesh.name.includes('stairs_hitbox_'));
+  assert.ok(hitbox);
+  assert.equal(hitbox.visibility, 0);
+  assert.equal(hitbox.isPickable, true);
+
+  const groupFloating2 = new BABYLON.TransformNode('floating2Group', scene);
+  const floatingStairs2 = {
+    id: 'test_floating_2',
+    subtype: 'floating',
+    width: 1,
+    depth: 3,
+    height: 3,
+    steps: 12,
+    beamCount: 2
+  };
+  buildStairsGeometry(registry, groupFloating2, floatingStairs2, material, floatingStairs2.width, floatingStairs2.depth, floatingStairs2.height, floatingStairs2.steps);
+  const beams2 = groupFloating2.getChildMeshes().filter((mesh) => mesh.name.includes('stairs_beam_'));
+  assert.equal(beams2.length, 2);
+  assert.equal(beams2[0].metadata?.blueprintStairsComponentId, 'side');
+
+  scene.dispose();
+  engine.dispose();
+});
+
 test('装饰与屏风家具包含薄海报、四联拼图以及参考图的桌台和木格栅', () => {
   const byType = (type) => FURNITURE_LIST.find((definition) => definition.type === type);
   const poster = byType('poster');

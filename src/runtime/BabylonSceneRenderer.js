@@ -1336,7 +1336,12 @@ export class BabylonSceneRenderer {
         surfaceWidth: room.width,
         surfaceDepth: room.depth
       });
-      const hasCeilingSkin = !isNoCeilingRoom(room);
+      const isTransparentFloor = floorMaterial && (
+        (floorMaterial.alpha !== undefined && floorMaterial.alpha < 0.99) ||
+        floorMaterial.metadata?.blueprintMaterial?.kind === 'glass' ||
+        (floorMaterial.metadata?.blueprintMaterial?.alpha !== undefined && floorMaterial.metadata.blueprintMaterial.alpha < 0.99)
+      );
+      const hasCeilingSkin = !isNoCeilingRoom(room) && !isTransparentFloor;
       const ceilingMaterial = hasCeilingSkin ? createBlueprintMaterial(this.scene, `ceiling_${room.id}`, '#ffffff', {
         fallbackColor: '#ffffff'
       }) : null;
@@ -1975,8 +1980,8 @@ export class BabylonSceneRenderer {
         flatShading: false
       });
       const steps = Math.max(4, Math.round(Number(stairs.steps || 9)));
-      const width = Math.max(0.6, Number(stairs.width || 1.2));
-      const depth = Math.max(1.2, Number(stairs.depth || 3.2));
+      const width = Math.max(0.1, Number(stairs.width || 0.6));
+      const depth = Math.max(0.1, Number(stairs.depth || 0.2));
       const height = this.document.getStairsAutoHeight(stairs);
 
       buildStairsGeometry(this, group, stairs, material, width, depth, height, steps);

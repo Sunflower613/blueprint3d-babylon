@@ -566,8 +566,8 @@ export function getStairsRailingSegments(stairs, testMap) {
   const segments = [];
   if (!stairs) return segments;
 
-  const width = Math.max(0.6, Number(stairs.width || 1.2));
-  const depth = Math.max(1.2, Number(stairs.depth || 3.2));
+  const width = Math.max(0.1, Number(stairs.width || 0.6));
+  const depth = Math.max(0.1, Number(stairs.depth || 0.2));
   const height = testMap.getStairsAutoHeight(stairs);
 
   function getWordPos(lx, lz) {
@@ -799,11 +799,27 @@ export function getStairsRailingSegments(stairs, testMap) {
         skipEndPost: i < N - 1
       });
     }
+  } else if (subtype === 'ladder') {
+    segments.push({
+      sectionId: `${stairs.id}_left`,
+      from: getWordPos(-width / 2, -depth / 2),
+      to: getWordPos(-width / 2, depth / 2),
+      tilt: 0,
+      yOffset: height / 2
+    });
+    segments.push({
+      sectionId: `${stairs.id}_right`,
+      from: getWordPos(width / 2, -depth / 2),
+      to: getWordPos(width / 2, depth / 2),
+      tilt: 0,
+      yOffset: height / 2
+    });
   } else {
     const tilt = Math.atan2(height, depth);
     const yOffset = height / 2;
 
     segments.push({
+      sectionId: `${stairs.id}_left`,
       from: getWordPos(-width / 2, -depth / 2),
       to: getWordPos(-width / 2, depth / 2),
       tilt,
@@ -811,6 +827,7 @@ export function getStairsRailingSegments(stairs, testMap) {
     });
 
     segments.push({
+      sectionId: `${stairs.id}_right`,
       from: getWordPos(width / 2, -depth / 2),
       to: getWordPos(width / 2, depth / 2),
       tilt,

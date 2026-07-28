@@ -207,12 +207,14 @@ export class MaterialResolver {
     }
 
     // 默认：颜色材质
+    const colorStr = (typeof value === 'string' ? value : value?.color) || fallbackColor;
     return {
-      id: value.id,
+      id: value?.id,
       kind: 'color',
-      category: value.category || 'paint',
-      name: value.name || '颜色',
-      color: value.color || fallbackColor
+      category: value?.category || 'custom',
+      name: value?.name || '纯色材质',
+      color: typeof colorStr === 'string' ? colorStr : fallbackColor,
+      alpha: value?.alpha !== undefined ? Number(value.alpha) : undefined
     };
   }
 

@@ -75,6 +75,7 @@ export {
 
 export {
   createFlatMaterial,
+  createBlueprintMaterial,
   createMaterialPalette
 } from '../core/materials.js';
 

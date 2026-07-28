@@ -1,4 +1,4 @@
-import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
+import { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture, SKY_TEXTURE_URL, GRASS_TEXTURE_URL, MaterialResolver, createBlueprintMaterial, resolveMaterialAssetDescriptor, shouldIncludeShadowCaster } from '../../src/index.js';
 const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Node, Plane, PhotoDome, Scene, ShadowGenerator, Vector3, StandardMaterial, Texture };
 
 const SKYBOX_SIZE = 1000.0;
@@ -495,27 +495,17 @@ export class Viewer3D {
       }
     }
 
-    if (this.grassLawn?.material) {
-      const material = this.grassLawn.material;
-      material.diffuseTexture?.dispose();
-      material.diffuseTexture = null;
-      if (groundDescriptor) {
-        const normalized = MaterialResolver.normalizeMaterialDescriptor(groundDescriptor, '#8ca66b');
-        const resolved = resolveMaterialAssetDescriptor(normalized);
-        material.diffuseColor = BABYLON.Color3.FromHexString(resolved.color || '#ffffff');
-        if (resolved.kind === 'texture' && resolved.src) {
-          material.diffuseTexture = new BABYLON.Texture(resolved.src, this.scene);
-          material.diffuseTexture.uScale = Math.max(1, Number(resolved.scale || 1) * 40);
-          material.diffuseTexture.vScale = Math.max(1, Number(resolved.scale || 1) * 40);
-          material.diffuseTexture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
-          material.diffuseTexture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
-        }
-      } else {
-        material.diffuseColor = BABYLON.Color3.White();
-        material.diffuseTexture = new BABYLON.Texture(GRASS_TEXTURE_URL, this.scene);
-        material.diffuseTexture.uScale = 40;
-        material.diffuseTexture.vScale = 40;
+    if (this.grassLawn) {
+      if (this.grassLawn.material) {
+        this.grassLawn.material.dispose();
       }
+      const desc = groundDescriptor || { kind: 'texture', src: GRASS_TEXTURE_URL, scale: 1.0, color: '#ffffff' };
+      this.grassLawn.material = createBlueprintMaterial(
+        this.scene,
+        'grassLawnMat',
+        desc,
+        { isFloor: true, isEnvironmentGround: true, surfaceWidth: 120, surfaceHeight: 120 }
+      );
     }
   }
 
@@ -547,13 +537,6 @@ export class Viewer3D {
       if (!this.grassLawn) {
         // 创建 1 楼 grassLawn 草坪，大小从 1000 减小为 120
         this.grassLawn = BABYLON.MeshBuilder.CreateGround('grassLawn', { width: 120, height: 120 }, this.scene);
-        const groundMaterial = new BABYLON.StandardMaterial('grassLawnMat', this.scene);
-        groundMaterial.diffuseColor = new BABYLON.Color3(1.0, 1.0, 1.0);
-        groundMaterial.diffuseTexture = new BABYLON.Texture(GRASS_TEXTURE_URL, this.scene);
-        groundMaterial.diffuseTexture.uScale = 40.0;
-        groundMaterial.diffuseTexture.vScale = 40.0;
-        groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // 无反射高光
-        this.grassLawn.material = groundMaterial;
         this.grassLawn.receiveShadows = true; // 允许草地接收阴影
         this.grassLawn.position.y = -0.01; // 略微低于 0 米，防止同 1 楼地板发生 Z-fighting 闪烁
         this.grassLawn.isPickable = false; // 排除拾取

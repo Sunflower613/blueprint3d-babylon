@@ -172,6 +172,7 @@ export async function loadBuildingFile(file) {
   ctx.setHasUserZoomedOrPanned(false);
   ctx.resetInteractionState();
   ctx.refreshShadows();
+  if (typeof ctx.updateSkyboxFromCurrentFloor === 'function') ctx.updateSkyboxFromCurrentFloor();
   ctx.updateEditor();
   ctx.renderPlan();
   if (ctx.currentView === '3d') {
@@ -263,6 +264,7 @@ export async function openLocalStorageList() {
       ctx.setHasUserZoomedOrPanned(false);
       ctx.resetInteractionState();
       ctx.refreshShadows();
+      if (typeof ctx.updateSkyboxFromCurrentFloor === 'function') ctx.updateSkyboxFromCurrentFloor();
       ctx.updateEditor();
       ctx.renderPlan();
       if (data.materialLibrary && data.materialLibrary.length) {
@@ -607,6 +609,7 @@ export async function loadBuildingZIP(file) {
     ctx.setHasUserZoomedOrPanned(false);
     ctx.resetInteractionState();
     ctx.refreshShadows();
+    if (typeof ctx.updateSkyboxFromCurrentFloor === 'function') ctx.updateSkyboxFromCurrentFloor();
     ctx.updateEditor();
     ctx.renderPlan();
     

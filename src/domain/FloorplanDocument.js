@@ -82,10 +82,31 @@ export const STAIR_SUBTYPE_DEFAULTS = {
     depth: 3,
     height: 3,
     steps: 12,
+    beamCount: 1,
     color: '#f5b984',
     material: { id: 'paint-f5b984', name: '吸取颜色 (#f5b984)', category: 'paint', kind: 'paint', color: '#f5b984' },
     sideColor: '#d8c0a0',
     sideMaterial: '#d8c0a0'
+  },
+  ladder: {
+    width: 0.6,
+    depth: 0.2,
+    height: 3,
+    steps: 10,
+    color: '#cfd8dc',
+    material: { id: 'metal-silver', name: '银白金属', category: 'metal', kind: 'metal', color: '#cfd8dc' },
+    sideColor: '#90a4ae',
+    sideMaterial: { id: 'metal-steel', name: '钢灰金属', category: 'metal', kind: 'metal', color: '#90a4ae' }
+  },
+  slide: {
+    width: 0.9,
+    depth: 3,
+    height: 1.8,
+    steps: 1,
+    color: '#ffb74d',
+    material: { id: 'paint-orange', name: '亮橙滑道', category: 'paint', kind: 'paint', color: '#ffb74d' },
+    sideColor: '#ef5350',
+    sideMaterial: { id: 'paint-red', name: '艳红护栏', category: 'paint', kind: 'paint', color: '#ef5350' }
   }
 };
 
@@ -387,8 +408,8 @@ export class FloorplanDocument {
 
       stairs.x = toFiniteNumber(stairs.x, 0);
       stairs.z = toFiniteNumber(stairs.z, 0);
-      stairs.width = toFinitePositive(stairs.width, subDef.width, 0.6);
-      stairs.depth = toFinitePositive(stairs.depth, subDef.depth, 1.2);
+      stairs.width = toFinitePositive(stairs.width, subDef.width, 0.1);
+      stairs.depth = toFinitePositive(stairs.depth, subDef.depth, 0.1);
       stairs.height = toFinitePositive(stairs.height, normalized.storyHeight || subDef.height, 1);
       stairs.rotation = toFiniteNumber(stairs.rotation, 0);
       stairs.color ||= subDef.color;
@@ -405,6 +426,7 @@ export class FloorplanDocument {
       stairs.runAfterCorner = toFinitePositive(stairs.runAfterCorner, subDef.runAfterCorner ?? Math.max(0.2, stairs.depth - stairs.width), 0.2);
       stairs.uSlotWidth = toFiniteNumber(stairs.uSlotWidth ?? subDef.uSlotWidth ?? 0, 0);
       stairs.uVoidLength = toFiniteNumber(stairs.uVoidLength ?? subDef.uVoidLength ?? (stairs.depth - 1), 0.1);
+      stairs.beamCount = Math.max(0, Math.min(4, Math.round(toFiniteNumber(stairs.beamCount ?? subDef.beamCount ?? 1, 1))));
     });
 
     normalized.fences.forEach((fence) => {
@@ -1223,8 +1245,8 @@ export class FloorplanDocument {
     Object.assign(stairs, patch);
     stairs.x = Number(stairs.x || 0);
     stairs.z = Number(stairs.z || 0);
-    stairs.width = Math.max(0.6, Number(stairs.width || 0.6));
-    stairs.depth = Math.max(1.2, Number(stairs.depth || 1.2));
+    stairs.width = Math.max(0.1, Number(stairs.width || 0.1));
+    stairs.depth = Math.max(0.1, Number(stairs.depth || 0.1));
     stairs.height = Math.max(1, Number(stairs.height || 1));
     stairs.steps = Math.max(3, Math.round(Number(stairs.steps || 9)));
     stairs.cornerStep = Math.max(1, Math.min(stairs.steps - 2, Math.round(Number(stairs.cornerStep ?? Math.floor(stairs.steps / 2)))));

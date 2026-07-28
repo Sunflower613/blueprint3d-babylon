@@ -209,6 +209,7 @@ export function ensureStructureEditor() {
   editor.appendChild(createStructureField('转角后长度 (m)', 'structure-run-after-corner', { type: 'number', min: '0.2', max: '20', step: '0.1' }));
   editor.appendChild(createStructureField('间层宽度 (m)', 'structure-u-slot-width', { type: 'number', min: '0', max: '1.0', step: '0.05' }));
   editor.appendChild(createStructureField('中空长度 (m)', 'structure-u-void-length', { type: 'number', min: '0', max: '3.0', step: '0.1' }));
+  editor.appendChild(createStructureField('底梁条数', 'structure-beam-count', { type: 'number', min: '0', max: '4', step: '1' }));
 
   // 弧度曲线调整把手 / 输入框
   const curveLabel = document.createElement('label');
@@ -589,6 +590,15 @@ export function updateEditor() {
       spiralDegreesInput.value = structure.spiralDegrees ?? (subtype === 'curved' ? 90 : 360);
     }
 
+    const beamCountInput = document.getElementById('structure-beam-count');
+    if (beamCountInput) {
+      const parentLabel = beamCountInput.closest('label');
+      if (parentLabel) {
+        parentLabel.classList.toggle('hidden', structureType !== 'stairs' || subtype !== 'floating');
+      }
+      beamCountInput.value = structure.beamCount ?? 1;
+    }
+
     const cornerStepInput = document.getElementById('structure-corner-step');
     if (cornerStepInput) {
       const parentLabel = cornerStepInput.closest('label');
@@ -654,7 +664,9 @@ export function updateEditor() {
           { value: 'ushape', label: 'U形楼梯' },
           { value: 'spiral', label: '旋转楼梯' },
           { value: 'curved', label: '弧形楼梯' },
-          { value: 'floating', label: '悬浮楼梯' }
+          { value: 'floating', label: '悬浮楼梯' },
+          { value: 'ladder', label: '竖直爬梯' },
+          { value: 'slide', label: '滑梯' }
         ];
         options.forEach(opt => {
           const o = document.createElement('option');
@@ -1286,7 +1298,7 @@ export function initUiEventListeners() {
     }
   });
 
-  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-curve', 'structure-elevation'].forEach((id) => {
+  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-beam-count', 'structure-curve', 'structure-elevation'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
   });
 

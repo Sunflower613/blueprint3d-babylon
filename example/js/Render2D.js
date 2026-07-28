@@ -34,7 +34,16 @@ export function inchesToWorld(value) {
 
 export function createSvgElement(name, attrs = {}) {
   const element = document.createElementNS(ctx.SVG_NS, name);
-  Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+  Object.entries(attrs).forEach(([key, value]) => {
+    let val = value;
+    if (name === 'rect' && (key === 'width' || key === 'height')) {
+      const num = Number(val);
+      if (!isNaN(num) && num < 0) {
+        val = 0;
+      }
+    }
+    element.setAttribute(key, val);
+  });
   return element;
 }
 
@@ -572,7 +581,7 @@ export function renderRoof(roof) {
   } else if (subtype === 'flat') {
     const border = createSvgElement('rect', {
       x: minX + 4, y: minY + 4,
-      width: w - 8, height: h - 8,
+      width: Math.max(0, w - 8), height: Math.max(0, h - 8),
       stroke: strokeColor, fill: 'none',
       'stroke-width': 1, 'stroke-dasharray': '2,2'
     });
@@ -791,7 +800,7 @@ export function renderStairs(stairs) {
       if (slotSvgW > 0.5) {
         group.appendChild(createSvgElement('rect', {
           x: minX + wStep, y: minY + landSvgH,
-          width: slotSvgW, height: h - landSvgH,
+          width: Math.max(0, slotSvgW), height: Math.max(0, h - landSvgH),
           fill: 'rgba(0,0,0,0.06)'
         }));
       } else {
@@ -924,26 +933,45 @@ export function renderStairs(stairs) {
       rect.setAttribute('stroke-dasharray', '3,3');
 
       const stepsCount = stairs.steps || 12;
+      const stepH = h / stepsCount;
+      const marginY = Math.min(2, stepH * 0.2);
+      const marginX = Math.min(2, w * 0.1);
+      const sh = Math.max(0, stepH - marginY * 2);
+      const sw = Math.max(0, w - marginX * 2);
       for (let i = 0; i < stepsCount; i++) {
-        const sy = minY + (h / stepsCount) * i + 2;
-        const sh = (h / stepsCount) - 4;
+        const sy = minY + stepH * i + marginY;
         group.appendChild(createSvgElement('rect', {
-          x: minX + 2,
+          x: minX + marginX,
           y: sy,
-          width: w - 4,
+          width: sw,
           height: sh,
-          rx: 1,
+          rx: Math.min(1, sh / 2),
           fill: fillColor,
           stroke: 'rgba(0,0,0,0.25)',
           'stroke-width': 0.8
         }));
       }
-      group.appendChild(createSvgElement('line', {
-        x1: centerX, y1: minY,
-        x2: centerX, y2: minY + h,
-        stroke: 'rgba(0,0,0,0.35)',
-        'stroke-width': 3
-      }));
+      const beamCount = Math.max(0, Math.round(Number(stairs.beamCount ?? 1)));
+      if (beamCount === 1) {
+        group.appendChild(createSvgElement('line', {
+          x1: centerX, y1: minY,
+          x2: centerX, y2: minY + h,
+          stroke: 'rgba(0,0,0,0.35)',
+          'stroke-width': 3
+        }));
+      } else if (beamCount > 1) {
+        const marginX = Math.min(12, w * 0.2);
+        const spanX = w - marginX * 2;
+        for (let b = 0; b < beamCount; b++) {
+          const bx = minX + marginX + (spanX / (beamCount - 1)) * b;
+          group.appendChild(createSvgElement('line', {
+            x1: bx, y1: minY,
+            x2: bx, y2: minY + h,
+            stroke: 'rgba(0,0,0,0.35)',
+            'stroke-width': 2.5
+          }));
+        }
+      }
 
       // 悬浮向上指示箭头
       group.appendChild(createSvgElement('path', {
@@ -951,6 +979,93 @@ export function renderStairs(stairs) {
         stroke: 'rgba(0,0,0,0.45)',
         fill: 'none',
         'stroke-width': 1.5,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+    } else if (subtype === 'ladder') {
+      rect.setAttribute('fill', 'rgba(144, 164, 174, 0.15)');
+      rect.setAttribute('stroke', '#78909c');
+      rect.setAttribute('stroke-width', '1.5');
+
+      const stepsCount = Math.max(2, stairs.steps || 10);
+      const stepGap = h / (stepsCount + 1);
+      const railW = Math.min(6, w * 0.15);
+
+      // 左/右边柱
+      group.appendChild(createSvgElement('line', {
+        x1: minX + railW, y1: minY,
+        x2: minX + railW, y2: minY + h,
+        stroke: '#546e7a',
+        'stroke-width': 2.5
+      }));
+      group.appendChild(createSvgElement('line', {
+        x1: minX + w - railW, y1: minY,
+        x2: minX + w - railW, y2: minY + h,
+        stroke: '#546e7a',
+        'stroke-width': 2.5
+      }));
+
+      // 横向踏棍
+      for (let i = 1; i <= stepsCount; i++) {
+        const ry = minY + stepGap * i;
+        group.appendChild(createSvgElement('line', {
+          x1: minX + railW, y1: ry,
+          x2: minX + w - railW, y2: ry,
+          stroke: '#37474f',
+          'stroke-width': 2
+        }));
+      }
+
+      // 向上攀爬指示箭头
+      group.appendChild(createSvgElement('path', {
+        d: `M ${centerX} ${minY + h * 0.8} L ${centerX} ${minY + h * 0.2} M ${centerX - 4} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2} M ${centerX + 4} ${minY + h * 0.3} L ${centerX} ${minY + h * 0.2}`,
+        stroke: '#263238',
+        fill: 'none',
+        'stroke-width': 1.5,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+
+    } else if (subtype === 'slide') {
+      rect.setAttribute('fill', 'rgba(255, 183, 77, 0.25)');
+      rect.setAttribute('stroke', '#f57c00');
+      rect.setAttribute('stroke-width', '1.5');
+      rect.setAttribute('rx', '6');
+
+      const sideRailW = Math.min(8, w * 0.12);
+
+      // 侧护栏防护线条
+      group.appendChild(createSvgElement('line', {
+        x1: minX + sideRailW, y1: minY,
+        x2: minX + sideRailW, y2: minY + h,
+        stroke: '#e65100',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '4,2'
+      }));
+      group.appendChild(createSvgElement('line', {
+        x1: minX + w - sideRailW, y1: minY,
+        x2: minX + w - sideRailW, y2: minY + h,
+        stroke: '#e65100',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '4,2'
+      }));
+
+      // 顶部入口平台线
+      const topLandH = Math.min(16, h * 0.15);
+      group.appendChild(createSvgElement('rect', {
+        x: minX + sideRailW, y: minY,
+        width: Math.max(0, w - sideRailW * 2), height: topLandH,
+        fill: 'rgba(255, 152, 0, 0.4)',
+        stroke: '#ef6c00',
+        'stroke-width': 1
+      }));
+
+      // 向下滑行圆滑弧线箭头 (由顶至底)
+      group.appendChild(createSvgElement('path', {
+        d: `M ${centerX} ${minY + topLandH + 4} L ${centerX} ${minY + h - 12} M ${centerX - 5} ${minY + h - 18} L ${centerX} ${minY + h - 12} M ${centerX + 5} ${minY + h - 18} L ${centerX} ${minY + h - 12}`,
+        stroke: '#d84315',
+        fill: 'none',
+        'stroke-width': 2,
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round'
       }));

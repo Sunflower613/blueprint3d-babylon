@@ -163,6 +163,7 @@ export function updateSelectedStructure() {
     patch.runAfterCorner = Number(document.getElementById('structure-run-after-corner').value);
     patch.uSlotWidth = Number(document.getElementById('structure-u-slot-width').value);
     patch.uVoidLength = Number(document.getElementById('structure-u-void-length').value);
+    patch.beamCount = Number(document.getElementById('structure-beam-count').value);
   }
   Context.updateStructure(selected.type, selected.id, patch);
   Context.refreshShadows();

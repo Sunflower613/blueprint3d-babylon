@@ -11,7 +11,7 @@
 (async () => {
   // 过滤截图的分类（数组形式）
   // 匹配规则：若包含 'all' 则为全部；若包含 'missing' 则自动检测并只截缺失缩略图的家具；若匹配到 category（如 'seating'）则拍摄该目录；若匹配到 type 或 name 则拍摄该具体家具
-  const CAPTURE_CATEGORIES = ['missing', 'clock', 'wall_clock'];
+  const CAPTURE_CATEGORIES = ['missing'];
 
   // 内置的默认最佳 3D 视角数据（旋转 180 度以纠正视角至对面正面）
   const DEFAULT_CAMERA = {
@@ -304,7 +304,7 @@
   });
 
   viewer3d.show3DGrid = originalGridState;
-  if (originalGridState) {
+  if (originalGridState && typeof refresh3DGrid === 'function') {
     refresh3DGrid();
   }
 

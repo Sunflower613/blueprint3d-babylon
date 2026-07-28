@@ -7,7 +7,7 @@ import * as outdoorModule from '../../src/furniture/outdoor.js';
 const outdoorDefinitions = Object.values(outdoorModule).filter((value) => value?.type && typeof value.build === 'function');
 
 test('outdoor models share the soft low-poly palette without changing their public definitions', () => {
-  assert.equal(outdoorDefinitions.length, 25);
+  assert.equal(outdoorDefinitions.length, 28);
 
   const paletteColors = new Set(Object.values(outdoorModule.SOFT_LOW_POLY_OUTDOOR_PALETTE));
   assert.ok(paletteColors.size >= 12, 'palette should cover wood, fabric, stone, metal, plants and water');

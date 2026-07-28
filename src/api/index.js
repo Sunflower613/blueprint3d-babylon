@@ -144,7 +144,10 @@ export {
 export {
   boxComponent,
   cylinderComponent,
-  sphereComponent
+  sphereComponent,
+  rightTriangleComponent,
+  halfCylinderComponent,
+  coneComponent
 } from '../furniture/_helpers.js';
 
 export {

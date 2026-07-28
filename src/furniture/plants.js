@@ -537,33 +537,168 @@ export const pachiraTreeFurniture = {
   type: 'pachira_tree',
   name: '发财树',
   unit: 'm',
-  defaultSize: { width: 0.6, depth: 0.6, height: 1.5 },
+  defaultSize: { width: 0.55, depth: 0.55, height: 0.85 },
   components: [
-    { id: 'pot', label: '艺术瓷盆', defaultColor: '#ffffff' },
-    { id: 'trunk', label: '编织树干', defaultColor: '#8b4513' },
-    { id: 'leaves', label: '招财绿叶', defaultColor: '#2e8b57' }
+    { id: 'pot', label: '陶棕花盆', defaultColor: '#8b5a2b' },
+    { id: 'trunk', label: '招财木干', defaultColor: '#5c3818' },
+    { id: 'leaves', label: '萌趣树冠', defaultColor: '#55a846' },
+    { id: 'coin', label: '招财金币', defaultColor: '#f7c873' }
   ],
   build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+
+    // 1. 多边形陶棕花盆 (Pot)
+    const potH = h * 0.32;
+    const potTopR = w * 0.32;
+    const potBotR = w * 0.24;
+
+    // 盆底座
     cylinderComponent(registry, item, pachiraTreeFurniture, 'pot', {
-      diameterTop: size.width * 0.55, diameterBottom: size.width * 0.4, height: size.height * 0.22
-    }, { position: { x: 0, y: size.height * 0.11, z: 0 } }, { parent: node });
+      diameterTop: potTopR * 2,
+      diameterBottom: potBotR * 2,
+      height: potH * 0.85,
+      tessellation: 8
+    }, { position: { x: 0, y: potH * 0.425, z: 0 } }, { parent: node });
 
+    // 盆加厚翻边沿 (Rim)
+    cylinderComponent(registry, item, pachiraTreeFurniture, 'pot', {
+      diameterTop: potTopR * 2.12,
+      diameterBottom: potTopR * 2.05,
+      height: potH * 0.2,
+      tessellation: 8
+    }, { position: { x: 0, y: potH * 0.9, z: 0 } }, { parent: node });
+
+    // 盆内黑土
     cylinderComponent(registry, item, pachiraTreeFurniture, 'trunk', {
-      diameterTop: 0.05, diameterBottom: 0.07, height: size.height * 0.55
-    }, { position: { x: 0, y: size.height * 0.42, z: 0 } }, { parent: node });
+      diameterTop: potTopR * 1.95,
+      diameterBottom: potTopR * 1.95,
+      height: 0.02,
+      tessellation: 8
+    }, { position: { x: 0, y: potH * 0.96, z: 0 } }, { parent: node });
 
-    const leafS = size.width * 0.45;
-    sphereComponent(registry, item, pachiraTreeFurniture, 'leaves', {
-      diameterX: leafS, diameterY: leafS * 0.85, diameterZ: leafS
-    }, { position: { x: 0, y: size.height * 0.72, z: 0 } }, { parent: node });
+    // 2. 弹簧/木质支撑干 (Trunk / Spring)
+    const trunkH = h * 0.25;
+    const trunkY = potH + trunkH / 2;
+    // 主拉杆
+    cylinderComponent(registry, item, pachiraTreeFurniture, 'trunk', {
+      diameterTop: 0.04,
+      diameterBottom: 0.05,
+      height: trunkH,
+      tessellation: 8
+    }, { position: { x: 0, y: trunkY, z: 0 } }, { parent: node });
 
-    sphereComponent(registry, item, pachiraTreeFurniture, 'leaves', {
-      diameterX: leafS * 0.85, diameterY: leafS * 0.75, diameterZ: leafS * 0.85
-    }, { position: { x: -size.width * 0.18, y: size.height * 0.82, z: size.depth * 0.08 } }, { parent: node });
+    // 金属螺纹圈/招财弹簧纹理 (Coiled Spring)
+    for (let i = 0; i < 4; i += 1) {
+      const spY = potH + trunkH * (0.2 + i * 0.2);
+      cylinderComponent(registry, item, pachiraTreeFurniture, 'coin', {
+        diameterTop: 0.075 + (i % 2 === 0 ? 0.015 : 0),
+        diameterBottom: 0.075 + (i % 2 === 0 ? 0.015 : 0),
+        height: 0.018,
+        tessellation: 8
+      }, { position: { x: 0, y: spY, z: 0 } }, { parent: node });
+    }
 
+    // 3. 丰满萌趣云朵树冠 (Cloud Canopy)
+    const canopyCenterY = potH + trunkH + h * 0.22;
+    const canopyR = w * 0.42;
+
+    // 中央大球
     sphereComponent(registry, item, pachiraTreeFurniture, 'leaves', {
-      diameterX: leafS * 0.85, diameterY: leafS * 0.75, diameterZ: leafS * 0.85
-    }, { position: { x: size.width * 0.18, y: size.height * 0.82, z: -size.depth * 0.08 } }, { parent: node });
+      diameterX: canopyR * 2,
+      diameterY: canopyR * 1.5,
+      diameterZ: canopyR * 2,
+      segments: 8
+    }, { position: { x: 0, y: canopyCenterY, z: 0 } }, { parent: node });
+
+    // 左右/前后融合的小云朵泡泡 (Bulging Cloud Puffs)
+    const cloudOffsets = [
+      { x: -w * 0.15, y: canopyCenterY + 0.03, z: 0, scale: 0.8 },
+      { x: w * 0.15, y: canopyCenterY + 0.03, z: 0, scale: 0.8 },
+      { x: 0, y: canopyCenterY + 0.05, z: d * 0.14, scale: 0.75 },
+      { x: 0, y: canopyCenterY + 0.05, z: -d * 0.14, scale: 0.75 },
+      { x: 0, y: canopyCenterY + h * 0.12, z: 0, scale: 0.7 }
+    ];
+
+    cloudOffsets.forEach((conf) => {
+      sphereComponent(registry, item, pachiraTreeFurniture, 'leaves', {
+        diameterX: canopyR * 2 * conf.scale,
+        diameterY: canopyR * 1.4 * conf.scale,
+        diameterZ: canopyR * 2 * conf.scale,
+        segments: 8
+      }, { position: { x: conf.x, y: conf.y, z: conf.z } }, { parent: node });
+    });
+
+    // 4. 树冠表面的镶嵌金铜钱 (Embedded Gold Coins)
+    const coinR = 0.045;
+    const coinThick = 0.012;
+    const embeddedCoins = [
+      { pos: { x: -w * 0.22, y: canopyCenterY + 0.08, z: d * 0.22 }, rot: { x: -Math.PI / 6, y: -Math.PI / 4, z: 0 } },
+      { pos: { x: 0, y: canopyCenterY + 0.16, z: d * 0.28 }, rot: { x: -Math.PI / 8, y: 0, z: 0 } },
+      { pos: { x: w * 0.22, y: canopyCenterY + 0.08, z: d * 0.22 }, rot: { x: -Math.PI / 6, y: Math.PI / 4, z: 0 } },
+      { pos: { x: 0, y: canopyCenterY + 0.24, z: 0 }, rot: { x: 0, y: 0, z: 0 } }
+    ];
+
+    embeddedCoins.forEach((c) => {
+      // 圆金面
+      cylinderComponent(registry, item, pachiraTreeFurniture, 'coin', {
+        diameterTop: coinR * 2,
+        diameterBottom: coinR * 2,
+        height: coinThick,
+        tessellation: 8
+      }, { position: c.pos, rotation: c.rot }, { parent: node });
+
+      // 方孔
+      boxComponent(registry, item, pachiraTreeFurniture, 'trunk', {
+        width: coinR * 0.65,
+        height: coinThick * 1.1,
+        depth: coinR * 0.65
+      }, { position: c.pos, rotation: c.rot }, { parent: node });
+    });
+
+    // 5. 树冠下挂的招财金币吊坠 (Hanging Gold Coin Charms)
+    const hangingCoins = [
+      { x: -w * 0.28, z: d * 0.15, chainLen: 0.12 },
+      { x: -w * 0.12, z: d * 0.28, chainLen: 0.15 },
+      { x: w * 0.12, z: d * 0.28, chainLen: 0.14 },
+      { x: w * 0.28, z: d * 0.15, chainLen: 0.11 },
+      { x: 0, z: -d * 0.26, chainLen: 0.13 }
+    ];
+
+    hangingCoins.forEach((hc) => {
+      const topY = canopyCenterY - canopyR * 0.4;
+      const bottomY = topY - hc.chainLen;
+
+      // 吊链
+      cylinderComponent(registry, item, pachiraTreeFurniture, 'coin', {
+        diameterTop: 0.008,
+        diameterBottom: 0.008,
+        height: hc.chainLen,
+        tessellation: 6
+      }, { position: { x: hc.x, y: topY - hc.chainLen / 2, z: hc.z } }, { parent: node });
+
+      // 悬挂金钱牌
+      cylinderComponent(registry, item, pachiraTreeFurniture, 'coin', {
+        diameterTop: coinR * 1.6,
+        diameterBottom: coinR * 1.6,
+        height: coinThick * 0.8,
+        tessellation: 8
+      }, {
+        position: { x: hc.x, y: bottomY, z: hc.z },
+        rotation: { x: Math.PI / 2 }
+      }, { parent: node });
+
+      // 吊坠金钱牌方孔
+      boxComponent(registry, item, pachiraTreeFurniture, 'trunk', {
+        width: coinR * 0.55,
+        height: coinThick * 0.9,
+        depth: coinR * 0.55
+      }, {
+        position: { x: hc.x, y: bottomY, z: hc.z },
+        rotation: { x: Math.PI / 2 }
+      }, { parent: node });
+    });
   }
 };
 

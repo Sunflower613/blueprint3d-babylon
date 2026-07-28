@@ -1,5 +1,5 @@
 import { createBlueprintMaterial, materialPreviewColor } from '../core/materials.js';
-import { createBox, createCylinder, createSphere, createLathe, orientBoxTextureCoordinates } from '../core/primitives.js';
+import { createBox, createCylinder, createSphere, createLathe, createRightTriangle, createHalfCylinder, createCone, orientBoxTextureCoordinates } from '../core/primitives.js';
 
 export function getComponentColor(item, definition, componentId) {
   const component = definition.components.find((candidate) => candidate.id === componentId);
@@ -96,4 +96,31 @@ export function latheComponent(registry, item, definition, componentId, options,
   });
   return markComponent(mesh, item, componentId);
 }
+
+export function rightTriangleComponent(registry, item, definition, componentId, dimensions, transform, options = {}) {
+  const mesh = createRightTriangle(registry, `${item.id}_${componentId}`, dimensions, transform, {
+    ...options,
+    material: getComponentMaterial(registry, item, definition, componentId)
+  });
+  return markComponent(mesh, item, componentId);
+}
+
+export function halfCylinderComponent(registry, item, definition, componentId, dimensions, transform, options = {}) {
+  const mesh = createHalfCylinder(registry, `${item.id}_${componentId}`, dimensions, transform, {
+    ...options,
+    material: getComponentMaterial(registry, item, definition, componentId)
+  });
+  mesh.metadata = { ...(mesh.metadata || {}), isCylinder: true };
+  return markComponent(mesh, item, componentId);
+}
+
+export function coneComponent(registry, item, definition, componentId, dimensions, transform, options = {}) {
+  const mesh = createCone(registry, `${item.id}_${componentId}`, dimensions, transform, {
+    ...options,
+    material: getComponentMaterial(registry, item, definition, componentId)
+  });
+  mesh.metadata = { ...(mesh.metadata || {}), isCone: true };
+  return markComponent(mesh, item, componentId);
+}
+
 

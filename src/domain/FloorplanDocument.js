@@ -1,4 +1,4 @@
-import { getFurnitureDefinition, hasFurnitureDefinition } from './FurnitureCatalog.js';
+import { getFurnitureDefinition, hasFurnitureDefinition, FURNITURE_DEFINITIONS } from './FurnitureCatalog.js';
 
 import { normalizeRoomShape, pointInRoom, getRoomVertices, getRoomWallKeys } from '../rooms/roomShapes.js';
 import { normalizeOpeningShape } from '../openings/openingShapes.js';
@@ -850,8 +850,39 @@ export class FloorplanDocument {
   updateItem(itemId, patch) {
     const item = this.getItem(itemId);
     if (!item || item.locked) return item;
+    const wasOn = item.isOn === true;
     Object.assign(item, patch);
+    const nowOn = item.isOn === true;
+    if (!wasOn && nowOn && item.type === 'vending_machine') {
+      const spawnedFood = this.spawnVendingMachineFood(item);
+      if (spawnedFood) {
+        item._spawnedFood = spawnedFood;
+      }
+    }
     return item;
+  }
+
+  spawnVendingMachineFood(vendingMachineItem) {
+    let foodDefs = Object.values(FURNITURE_DEFINITIONS).filter((def) => def && def.category === 'food');
+    if (!foodDefs.length) {
+      const fallbackTypes = ['hamburger', 'french_fries', 'steamed_bun', 'sushi', 'ice_cream', 'apple', 'banana', 'pizza', 'can_soda'];
+      foodDefs = fallbackTypes.map((t) => getFurnitureDefinition(t));
+    }
+    const randomFood = foodDefs[Math.floor(Math.random() * foodDefs.length)];
+    const distance = 1.0;
+    const rot = vendingMachineItem.rotation || 0;
+    const foodX = vendingMachineItem.x + Math.sin(rot) * distance;
+    const foodZ = vendingMachineItem.z + Math.cos(rot) * distance;
+    const foodElevation = vendingMachineItem.elevation || 0;
+
+    return this.addItem({
+      type: randomFood.type,
+      x: Number(foodX.toFixed(4)),
+      z: Number(foodZ.toFixed(4)),
+      elevation: foodElevation,
+      rotation: rot,
+      floorId: vendingMachineItem.floorId || this.floorplan.currentFloorId
+    });
   }
 
   updateItemComponentColor(itemId, componentId, color) {

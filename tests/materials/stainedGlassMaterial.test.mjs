@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import { DEFAULT_MATERIAL_PACKS, createTextureMaterialDescriptor } from '../../src/core/materialCatalog.js';
 import { createBlueprintMaterial, normalizeMaterialDescriptor, resolvePatternTextureScale } from '../../src/core/materials.js';
+import { MaterialResolver } from '../../src/domain/MaterialResolver.js';
 
 test('catalog exposes the cathedral stained-glass material', () => {
   const material = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'glass-stained-cathedral');
@@ -342,6 +343,33 @@ test('mosaic tiles keep the same physical 0.25m image size on walls', () => {
 
     assert.equal(material.diffuseTexture.uScale, 16);
     assert.equal(material.diffuseTexture.vScale, 12);
+  } finally {
+    scene.dispose();
+    engine.dispose();
+  }
+});
+
+test('diamond brick tiles keep physical 0.25m square size on floors and walls', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+
+  try {
+    const diamondBrick = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'brick-diamond');
+    const smallBlack = DEFAULT_MATERIAL_PACKS.find((entry) => entry.id === 'brick-small-black');
+
+    assert.equal(diamondBrick.physicalTileSize, 0.25);
+    assert.equal(smallBlack.physicalTileSize, 0.25);
+
+    const diamondMat = createBlueprintMaterial(scene, 'diamond-brick-test', diamondBrick, {
+      isFloor: true,
+      surfaceWidth: 4,
+      surfaceDepth: 2
+    });
+    assert.equal(diamondMat.diffuseTexture.uScale, 16);
+    assert.equal(diamondMat.diffuseTexture.vScale, 8);
+
+    assert.equal(MaterialResolver.shouldLimitPatternStretch(diamondBrick), true);
+    assert.equal(MaterialResolver.shouldLimitPatternStretch(smallBlack), true);
   } finally {
     scene.dispose();
     engine.dispose();

@@ -873,6 +873,11 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     if (oldNode) oldNode.dispose(false, false);
     this.itemNodes.delete(itemId);
     this.buildItem(item);
+    if (item._spawnedFood) {
+      const spawnedFood = item._spawnedFood;
+      delete item._spawnedFood;
+      this.buildItem(spawnedFood);
+    }
     this.setSelectedItem(this.selectedItemId);
     return item;
   }

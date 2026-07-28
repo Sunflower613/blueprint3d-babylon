@@ -1,6 +1,6 @@
 # Blueprint3D 官方内置全量家具组件索引库 (Full Furniture Catalog)
 
-本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。包含当前代码库注册的 **100% 全量 (394 件) 家具组件词典**。
+本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。包含当前代码库注册的 **100% 全量 (400 件) 家具组件词典**。
 
 ---
 
@@ -233,7 +233,7 @@
 | `apple` | 苹果 | 自动/自适应 |
 | `banana` | 香蕉串 | 自动/自适应 |
 | `pineapple` | 菠萝 | 自动/自适应 |
-| `watermelon` | 西瓜 | 自动/自适应 |
+| `watermelon` | 西瓜片 | 自动/自适应 |
 | `dragon_fruit` | 火龙果 | 自动/自适应 |
 | `orange_fruit` | 橘子 | 自动/自适应 |
 | `peach` | 水蜜桃 | 自动/自适应 |
@@ -362,13 +362,14 @@
 | `landscape_winding_stream` | 溪流 | 自动/自适应 |
 | `landscape_zen_gravel` | 枯山水砂石 | 自动/自适应 |
 
-## 14. 户外休闲与设施 (`outdoor` - 共 25 件)
+## 14. 户外休闲与设施 (`outdoor` - 共 28 件)
 
 | `type` 标识 | 中文名称 | 默认尺寸 ($W \times D \times H$, 单位: 米) |
 | :--- | :--- | :--- |
 | `barbecue_grill` | 烧烤架 | 自动/自适应 |
 | `birdbath` | 鸟浴台 | 自动/自适应 |
 | `canopy_tent` | 天幕 | 自动/自适应 |
+| `electric_scooter` | 电动车 | 自动/自适应 |
 | `fire_pit` | 火盆 | 自动/自适应 |
 | `flower_arch` | 花圈拱门 | 自动/自适应 |
 | `garden_bridge` | 小园桥 | 自动/自适应 |
@@ -378,6 +379,7 @@
 | `landscape_euro_pond_sculpture` | 水池雕塑 | 自动/自适应 |
 | `landscape_marble_bridge` | 石拱桥 | 自动/自适应 |
 | `landscape_marble_fountain` | 跌水喷泉 | 自动/自适应 |
+| `outdoor_phone_booth` | 电话亭 | 自动/自适应 |
 | `outdoor_stone_chess_table` | 石头象棋桌 | 自动/自适应 |
 | `outdoor_stone_stool` | 石墩子 | 自动/自适应 |
 | `outdoor_storage_box` | 收纳箱 | 自动/自适应 |
@@ -390,6 +392,7 @@
 | `potting_bench` | 操作台 | 自动/自适应 |
 | `raised_garden_bed` | 种植箱 | 自动/自适应 |
 | `shared_bicycle` | 共享单车 | 自动/自适应 |
+| `stepladder` | 人字梯 | 自动/自适应 |
 | `trellis_screen` | 花架 | 自动/自适应 |
 
 ## 15. 灯具与光源 (`lighting` - 共 20 件)
@@ -417,12 +420,15 @@
 | `wall_lantern_light` | 壁挂灯笼 | 自动/自适应 |
 | `wall_sconce_light` | 壁灯 | 自动/自适应 |
 
-## 16. 自定义基础体 (`custom` - 共 3 件)
+## 16. 自定义基础体 (`custom` - 共 6 件)
 
 | `type` 标识 | 中文名称 | 默认尺寸 ($W \times D \times H$, 单位: 米) |
 | :--- | :--- | :--- |
+| `custom_cone` | 圆锥 | 自动/自适应 |
 | `custom_cube` | 方块 | 自动/自适应 |
 | `custom_cylinder` | 圆柱 | 自动/自适应 |
+| `custom_half_cylinder` | 半圆柱 | 自动/自适应 |
+| `custom_right_triangle` | 三角形 | 自动/自适应 |
 | `custom_sphere` | 球体 | 自动/自适应 |
 
 ## 17. 服饰与模特 (`clothing` - 共 53 件)

@@ -204,12 +204,12 @@ const COMMON_BRICK_MATERIALS = [
   { id: 'brick-light', name: '石砖', src: brickLightUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-red', name: '红砖', src: brickRedUrl, scale: 1.5, color: '#ffffff' },
   { id: 'brick-cube', name: '魔方砖', src: brickCubeUrl, scale: 1.5, color: '#ffffff' },
-  { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff' },
+  { id: 'brick-diamond', name: '菱形砖', src: brickDiamondUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 },
   { id: 'brick-square', name: '广场方砖', src: brickSquareUrl, scale: 1.8, color: '#ffffff' },
   { id: 'brick-stone', name: '长条石砖', src: brickStoneUrl, scale: 2.0, color: '#ffffff' },
   { id: 'brick-mosaic', name: '马赛克砖', src: brickMosaicUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 },
   { id: 'brick-black-white', name: '棋盘砖', src: brickBlackWhiteUrl, scale: 2.0, color: '#ffffff' },
-  { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff' }
+  { id: 'brick-small-black', name: '小菱格', src: brickSmallBlackUrl, scale: 1.5, color: '#ffffff', physicalTileSize: 0.25 }
 ].map((material) => ({
   ...material,
   category: 'brick',

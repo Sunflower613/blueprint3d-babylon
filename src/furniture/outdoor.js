@@ -16,7 +16,8 @@ export const SOFT_LOW_POLY_OUTDOOR_PALETTE = Object.freeze({
   water: '#91c7c9',
   flower: '#d69aa5',
   charcoal: '#454743',
-  terracotta: '#b87555'
+  terracotta: '#b87555',
+  classicRed: '#bd3a3a'
 });
 
 const lieInteraction = (yRatio = 0.42, zRatio = 0) => ({
@@ -209,46 +210,176 @@ export const flowerArchFurniture = {
   type: 'flower_arch',
   name: '花圈拱门',
   unit: 'm',
-  defaultSize: { width: 1.85, depth: 0.5, height: 2.25 },
+  defaultSize: { width: 1.85, depth: 0.5, height: 2.35 },
   components: [
-    { id: 'frame', label: '拱门架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
-    { id: 'flowers', label: '花艺', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.flower }
+    { id: 'frame', label: '白色铁艺拱架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
+    { id: 'vines', label: '攀援绿藤叶', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.sage },
+    { id: 'flowers', label: '玫瑰花艺', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.flower }
   ],
   build(registry, item, node, size) {
-    const postW = Math.max(0.05, size.width * 0.025);
-    const sideHeight = size.height * 0.78;
-    const xOffset = size.width / 2 - postW / 2;
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
 
-    [-1, 1].forEach((side) => {
+    const postW = Math.max(0.04, w * 0.02);
+    const gridBarW = 0.018;
+    const straightH = h * 0.65;
+    const archRadius = (w - postW) / 2;
+
+    // 1. 左右两侧铁艺梯网格 (Trellis Side Towers)
+    [-1, 1].forEach((xSide) => {
+      const xPos = xSide * (w / 2 - postW / 2);
+
+      // 前后双立柱
+      [-1, 1].forEach((zSide) => {
+        const zPos = zSide * (d / 2 - postW / 2);
+        boxComponent(registry, item, flowerArchFurniture, 'frame', {
+          width: postW,
+          height: straightH,
+          depth: postW
+        }, { position: { x: xPos, y: straightH / 2, z: zPos } }, { parent: node });
+      });
+
+      // 侧面横向支撑格子条
+      for (let i = 1; i <= 4; i += 1) {
+        const yPos = (straightH / 5) * i;
+        boxComponent(registry, item, flowerArchFurniture, 'frame', {
+          width: postW,
+          height: gridBarW,
+          depth: d - postW
+        }, { position: { x: xPos, y: yPos, z: 0 } }, { parent: node });
+      }
+
+      // 侧面中央竖向加固条
+      boxComponent(registry, item, flowerArchFurniture, 'frame', {
+        width: postW * 0.8,
+        height: straightH,
+        depth: gridBarW
+      }, { position: { x: xPos, y: straightH / 2, z: 0 } }, { parent: node });
+    });
+
+    // 2. 顶部弧形拱门框架 (Smooth Arch Ring)
+    const archSegments = 10;
+    [-1, 1].forEach((zSide) => {
+      const zPos = zSide * (d / 2 - postW / 2);
+      for (let i = 0; i < archSegments; i += 1) {
+        const angle1 = (Math.PI / archSegments) * i;
+        const angle2 = (Math.PI / archSegments) * (i + 1);
+
+        const x1 = Math.cos(angle1) * archRadius;
+        const y1 = straightH + Math.sin(angle1) * archRadius;
+        const x2 = Math.cos(angle2) * archRadius;
+        const y2 = straightH + Math.sin(angle2) * archRadius;
+
+        const segLen = Math.hypot(x2 - x1, y2 - y1) * 1.05;
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        const rotZ = Math.atan2(y2 - y1, x2 - x1);
+
+        boxComponent(registry, item, flowerArchFurniture, 'frame', {
+          width: segLen,
+          height: postW,
+          depth: postW
+        }, {
+          position: { x: midX, y: midY, z: zPos },
+          rotation: { z: rotZ }
+        }, { parent: node });
+      }
+    });
+
+    // 前后拱圈之间的跨接横梁
+    for (let i = 1; i < archSegments; i += 1) {
+      const angle = (Math.PI / archSegments) * i;
+      const x = Math.cos(angle) * archRadius;
+      const y = straightH + Math.sin(angle) * archRadius;
       boxComponent(registry, item, flowerArchFurniture, 'frame', {
         width: postW,
-        height: sideHeight,
-        depth: postW
-      }, { position: { x: side * xOffset, y: sideHeight / 2, z: 0 } }, { parent: node });
+        height: postW,
+        depth: d - postW
+      }, { position: { x, y, z: 0 } }, { parent: node });
+    }
+
+    // 3. 缠绕爬藤与丰满绿叶簇 (Climbing Vines & Leaf Clusters)
+    const vinePoints = [];
+
+    // 两侧垂直爬藤
+    for (let side of [-1, 1]) {
+      for (let step = 0; step <= 5; step += 1) {
+        const vY = (straightH / 5) * step + 0.05;
+        vinePoints.push({
+          x: side * (w / 2 - postW / 2) + (step % 2 === 0 ? 0.03 : -0.03) * side,
+          y: vY,
+          z: (step % 2 === 0 ? 0.06 : -0.06),
+          size: 0.16 + (step % 3) * 0.04
+        });
+      }
+    }
+
+    // 拱门沿线爬藤
+    for (let i = 0; i <= archSegments; i += 1) {
+      const angle = (Math.PI / archSegments) * i;
+      const vx = Math.cos(angle) * (archRadius + 0.02);
+      const vy = straightH + Math.sin(angle) * (archRadius + 0.02);
+      vinePoints.push({
+        x: vx,
+        y: vy,
+        z: (i % 2 === 0 ? 0.05 : -0.05),
+        size: 0.18 + (i % 3) * 0.05
+      });
+    }
+
+    vinePoints.forEach((vp) => {
+      // 绿叶块
+      sphereComponent(registry, item, flowerArchFurniture, 'vines', {
+        diameterX: vp.size,
+        diameterY: vp.size * 0.85,
+        diameterZ: vp.size,
+        segments: 6
+      }, { position: { x: vp.x, y: vp.y, z: vp.z } }, { parent: node });
     });
 
-    boxComponent(registry, item, flowerArchFurniture, 'frame', {
-      width: size.width * 0.68,
-      height: postW,
-      depth: postW
-    }, { position: { x: 0, y: size.height - postW / 2, z: 0 } }, { parent: node });
+    // 4. 点缀交错的玫瑰花朵 (Rose Bloom Heads)
+    vinePoints.forEach((vp, idx) => {
+      if (idx % 2 === 0) {
+        const roseS = vp.size * 0.48;
+        sphereComponent(registry, item, flowerArchFurniture, 'flowers', {
+          diameterX: roseS,
+          diameterY: roseS,
+          diameterZ: roseS,
+          segments: 6
+        }, {
+          position: {
+            x: vp.x + (idx % 3 === 0 ? 0.04 : -0.04),
+            y: vp.y + (idx % 2 === 0 ? 0.02 : -0.02),
+            z: vp.z + 0.05
+          }
+        }, { parent: node });
+      }
+    });
+
+    // 5. 类似楼梯整体碰撞箱的隐形包围盒 (Hitbox / Proxy Collision Box)
+    const sideHitW = postW * 3.5;
+    const sideHitD = d * 1.2;
 
     [-1, 1].forEach((side) => {
-      const arch = boxComponent(registry, item, flowerArchFurniture, 'frame', {
-        width: size.width * 0.22,
-        height: postW,
-        depth: postW
-      }, { position: { x: side * size.width * 0.2, y: size.height * 0.9, z: 0 } }, { parent: node });
-      arch.rotation.z = side * Math.PI * 0.2;
+      const hb = boxComponent(registry, item, flowerArchFurniture, 'frame', {
+        width: sideHitW,
+        height: straightH,
+        depth: sideHitD
+      }, { position: { x: side * (w / 2 - postW / 2), y: straightH / 2, z: 0 } }, { parent: node });
+      hb.visibility = 0;
+      hb.isPickable = true;
+      hb.metadata = { ...(hb.metadata || {}), blueprintItemId: item.id, blueprintFurnitureComponentId: 'frame', isHitbox: true };
     });
 
-    [-0.25, -0.08, 0.08, 0.25].forEach((offset) => {
-      boxComponent(registry, item, flowerArchFurniture, 'flowers', {
-        width: size.width * 0.12,
-        height: postW * 1.6,
-        depth: postW * 1.8
-      }, { position: { x: size.width * offset, y: size.height * 0.9, z: 0 } }, { parent: node });
-    });
+    const topHb = boxComponent(registry, item, flowerArchFurniture, 'frame', {
+      width: w,
+      height: archRadius + 0.1,
+      depth: sideHitD
+    }, { position: { x: 0, y: straightH + (archRadius + 0.1) / 2, z: 0 } }, { parent: node });
+    topHb.visibility = 0;
+    topHb.isPickable = true;
+    topHb.metadata = { ...(topHb.metadata || {}), blueprintItemId: item.id, blueprintFurnitureComponentId: 'frame', isHitbox: true };
   }
 };
 
@@ -256,52 +387,307 @@ export const gazeboFurniture = {
   type: 'gazebo',
   name: '凉亭',
   unit: 'm',
-  defaultSize: { width: 2.75, depth: 2.75, height: 2.75 },
+  defaultSize: { width: 3.2, depth: 3.2, height: 3.6 },
   components: [
-    { id: 'posts', label: '立柱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
-    { id: 'roof', label: '顶蓬', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.terracotta },
-    { id: 'rails', label: '护栏', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood }
+    { id: 'posts', label: '立柱与木框', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'roof', label: '飞檐屋顶与宝顶', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'rails', label: '石基座与栏杆', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone }
   ],
   build(registry, item, node, size) {
-    const postW = Math.max(0.08, size.width * 0.028);
-    const railH = Math.max(0.05, size.height * 0.05);
-    const xOffset = size.width / 2 - postW / 2;
-    const zOffset = size.depth / 2 - postW / 2;
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
 
-    [-1, 1].forEach((xSide) => {
-      [-1, 1].forEach((zSide) => {
-        boxComponent(registry, item, gazeboFurniture, 'posts', {
-          width: postW,
-          height: size.height * 0.86,
-          depth: postW
-        }, { position: { x: xSide * xOffset, y: size.height * 0.43, z: zSide * zOffset } }, { parent: node });
+    const baseH = 0.28;
+    const baseR = Math.min(w, d) * 0.44;
+    const pillarR = 0.075;
+    const pillarH = h * 0.54;
+    const roofH = h * 0.35;
+    const pillarRadiusPos = baseR * 0.85;
+
+    // 1. 六边形自然暖石基座 (Hexagonal Stone Base Platform)
+    for (let i = 0; i < 6; i += 1) {
+      const a1 = (Math.PI / 3) * i;
+      const a2 = (Math.PI / 3) * (i + 1);
+
+      const p1 = { x: Math.cos(a1) * baseR, z: Math.sin(a1) * baseR };
+      const p2 = { x: Math.cos(a2) * baseR, z: Math.sin(a2) * baseR };
+
+      const edgeLen = Math.hypot(p2.x - p1.x, p2.z - p1.z);
+      const midX = (p1.x + p2.x) / 2;
+      const midZ = (p1.z + p2.z) / 2;
+      const rotY = Math.atan2(p2.x - p1.x, p2.z - p1.z) + Math.PI / 2;
+
+      // 侧边压条
+      boxComponent(registry, item, gazeboFurniture, 'rails', {
+        width: edgeLen * 1.02,
+        height: baseH,
+        depth: baseR * 0.3
+      }, {
+        position: { x: midX * 0.85, y: baseH / 2, z: midZ * 0.85 },
+        rotation: { y: rotY }
+      }, { parent: node });
+    }
+
+    // 中心台面
+    cylinderComponent(registry, item, gazeboFurniture, 'rails', {
+      diameterTop: baseR * 1.9,
+      diameterBottom: baseR * 1.95,
+      height: baseH * 0.9,
+      tessellation: 6
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    // 2. 六根古木立柱与柱础 (6 Pillars & Stone Bases)
+    const pillarPositions = [];
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (Math.PI / 3) * i + Math.PI / 6;
+      const px = Math.cos(angle) * pillarRadiusPos;
+      const pz = Math.sin(angle) * pillarRadiusPos;
+      pillarPositions.push({ x: px, z: pz, angle });
+
+      // 石柱础 (Base)
+      cylinderComponent(registry, item, gazeboFurniture, 'rails', {
+        diameterTop: pillarR * 2.8,
+        diameterBottom: pillarR * 3.2,
+        height: 0.08,
+        tessellation: 8
+      }, { position: { x: px, y: baseH + 0.04, z: pz } }, { parent: node });
+
+      // 木柱 (Pillar)
+      cylinderComponent(registry, item, gazeboFurniture, 'posts', {
+        diameterTop: pillarR * 1.9,
+        diameterBottom: pillarR * 2.1,
+        height: pillarH,
+        tessellation: 8
+      }, { position: { x: px, y: baseH + 0.08 + pillarH / 2, z: pz } }, { parent: node });
+    }
+
+    // 定义 1 和 3 号门洞开口侧边索引（Side 0 与 间隔一侧的 Side 2）
+    const doorSidesSet = new Set([0, 2]);
+
+    // 3. 在两个门口外侧各生成一套平铺递进的石阶梯与矮护沿 (Flat Stepped Entrances on Both Openings)
+    doorSidesSet.forEach((sideIdx) => {
+      const p1 = pillarPositions[sideIdx];
+      const p2 = pillarPositions[(sideIdx + 1) % 6];
+
+      const midX = (p1.x + p2.x) / 2;
+      const midZ = (p1.z + p2.z) / 2;
+      const spanLen = Math.hypot(p2.x - p1.x, p2.z - p1.z);
+
+      // 向外的法线向量与角度
+      const normLen = Math.hypot(midX, midZ);
+      const normX = midX / normLen;
+      const normZ = midZ / normLen;
+      const rotNormY = Math.atan2(normX, normZ);
+
+      // 平行于侧边的切线向量
+      const tanX = (p2.x - p1.x) / spanLen;
+      const tanZ = (p2.z - p1.z) / spanLen;
+
+      const stepW = spanLen * 0.72; // 沿切向的踩踏宽度
+      const stepRun = 0.22; // 沿法向踩踏踏板深度
+      const stepCount = 3;
+      const riserH = baseH / stepCount;
+
+      // 3 级石阶由外向内阶梯递增
+      for (let s = 1; s <= stepCount; s += 1) {
+        const curH = riserH * (stepCount - s + 1);
+        const distOut = stepRun * s;
+
+        boxComponent(registry, item, gazeboFurniture, 'rails', {
+          width: stepW,
+          height: curH,
+          depth: stepRun * 1.05
+        }, {
+          position: { x: midX + normX * distOut, y: curH / 2, z: midZ + normZ * distOut },
+          rotation: { y: rotNormY }
+        }, { parent: node });
+      }
+
+      // 两侧斜向石挡板/手扶压条 (沿着法线向外封闭)
+      [-1, 1].forEach((handSide) => {
+        const hx = midX + tanX * (stepW * 0.48 * handSide) + normX * (stepRun * 1.8);
+        const hz = midZ + tanZ * (stepW * 0.48 * handSide) + normZ * (stepRun * 1.8);
+
+        boxComponent(registry, item, gazeboFurniture, 'rails', {
+          width: 0.06,
+          height: baseH * 0.75,
+          depth: stepRun * 3.2
+        }, {
+          position: { x: hx, y: baseH * 0.4, z: hz },
+          rotation: { y: rotNormY }
+        }, { parent: node });
       });
     });
 
-    boxComponent(registry, item, gazeboFurniture, 'roof', {
-      width: size.width,
-      height: size.height * 0.1,
-      depth: size.depth
-    }, { position: { x: 0, y: size.height * 0.92, z: 0 } }, { parent: node });
+    // 4. 额枋与上部花格挂落 (Upper Carved Wood Lattice - 6 面全部保留)
+    const upperY = baseH + 0.08 + pillarH - 0.12;
+    for (let i = 0; i < 6; i += 1) {
+      const p1 = pillarPositions[i];
+      const p2 = pillarPositions[(i + 1) % 6];
 
-    boxComponent(registry, item, gazeboFurniture, 'roof', {
-      width: size.width * 0.78,
-      height: size.height * 0.08,
-      depth: size.depth * 0.78
-    }, { position: { x: 0, y: size.height, z: 0 } }, { parent: node });
+      const spanLen = Math.hypot(p2.x - p1.x, p2.z - p1.z);
+      const midX = (p1.x + p2.x) / 2;
+      const midZ = (p1.z + p2.z) / 2;
+      const rotY = Math.atan2(p2.x - p1.x, p2.z - p1.z);
 
-    // [-1, 1].forEach((side) => {
-    //   boxComponent(registry, item, gazeboFurniture, 'rails', {
-    //     width: size.width * 0.72,
-    //     height: railH,
-    //     depth: postW
-    //   }, { position: { x: 0, y: size.height * 0.28, z: side * zOffset } }, { parent: node });
-    //   boxComponent(registry, item, gazeboFurniture, 'rails', {
-    //     width: postW,
-    //     height: railH,
-    //     depth: size.depth * 0.72
-    //   }, { position: { x: side * xOffset, y: size.height * 0.28, z: 0 } }, { parent: node });
-    // });
+      // 上横梁额枋
+      boxComponent(registry, item, gazeboFurniture, 'posts', {
+        width: 0.12,
+        height: 0.14,
+        depth: spanLen * 1.05
+      }, {
+        position: { x: midX, y: upperY + 0.07, z: midZ },
+        rotation: { y: rotY }
+      }, { parent: node });
+
+      // 下挂花窗格框架
+      boxComponent(registry, item, gazeboFurniture, 'posts', {
+        width: 0.03,
+        height: 0.18,
+        depth: spanLen * 0.88
+      }, {
+        position: { x: midX, y: upperY - 0.08, z: midZ },
+        rotation: { y: rotY }
+      }, { parent: node });
+    }
+
+    // 5. 下部围栏/美人靠 (仅在非门洞的 4 个侧面上安装)
+    const lowerY = baseH + 0.08 + 0.35;
+    for (let i = 0; i < 6; i += 1) {
+      if (doorSidesSet.has(i)) {
+        continue; // 1 与 3 号门口出入通道留空
+      }
+
+      const p1 = pillarPositions[i];
+      const p2 = pillarPositions[(i + 1) % 6];
+      const spanLen = Math.hypot(p2.x - p1.x, p2.z - p1.z);
+      const midX = (p1.x + p2.x) / 2;
+      const midZ = (p1.z + p2.z) / 2;
+      const rotY = Math.atan2(p2.x - p1.x, p2.z - p1.z);
+
+      // 护栏扶手与底座
+      boxComponent(registry, item, gazeboFurniture, 'posts', {
+        width: 0.06,
+        height: 0.04,
+        depth: spanLen * 0.92
+      }, {
+        position: { x: midX, y: lowerY, z: midZ },
+        rotation: { y: rotY }
+      }, { parent: node });
+
+      boxComponent(registry, item, gazeboFurniture, 'posts', {
+        width: 0.05,
+        height: 0.04,
+        depth: spanLen * 0.92
+      }, {
+        position: { x: midX, y: baseH + 0.12, z: midZ },
+        rotation: { y: rotY }
+      }, { parent: node });
+
+      // 栏杆竖向花格条
+      const railBarCount = 7;
+      for (let b = 1; b <= railBarCount; b += 1) {
+        const frac = b / (railBarCount + 1);
+        const bx = p1.x + (p2.x - p1.x) * frac;
+        const bz = p1.z + (p2.z - p1.z) * frac;
+
+        boxComponent(registry, item, gazeboFurniture, 'posts', {
+          width: 0.025,
+          height: lowerY - (baseH + 0.12),
+          depth: 0.025
+        }, {
+          position: { x: bx, y: (lowerY + baseH + 0.12) / 2, z: bz }
+        }, { parent: node });
+      }
+    }
+
+    // 6. 六角飞檐翘角屋顶 (屋脊与飞檐翘角精准落在 6 条交界棱线上)
+    const roofStartY = baseH + 0.08 + pillarH;
+    const eaveR = baseR * 1.35;
+    const coneRadiusBottom = eaveR * 1.02;
+
+    // 主屋顶锥形盖 (Hexagonal Main Roof Cone)
+    cylinderComponent(registry, item, gazeboFurniture, 'roof', {
+      diameterTop: 0.2,
+      diameterBottom: coneRadiusBottom * 2,
+      height: roofH,
+      tessellation: 6
+    }, { position: { x: 0, y: roofStartY + roofH / 2, z: 0 } }, { parent: node });
+
+    // 6 条屋脊梁与贴合在 6 条交界棱线顶角上的飞檐翘角
+    for (let i = 0; i < 6; i += 1) {
+      // 关键修正：交界棱线角度 (0, 60°, 120°, 180°, 240°, 300°)
+      const ridgeAngle = (Math.PI / 3) * i;
+      const ex = Math.cos(ridgeAngle) * coneRadiusBottom;
+      const ez = Math.sin(ridgeAngle) * coneRadiusBottom;
+
+      // 脊梁线条
+      const ridgeLen = Math.hypot(coneRadiusBottom, roofH);
+      const ridgeMidX = ex * 0.5;
+      const ridgeMidZ = ez * 0.5;
+      const ridgeMidY = roofStartY + roofH / 2;
+
+      boxComponent(registry, item, gazeboFurniture, 'roof', {
+        width: 0.06,
+        height: 0.06,
+        depth: ridgeLen
+      }, {
+        position: { x: ridgeMidX, y: ridgeMidY, z: ridgeMidZ },
+        rotation: {
+          y: -ridgeAngle + Math.PI / 2,
+          x: Math.atan2(roofH, coneRadiusBottom)
+        }
+      }, { parent: node });
+
+      // 贴合在交界棱线顶角处的飞檐翘角 (Upcurved Tip exactly on Ridge Corners)
+      boxComponent(registry, item, gazeboFurniture, 'roof', {
+        width: 0.1,
+        height: 0.06,
+        depth: 0.28
+      }, {
+        position: { x: ex * 1.02, y: roofStartY + 0.05, z: ez * 1.02 },
+        rotation: {
+          y: -ridgeAngle + Math.PI / 2,
+          x: -Math.PI * 0.08
+        }
+      }, { parent: node });
+    }
+
+    // 7. 顶端中式葫芦宝顶/塔刹 (Stupa Finial Ornament)
+    const topY = roofStartY + roofH;
+
+    // 宝顶底座
+    cylinderComponent(registry, item, gazeboFurniture, 'roof', {
+      diameterTop: 0.22,
+      diameterBottom: 0.32,
+      height: 0.12,
+      tessellation: 8
+    }, { position: { x: 0, y: topY + 0.06, z: 0 } }, { parent: node });
+
+    // 葫芦腹部大球
+    sphereComponent(registry, item, gazeboFurniture, 'roof', {
+      diameterX: 0.28,
+      diameterY: 0.28,
+      diameterZ: 0.28,
+      segments: 8
+    }, { position: { x: 0, y: topY + 0.24, z: 0 } }, { parent: node });
+
+    // 葫芦腰颈部
+    cylinderComponent(registry, item, gazeboFurniture, 'roof', {
+      diameterTop: 0.12,
+      diameterBottom: 0.16,
+      height: 0.08,
+      tessellation: 8
+    }, { position: { x: 0, y: topY + 0.38, z: 0 } }, { parent: node });
+
+    // 宝顶最上方小圆球
+    sphereComponent(registry, item, gazeboFurniture, 'roof', {
+      diameterX: 0.18,
+      diameterY: 0.2,
+      diameterZ: 0.18,
+      segments: 8
+    }, { position: { x: 0, y: topY + 0.48, z: 0 } }, { parent: node });
   }
 };
 
@@ -1606,4 +1992,602 @@ export const outdoorStoneStool = {
     }, { position: { x: 0, y: h * 0.92, z: 0 } }, { parent: node });
   }
 };
+
+export const outdoorPhoneBoothFurniture = {
+  type: 'outdoor_phone_booth',
+  name: '电话亭',
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.9, height: 2.35 },
+  components: [
+    { id: 'booth-body', label: '电话亭主体', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.classicRed },
+    { id: 'booth-roof', label: '穹顶顶棚', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.classicRed },
+    { id: 'booth-glass', label: '透光玻璃', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.water },
+    { id: 'booth-base', label: '防潮台座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkStone },
+    { id: 'booth-interior', label: '内部电话', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'booth-sign', label: '顶部标识', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
+  ],
+  interaction: {
+    type: 'stand',
+    getInteractionPoints(size) {
+      return [
+        { x: 0, y: 0, z: 0, rot: 0 }
+      ];
+    }
+  },
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+
+    const baseH = 0.08;
+    const signH = 0.16;
+    const roofH = h * 0.15;
+    const bodyH = h - baseH - signH - roofH;
+    const postW = 0.05;
+    const barW = 0.02;
+
+    // 1. 基座 base
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-base', {
+      width: w,
+      height: baseH,
+      depth: d
+    }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
+
+    const bodyCenterY = baseH + bodyH / 2;
+
+    // 2. 4根角立柱 frame / body
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: postW,
+          height: bodyH,
+          depth: postW
+        }, {
+          position: {
+            x: xSide * (w / 2 - postW / 2),
+            y: bodyCenterY,
+            z: zSide * (d / 2 - postW / 2)
+          }
+        }, { parent: node });
+      });
+    });
+
+    // 3. 四周周圈顶梁与底梁 (Perimeter Beams)
+    [-1, 1].forEach((xSide) => {
+      [baseH + barW / 2, baseH + bodyH - barW / 2].forEach((yPos) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: barW,
+          height: barW,
+          depth: d - postW * 2
+        }, { position: { x: xSide * (w / 2 - postW / 2), y: yPos, z: 0 } }, { parent: node });
+      });
+    });
+    [-1, 1].forEach((zSide) => {
+      [baseH + barW / 2, baseH + bodyH - barW / 2].forEach((yPos) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: w - postW * 2,
+          height: barW,
+          depth: barW
+        }, { position: { x: 0, y: yPos, z: zSide * (d / 2 - postW / 2) } }, { parent: node });
+      });
+    });
+
+    // 4. 四面透光玻璃 (前、后、左、右)
+    const glassThick = 0.01;
+    // 后玻璃
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-glass', {
+      width: w - postW * 2,
+      height: bodyH - barW * 2,
+      depth: glassThick
+    }, { position: { x: 0, y: bodyCenterY, z: -(d / 2 - postW / 2) } }, { parent: node });
+    // 前门玻璃
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-glass', {
+      width: w - postW * 2,
+      height: bodyH - barW * 2,
+      depth: glassThick
+    }, { position: { x: 0, y: bodyCenterY, z: d / 2 - postW / 2 } }, { parent: node });
+    // 左右侧玻璃
+    [-1, 1].forEach((xSide) => {
+      boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-glass', {
+        width: glassThick,
+        height: bodyH - barW * 2,
+        depth: d - postW * 2
+      }, { position: { x: xSide * (w / 2 - postW / 2), y: bodyCenterY, z: 0 } }, { parent: node });
+    });
+
+    // 5. 经典复古多宫格窗格条 (Multi-pane Grid / Mullions - 4列 x 6行小方格)
+    const horizYPositions = [
+      baseH + bodyH * 0.20,
+      baseH + bodyH * 0.36,
+      baseH + bodyH * 0.52,
+      baseH + bodyH * 0.68,
+      baseH + bodyH * 0.84
+    ];
+    const vertOffsets = [-(w - postW * 2) / 3.2, 0, (w - postW * 2) / 3.2];
+
+    // 后墙与前墙格栅 (Front & Back Grids)
+    [-1, 1].forEach((zSide) => {
+      const zPos = zSide * (d / 2 - postW / 2);
+      // 3 根纵向竖条
+      vertOffsets.forEach((xOff) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: barW,
+          height: bodyH - barW * 2,
+          depth: barW * 1.2
+        }, { position: { x: xOff, y: bodyCenterY, z: zPos } }, { parent: node });
+      });
+
+      // 5 根横向窗条
+      horizYPositions.forEach((yPos) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: w - postW * 2,
+          height: barW,
+          depth: barW * 1.2
+        }, { position: { x: 0, y: yPos, z: zPos } }, { parent: node });
+      });
+    });
+
+    // 左右墙格栅 (Left & Right Grids)
+    [-1, 1].forEach((xSide) => {
+      const xPos = xSide * (w / 2 - postW / 2);
+      // 2 根纵向竖条
+      vertOffsets.forEach((zOff) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: barW * 1.2,
+          height: bodyH - barW * 2,
+          depth: barW
+        }, { position: { x: xPos, y: bodyCenterY, z: zOff } }, { parent: node });
+      });
+
+      // 5 根横向窗条
+      horizYPositions.forEach((yPos) => {
+        boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+          width: barW * 1.2,
+          height: barW,
+          depth: d - postW * 2
+        }, { position: { x: xPos, y: yPos, z: 0 } }, { parent: node });
+      });
+    });
+
+    // 6. 内部挂壁电话与精小搁板 (Interior & Shelf)
+    const phoneW = w * 0.28;
+    const phoneH = bodyH * 0.22;
+    const phoneD = d * 0.15;
+    const phoneZ = -(d / 2 - postW - phoneD / 2 - 0.02);
+
+    // 挂壁主机
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-interior', {
+      width: phoneW,
+      height: phoneH,
+      depth: phoneD
+    }, { position: { x: 0, y: baseH + bodyH * 0.58, z: phoneZ } }, { parent: node });
+
+    // 紧贴后墙的精致小写字/搁置小台面
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-interior', {
+      width: w * 0.45,
+      height: 0.025,
+      depth: d * 0.25
+    }, { position: { x: 0, y: baseH + bodyH * 0.4, z: -(d / 2 - postW - d * 0.125) } }, { parent: node });
+
+    // 听筒
+    cylinderComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-interior', {
+      diameterTop: 0.035,
+      diameterBottom: 0.035,
+      height: 0.15,
+      tessellation: 8
+    }, {
+      position: { x: -phoneW * 0.55, y: baseH + bodyH * 0.58, z: phoneZ + 0.03 },
+      rotation: { z: Math.PI / 2 }
+    }, { parent: node });
+
+    // 7. 顶部 "TELEPHONE" 标识灯箱 (Sign)
+    const signY = baseH + bodyH + signH / 2;
+    // 外框架
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-body', {
+      width: w * 0.94,
+      height: signH * 0.4,
+      depth: d * 0.94
+    }, { position: { x: 0, y: signY - 0.1, z: 0 } }, { parent: node });
+
+    // 奶油白内嵌灯箱
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-sign', {
+      width: w * 0.88,
+      height: signH,
+      depth: d * 0.88
+    }, { position: { x: 0, y: signY, z: 0 } }, { parent: node });
+
+    // 8. 经典复古阶梯穹顶 Roof
+    const roofStartY = baseH + bodyH + signH;
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-roof', {
+      width: w * 0.96,
+      height: roofH * 0.35,
+      depth: d * 0.96
+    }, { position: { x: 0, y: roofStartY + (roofH * 0.35) / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-roof', {
+      width: w * 0.78,
+      height: roofH * 0.45,
+      depth: d * 0.78
+    }, { position: { x: 0, y: roofStartY + roofH * 0.35 + (roofH * 0.45) / 2, z: 0 } }, { parent: node });
+
+    // 顶饰凸帽 dome tip
+    cylinderComponent(registry, item, outdoorPhoneBoothFurniture, 'booth-roof', {
+      diameterTop: 0.05,
+      diameterBottom: 0.12,
+      height: roofH * 0.2,
+      tessellation: 10
+    }, { position: { x: 0, y: roofStartY + roofH * 0.8 + (roofH * 0.2) / 2, z: 0 } }, { parent: node });
+  }
+};
+
+export const electricScooterFurniture = {
+  type: 'electric_scooter',
+  name: '电动车',
+  unit: 'm',
+  defaultSize: { width: 1.5, depth: 0.6, height: 1.05 },
+  components: [
+    { id: 'body', label: '外壳车框', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream },
+    { id: 'seat', label: '皮质座垫/踏板', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'wheels', label: '轮胎车把', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal },
+    { id: 'light', label: '前大灯', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'trunk', label: '后备储物箱', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.cream }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [
+        { x: 0, y: size.height * 0.55, z: 0, rot: 0 }
+      ];
+    }
+  },
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+
+    const wheelR = Math.min(h * 0.22, w * 0.14);
+    const wheelThick = d * 0.18;
+    const frontWheelCenter = { x: w * 0.36, y: wheelR, z: 0 };
+    const rearWheelCenter = { x: -w * 0.32, y: wheelR, z: 0 };
+
+    // 1. 前轮与后轮 (Wheels & Tires)
+    [frontWheelCenter, rearWheelCenter].forEach((center) => {
+      cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+        diameterTop: wheelR * 2,
+        diameterBottom: wheelR * 2,
+        height: wheelThick,
+        tessellation: 12
+      }, {
+        position: center,
+        rotation: { x: Math.PI / 2 }
+      }, { parent: node });
+
+      // 轮毂银/炭色轴心
+      cylinderComponent(registry, item, electricScooterFurniture, 'light', {
+        diameterTop: wheelR * 0.8,
+        diameterBottom: wheelR * 0.8,
+        height: wheelThick * 1.05,
+        tessellation: 10
+      }, {
+        position: center,
+        rotation: { x: Math.PI / 2 }
+      }, { parent: node });
+    });
+
+    // 2. 前轮弧形挡泥板 (Front Mudguard)
+    boxComponent(registry, item, electricScooterFurniture, 'body', {
+      width: wheelR * 2.5,
+      height: 0.04,
+      depth: wheelThick * 1.5
+    }, {
+      position: { x: frontWheelCenter.x, y: frontWheelCenter.y + wheelR * 0.9, z: 0 }
+    }, { parent: node });
+
+    // 3. 车身踏板底盘 (Footrest Floor Deck & Chassis)
+    const deckH = 0.12;
+    const deckY = wheelR * 0.8;
+    boxComponent(registry, item, electricScooterFurniture, 'seat', {
+      width: w * 0.55,
+      height: deckH,
+      depth: d * 0.72
+    }, {
+      position: { x: 0, y: deckY, z: 0 }
+    }, { parent: node });
+
+    // 侧面小支腿/脚撑 (Kickstand)
+    cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+      diameterTop: 0.02,
+      diameterBottom: 0.02,
+      height: deckY * 1.2,
+      tessellation: 6
+    }, {
+      position: { x: -w * 0.05, y: deckY * 0.5, z: -d * 0.32 },
+      rotation: { z: -Math.PI / 6 }
+    }, { parent: node });
+
+    // 4. 前斜面板包围 (Front Shield / Fairing)
+    const shieldW = w * 0.22;
+    const shieldH = h * 0.55;
+    boxComponent(registry, item, electricScooterFurniture, 'body', {
+      width: shieldW,
+      height: shieldH,
+      depth: d * 0.65
+    }, {
+      position: { x: w * 0.26, y: deckY + shieldH / 2, z: 0 },
+      rotation: { z: -Math.PI / 16 }
+    }, { parent: node });
+
+    // 5. 经典复古大圆灯 (Front Headlight)
+    cylinderComponent(registry, item, electricScooterFurniture, 'light', {
+      diameterTop: d * 0.3,
+      diameterBottom: d * 0.3,
+      height: 0.06,
+      tessellation: 12
+    }, {
+      position: { x: w * 0.38, y: deckY + shieldH * 0.75, z: 0 },
+      rotation: { z: Math.PI / 2 }
+    }, { parent: node });
+
+    // 6. 车把手与小挡风板/后视镜 (Handlebars & Mirrors)
+    const handlebarY = deckY + shieldH + 0.08;
+    // 转向轴
+    cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+      diameterTop: 0.04,
+      diameterBottom: 0.04,
+      height: 0.16,
+      tessellation: 8
+    }, {
+      position: { x: w * 0.22, y: handlebarY - 0.08, z: 0 }
+    }, { parent: node });
+
+    // 横把手
+    cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+      diameterTop: 0.03,
+      diameterBottom: 0.03,
+      height: d * 0.95,
+      tessellation: 8
+    }, {
+      position: { x: w * 0.22, y: handlebarY, z: 0 },
+      rotation: { x: Math.PI / 2 }
+    }, { parent: node });
+
+    // 小透明/米色仪表挡风遮阳板 (Small Windshield / Dashboard Cover)
+    boxComponent(registry, item, electricScooterFurniture, 'body', {
+      width: 0.02,
+      height: 0.14,
+      depth: d * 0.4
+    }, {
+      position: { x: w * 0.25, y: handlebarY + 0.07, z: 0 }
+    }, { parent: node });
+
+    // 左右圆形后视镜 (Rearview Mirrors)
+    [-1, 1].forEach((zSide) => {
+      // 杆
+      cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+        diameterTop: 0.012,
+        diameterBottom: 0.012,
+        height: 0.18,
+        tessellation: 6
+      }, {
+        position: { x: w * 0.22, y: handlebarY + 0.09, z: zSide * d * 0.38 },
+        rotation: { z: Math.PI / 8 }
+      }, { parent: node });
+
+      // 圆镜子
+      cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+        diameterTop: d * 0.16,
+        diameterBottom: d * 0.16,
+        height: 0.02,
+        tessellation: 10
+      }, {
+        position: { x: w * 0.19, y: handlebarY + 0.18, z: zSide * d * 0.42 },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+    });
+
+    // 7. 圆润后车身包围与卡其皮鞍座 (Rear Body Fairing & Seat Cushion)
+    const rearBodyH = h * 0.38;
+    const rearBodyY = deckY + rearBodyH / 2;
+    // 后壳圆润罩
+    boxComponent(registry, item, electricScooterFurniture, 'body', {
+      width: w * 0.52,
+      height: rearBodyH,
+      depth: d * 0.76
+    }, {
+      position: { x: -w * 0.14, y: rearBodyY, z: 0 }
+    }, { parent: node });
+
+    // 侧面圆润贴牌
+    [-1, 1].forEach((zSide) => {
+      cylinderComponent(registry, item, electricScooterFurniture, 'light', {
+        diameterTop: d * 0.28,
+        diameterBottom: d * 0.28,
+        height: 0.015,
+        tessellation: 10
+      }, {
+        position: { x: -w * 0.14, y: rearBodyY, z: zSide * (d * 0.38 + 0.008) },
+        rotation: { x: Math.PI / 2 }
+      }, { parent: node });
+    });
+
+    // 皮质软鞍座 (Leather Seat Cushion)
+    boxComponent(registry, item, electricScooterFurniture, 'seat', {
+      width: w * 0.5,
+      height: 0.1,
+      depth: d * 0.72
+    }, {
+      position: { x: -w * 0.12, y: deckY + rearBodyH + 0.05, z: 0 }
+    }, { parent: node });
+
+    // 8. 尾部行李架与圆润储物后备箱 (Rear Trunk / Helmet Box)
+    const trunkX = -w * 0.4;
+    const trunkY = deckY + rearBodyH + 0.18;
+    // 后支架杆
+    cylinderComponent(registry, item, electricScooterFurniture, 'wheels', {
+      diameterTop: 0.02,
+      diameterBottom: 0.02,
+      height: w * 0.2,
+      tessellation: 6
+    }, {
+      position: { x: -w * 0.32, y: deckY + rearBodyH + 0.06, z: 0 },
+      rotation: { z: Math.PI / 2 }
+    }, { parent: node });
+
+    // 椭圆/半球形后备箱
+    cylinderComponent(registry, item, electricScooterFurniture, 'trunk', {
+      diameterTop: d * 0.65,
+      diameterBottom: d * 0.58,
+      height: d * 0.5,
+      tessellation: 12
+    }, {
+      position: { x: trunkX - d * 0.2, y: trunkY, z: 0 },
+      rotation: { z: Math.PI }
+    }, { parent: node });
+
+    // 后备箱黑色软垫靠背 (Trunk Backrest)
+    boxComponent(registry, item, electricScooterFurniture, 'wheels', {
+      width: 0.04,
+      height: d * 0.25,
+      depth: d * 0.32
+    }, {
+      position: { x: trunkX + d * 0.26, y: trunkY, z: 0 }
+    }, { parent: node });
+  }
+};
+
+export const stepladderFurniture = {
+  type: 'stepladder',
+  name: '人字梯',
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.75, height: 1.15 },
+  components: [
+    { id: 'steps', label: '木质梯步', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.warmWood },
+    { id: 'frame', label: '梯身主架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.darkWood },
+    { id: 'hinge', label: '金属铰链', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.charcoal }
+  ],
+  interaction: {
+    type: 'stand',
+    getInteractionPoints(size) {
+      return [
+        { x: 0, y: size.height * 0.9, z: 0, rot: 0 }
+      ];
+    }
+  },
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+
+    const topDepth = d * 0.32;
+    const botDepth = d * 0.88;
+    const strutWidth = 0.035;
+    const strutDepth = 0.055;
+
+    const effectiveH = h - 0.035;
+    const dz = (botDepth - topDepth) / 2;
+    const inclinationAngle = Math.atan2(dz, effectiveH);
+    const strutLen = Math.hypot(effectiveH, dz);
+
+    // 1. 顶层大置物/站立平台 (Top Platform)
+    const topH = 0.035;
+    boxComponent(registry, item, stepladderFurniture, 'steps', {
+      width: w * 0.92,
+      height: topH,
+      depth: topDepth * 1.1
+    }, { position: { x: 0, y: h - topH / 2, z: 0 } }, { parent: node });
+
+    // 2. 前倾斜梯梁与后倾斜支撑腿 (正向 A 字收拢架构，底部宽顶部窄)
+    const strutZMid = (topDepth / 2 + botDepth / 2) / 2 - dz * 0.1;
+
+    [-1, 1].forEach((xSide) => {
+      const xPos = xSide * (w / 2 - strutWidth / 2);
+
+      // 前梯梁 (Front Strut) - 位于 +Z 侧，从底端向上向内 (-Z) 倾斜
+      boxComponent(registry, item, stepladderFurniture, 'frame', {
+        width: strutWidth,
+        height: strutLen,
+        depth: strutDepth
+      }, {
+        position: { x: xPos, y: effectiveH / 2, z: strutZMid },
+        rotation: { x: -inclinationAngle }
+      }, { parent: node });
+
+      // 后支撑腿 (Rear Strut) - 位于 -Z 侧，从底端向上向内 (+Z) 倾斜
+      boxComponent(registry, item, stepladderFurniture, 'frame', {
+        width: strutWidth * 0.9,
+        height: strutLen,
+        depth: strutDepth * 0.85
+      }, {
+        position: { x: xPos, y: effectiveH / 2, z: -strutZMid },
+        rotation: { x: inclinationAngle }
+      }, { parent: node });
+    });
+
+    // 3. 多层宽木踏板 (3 Tread Steps)
+    const stepCount = 3;
+    for (let i = 1; i <= stepCount; i += 1) {
+      const progress = i / (stepCount + 1);
+      const stepY = effectiveH * progress;
+      const stepZ = (botDepth / 2) - dz * progress;
+
+      boxComponent(registry, item, stepladderFurniture, 'steps', {
+        width: w * 0.84,
+        height: 0.026,
+        depth: 0.13
+      }, { position: { x: 0, y: stepY, z: stepZ } }, { parent: node });
+    }
+
+    // 4. 后支撑脚腿间水平横向横档 (Rear Strut Cross Braces)
+    [0.3, 0.65].forEach((prog) => {
+      const braceY = effectiveH * prog;
+      const braceZ = -((botDepth / 2) - dz * prog);
+      boxComponent(registry, item, stepladderFurniture, 'frame', {
+        width: w * 0.86,
+        height: 0.028,
+        depth: 0.025
+      }, { position: { x: 0, y: braceY, z: braceZ } }, { parent: node });
+    });
+
+    // 5. 侧面金属折叠防折铰链拉杆 (Metal Hinge Brackets)
+    const hingeY = effectiveH * 0.5;
+    [-1, 1].forEach((xSide) => {
+      const xPos = xSide * (w / 2 - strutWidth / 2);
+      const hingeZMid = 0;
+      const hingeLen = strutZMid * 1.6;
+
+      boxComponent(registry, item, stepladderFurniture, 'hinge', {
+        width: 0.015,
+        height: 0.016,
+        depth: hingeLen
+      }, { position: { x: xPos, y: hingeY, z: hingeZMid } }, { parent: node });
+
+      // 铰链中间转轴节点
+      cylinderComponent(registry, item, stepladderFurniture, 'hinge', {
+        diameterTop: 0.028,
+        diameterBottom: 0.028,
+        height: 0.022,
+        tessellation: 8
+      }, {
+        position: { x: xPos, y: hingeY, z: hingeZMid },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+    });
+
+    // 6. 底端防滑脚衬垫 (Anti-slip Feet Pads)
+    [-1, 1].forEach((xSide) => {
+      const xPos = xSide * (w / 2 - strutWidth / 2);
+      const footZ = botDepth / 2;
+      [-footZ, footZ].forEach((zPos) => {
+        boxComponent(registry, item, stepladderFurniture, 'hinge', {
+          width: strutWidth * 1.15,
+          height: 0.022,
+          depth: strutDepth * 1.15
+        }, { position: { x: xPos, y: 0.011, z: zPos } }, { parent: node });
+      });
+    });
+  }
+};
+
+
+
 

@@ -1,5 +1,5 @@
-import { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer } from './babylon.js';
-const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer };
+import { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer, Matrix, VertexData } from './babylon.js';
+const BABYLON = { MeshBuilder, TransformNode, Mesh, Vector3, VertexBuffer, Matrix, VertexData };
 import { setTransform } from './BlueprintRegistry.js';
 
 export function orientBoxTextureCoordinates(mesh) {
@@ -109,7 +109,6 @@ export function createLathe(registry, name, options = {}, transform = {}, regist
   return registerOrApplyOptions(registry, mesh, registryOptions);
 }
 
-
 export function createFenceLine(registry, points, options = {}) {
   const [start, end] = points;
   const dx = end.x - start.x;
@@ -168,4 +167,144 @@ export function createFenceLine(registry, points, options = {}) {
   }
 
   return posts;
+}
+
+export function createRightTriangle(registry, name, size, transform = {}, options = {}) {
+  const width = size.width || 1;
+  const height = size.height || 1;
+  const depth = size.depth || 1;
+
+  const halfW = width / 2;
+  const halfH = height / 2;
+  const halfD = depth / 2;
+
+  const positions = [
+    // 1. 底部 (Y = -halfH)
+    -halfW, -halfH, -halfD,
+    +halfW, -halfH, -halfD,
+    -halfW, -halfH, +halfD,
+
+    // 2. 顶部 (Y = +halfH)
+    -halfW, +halfH, -halfD,
+    +halfW, +halfH, -halfD,
+    -halfW, +halfH, +halfD,
+
+    // 3. 背面 (Z = -halfD)
+    -halfW, -halfH, -halfD,
+    +halfW, -halfH, -halfD,
+    +halfW, +halfH, -halfD,
+    -halfW, +halfH, -halfD,
+
+    // 4. 左侧面 (X = -halfW)
+    -halfW, -halfH, +halfD,
+    -halfW, -halfH, -halfD,
+    -halfW, +halfH, -halfD,
+    -halfW, +halfH, +halfD,
+
+    // 5. 斜面 ((+halfW, -halfD) -> (-halfW, +halfD))
+    +halfW, -halfH, -halfD,
+    -halfW, -halfH, +halfD,
+    -halfW, +halfH, +halfD,
+    +halfW, +halfH, -halfD
+  ];
+
+  const uvs = [
+    // 底部
+    0, 0,  1, 0,  0, 1,
+    // 顶部
+    0, 0,  1, 0,  0, 1,
+    // 背面
+    0, 0,  1, 0,  1, 1,  0, 1,
+    // 左侧面
+    0, 0,  1, 0,  1, 1,  0, 1,
+    // 斜面
+    0, 0,  1, 0,  1, 1,  0, 1
+  ];
+
+  const indices = [
+    // 底部
+    0, 2, 1,
+    // 顶部
+    3, 4, 5,
+    // 背面
+    6, 7, 8,
+    6, 8, 9,
+    // 左侧面
+    10, 11, 12,
+    10, 12, 13,
+    // 斜面
+    14, 15, 16,
+    14, 16, 17
+  ];
+
+  const normals = [];
+  BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+
+  const vertexData = new BABYLON.VertexData();
+  vertexData.positions = positions;
+  vertexData.indices = indices;
+  vertexData.normals = normals;
+  vertexData.uvs = uvs;
+
+  const scene = registry?.scene || registry?.renderer?.scene;
+  const mesh = new BABYLON.Mesh(name, scene);
+  vertexData.applyToMesh(mesh);
+
+  setTransform(mesh, transform);
+  return registerOrApplyOptions(registry, mesh, options);
+}
+
+export function createHalfCylinder(registry, name, size, transform = {}, options = {}) {
+  const width = size.width || 1;
+  const height = size.height || 1;
+  const depth = size.depth || width;
+  const tessellation = options.tessellation || 24;
+  const scene = registry?.scene || registry?.renderer?.scene;
+
+  const cylinder = BABYLON.MeshBuilder.CreateCylinder(`${name}_arc`, {
+    diameterTop: width,
+    diameterBottom: width,
+    height: height,
+    tessellation: tessellation,
+    arc: 0.5,
+    cap: BABYLON.Mesh.CAP_ALL,
+    sideOrientation: BABYLON.Mesh.DOUBLESIDE
+  }, scene);
+
+  const plane = BABYLON.MeshBuilder.CreatePlane(`${name}_cap`, {
+    width: width,
+    height: height,
+    sideOrientation: BABYLON.Mesh.DOUBLESIDE
+  }, scene);
+
+  const mesh = BABYLON.Mesh.MergeMeshes([cylinder, plane], true, true, undefined, false, true);
+  if (mesh) {
+    mesh.name = name;
+  }
+  const targetMesh = mesh || cylinder;
+
+  const scaleZ = depth / (width / 2);
+  const matrix = BABYLON.Matrix.Scaling(1, 1, scaleZ).multiply(
+    BABYLON.Matrix.Translation(0, 0, -width / 4)
+  );
+  targetMesh.bakeTransformIntoVertices(matrix);
+
+  setTransform(targetMesh, transform);
+  return registerOrApplyOptions(registry, targetMesh, options);
+}
+
+export function createCone(registry, name, size, transform = {}, options = {}) {
+  const width = size.width || 1;
+  const height = size.height || 1;
+  const tessellation = options.tessellation || 24;
+
+  const mesh = BABYLON.MeshBuilder.CreateCylinder(name, {
+    diameterTop: 0,
+    diameterBottom: width,
+    height: height,
+    tessellation: tessellation
+  }, registry?.scene || registry?.renderer?.scene);
+
+  setTransform(mesh, transform);
+  return registerOrApplyOptions(registry, mesh, options);
 }

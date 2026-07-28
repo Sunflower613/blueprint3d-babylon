@@ -5,7 +5,10 @@ import {
   FURNITURE_LIST,
   customCubeFurniture,
   customCylinderFurniture,
-  customSphereFurniture
+  customSphereFurniture,
+  customRightTriangleFurniture,
+  customHalfCylinderFurniture,
+  customConeFurniture
 } from '../../src/furniture/index.js';
 
 test('exposes custom furniture category', () => {
@@ -16,16 +19,26 @@ test('exposes custom furniture category', () => {
 
 test('contains custom furniture in list', () => {
   const customItems = FURNITURE_LIST.filter((item) => item.category === 'custom');
-  assert.equal(customItems.length, 3, 'Should contain exactly 3 custom furniture items');
+  assert.equal(customItems.length, 6, 'Should contain exactly 6 custom furniture items');
 
   const types = customItems.map((item) => item.type);
   assert.ok(types.includes('custom_cube'));
   assert.ok(types.includes('custom_cylinder'));
   assert.ok(types.includes('custom_sphere'));
+  assert.ok(types.includes('custom_right_triangle'));
+  assert.ok(types.includes('custom_half_cylinder'));
+  assert.ok(types.includes('custom_cone'));
 });
 
 test('validates custom furniture structures', () => {
-  const customItems = [customCubeFurniture, customCylinderFurniture, customSphereFurniture];
+  const customItems = [
+    customCubeFurniture,
+    customCylinderFurniture,
+    customSphereFurniture,
+    customRightTriangleFurniture,
+    customHalfCylinderFurniture,
+    customConeFurniture
+  ];
   for (const item of customItems) {
     assert.ok(item.type);
     assert.ok(item.name);
@@ -58,13 +71,13 @@ test('contains clothing furniture in list', () => {
   }
 });
 
-test('contains outdoor furniture category and 25 outdoor items', () => {
+test('contains outdoor furniture category and 28 outdoor items', () => {
   const outdoorCategory = FURNITURE_CATEGORIES.find((cat) => cat.id === 'outdoor');
   assert.ok(outdoorCategory, 'Outdoor category should exist');
   assert.equal(outdoorCategory.label, '户外');
 
   const outdoorItems = FURNITURE_LIST.filter((item) => item.category === 'outdoor');
-  assert.equal(outdoorItems.length, 25, 'Should contain exactly 25 outdoor furniture items');
+  assert.equal(outdoorItems.length, 28, 'Should contain exactly 28 outdoor furniture items');
 
   const types = outdoorItems.map((item) => item.type);
   assert.ok(types.includes('outdoor_umbrella'));
@@ -73,6 +86,9 @@ test('contains outdoor furniture category and 25 outdoor items', () => {
   assert.ok(types.includes('shared_bicycle'));
   assert.ok(types.includes('outdoor_stone_chess_table'));
   assert.ok(types.includes('outdoor_stone_stool'));
+  assert.ok(types.includes('outdoor_phone_booth'));
+  assert.ok(types.includes('electric_scooter'));
+  assert.ok(types.includes('stepladder'));
 });
 
 test('separates landscape plants into flora category', () => {

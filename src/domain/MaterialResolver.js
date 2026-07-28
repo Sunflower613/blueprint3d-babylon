@@ -225,7 +225,10 @@ export class MaterialResolver {
   static shouldLimitPatternStretch(normalized, options = {}) {
     if (options.limitPatternStretch === false) return false;
     if (options.limitPatternStretch === true) return true;
-    return normalized.kind === 'stained-glass' || normalized.category === 'wallpaper';
+    return normalized.kind === 'stained-glass' ||
+      normalized.category === 'wallpaper' ||
+      normalized.id === 'brick-diamond' ||
+      normalized.id === 'brick-small-black';
   }
 
   static resolvePatternTextureScale(normalized, options = {}, baseScale = 1) {

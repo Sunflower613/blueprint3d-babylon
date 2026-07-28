@@ -1012,6 +1012,11 @@ export class BabylonSceneRenderer {
         this.deleteSingleItemNode(targetItemId);
         this.buildItem(item);
         this.addSingleItemShadowCaster(targetItemId);
+        if (item._spawnedFood) {
+          const spawnedFood = item._spawnedFood;
+          delete item._spawnedFood;
+          this.build({ rebuildType: 'item_add', targetItemId: spawnedFood.id });
+        }
       }
       return;
     }

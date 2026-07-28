@@ -511,7 +511,7 @@ function calculateFastNonOverlappingPosition(sourceRoom, existingRooms = []) {
   const d = sourceRoom.depth || 4;
   const sourceW = sourceRoom.width || 4;
   const sourceD = sourceRoom.depth || 4;
-  const gap = 0.5;
+  const gap = 0;
   const eps = 0.05;
 
   const stepX = (w + sourceW) / 2 + gap;
@@ -604,6 +604,14 @@ function calculateFastNonOverlappingPosition(sourceRoom, existingRooms = []) {
   }
 
   return { x: sourceRoom.x + stepX, z: sourceRoom.z + stepZ };
+}
+
+export function isWallSharedByAnotherRoom(wallId, roomId, rooms = []) {
+  if (!wallId) return false;
+  return rooms.some((candidate) => (
+    candidate.id !== roomId
+    && Object.values(candidate.wallIds || {}).includes(wallId)
+  ));
 }
 
 export function copyTarget(target) {
@@ -739,10 +747,14 @@ export function copyTarget(target) {
     });
 
     if (newRoom) {
+      const roomsAfterCopy = ctx.testMap.getEntities('room') || [];
       const keys = getRoomWallKeys(room);
       keys.forEach((key) => {
         const sourceWallId = room.wallIds?.[key];
         const targetWallId = newRoom.wallIds?.[key];
+        const isSharedWall = isWallSharedByAnotherRoom(targetWallId, newRoom.id, roomsAfterCopy);
+
+        if (isSharedWall) return;
 
         if (!sourceWallId && targetWallId) {
           ctx.testMap.executeCommand('deleteWall', { wallId: targetWallId, rebuild: false });

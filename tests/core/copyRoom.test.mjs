@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FloorplanDocument, getRoomWallKeys, pointInRoom } from '../../src/index.js';
+import { isWallSharedByAnotherRoom } from '../../example/js/TargetHandler.js';
 
 function calculateFastNonOverlappingPosition(sourceRoom, existingRooms = []) {
   const currentFloorId = sourceRoom.floorId;
@@ -10,7 +11,7 @@ function calculateFastNonOverlappingPosition(sourceRoom, existingRooms = []) {
   const d = sourceRoom.depth || 4;
   const sourceW = sourceRoom.width || 4;
   const sourceD = sourceRoom.depth || 4;
-  const gap = 0.5;
+  const gap = 0;
   const eps = 0.05;
 
   const stepX = (w + sourceW) / 2 + gap;
@@ -114,13 +115,49 @@ test('Block-Jump 极速摆放算法：优先+X/-X/+Z/-Z防重叠及超大房间�
   const duration = performance.now() - startTime;
 
   assert.ok(duration < 5.0, `50m x 50m 超大房间寻空耗时应小于 5ms，实际 ${duration}ms`);
-  assert.equal(pos1.x, 50.5);
+  assert.equal(pos1.x, 50);
   assert.equal(pos1.z, 0);
   rooms.push({ id: 'r1', floorId: 'f1', x: pos1.x, z: pos1.z, width: 50, depth: 50 });
 
   let pos2 = calculateFastNonOverlappingPosition(baseRoom, rooms);
-  assert.equal(pos2.x, -50.5);
+  assert.equal(pos2.x, -50);
   assert.equal(pos2.z, 0);
+});
+
+test('复制房间紧贴摆放时保留公共墙', () => {
+  const doc = new FloorplanDocument();
+  const sourceRoom = doc.addRoom({
+    id: 'source-room',
+    x: 0,
+    z: 0,
+    width: 6,
+    depth: 6
+  });
+
+  const westWallEntry = Object.entries(sourceRoom.wallIds).find(([, wallId]) => {
+    const wall = doc.getWall(wallId);
+    return wall && wall.from[0] === -3 && wall.to[0] === -3;
+  });
+  assert.ok(westWallEntry, '应该找到源房间西侧墙');
+  doc.deleteWall(westWallEntry[1]);
+
+  const copiedRoom = doc.addRoom({
+    id: 'copied-room',
+    x: 6,
+    z: 0,
+    width: 6,
+    depth: 6
+  });
+  const sharedWallId = Object.values(copiedRoom.wallIds).find((wallId) => (
+    Object.values(sourceRoom.wallIds).includes(wallId)
+  ));
+
+  assert.ok(sharedWallId, '相邻房间应该复用边界上的公共墙');
+  assert.equal(
+    isWallSharedByAnotherRoom(sharedWallId, copiedRoom.id, doc.floorplan.floor.rooms),
+    true,
+    '复制房间同步无墙边时不应删除公共墙'
+  );
 });
 
 test('无墙房间/露台复制：如果房间没有墙，复制出来的房间也保持无墙', () => {
@@ -175,6 +212,7 @@ test('房间全量复制：包含房间材质、墙面饰面、门窗及家具�
   const doc = new FloorplanDocument();
 
   const sourceRoom = doc.addRoom({
+    id: 'full-copy-source-room',
     name: '豪华主卧',
     x: 0,
     z: 0,
@@ -230,6 +268,7 @@ test('房间全量复制：包含房间材质、墙面饰面、门窗及家具�
 
   const copiedRoom = doc.addRoom({
     ...roomCopyData,
+    id: 'full-copy-target-room',
     x: targetPos.x,
     z: targetPos.z
   });

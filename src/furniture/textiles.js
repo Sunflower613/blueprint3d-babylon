@@ -281,6 +281,16 @@ function createPuzzleRugMesh(registry, item, definition, node, size, height) {
   return markComponent(mesh, item, 'fabric');
 }
 
+
+// ============================================================================
+// 1. 地毯全系列 (Rugs)
+// ============================================================================
+
+
+// ============================================================================
+// 1. 地毯全系列 (Rugs)
+// ============================================================================
+
 export const rugFurniture = {
   type: 'rug',
   name: '方形地毯',
@@ -306,36 +316,6 @@ export const rugFurniture = {
     boxComponent(registry, item, rugFurniture, 'fabric', {
       width: size.width, height: rugThickness, depth: size.depth
     }, { position: { x: 0, y: rugThickness / 2 + 0.002, z: 0 } }, { parent: node });
-  }
-};
-
-export const ovalRugFurniture = {
-  type: 'oval_rug',
-  name: '圆形地毯',
-  unit: 'm',
-  defaultSize: { width: 1.5, depth: 2.15, height: 0.01 },
-  components: [
-    {
-      id: 'fabric',
-      label: '地毯织面',
-      defaultColor: '#ffffff',
-      defaultMaterial: {
-        id: 'fabric-circle',
-        name: '圆花毯',
-        category: 'fabric',
-        kind: 'texture',
-        scale: 2,
-        color: '#ffffff'
-      }
-    }
-  ],
-  build(registry, item, node, size) {
-    const rugThickness = 0.008;
-    const mesh = cylinderComponent(registry, item, ovalRugFurniture, 'fabric', {
-      diameterTop: 1, diameterBottom: 1, height: rugThickness, tessellation: 32
-    }, { position: { x: 0, y: rugThickness / 2 + 0.002, z: 0 } }, { parent: node });
-    mesh.scaling.x = size.width;
-    mesh.scaling.z = size.depth;
   }
 };
 
@@ -379,6 +359,36 @@ export const roundedRugFurniture = {
   }
 };
 
+export const ovalRugFurniture = {
+  type: 'oval_rug',
+  name: '圆形地毯',
+  unit: 'm',
+  defaultSize: { width: 1.5, depth: 2.15, height: 0.01 },
+  components: [
+    {
+      id: 'fabric',
+      label: '地毯织面',
+      defaultColor: '#ffffff',
+      defaultMaterial: {
+        id: 'fabric-circle',
+        name: '圆花毯',
+        category: 'fabric',
+        kind: 'texture',
+        scale: 2,
+        color: '#ffffff'
+      }
+    }
+  ],
+  build(registry, item, node, size) {
+    const rugThickness = 0.008;
+    const mesh = cylinderComponent(registry, item, ovalRugFurniture, 'fabric', {
+      diameterTop: 1, diameterBottom: 1, height: rugThickness, tessellation: 32
+    }, { position: { x: 0, y: rugThickness / 2 + 0.002, z: 0 } }, { parent: node });
+    mesh.scaling.x = size.width;
+    mesh.scaling.z = size.depth;
+  }
+};
+
 export const irregularRugFurniture = {
   type: 'irregular_rug',
   name: '异形地毯',
@@ -418,6 +428,16 @@ export const biscuitRugFurniture = {
     createPuzzleRugMesh(registry, item, biscuitRugFurniture, node, size, h);
   }
 };
+
+
+// ============================================================================
+// 2. 窗帘与遮阳全系列 (Curtains & Blinds)
+// ============================================================================
+
+
+// ============================================================================
+// 2. 窗帘与遮阳全系列 (Curtains & Blinds)
+// ============================================================================
 
 export const curtainFurniture = {
   type: 'curtain',
@@ -465,22 +485,6 @@ export const curtainFurniture = {
     if (item.mirrored) {
       node.scaling.x = -1;
     }
-  }
-};
-
-export const cushionFurniture = {
-  type: 'cushion',
-  name: '靠枕',
-  unit: 'm',
-  defaultSize: { width: 0.4, depth: 0.4, height: 0.15 },
-  components: [
-    { id: 'fabric', label: '棉麻枕套', defaultColor: '#ffbe73' }
-  ],
-  build(registry, item, node, size) {
-    // 羽绒软枕头
-    boxComponent(registry, item, cushionFurniture, 'fabric', {
-      width: size.width, height: size.height, depth: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
   }
 };
 
@@ -583,6 +587,144 @@ export const doubleSheerCurtainFurniture = {
       boxComponent(registry, item, doubleSheerCurtainFurniture, 'sheer', {
         width: size.width * 0.46, height: fabricH, depth: 0.008
       }, { position: { x: size.width * 0.24, y: fabricH / 2, z: 0.012 } }, { parent: node });
+    }
+
+    if (item.mirrored) {
+      node.scaling.x = -1;
+    }
+  }
+};
+
+export const luxuryValanceCurtainFurniture = {
+  type: 'luxury_valance_curtain',
+  name: '欧式帘',
+  unit: 'm',
+  defaultSize: { width: 1.35, depth: 0.1, height: 2.05 },
+  placeType: 'wall',
+  isSwitchable: true,
+  components: [
+    { id: 'valance', label: '奢华波浪帘头', defaultColor: '#f57f17' },
+    { id: 'fabric', label: '绒面垂地帘', defaultColor: '#b71c1c' }
+  ],
+  build(registry, item, node, size) {
+    const topH = size.height * 0.14;
+    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'valance', {
+      width: size.width * 1.04, height: topH, depth: size.depth
+    }, { position: { x: 0, y: size.height - topH / 2, z: size.depth * 0.3 } }, { parent: node });
+
+    const open = item.isOn !== false;
+    const curH = size.height - topH;
+
+    // 始终生成一个不可见但起稳定高亮包围盒作用的满幅点击代理盒
+    const proxy = boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
+      width: size.width * 0.96, height: curH, depth: size.depth * 0.6
+    }, { position: { x: 0, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
+    proxy.visibility = 0.001;
+
+    const curW = open ? size.width * 0.22 : size.width * 0.46;
+    const offsetFactor = open ? 0.38 : 0.24;
+
+    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
+      width: curW, height: curH, depth: size.depth * 0.6
+    }, { position: { x: -size.width * offsetFactor, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
+
+    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
+      width: curW, height: curH, depth: size.depth * 0.6
+    }, { position: { x: size.width * offsetFactor, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
+
+    if (item.mirrored) {
+      node.scaling.x = -1;
+    }
+  }
+};
+
+export const cafeShortCurtainFurniture = {
+  type: 'cafe_short_curtain',
+  name: '咖啡帘',
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.04, height: 0.6 },
+  placeType: 'wall',
+  isSwitchable: true,
+  components: [
+    { id: 'rod', label: '挂杆', defaultColor: '#ffd54f' },
+    { id: 'fabric', label: '挂褶半帘布', defaultColor: '#e0f2f1' }
+  ],
+  build(registry, item, node, size) {
+    const rodH = 0.016;
+    cylinderComponent(registry, item, cafeShortCurtainFurniture, 'rod', {
+      diameterTop: rodH, diameterBottom: rodH, height: size.width * 1.02, tessellation: 8
+    }, { position: { x: 0, y: size.height - rodH / 2, z: 0 } }, { parent: node });
+    const rodMesh = node.getChildren().find(child => child.name.includes('rod'));
+    if (rodMesh) {
+      rodMesh.rotation.z = Math.PI * 0.5;
+    }
+
+    const open = item.isOn !== false;
+    const proxy = boxComponent(registry, item, cafeShortCurtainFurniture, 'fabric', {
+      width: size.width, height: size.height - rodH, depth: 0.006
+    }, { position: { x: 0, y: (size.height - rodH) / 2, z: 0.005 } }, { parent: node });
+
+    if (open) {
+      proxy.visibility = 0.001;
+      boxComponent(registry, item, cafeShortCurtainFurniture, 'fabric', {
+        width: size.width * 0.25, height: size.height - rodH, depth: 0.006
+      }, { position: { x: -size.width * 0.35, y: (size.height - rodH) / 2, z: 0.008 } }, { parent: node });
+    } else {
+      proxy.visibility = 1.0;
+    }
+
+    if (item.mirrored) {
+      node.scaling.x = -1;
+    }
+  }
+};
+
+export const japaneseNorenCurtainFurniture = {
+  type: 'japanese_noren_curtain',
+  name: '日式暖帘',
+  unit: 'm',
+  defaultSize: { width: 0.8, depth: 0.04, height: 1 },
+  placeType: 'wall',
+  isSwitchable: true,
+  components: [
+    { id: 'rod', label: '木挂轴', defaultColor: '#8d6e63' },
+    { id: 'fabric', label: '棉麻开叉帘布', defaultColor: '#263238' }
+  ],
+  build(registry, item, node, size) {
+    const rodH = 0.024;
+    cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'rod', {
+      diameterTop: rodH, diameterBottom: rodH, height: size.width * 1.04, tessellation: 8
+    }, { position: { x: 0, y: size.height - rodH / 2, z: 0 } }, { parent: node });
+    const rodMesh = node.getChildren().find(child => child.name.includes('rod'));
+    if (rodMesh) {
+      rodMesh.rotation.z = Math.PI * 0.5;
+    }
+
+    const open = item.isOn !== false;
+    const flapH = size.height - rodH;
+
+    const proxy = boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
+      width: size.width, height: flapH, depth: 0.008
+    }, { position: { x: 0, y: flapH / 2, z: 0.004 } }, { parent: node });
+    proxy.visibility = 0.001;
+
+    if (open) {
+      cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
+        diameterTop: 0.04, diameterBottom: 0.04, height: flapH
+      }, { position: { x: -size.width * 0.38, y: flapH / 2, z: 0.015 } }, { parent: node });
+
+      cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
+        diameterTop: 0.04, diameterBottom: 0.04, height: flapH
+      }, { position: { x: size.width * 0.38, y: flapH / 2, z: 0.015 } }, { parent: node });
+    } else {
+      const flapW = size.width * 0.48;
+      boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
+        width: flapW, height: flapH, depth: 0.005
+      }, { position: { x: -size.width * 0.25, y: flapH / 2, z: 0.004 } }, { parent: node });
+
+      boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
+        width: flapW, height: flapH, depth: 0.005
+      }, { position: { x: size.width * 0.25, y: flapH / 2, z: 0.004 } }, { parent: node });
     }
 
     if (item.mirrored) {
@@ -797,140 +939,48 @@ export const chineseBambooBlindFurniture = {
   }
 };
 
-export const luxuryValanceCurtainFurniture = {
-  type: 'luxury_valance_curtain',
-  name: '欧式帘',
+
+// ============================================================================
+// 3. 抱枕与软包 (Cushions & Soft Accessories)
+// ============================================================================
+
+
+// ============================================================================
+// 3. 抱枕与软包 (Cushions & Soft Accessories)
+// ============================================================================
+
+export const cushionFurniture = {
+  type: 'cushion',
+  name: '靠枕',
   unit: 'm',
-  defaultSize: { width: 1.35, depth: 0.1, height: 2.05 },
-  placeType: 'wall',
-  isSwitchable: true,
+  defaultSize: { width: 0.4, depth: 0.4, height: 0.15 },
   components: [
-    { id: 'valance', label: '奢华波浪帘头', defaultColor: '#f57f17' },
-    { id: 'fabric', label: '绒面垂地帘', defaultColor: '#b71c1c' }
+    { id: 'fabric', label: '棉麻枕套', defaultColor: '#ffbe73' }
   ],
   build(registry, item, node, size) {
-    const topH = size.height * 0.14;
-    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'valance', {
-      width: size.width * 1.04, height: topH, depth: size.depth
-    }, { position: { x: 0, y: size.height - topH / 2, z: size.depth * 0.3 } }, { parent: node });
-
-    const open = item.isOn !== false;
-    const curH = size.height - topH;
-
-    // 始终生成一个不可见但起稳定高亮包围盒作用的满幅点击代理盒
-    const proxy = boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
-      width: size.width * 0.96, height: curH, depth: size.depth * 0.6
-    }, { position: { x: 0, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
-    proxy.visibility = 0.001;
-
-    const curW = open ? size.width * 0.22 : size.width * 0.46;
-    const offsetFactor = open ? 0.38 : 0.24;
-
-    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
-      width: curW, height: curH, depth: size.depth * 0.6
-    }, { position: { x: -size.width * offsetFactor, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
-
-    boxComponent(registry, item, luxuryValanceCurtainFurniture, 'fabric', {
-      width: curW, height: curH, depth: size.depth * 0.6
-    }, { position: { x: size.width * offsetFactor, y: curH / 2, z: size.depth * 0.1 } }, { parent: node });
-
-    if (item.mirrored) {
-      node.scaling.x = -1;
-    }
+    // 羽绒软枕头
+    boxComponent(registry, item, cushionFurniture, 'fabric', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
   }
 };
 
-export const cafeShortCurtainFurniture = {
-  type: 'cafe_short_curtain',
-  name: '咖啡帘',
-  unit: 'm',
-  defaultSize: { width: 0.9, depth: 0.04, height: 0.6 },
-  placeType: 'wall',
-  isSwitchable: true,
-  components: [
-    { id: 'rod', label: '挂杆', defaultColor: '#ffd54f' },
-    { id: 'fabric', label: '挂褶半帘布', defaultColor: '#e0f2f1' }
-  ],
-  build(registry, item, node, size) {
-    const rodH = 0.016;
-    cylinderComponent(registry, item, cafeShortCurtainFurniture, 'rod', {
-      diameterTop: rodH, diameterBottom: rodH, height: size.width * 1.02, tessellation: 8
-    }, { position: { x: 0, y: size.height - rodH / 2, z: 0 } }, { parent: node });
-    const rodMesh = node.getChildren().find(child => child.name.includes('rod'));
-    if (rodMesh) {
-      rodMesh.rotation.z = Math.PI * 0.5;
-    }
-
-    const open = item.isOn !== false;
-    const proxy = boxComponent(registry, item, cafeShortCurtainFurniture, 'fabric', {
-      width: size.width, height: size.height - rodH, depth: 0.006
-    }, { position: { x: 0, y: (size.height - rodH) / 2, z: 0.005 } }, { parent: node });
-
-    if (open) {
-      proxy.visibility = 0.001;
-      boxComponent(registry, item, cafeShortCurtainFurniture, 'fabric', {
-        width: size.width * 0.25, height: size.height - rodH, depth: 0.006
-      }, { position: { x: -size.width * 0.35, y: (size.height - rodH) / 2, z: 0.008 } }, { parent: node });
-    } else {
-      proxy.visibility = 1.0;
-    }
-
-    if (item.mirrored) {
-      node.scaling.x = -1;
-    }
-  }
-};
-
-export const japaneseNorenCurtainFurniture = {
-  type: 'japanese_noren_curtain',
-  name: '日式暖帘',
-  unit: 'm',
-  defaultSize: { width: 0.8, depth: 0.04, height: 1 },
-  placeType: 'wall',
-  isSwitchable: true,
-  components: [
-    { id: 'rod', label: '木挂轴', defaultColor: '#8d6e63' },
-    { id: 'fabric', label: '棉麻开叉帘布', defaultColor: '#263238' }
-  ],
-  build(registry, item, node, size) {
-    const rodH = 0.024;
-    cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'rod', {
-      diameterTop: rodH, diameterBottom: rodH, height: size.width * 1.04, tessellation: 8
-    }, { position: { x: 0, y: size.height - rodH / 2, z: 0 } }, { parent: node });
-    const rodMesh = node.getChildren().find(child => child.name.includes('rod'));
-    if (rodMesh) {
-      rodMesh.rotation.z = Math.PI * 0.5;
-    }
-
-    const open = item.isOn !== false;
-    const flapH = size.height - rodH;
-
-    const proxy = boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
-      width: size.width, height: flapH, depth: 0.008
-    }, { position: { x: 0, y: flapH / 2, z: 0.004 } }, { parent: node });
-    proxy.visibility = 0.001;
-
-    if (open) {
-      cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
-        diameterTop: 0.04, diameterBottom: 0.04, height: flapH
-      }, { position: { x: -size.width * 0.38, y: flapH / 2, z: 0.015 } }, { parent: node });
-
-      cylinderComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
-        diameterTop: 0.04, diameterBottom: 0.04, height: flapH
-      }, { position: { x: size.width * 0.38, y: flapH / 2, z: 0.015 } }, { parent: node });
-    } else {
-      const flapW = size.width * 0.48;
-      boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
-        width: flapW, height: flapH, depth: 0.005
-      }, { position: { x: -size.width * 0.25, y: flapH / 2, z: 0.004 } }, { parent: node });
-
-      boxComponent(registry, item, japaneseNorenCurtainFurniture, 'fabric', {
-        width: flapW, height: flapH, depth: 0.005
-      }, { position: { x: size.width * 0.25, y: flapH / 2, z: 0.004 } }, { parent: node });
-    }
-
-    if (item.mirrored) {
-      node.scaling.x = -1;
-    }
-  }
-};
+export const TEXTILES_FURNITURE_LIST = [
+  rugFurniture,
+  roundedRugFurniture,
+  ovalRugFurniture,
+  irregularRugFurniture,
+  biscuitRugFurniture,
+  curtainFurniture,
+  singleBlackoutCurtainFurniture,
+  doubleSheerCurtainFurniture,
+  luxuryValanceCurtainFurniture,
+  cafeShortCurtainFurniture,
+  japaneseNorenCurtainFurniture,
+  venetianBlindFurniture,
+  rollerBlindFurniture,
+  romanShadeFurniture,
+  verticalBlindFurniture,
+  chineseBambooBlindFurniture,
+  cushionFurniture
+];

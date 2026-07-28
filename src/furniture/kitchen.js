@@ -38,6 +38,35 @@ export const fridgeFurniture = {
   }
 };
 
+export const cabinetKitchenFurniture = {
+  type: 'cabinet_kitchen',
+  name: '橱柜',
+  unit: 'm',
+  defaultSize: { width: 1, depth: 0.6, height: 0.9 },
+  components: [
+    { id: 'counter', label: '石英台面', defaultColor: '#fcfcfa' },
+    { id: 'doors', label: '柜门', defaultColor: '#89a5ad' },
+    { id: 'handles', label: '拉手', defaultColor: '#cccccc' }
+  ],
+  build(registry, item, node, size) {
+    const counterH = 0.04;
+    const bodyH = size.height - counterH;
+
+    boxComponent(registry, item, cabinetKitchenFurniture, 'doors', {
+      width: size.width, height: bodyH, depth: size.depth
+    }, { position: { x: 0, y: bodyH / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, cabinetKitchenFurniture, 'counter', {
+      width: size.width + 0.01, height: counterH, depth: size.depth + 0.01
+    }, { position: { x: 0, y: size.height - counterH / 2, z: 0 } }, { parent: node });
+
+    // 柜门拉手
+    boxComponent(registry, item, cabinetKitchenFurniture, 'handles', {
+      width: size.width * 0.82, height: 0.02, depth: 0.015
+    }, { position: { x: 0, y: bodyH * 0.88, z: size.depth / 2 + 0.01 } }, { parent: node });
+  }
+};
+
 export const sinkKitchenFurniture = {
   type: 'sink_kitchen',
   waterControllable: true,
@@ -562,159 +591,6 @@ export const kitchenHooksFurniture = {
   }
 };
 
-export const coffeeCupSetFurniture = {
-  type: 'coffee_cup_set',
-  name: '咖啡杯碟组',
-  unit: 'm',
-  defaultSize: { width: 0.2, depth: 0.2, height: 0.1 },
-  components: [
-    { id: 'saucer', label: '杯碟', defaultColor: '#efebe9' },
-    { id: 'cup', label: '咖啡杯', defaultColor: '#8d6e63' },
-    { id: 'handle', label: '把手', defaultColor: '#5d4037' }
-  ],
-  build(registry, item, node, size) {
-    cylinderComponent(registry, item, coffeeCupSetFurniture, 'saucer', {
-      diameterTop: size.width, diameterBottom: size.width, height: size.height * 0.15
-    }, { position: { x: 0, y: size.height * 0.075, z: 0 } }, { parent: node });
-
-    cylinderComponent(registry, item, coffeeCupSetFurniture, 'cup', {
-      diameterTop: size.width * 0.65, diameterBottom: size.width * 0.65, height: size.height * 0.85
-    }, { position: { x: 0, y: size.height * 0.5, z: 0 } }, { parent: node });
-
-    boxComponent(registry, item, coffeeCupSetFurniture, 'handle', {
-      width: size.width * 0.12, height: size.height * 0.45, depth: size.depth * 0.28
-    }, { position: { x: size.width * 0.35, y: size.height * 0.5, z: 0 } }, { parent: node });
-  }
-};
-
-export const teapotTeaCupsFurniture = {
-  type: 'teapot_tea_cups',
-  name: '陶瓷茶具',
-  unit: 'm',
-  defaultSize: { width: 0.3, depth: 0.25, height: 0.15 },
-  components: [
-    { id: 'tray', label: '茶盘', defaultColor: '#3e2723' },
-    { id: 'pot', label: '茶壶', defaultColor: '#00796b' },
-    { id: 'cup', label: '茶杯', defaultColor: '#80cbc4' }
-  ],
-  build(registry, item, node, size) {
-    boxComponent(registry, item, teapotTeaCupsFurniture, 'tray', {
-      width: size.width, height: size.height * 0.12, depth: size.depth
-    }, { position: { x: 0, y: size.height * 0.06, z: 0 } }, { parent: node });
-
-    sphereComponent(registry, item, teapotTeaCupsFurniture, 'pot', {
-      diameterX: size.width * 0.45, diameterY: size.height * 0.72, diameterZ: size.width * 0.45
-    }, { position: { x: -size.width * 0.15, y: size.height * 0.45, z: 0 } }, { parent: node });
-
-    const spout = cylinderComponent(registry, item, teapotTeaCupsFurniture, 'pot', {
-      diameterTop: 0.015, diameterBottom: 0.02, height: size.height * 0.35
-    }, { position: { x: -size.width * 0.38, y: size.height * 0.58, z: 0 } }, { parent: node });
-    spout.rotation.z = -Math.PI * 0.25;
-
-    cylinderComponent(registry, item, teapotTeaCupsFurniture, 'cup', {
-      diameterTop: size.width * 0.22, diameterBottom: size.width * 0.22, height: size.height * 0.38
-    }, { position: { x: size.width * 0.24, y: size.height * 0.3, z: -size.depth * 0.2 } }, { parent: node });
-
-    cylinderComponent(registry, item, teapotTeaCupsFurniture, 'cup', {
-      diameterTop: size.width * 0.22, diameterBottom: size.width * 0.22, height: size.height * 0.38
-    }, { position: { x: size.width * 0.24, y: size.height * 0.3, z: size.depth * 0.2 } }, { parent: node });
-  }
-};
-
-export const wineGlassesFurniture = {
-  type: 'wine_glasses',
-  name: '高脚酒杯',
-  unit: 'm',
-  defaultSize: { width: 0.2, depth: 0.2, height: 0.2 },
-  components: [
-    { id: 'glass', label: '高脚杯', defaultColor: '#eef2f5' },
-    { id: 'wine', label: '红酒液', defaultColor: '#b71c1c' }
-  ],
-  build(registry, item, node, size) {
-    [-1, 1].forEach(c => {
-      cylinderComponent(registry, item, wineGlassesFurniture, 'glass', {
-        diameterTop: size.width * 0.3, diameterBottom: size.width * 0.3, height: 0.005
-      }, { position: { x: c * size.width * 0.22, y: 0.0025, z: 0 } }, { parent: node });
-
-      cylinderComponent(registry, item, wineGlassesFurniture, 'glass', {
-        diameterTop: 0.008, diameterBottom: 0.008, height: size.height * 0.45
-      }, { position: { x: c * size.width * 0.22, y: size.height * 0.225, z: 0 } }, { parent: node });
-
-      cylinderComponent(registry, item, wineGlassesFurniture, 'glass', {
-        diameterTop: size.width * 0.32, diameterBottom: size.width * 0.22, height: size.height * 0.5
-      }, { position: { x: c * size.width * 0.22, y: size.height * 0.7, z: 0 } }, { parent: node });
-
-      cylinderComponent(registry, item, wineGlassesFurniture, 'wine', {
-        diameterTop: size.width * 0.28, diameterBottom: size.width * 0.22, height: size.height * 0.24
-      }, { position: { x: c * size.width * 0.22, y: size.height * 0.58, z: 0 } }, { parent: node });
-    });
-  }
-};
-
-export const fruitPlatterFurniture = {
-  type: 'fruit_platter',
-  name: '小叉果盘',
-  unit: 'm',
-  defaultSize: { width: 0.25, depth: 0.25, height: 0.1 },
-  components: [
-    { id: 'plate', label: '果盘', defaultColor: '#e0f2f1' },
-    { id: 'fruitA', label: '红苹果', defaultColor: '#d32f2f' },
-    { id: 'fruitB', label: '甜橙子', defaultColor: '#ff9800' },
-    { id: 'fork', label: '金属果叉', defaultColor: '#cfd8dc' }
-  ],
-  build(registry, item, node, size) {
-    cylinderComponent(registry, item, fruitPlatterFurniture, 'plate', {
-      diameterTop: size.width, diameterBottom: size.width * 0.8, height: size.height * 0.25
-    }, { position: { x: 0, y: size.height * 0.125, z: 0 } }, { parent: node });
-
-    sphereComponent(registry, item, fruitPlatterFurniture, 'fruitA', {
-      diameterX: size.width * 0.35, diameterY: size.width * 0.35, diameterZ: size.width * 0.35
-    }, { position: { x: -size.width * 0.15, y: size.height * 0.36, z: -0.02 } }, { parent: node });
-
-    sphereComponent(registry, item, fruitPlatterFurniture, 'fruitB', {
-      diameterX: size.width * 0.32, diameterY: size.width * 0.32, diameterZ: size.width * 0.32
-    }, { position: { x: size.width * 0.15, y: size.height * 0.34, z: 0.05 } }, { parent: node });
-
-    sphereComponent(registry, item, fruitPlatterFurniture, 'fruitA', {
-      diameterX: size.width * 0.3, diameterY: size.width * 0.3, diameterZ: size.width * 0.3
-    }, { position: { x: 0, y: size.height * 0.58, z: -0.03 } }, { parent: node });
-
-    const fk = boxComponent(registry, item, fruitPlatterFurniture, 'fork', {
-      width: 0.008, height: size.height * 1.2, depth: 0.008
-    }, { position: { x: size.width * 0.08, y: size.height * 0.65, z: 0.08 } }, { parent: node });
-    fk.rotation.z = -Math.PI * 0.18;
-    fk.rotation.x = Math.PI * 0.08;
-  }
-};
-
-export const pairMugsFurniture = {
-  type: 'pair_mugs',
-  name: '双人马克杯',
-  unit: 'm',
-  defaultSize: { width: 0.25, depth: 0.15, height: 0.15 },
-  components: [
-    { id: 'mugRed', label: '情侣红杯', defaultColor: '#e53935' },
-    { id: 'mugBlue', label: '情侣蓝杯', defaultColor: '#1e88e5' },
-    { id: 'handle', label: '把手', defaultColor: '#ffffff' }
-  ],
-  build(registry, item, node, size) {
-    cylinderComponent(registry, item, pairMugsFurniture, 'mugRed', {
-      diameterTop: size.width * 0.38, diameterBottom: size.width * 0.38, height: size.height
-    }, { position: { x: -size.width * 0.22, y: size.height / 2, z: 0 } }, { parent: node });
-
-    boxComponent(registry, item, pairMugsFurniture, 'handle', {
-      width: size.width * 0.08, height: size.height * 0.6, depth: 0.02
-    }, { position: { x: -size.width * 0.44, y: size.height / 2, z: 0 } }, { parent: node });
-
-    cylinderComponent(registry, item, pairMugsFurniture, 'mugBlue', {
-      diameterTop: size.width * 0.38, diameterBottom: size.width * 0.38, height: size.height
-    }, { position: { x: size.width * 0.22, y: size.height / 2, z: 0 } }, { parent: node });
-
-    boxComponent(registry, item, pairMugsFurniture, 'handle', {
-      width: size.width * 0.08, height: size.height * 0.6, depth: 0.02
-    }, { position: { x: size.width * 0.44, y: size.height / 2, z: 0 } }, { parent: node });
-  }
-};
 
 export const sinkCabinetFurniture = {
   type: 'sink_cabinet',
@@ -807,4 +683,82 @@ export const sinkCabinetFurniture = {
     }, { position: { x: 0, y: size.height + 0.075, z: -size.depth * 0.38 } }, { parent: node });
   }
 };
+
+export const dinnerPlateFurniture = {
+  type: 'dinner_plate',
+  name: '餐盘',
+  unit: 'm',
+  defaultSize: { width: 0.25, depth: 0.25, height: 0.03 },
+  components: [
+    { id: 'plate', label: '瓷餐盘', defaultColor: '#ffffff' },
+    { id: 'rim', label: '描金盘边', defaultColor: '#ffd700' }
+  ],
+  build(registry, item, node, size) {
+    cylinderComponent(registry, item, dinnerPlateFurniture, 'plate', {
+      diameterTop: size.width, diameterBottom: size.width * 0.75, height: size.height * 0.8, tessellation: 24
+    }, { position: { x: 0, y: size.height * 0.4, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, dinnerPlateFurniture, 'rim', {
+      diameterTop: size.width * 1.02, diameterBottom: size.width * 1.02, height: size.height * 0.2, tessellation: 24
+    }, { position: { x: 0, y: size.height * 0.9, z: 0 } }, { parent: node });
+  }
+};
+
+export const cutlerySetFurniture = {
+  type: 'cutlery_set',
+  name: '刀叉餐具',
+  unit: 'm',
+  defaultSize: { width: 0.12, depth: 0.22, height: 0.02 },
+  components: [
+    { id: 'metal', label: '不锈钢刀叉', defaultColor: '#cfd8dc' },
+    { id: 'napkin', label: '餐巾衬垫', defaultColor: '#eceff1' }
+  ],
+  build(registry, item, node, size) {
+    const w = size.width;
+    const h = size.height;
+    const d = size.depth;
+
+    boxComponent(registry, item, cutlerySetFurniture, 'napkin', {
+      width: w, height: h * 0.3, depth: d
+    }, { position: { x: 0, y: h * 0.15, z: 0 } }, { parent: node });
+
+    // 主餐刀
+    boxComponent(registry, item, cutlerySetFurniture, 'metal', {
+      width: 0.015, height: h * 0.4, depth: d * 0.85
+    }, { position: { x: -w * 0.25, y: h * 0.5, z: 0 } }, { parent: node });
+
+    // 主餐叉
+    boxComponent(registry, item, cutlerySetFurniture, 'metal', {
+      width: 0.015, height: h * 0.4, depth: d * 0.85
+    }, { position: { x: w * 0.25, y: h * 0.5, z: 0 } }, { parent: node });
+  }
+};
+
+export const chopsticksBowlSetFurniture = {
+  type: 'chopsticks_bowl_set',
+  name: '碗筷餐具',
+  unit: 'm',
+  defaultSize: { width: 0.2, depth: 0.2, height: 0.08 },
+  components: [
+    { id: 'bowl', label: '青花瓷饭碗', defaultColor: '#e0f2f1' },
+    { id: 'chopsticks', label: '木筷', defaultColor: '#8d6e63' }
+  ],
+  build(registry, item, node, size) {
+    const w = size.width;
+    const h = size.height;
+
+    // 饭碗
+    cylinderComponent(registry, item, chopsticksBowlSetFurniture, 'bowl', {
+      diameterTop: w * 0.7, diameterBottom: w * 0.35, height: h * 0.7, tessellation: 20
+    }, { position: { x: -w * 0.1, y: h * 0.35, z: 0 } }, { parent: node });
+
+    // 筷子
+    [-0.012, 0.012].forEach(offsetZ => {
+      boxComponent(registry, item, chopsticksBowlSetFurniture, 'chopsticks', {
+        width: w * 0.85, height: 0.008, depth: 0.008
+      }, { position: { x: 0, y: h * 0.75, z: offsetZ } }, { parent: node });
+    });
+  }
+};
+
 

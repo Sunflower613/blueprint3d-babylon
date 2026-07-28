@@ -33,7 +33,8 @@ const applianceTypes = [
   'water_dispenser',
   'rice_cooker',
   'air_fryer',
-  'blender'
+  'blender',
+  'vending_machine'
 ];
 
 test('all appliance and kitchen appliance definitions expose power controls', () => {

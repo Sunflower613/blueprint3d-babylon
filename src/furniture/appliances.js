@@ -389,3 +389,56 @@ export const airConditionerFloorFurniture = {
   }
 };
 
+export const vendingMachineFurniture = {
+  type: 'vending_machine',
+  name: '自动贩卖机',
+  unit: 'm',
+  defaultSize: { width: 0.9, depth: 0.75, height: 1.85 },
+  isSwitchable: true,
+  components: [
+    { id: 'body', label: '红色机身', defaultColor: '#d32f2f' },
+    { id: 'glassDisplay', label: '发光饮品橱窗', defaultColor: '#80deea' },
+    { id: 'selectionButtons', label: '按键与投币口', defaultColor: '#ffeb3b' },
+    { id: 'pickupSlot', label: '取物口', defaultColor: '#212121' }
+  ],
+  build(registry, item, node, size) {
+    const w = size.width;
+    const h = size.height;
+    const d = size.depth;
+
+    // 1. 机身外壳 (Main Red Metal Body)
+    boxComponent(registry, item, vendingMachineFurniture, 'body', {
+      width: w, height: h, depth: d
+    }, { position: { x: 0, y: h / 2, z: 0 } }, { parent: node });
+
+    // 2. 发光饮料橱窗 (Glass Window Display)
+    const glassW = w * 0.65;
+    const glassH = h * 0.52;
+    boxComponent(registry, item, vendingMachineFurniture, 'glassDisplay', {
+      width: glassW, height: glassH, depth: 0.04
+    }, { position: { x: -w * 0.1, y: h * 0.62, z: d / 2 + 0.01 } }, { parent: node });
+
+    // 3. 内部展示货架 (Internal Shelves)
+    for (let i = 0; i < 3; i++) {
+      const shelfY = h * 0.42 + i * (glassH / 3);
+      boxComponent(registry, item, vendingMachineFurniture, 'selectionButtons', {
+        width: glassW * 0.9, height: 0.015, depth: 0.02
+      }, { position: { x: -w * 0.1, y: shelfY, z: d / 2 + 0.015 } }, { parent: node });
+    }
+
+    // 4. 选择按键 Panel & 投币口 (Selection Buttons & Coin Slot)
+    boxComponent(registry, item, vendingMachineFurniture, 'selectionButtons', {
+      width: w * 0.18, height: glassH * 0.8, depth: 0.03
+    }, { position: { x: w * 0.35, y: h * 0.62, z: d / 2 + 0.01 } }, { parent: node });
+
+    boxComponent(registry, item, vendingMachineFurniture, 'pickupSlot', {
+      width: w * 0.12, height: 0.06, depth: 0.035
+    }, { position: { x: w * 0.35, y: h * 0.38, z: d / 2 + 0.015 } }, { parent: node });
+
+    // 5. 底部取物口 (Delivery / Pickup Slot)
+    boxComponent(registry, item, vendingMachineFurniture, 'pickupSlot', {
+      width: w * 0.75, height: h * 0.16, depth: 0.05
+    }, { position: { x: 0, y: h * 0.15, z: d / 2 + 0.01 } }, { parent: node });
+  }
+};
+

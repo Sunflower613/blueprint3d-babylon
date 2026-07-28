@@ -201,7 +201,7 @@ export function initFurnitureButtons() {
   const groups = [
     { label: '', items: ['all', 'custom'] },
     { label: '室内家具', items: ['tables', 'seating', 'storage', 'bedroom', 'kitchen', 'bathroom'] },
-    { label: '生活家电', items: ['appliances', 'lighting', 'decor', 'textiles', 'clothing', 'plants'] },
+    { label: '生活家电', items: ['appliances', 'lighting', 'decor', 'food', 'textiles', 'clothing', 'plants'] },
     { label: '庭院户外', items: ['outdoor', 'landscape', 'flora'] }
   ];
 

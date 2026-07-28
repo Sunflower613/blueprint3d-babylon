@@ -177,36 +177,6 @@ export const nightstandFurniture = {
   }
 };
 
-// 5. 厨房地柜 (Cabinet Kitchen)
-export const cabinetKitchenFurniture = {
-  type: 'cabinet_kitchen',
-  name: '橱柜',
-  unit: 'm',
-  defaultSize: { width: 1, depth: 0.6, height: 0.9 },
-  components: [
-    { id: 'counter', label: '石英台面', defaultColor: '#fcfcfa' },
-    { id: 'doors', label: '柜门', defaultColor: '#89a5ad' },
-    { id: 'handles', label: '拉手', defaultColor: '#cccccc' }
-  ],
-  build(registry, item, node, size) {
-    const counterH = 0.04;
-    const bodyH = size.height - counterH;
-
-    boxComponent(registry, item, cabinetKitchenFurniture, 'doors', {
-      width: size.width, height: bodyH, depth: size.depth
-    }, { position: { x: 0, y: bodyH / 2, z: 0 } }, { parent: node });
-
-    boxComponent(registry, item, cabinetKitchenFurniture, 'counter', {
-      width: size.width + 0.01, height: counterH, depth: size.depth + 0.01
-    }, { position: { x: 0, y: size.height - counterH / 2, z: 0 } }, { parent: node });
-
-    // 柜门拉手
-    boxComponent(registry, item, cabinetKitchenFurniture, 'handles', {
-      width: size.width * 0.82, height: 0.02, depth: 0.015
-    }, { position: { x: 0, y: bodyH * 0.88, z: size.depth / 2 + 0.01 } }, { parent: node });
-  }
-};
-
 // 6. 矮鞋架 (Shoerack)
 export const shoerackFurniture = {
   type: 'shoerack',

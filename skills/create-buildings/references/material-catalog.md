@@ -1,10 +1,10 @@
 # Blueprint3D 官方材质与海报全量索引库 (Full Material Catalog)
 
-本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。涵盖当前代码库导出的 **100% 全量 (104 项) 材质面漆、贴图与海报**。
+本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。涵盖当前代码库导出的 **100% 全量 (124 项) 材质面漆、贴图与海报**。
 
 ---
 
-## 1. 材质分类全览 (`categories` - 共 11 类)
+## 1. 材质分类全览 (`categories` - 共 12 类)
 
 | 分类 ID (`category`) | 分类名称 |
 | :--- | :--- |
@@ -18,6 +18,7 @@
 | `wallpaper` | 墙纸 |
 | `fabric` | 织物 |
 | `paint` | 涂料 |
+| `sky` | 天空 |
 | `emissive` | 发光 |
 
 ---
@@ -46,7 +47,26 @@
 | `paint-morandi-orange` | 莫兰迪橘 | `color` | `#cda393` |
 | `paint-morandi-purple` | 莫兰迪紫 | `color` | `#ac9da6` |
 
-### 2.2 木纹 (`wood` - 共 9 项)
+### 2.2 天空 (`sky` - 共 14 项)
+
+| `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
+| :--- | :--- | :--- | :--- |
+| `sky_texture` | 晴天 | `texture` | `#ffffff` |
+| `sky-starry` | 星空 | `texture` | `#ffffff` |
+| `sky-sunset` | 晚霞 | `texture` | `#ffffff` |
+| `sky-aurora` | 极光 | `texture` | `#ffffff` |
+| `sky-underwater` | 海底世界 | `texture` | `#ffffff` |
+| `sky-desert` | 沙漠落日 | `texture` | `#ffffff` |
+| `sky-karst` | 桂林山水 | `texture` | `#ffffff` |
+| `sky-forest` | 魔法森林 | `texture` | `#ffffff` |
+| `sky-candy` | 糖果世界 | `texture` | `#ffffff` |
+| `sky-fantasy` | 紫色幻境 | `texture` | `#ffffff` |
+| `sky-ice` | 冰雪极地 | `texture` | `#ffffff` |
+| `sky-blossom` | 樱花山谷 | `texture` | `#ffffff` |
+| `sky-volcano` | 熔岩火山 | `texture` | `#ffffff` |
+| `sky-ink-mountains` | 水墨山河 | `texture` | `#ffffff` |
+
+### 2.3 木纹 (`wood` - 共 9 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -60,7 +80,7 @@
 | `wood-chevron-oak-light` | 箭羽拼 | `texture` | `#ffffff` |
 | `wood-diagonal-plank-light` | 斜铺板 | `texture` | `#ffffff` |
 
-### 2.3 沙石 (`stone` - 共 11 项)
+### 2.4 沙石 (`stone` - 共 11 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -76,7 +96,7 @@
 | `stone-terrazzo` | 水磨石 | `texture` | `#ffffff` |
 | `stone-white-sand` | 白砂 | `texture` | `#ffffff` |
 
-### 2.4 砖块 (`brick` - 共 12 项)
+### 2.5 砖块 (`brick` - 共 12 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -93,7 +113,7 @@
 | `brick-black-white` | 棋盘砖 | `texture` | `#ffffff` |
 | `brick-small-black` | 小菱格 | `texture` | `#ffffff` |
 
-### 2.5 织物 (`fabric` - 共 13 项)
+### 2.6 织物 (`fabric` - 共 13 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -111,7 +131,7 @@
 | `fabric-circle` | 圆花毯 | `texture` | `#ffffff` |
 | `fabric-triangle` | 三角毯 | `texture` | `#ffffff` |
 
-### 2.6 金属 (`metal` - 共 10 项)
+### 2.7 金属 (`metal` - 共 10 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -126,29 +146,29 @@
 | `metal-iron-matte` | 磨砂铁 | `metal` | `#43464b` |
 | `metal-aluminum-matte` | 磨砂铝 | `metal` | `#d9d9d9` |
 
-### 2.7 墙纸 (`wallpaper` - 共 17 项)
+### 2.8 墙纸 (`wallpaper` - 共 17 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
 | `wallpaper-rose` | 玫瑰 | `texture` | `#ffffff` |
-| `wallpaper-yellow-flower` | 花卉 | `texture` | `#f6ecbe` |
-| `wallpaper-leaf-bluegrey` | 叶影墙纸 | `texture` | `#9aa0b1` |
-| `wallpaper-paisley-orange` | 佩斯利 | `texture` | `#f1c598` |
+| `wallpaper-yellow-flower` | 花卉 | `texture` | `#ffffff` |
+| `wallpaper-leaf-bluegrey` | 叶影 | `texture` | `#ffffff` |
+| `wallpaper-paisley-orange` | 佩斯利 | `texture` | `#ffffff` |
 | `wallpaper-fan-gold` | 金扇纹 | `texture` | `#c6a47d` |
-| `wallpaper-stripe-teal-pink` | 条纹墙纸 | `texture` | `#7ca8a7` |
-| `wallpaper-damask-olive` | 达玛斯 | `texture` | `#b8af71` |
-| `wallpaper-ink-bamboo-mist` | 水墨竹韵 | `texture` | `#d8dde1` |
-| `wallpaper-cloud-navy-gold` | 祥云墙纸 | `texture` | `#d7be8a` |
-| `wallpaper-ruyi-swirl-yellow` | 回纹墙纸 | `texture` | `#f0dc75` |
-| `wallpaper-floral-blue-white` | 青花纹 | `texture` | `#62789a` |
-| `wallpaper-seigaiha-blush` | 青海波 | `texture` | `#ecd5d8` |
+| `wallpaper-stripe-teal-pink` | 条纹 | `texture` | `#ffffff` |
+| `wallpaper-damask-olive` | 达玛斯 | `texture` | `#ffffff` |
+| `wallpaper-ink-bamboo-mist` | 水墨竹韵 | `texture` | `#ffffff` |
+| `wallpaper-cloud-navy-gold` | 祥云 | `texture` | `#ffffff` |
+| `wallpaper-ruyi-swirl-yellow` | 回纹 | `texture` | `#ffffff` |
+| `wallpaper-floral-blue-white` | 青花纹 | `texture` | `#ffffff` |
+| `wallpaper-seigaiha-blush` | 青海波 | `texture` | `#ffffff` |
 | `poster-abstract-arches` | 拱形抽象 | `texture` | `#ffffff` |
 | `poster-botanical-sage` | 鼠尾草 | `texture` | `#ffffff` |
 | `poster-bauhaus-primary` | 包豪斯 | `texture` | `#ffffff` |
 | `poster-mountain-sunrise` | 山峦日出 | `texture` | `#ffffff` |
 | `poster-celestial-moons` | 月相星空 | `texture` | `#ffffff` |
 
-### 2.8 镜面 (`mirror` - 共 4 项)
+### 2.9 镜面 (`mirror` - 共 4 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -157,7 +177,7 @@
 | `mirror-bronze` | 青铜镜 | `mirror` | `#c5b8a0` |
 | `mirror-dark` | 墨镜 | `mirror` | `#3a3d42` |
 
-### 2.9 玻璃 (`glass` - 共 5 项)
+### 2.10 玻璃 (`glass` - 共 5 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
@@ -167,13 +187,19 @@
 | `glass-blue` | 蓝色玻璃 | `glass` | `#7fb8e0` |
 | `glass-stained-cathedral` | 教堂彩色玻璃 | `stained-glass` | `#8e4cc9` |
 
-### 2.10 发光 (`emissive` - 共 6 项)
+### 2.11 发光 (`emissive` - 共 12 项)
 
 | `id` 标识 | 中文名称 | 类型 (`kind`) | 基础颜色 / 描述 |
 | :--- | :--- | :--- | :--- |
-| `emissive-white` | 自发光-白 | `emissive` | `#ffffff` |
-| `emissive-warm-white` | 自发光-暖白 | `emissive` | `#ffebd2` |
-| `emissive-yellow` | 自发光-黄 | `emissive` | `#ffeb3b` |
-| `emissive-red` | 自发光-红 | `emissive` | `#f44336` |
-| `emissive-green` | 自发光-绿 | `emissive` | `#4caf50` |
-| `emissive-blue` | 自发光-蓝 | `emissive` | `#2196f3` |
+| `emissive-white` | 白光 | `emissive` | `#ffffff` |
+| `emissive-warm-white` | 暖白光 | `emissive` | `#ffebd2` |
+| `emissive-yellow` | 黄光 | `emissive` | `#ffeb3b` |
+| `emissive-red` | 红光 | `emissive` | `#f44336` |
+| `emissive-green` | 绿光 | `emissive` | `#4caf50` |
+| `emissive-blue` | 蓝光 | `emissive` | `#2196f3` |
+| `emissive-hacker-stream` | 数据流 | `emissive` | `#ffffff` |
+| `emissive-dance-floor` | 舞动 | `emissive` | `#ffffff` |
+| `emissive-fireplace-flame` | 火焰 | `emissive` | `#ffffff` |
+| `emissive-neon-sign` | 霓虹灯 | `emissive` | `#ffffff` |
+| `emissive-cyber-no-entry` | 禁止通行 | `emissive` | `#ffffff` |
+| `emissive-robot-smile` | 笑脸 | `emissive` | `#ffffff` |

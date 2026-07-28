@@ -462,32 +462,84 @@ export const mirrorRoundedWallFurniture = {
 
 export const clockFurniture = {
   type: 'clock',
-  name: '壁钟',
+  name: '复古壁钟',
   unit: 'm',
-  defaultSize: { width: 0.3, depth: 0.03, height: 0.3 },
+  defaultSize: { width: 0.35, depth: 0.12, height: 0.75 },
+  placeType: 'wall',
   components: [
-    { id: 'face', label: '钟白表盘', defaultColor: '#ffffff' },
-    { id: 'frame', label: '金属表框', defaultColor: '#202124' }
+    { id: 'case', label: '红木箱体', defaultColor: '#4e2e1e' },
+    { id: 'face', label: '罗马表盘', defaultColor: '#fffde7' },
+    { id: 'hands', label: '复古指针', defaultColor: '#1a1a1a' },
+    { id: 'pendulum', label: '黄铜摆锤', defaultColor: '#d4af37' }
   ],
   build(registry, item, node, size) {
-    const frameD = size.width;
-    cylinderComponent(registry, item, clockFurniture, 'frame', {
-      diameterTop: frameD, diameterBottom: frameD, height: size.depth, tessellation: 24
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    const w = size.width;
+    const h = size.height;
+    const d = size.depth;
 
-    const faceD = size.width * 0.88;
-    cylinderComponent(registry, item, clockFurniture, 'face', {
-      diameterTop: faceD, diameterBottom: faceD, height: size.depth + 0.004, tessellation: 24
-    }, { position: { x: 0, y: size.height / 2, z: 0.002 } }, { parent: node });
+    // 1. 复古外木箱主体 (Main Wooden Case - Box)
+    boxComponent(registry, item, clockFurniture, 'case', {
+      width: w * 0.85, height: h * 0.78, depth: d * 0.85
+    }, { position: { x: 0, y: h * 0.44, z: d * 0.425 } }, { parent: node });
 
-    // 指针装饰
-    boxComponent(registry, item, clockFurniture, 'frame', {
-      width: 0.015, height: size.height * 0.32, depth: 0.004
-    }, { position: { x: 0, y: size.height / 2 + size.height * 0.1, z: size.depth + 0.005 } }, { parent: node });
+    // 2. 顶部雕花帽 (Crown Top Cylinder - 贴在木箱顶部)
+    const crown = cylinderComponent(registry, item, clockFurniture, 'case', {
+      diameterTop: w * 0.85, diameterBottom: w * 0.85, height: d * 0.9, tessellation: 24
+    }, { position: { x: 0, y: h * 0.83, z: d * 0.45 } }, { parent: node });
+    crown.rotation.x = Math.PI * 0.5;
 
-    const meshes = node.getChildren();
-    meshes.forEach(m => {
-      m.rotation.x = Math.PI * 0.5;
+    // 3. 底部装饰托底 (Bottom Base Molding - Box)
+    boxComponent(registry, item, clockFurniture, 'case', {
+      width: w, height: h * 0.06, depth: d
+    }, { position: { x: 0, y: h * 0.03, z: d * 0.5 } }, { parent: node });
+
+    // 4. 表盘部分 (Upper Clock Dial & Ring)
+    const dialY = h * 0.65;
+    const dialR = w * 0.32;
+    const dialZ = d * 0.85 + 0.005;
+
+    // 表盘黑色圆框
+    const ring = cylinderComponent(registry, item, clockFurniture, 'hands', {
+      diameterTop: dialR * 2, diameterBottom: dialR * 2, height: 0.01, tessellation: 32
+    }, { position: { x: 0, y: dialY, z: dialZ } }, { parent: node });
+    ring.rotation.x = Math.PI * 0.5;
+
+    // 表盘白面
+    const face = cylinderComponent(registry, item, clockFurniture, 'face', {
+      diameterTop: dialR * 1.8, diameterBottom: dialR * 1.8, height: 0.012, tessellation: 32
+    }, { position: { x: 0, y: dialY, z: dialZ + 0.002 } }, { parent: node });
+    face.rotation.x = Math.PI * 0.5;
+
+    // 表盘黑针 (时针 & 分针)
+    boxComponent(registry, item, clockFurniture, 'hands', {
+      width: 0.012, height: dialR * 0.55, depth: 0.004
+    }, { position: { x: 0, y: dialY + dialR * 0.22, z: dialZ + 0.01 } }, { parent: node });
+
+    const minHand = boxComponent(registry, item, clockFurniture, 'hands', {
+      width: 0.008, height: dialR * 0.75, depth: 0.004
+    }, { position: { x: dialR * 0.25, y: dialY, z: dialZ + 0.01 } }, { parent: node });
+    minHand.rotation.z = -Math.PI * 0.4;
+
+    // 5. 下半部分 - 钟摆杆与黄铜大摆锤 (Pendulum Rod & Bob)
+    const pendulumCenterY = h * 0.32;
+    const frontZ = d * 0.85 + 0.005;
+
+    // 摆杆 (Pendulum Rod - 细长 Box)
+    boxComponent(registry, item, clockFurniture, 'pendulum', {
+      width: 0.008, height: h * 0.34, depth: 0.006
+    }, { position: { x: 0, y: pendulumCenterY, z: frontZ } }, { parent: node });
+
+    // 亮黄铜圆形大摆锤 (Pendulum Bob - 圆面朝前)
+    const bob = cylinderComponent(registry, item, clockFurniture, 'pendulum', {
+      diameterTop: w * 0.3, diameterBottom: w * 0.3, height: 0.012, tessellation: 24
+    }, { position: { x: 0, y: h * 0.17, z: frontZ + 0.005 } }, { parent: node });
+    bob.rotation.x = Math.PI * 0.5;
+
+    // 两侧垂直金属撞击音条 (Striker Chime Rods - 立着的细方管)
+    [-0.06, 0.06].forEach(offset => {
+      boxComponent(registry, item, clockFurniture, 'pendulum', {
+        width: 0.01, height: h * 0.28, depth: 0.01
+      }, { position: { x: offset, y: pendulumCenterY, z: frontZ - 0.005 } }, { parent: node });
     });
   }
 };
@@ -790,25 +842,70 @@ export const wallClockFurniture = {
   type: 'wall_clock',
   name: '挂钟',
   unit: 'm',
-  defaultSize: { width: 0.3, depth: 0.04, height: 0.3 },
+  defaultSize: { width: 0.35, depth: 0.04, height: 0.35 },
   placeType: 'wall',
   components: [
-    { id: 'frame', label: '外框环', defaultColor: '#212121' },
-    { id: 'dial', label: '表盘指针', defaultColor: '#ffffff' }
+    { id: 'frame', label: '外框环', defaultColor: '#1a1a1a' },
+    { id: 'dial', label: '表盘面', defaultColor: '#ffffff' },
+    { id: 'hands', label: '黑铁指针', defaultColor: '#1a1a1a' },
+    { id: 'secondHand', label: '红色秒针', defaultColor: '#e53935' }
   ],
   build(registry, item, node, size) {
-    cylinderComponent(registry, item, wallClockFurniture, 'frame', {
-      diameterTop: size.width, diameterBottom: size.width, height: size.depth
-    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    const r = size.width / 2;
+    const centerY = size.height / 2;
+    const d = size.depth;
 
-    cylinderComponent(registry, item, wallClockFurniture, 'dial', {
-      diameterTop: size.width * 0.9, diameterBottom: size.width * 0.9, height: size.depth + 0.005
-    }, { position: { x: 0, y: size.height / 2, z: 0.002 } }, { parent: node });
+    // 1. 外框黑色圆环 (Outer Frame)
+    const frame = cylinderComponent(registry, item, wallClockFurniture, 'frame', {
+      diameterTop: size.width, diameterBottom: size.width, height: d, tessellation: 36
+    }, { position: { x: 0, y: centerY, z: d / 2 } }, { parent: node });
+    frame.rotation.x = Math.PI * 0.5;
 
-    const meshes = node.getChildren();
-    meshes.forEach(m => {
-      m.rotation.x = Math.PI * 0.5;
+    // 2. 表盘白色盘面 (White Dial Face)
+    const dial = cylinderComponent(registry, item, wallClockFurniture, 'dial', {
+      diameterTop: size.width * 0.92, diameterBottom: size.width * 0.92, height: d + 0.004, tessellation: 36
+    }, { position: { x: 0, y: centerY, z: d / 2 + 0.002 } }, { parent: node });
+    dial.rotation.x = Math.PI * 0.5;
+
+    const frontZ = d + 0.005;
+
+    // 3. 四方位 12/3/6/9 点刻度块 (Hour Markers)
+    const markerDist = r * 0.72;
+    const markers = [
+      { x: 0, y: centerY + markerDist, w: 0.008, h: 0.024 },  // 12 点
+      { x: markerDist, y: centerY, w: 0.024, h: 0.008 },      // 3 点
+      { x: 0, y: centerY - markerDist, w: 0.008, h: 0.024 },  // 6 点
+      { x: -markerDist, y: centerY, w: 0.024, h: 0.008 }      // 9 点
+    ];
+    markers.forEach(m => {
+      boxComponent(registry, item, wallClockFurniture, 'hands', {
+        width: m.w, height: m.h, depth: 0.003
+      }, { position: { x: m.x, y: m.y, z: frontZ } }, { parent: node });
     });
+
+    // 4. 中心圆轴扣 (Center Cap)
+    const cap = cylinderComponent(registry, item, wallClockFurniture, 'hands', {
+      diameterTop: 0.02, diameterBottom: 0.02, height: 0.012, tessellation: 16
+    }, { position: { x: 0, y: centerY, z: frontZ + 0.004 } }, { parent: node });
+    cap.rotation.x = Math.PI * 0.5;
+
+    // 5. 时针 (Hour Hand - 指向 10 点钟方向)
+    const hourHand = boxComponent(registry, item, wallClockFurniture, 'hands', {
+      width: 0.012, height: r * 0.5, depth: 0.003
+    }, { position: { x: -r * 0.16, y: centerY + r * 0.16, z: frontZ + 0.003 } }, { parent: node });
+    hourHand.rotation.z = Math.PI * 0.22;
+
+    // 6. 分针 (Minute Hand - 指向 2 点钟方向)
+    const minHand = boxComponent(registry, item, wallClockFurniture, 'hands', {
+      width: 0.008, height: r * 0.75, depth: 0.003
+    }, { position: { x: r * 0.28, y: centerY + r * 0.18, z: frontZ + 0.005 } }, { parent: node });
+    minHand.rotation.z = -Math.PI * 0.32;
+
+    // 7. 红色秒针 (Second Hand - 指向 7 点钟方向)
+    const secHand = boxComponent(registry, item, wallClockFurniture, 'secondHand', {
+      width: 0.004, height: r * 0.82, depth: 0.003
+    }, { position: { x: -r * 0.22, y: centerY - r * 0.22, z: frontZ + 0.007 } }, { parent: node });
+    secHand.rotation.z = Math.PI * 0.75;
   }
 };
 
@@ -1630,3 +1727,42 @@ export const japaneseShojiScreenFurniture = {
     });
   }
 };
+
+export const DECOR_FURNITURE_LIST = [
+  paintingFurniture,
+  triptychPaintingFurniture,
+  landscapePaintingFurniture,
+  circularPaintingFurniture,
+  posterFurniture,
+  triptychPosterFurniture,
+  quadPosterFurniture,
+  clockFurniture,
+  wallClockFurniture,
+  mirrorWallFurniture,
+  mirrorFramedWallFurniture,
+  mirrorRoundWallFurniture,
+  mirrorRoundedWallFurniture,
+  traditionalChineseScreenFurniture,
+  japaneseShojiScreenFurniture,
+  rattanWaveScreenFurniture,
+  modernSlatScreenFurniture,
+  luxuryMetalGlassScreenFurniture,
+  photoFrameFurniture,
+  vaseFurniture,
+  miniCactusFurniture,
+  booksStackFurniture,
+  booksFullRowFurniture,
+  sculptureFurniture,
+  gypsumBustFurniture,
+  hourglassFurniture,
+  globeFurniture,
+  crystalBallFurniture,
+  goldTrophyFurniture,
+  piggyBankFurniture,
+  scentedCandleFurniture,
+  tissueBoxFurniture,
+  storageBasketFurniture,
+  mannequinFurniture,
+  windChimeFurniture,
+  landscapeRockeryAquarium
+];

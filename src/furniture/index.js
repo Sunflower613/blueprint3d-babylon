@@ -8,6 +8,7 @@ export * from './kitchen.js';
 export * from './bathroom.js';
 export * from './textiles.js';
 export * from './decor.js';
+export * from './food.js';
 export * from './plants.js';
 export * from './flora.js';
 export * from './landscape.js';
@@ -25,6 +26,7 @@ import * as kitchenModule from './kitchen.js';
 import * as bathroomModule from './bathroom.js';
 import * as textilesModule from './textiles.js';
 import * as decorModule from './decor.js';
+import * as foodModule from './food.js';
 import * as plantsModule from './plants.js';
 import * as floraModule from './flora.js';
 import * as landscapeModule from './landscape.js';
@@ -44,6 +46,7 @@ export const FURNITURE_CATEGORIES = [
   { id: 'bathroom', label: '浴室', icon: '<path d="M4 12a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3H4v3ZM2 11h20M6 18v2M18 18v2M8 5a4 4 0 0 1 8 0v2"/>' },
   { id: 'textiles', label: '布艺', icon: '<path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="m16 8-8 8M12 6v12M6 12h12"/>' },
   { id: 'decor', label: '装饰', icon: '<path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4Z"/><path d="M12 10H8a4 4 0 0 0-4 4 4 4 0 0 0 4 4h4Z"/><path d="M12 10h4a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-4Z"/><path d="M12 10v4a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-4Z"/><path d="M12 10V6a4 4 0 0 0-4-4 4 4 0 0 0-4 6v4Z"/><path d="M12 10v12"/>' },
+  { id: 'food', label: '食物', icon: '<path d="M12 2a8 8 0 0 0-8 8v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a8 8 0 0 0-8-8Z"/><path d="M6 10h12"/><path d="M12 2v8"/>' },
   { id: 'plants', label: '盆栽', icon: '<path d="M12 22V12M12 12c-3-2-3-5.5 0-8M12 12c3-2 3-5.5 0-8M12 14c-4 0-6-3-6-3M12 14c4 0 6-3 6-3"/>' },
   { id: 'flora', label: '草木', icon: '<path d="M12 21V11"/><path d="M7 14c0-3 2-5 5-6"/><path d="M17 14c0-3-2-5-5-6"/><path d="M8 19c0-2 1.5-3.5 4-4"/><path d="M16 19c0-2-1.5-3.5-4-4"/>' },
   { id: 'landscape', label: '景观', icon: '<path d="M2 20h20M5 17l4-8 5 10M11 17l5-10 6 10"/>' },
@@ -64,10 +67,17 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
     lightSource: { type: 'spot', offset: { x: 0.06, y: 0.05, z: 0.13 }, direction: { x: 0, y: 0, z: 1 }, intensity: 0.7, range: 3.0, angle: Math.PI / 5 }
   },
   game_console: { label: '游戏主机', glowComponents: ['accent'], color: '#2979ff', pulse: true },
-  smart_speaker: { label: '智能音箱', glowComponents: ['top'], color: '#7c4dff', pulse: true, audio: 'healing' },
+  smart_speaker: {
+    label: '智能音箱',
+    glowComponents: ['top'],
+    color: '#77ddaa',
+    pulse: true,
+    pulseScaleComponents: ['body'],
+    audio: 'healing'
+  },
   vintage_record_player: {
-    label: '复古唱片机',
-    glowComponents: ['accent'],
+    label: '唱片机',
+    glowComponents: ['accent', 'label'],
     color: '#f7c873',
     pulse: true,
     spinNodes: ['turntable'],
@@ -75,8 +85,8 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
     audio: 'healing'
   },
   stereo_speaker: {
-    label: '复古音响',
-    glowComponents: ['accent'],
+    label: '音响',
+    glowComponents: ['accent', 'tweeter'],
     color: '#77ddaa',
     pulse: true,
     pulseScaleComponents: ['woofer'],
@@ -98,7 +108,8 @@ export const APPLIANCE_POWER_EFFECTS = Object.freeze({
   air_fryer: { label: '空气炸锅', glowComponents: ['display'], color: '#40c4ff', pulse: true },
   blender: { label: '搅拌机', glowComponents: ['base'], color: '#76ff03', motion: 'vibrate' },
   air_conditioner_wall: { label: '挂式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true },
-  air_conditioner_floor: { label: '立式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true }
+  air_conditioner_floor: { label: '立式空调', glowComponents: ['display'], color: '#a5d6a7', pulse: true },
+  vending_machine: { label: '自动贩卖机', glowComponents: ['glassDisplay', 'selectionButtons'], color: '#00e5ff', pulse: true }
 });
 
 export const FURNITURE_DEFINITIONS = DOMAIN_FURNITURE_DEFINITIONS;
@@ -114,6 +125,7 @@ const furnitureModules = [
   { module: bathroomModule, category: 'bathroom' },
   { module: textilesModule, category: 'textiles' },
   { module: decorModule, category: 'decor' },
+  { module: foodModule, category: 'food' },
   { module: plantsModule, category: 'plants' },
   { module: floraModule, category: 'flora' },
   { module: landscapeModule, category: 'landscape' },
@@ -123,8 +135,11 @@ const furnitureModules = [
   { module: clothingModule, category: 'clothing' }
 ];
 
+export const FURNITURE_LIST = [];
+
 for (const { module, category } of furnitureModules) {
-  for (const item of Object.values(module)) {
+  const items = module.DECOR_FURNITURE_LIST || module.TEXTILES_FURNITURE_LIST || module.FOOD_FURNITURE_LIST || Object.values(module);
+  for (const item of items) {
     if (!item || typeof item !== 'object' || !item.type) continue;
 
     item.category = category;
@@ -134,11 +149,13 @@ for (const { module, category } of furnitureModules) {
       item.powerEffect = APPLIANCE_POWER_EFFECTS[item.type];
     }
 
+    if (!FURNITURE_DEFINITIONS[item.type]) {
+      FURNITURE_LIST.push(item);
+    }
     FURNITURE_DEFINITIONS[item.type] = item;
   }
 }
 
-export const FURNITURE_LIST = Object.values(FURNITURE_DEFINITIONS);
 
 export function getFurnitureDefinition(type) {
   return FURNITURE_DEFINITIONS[type] || tablesModule.tableFurniture;

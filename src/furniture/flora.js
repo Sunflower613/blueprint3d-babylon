@@ -10,194 +10,251 @@ function seededUnit(index, salt = 0) {
   return value - Math.floor(value);
 }
 const APPLE_TREE_SEASONS = Object.freeze({
-  spring: { label: '春', foliage: '#b2e08c', blossom: '#ffe5ee', fruit: '#b2e08c', trunk: '#6d4c41' },
-  summer: { label: '夏', foliage: '#668d69', blossom: '#668d69', fruit: '#a7bc74', trunk: '#806957' },
-  autumn: { label: '秋', foliage: '#c8a768', blossom: '#c8a768', fruit: '#b96d5f', trunk: '#806957' },
-  winter: { label: '冬', foliage: '#ffffff', blossom: '#ffffff', fruit: '#ffffff', trunk: '#7d756e' }
+  spring: { label: '春', foliage: '#7cb342', blossom: '#ffcdd2', fruit: '#8bc34a', trunk: '#6d4c41' },
+  summer: { label: '夏', foliage: '#2e7d32', blossom: '#2e7d32', fruit: '#e53935', trunk: '#5d4037' },
+  autumn: { label: '秋', foliage: '#ffb300', blossom: '#ffb300', fruit: '#c62828', trunk: '#4e342e' },
+  winter: { label: '冬', foliage: '#ffffff', blossom: '#ffffff', fruit: '#ffffff', trunk: '#3e2723' }
 });
 
 const BAMBOO_GROVE_SEASONS = Object.freeze({
-  spring: { culm: '#78966f', foliage: '#91ad86' },
-  summer: { culm: '#5d7f64', foliage: '#6f906f' },
-  autumn: { culm: '#917765', foliage: '#aaa374' },
-  winter: { culm: '#7d756e', foliage: '#ffffff' }
+  spring: { culm: '#8bc34a', foliage: '#66bb6a' },
+  summer: { culm: '#00c853', foliage: '#2e7d32' },
+  autumn: { culm: '#9e9d24', foliage: '#c0ca33' },
+  winter: { culm: '#78909c', foliage: '#eceff1' }
 });
 
 const BANANA_TREE_SEASONS = Object.freeze({
-  spring: { stem: '#91a979', leaves: '#9eb48b' },
-  summer: { stem: '#718d66', leaves: '#789775' },
-  autumn: { stem: '#927965', leaves: '#c0ae78' },
+  spring: { stem: '#9ccc65', leaves: '#7cb342' },
+  summer: { stem: '#43a047', leaves: '#2e7d32' },
+  autumn: { stem: '#afb42b', leaves: '#d4c26a' },
   winter: { stem: '#5d4037', leaves: '#ffffff' }
 });
 
 const COURTYARD_RED_MAPLE_SEASONS = Object.freeze({
-  spring: { trunk: '#6f594d', leaves: '#d8b2b9' },
-  summer: { trunk: '#6f594d', leaves: '#68866b' },
-  autumn: { trunk: '#6f594d', leaves: '#b65f54' },
-  winter: { trunk: '#4e342e', leaves: '#ffffff' }
+  spring: { trunk: '#5d4037', leaves: '#ff8a80' },
+  summer: { trunk: '#4e342e', leaves: '#43a047' },
+  autumn: { trunk: '#3e2723', leaves: '#ff3d00' },
+  winter: { trunk: '#3e2723', leaves: '#ffffff' }
 });
 
 const COURTYARD_PINE_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#715d50', foliage: '#617f68' },
-  summer: { trunk: '#715d50', foliage: '#526f5d' },
-  autumn: { trunk: '#715d50', foliage: '#4f6a61' },
+  spring: { trunk: '#5d4037', foliage: '#43a047' },
+  summer: { trunk: '#4e342e', foliage: '#1b5e20' },
+  autumn: { trunk: '#3e2723', foliage: '#2e7d32' },
   winter: { trunk: '#3e2723', foliage: '#ffffff' }
 });
 
 const GINKGO_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#796356', leaves: '#9eb37c' },
-  summer: { trunk: '#715c50', leaves: '#6a896d' },
-  autumn: { trunk: '#796356', leaves: '#d2b765' },
-  winter: { trunk: '#7d756e', leaves: '#ffffff' }
+  spring: { trunk: '#6d4c41', leaves: '#c0ca33' },
+  summer: { trunk: '#5d4037', leaves: '#43a047' },
+  autumn: { trunk: '#4e342e', leaves: '#ffd600' },
+  winter: { trunk: '#3e2723', leaves: '#ffffff' }
 });
 
 const SHRUB_BALL_SEASONS = Object.freeze({
-  spring: { foliage: '#66815f' },
-  summer: { foliage: '#55725c' },
-  autumn: { foliage: '#989668' },
+  spring: { foliage: '#7cb342' },
+  summer: { foliage: '#2e7d32' },
+  autumn: { foliage: '#c0ca33' },
   winter: { foliage: '#ffffff' }
 });
 
 const CHERRY_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#735d50', blossoms: '#dca7b5' },
-  summer: { trunk: '#735d50', blossoms: '#749371' },
-  autumn: { trunk: '#735d50', blossoms: '#c89c67' },
-  winter: { trunk: '#5d4037', blossoms: '#ffffff' }
+  spring: { trunk: '#5d4037', blossoms: '#ff80ab' },
+  summer: { trunk: '#4e342e', blossoms: '#388e3c' },
+  autumn: { trunk: '#3e2723', blossoms: '#ffb74d' },
+  winter: { trunk: '#3e2723', blossoms: '#ffffff' }
 });
 
 const BIRCH_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#ddd9d1', foliage: '#9db37c' },
-  summer: { trunk: '#ddd9d1', foliage: '#749473' },
-  autumn: { trunk: '#d7d2c8', foliage: '#d2bb6d' },
+  spring: { trunk: '#ffffff', foliage: '#66bb6a' },
+  summer: { trunk: '#ffffff', foliage: '#388e3c' },
+  autumn: { trunk: '#f5f5f5', foliage: '#ffab00' },
   winter: { trunk: '#ffffff', foliage: '#ffffff' }
 });
 
 const WILLOW_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#796354', leaves: '#91ad8b' },
-  summer: { trunk: '#715c50', leaves: '#698a6f' },
-  autumn: { trunk: '#796354', leaves: '#a09a6c' },
-  winter: { trunk: '#7d756e', leaves: '#ffffff' }
+  spring: { trunk: '#6d4c41', leaves: '#76ff03' },
+  summer: { trunk: '#5d4037', leaves: '#388e3c' },
+  autumn: { trunk: '#4e342e', leaves: '#d4ac0d' },
+  winter: { trunk: '#3e2723', leaves: '#ffffff' }
 });
 
 const COCONUT_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#8d6e63', leaves: '#4caf50' },
-  summer: { trunk: '#9a7c62', leaves: '#6c906f' },
-  autumn: { trunk: '#9a7c62', leaves: '#a2a16d' },
-  winter: { trunk: '#7d756e', leaves: '#78909c' }
+  spring: { trunk: '#8d6e63', leaves: '#7cb342' },
+  summer: { trunk: '#795548', leaves: '#2e7d32' },
+  autumn: { trunk: '#6d4c41', leaves: '#c0ca33' },
+  winter: { trunk: '#5d4037', leaves: '#90a4ae' }
 });
 
 const PALM_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#95745f', leaves: '#87a77d' },
-  summer: { trunk: '#8d715c', leaves: '#5f8269' },
-  autumn: { trunk: '#96785f', leaves: '#8b9162' },
+  spring: { trunk: '#8d6e63', leaves: '#7cb342' },
+  summer: { trunk: '#795548', leaves: '#2e7d32' },
+  autumn: { trunk: '#6d4c41', leaves: '#c0ca33' },
   winter: { trunk: '#5d4037', leaves: '#ffffff' }
 });
 
 const GROUND_CACTUS_SEASONS = Object.freeze({
-  spring: { stem: '#91a878' },
-  summer: { stem: '#66856b' },
-  autumn: { stem: '#5d755f' },
+  spring: { stem: '#7cb342' },
+  summer: { stem: '#2e7d32' },
+  autumn: { stem: '#558b2f' },
   winter: { stem: '#ffffff' }
 });
 
 const ROSE_BUSH_SEASONS = Object.freeze({
-  spring: { leaves: '#657f61', flowers: '#c9798e' },
-  summer: { leaves: '#66866a', flowers: '#d38399' },
-  autumn: { leaves: '#8d6e63', flowers: '#ffe082' },
+  spring: { leaves: '#43a047', flowers: '#ff4081' },
+  summer: { leaves: '#2e7d32', flowers: '#e91e63' },
+  autumn: { leaves: '#6d4c41', flowers: '#ffd54f' },
   winter: { leaves: '#5d4037', flowers: '#ffffff' }
 });
 
 const LAVENDER_FIELD_SEASONS = Object.freeze({
-  spring: { base: '#6d4c41', stems: '#8bc34a', spike: '#c8e6c9' },
-  summer: { base: '#796457', stems: '#718f70', spike: '#a58aaa' },
-  autumn: { base: '#5d4037', stems: '#8d6e63', spike: '#b39ddb' },
-  winter: { base: '#4e342e', stems: '#ffffff', spike: '#ffffff' }
+  spring: { base: '#5d4037', stems: '#66bb6a', spike: '#b388ff' },
+  summer: { base: '#4e342e', stems: '#43a047', spike: '#7c4dff' },
+  autumn: { base: '#3e2723', stems: '#8d6e63', spike: '#9c27b0' },
+  winter: { base: '#3e2723', stems: '#ffffff', spike: '#ffffff' }
 });
 
 const SUNFLOWER_PATCH_SEASONS = Object.freeze({
-  spring: { stem: '#8bc34a', head: '#8bc34a', core: '#8bc34a' },
-  summer: { stem: '#769372', head: '#d7b85f', core: '#68564b' },
-  autumn: { stem: '#927966', head: '#cba65c', core: '#725d51' },
+  spring: { stem: '#7cb342', head: '#c0ca33', core: '#5d4037' },
+  summer: { stem: '#43a047', head: '#ffea00', core: '#3e2723' },
+  autumn: { stem: '#8d6e63', head: '#ffa000', core: '#3e2723' },
   winter: { stem: '#ffffff', head: '#ffffff', core: '#ffffff' }
 });
 
 const REED_MARSH_SEASONS = Object.freeze({
-  spring: { culm: '#8bc34a', plume: '#c8e6c9' },
-  summer: { culm: '#4caf50', plume: '#a5d6a7' },
-  autumn: { culm: '#d7ccc8', plume: '#efebe9' },
-  winter: { culm: '#8d6e63', plume: '#ffffff' }
+  spring: { culm: '#7cb342', plume: '#e8f5e9' },
+  summer: { culm: '#388e3c', plume: '#ffe082' },
+  autumn: { culm: '#c0ca33', plume: '#d7ccc8' },
+  winter: { culm: '#8d6e63', plume: '#eceff1' }
 });
 
 const BANANA_LEAF_SINGLE_SEASONS = Object.freeze({
-  spring: { stem: '#9ccc65', blade: '#8bc34a' },
-  summer: { stem: '#7cb342', blade: '#558b2f' },
+  spring: { stem: '#9ccc65', blade: '#7cb342' },
+  summer: { stem: '#43a047', blade: '#2e7d32' },
   autumn: { stem: '#8d6e63', blade: '#d4c26a' },
   winter: { stem: '#5d4037', blade: '#ffffff' }
 });
 
 const GRASS_LAWN_SEASONS = Object.freeze({
-  spring: { grass: '#8bc34a' },
-  summer: { grass: '#4caf50' },
+  spring: { grass: '#7cb342' },
+  summer: { grass: '#388e3c' },
   autumn: { grass: '#d4c26a' },
   winter: { grass: '#ffffff' }
 });
 
 const MOSS_PATH_SEASONS = Object.freeze({
-  spring: { base: '#8bc34a', slates: '#4f5d65' },
-  summer: { base: '#4caf50', slates: '#37474f' },
+  spring: { base: '#7cb342', slates: '#4f5d65' },
+  summer: { base: '#388e3c', slates: '#37474f' },
   autumn: { base: '#d4c26a', slates: '#4f5d65' },
   winter: { base: '#ffffff', slates: '#cfd8dc' }
 });
 
 const DANDELION_PATCH_SEASONS = Object.freeze({
-  spring: { leaves: '#689f38', puff: '#ffffff' },
-  summer: { leaves: '#4caf50', puff: '#e0e0e0' },
-  autumn: { leaves: '#afb42b', puff: '#bcaaa4' },
+  spring: { leaves: '#7cb342', puff: '#ffffff' },
+  summer: { leaves: '#388e3c', puff: '#ffffff' },
+  autumn: { leaves: '#c0ca33', puff: '#bcaaa4' },
   winter: { leaves: '#ffffff', puff: '#ffffff' }
 });
 
 const MORNING_GLORY_FENCE_SEASONS = Object.freeze({
-  spring: { bamboo: '#d7ccc8', vines: '#8bc34a', blooms: '#ff80ab' },
-  summer: { bamboo: '#d7ccc8', vines: '#4caf50', blooms: '#7c4dff' },
-  autumn: { bamboo: '#bcaaa4', vines: '#8d6e63', blooms: '#bcaaa4' },
+  spring: { bamboo: '#d7ccc8', vines: '#7cb342', blooms: '#ff80ab' },
+  summer: { bamboo: '#d7ccc8', vines: '#388e3c', blooms: '#7c4dff' },
+  autumn: { bamboo: '#bcaaa4', vines: '#8d6e63', blooms: '#ce93d8' },
   winter: { bamboo: '#8d6e63', vines: '#ffffff', blooms: '#ffffff' }
 });
 
 const HYDRANGEA_BUSH_SEASONS = Object.freeze({
-  spring: { foliage: '#8bc34a', blooms: '#bbdefb' },
-  summer: { foliage: '#43a047', blooms: '#4fc3f7' },
-  autumn: { foliage: '#8d6e63', blooms: '#ffe082' },
+  spring: { foliage: '#7cb342', blooms: '#bbdefb' },
+  summer: { foliage: '#388e3c', blooms: '#4fc3f7' },
+  autumn: { foliage: '#8d6e63', blooms: '#e040fb' },
   winter: { foliage: '#5d4037', blooms: '#ffffff' }
 });
 
 const TULIP_FIELD_SEASONS = Object.freeze({
-  spring: { leaves: '#82a17e', flowers: '#cf7f83' },
-  summer: { leaves: '#66896e', flowers: '#d8ddd5' },
-  autumn: { leaves: '#afb42b', flowers: '#bcaaa4' },
+  spring: { leaves: '#66bb6a', flowers: '#ff1744' },
+  summer: { leaves: '#388e3c', flowers: '#ffea00' },
+  autumn: { leaves: '#c0ca33', flowers: '#e040fb' },
   winter: { leaves: '#ffffff', flowers: '#ffffff' }
 });
 
 const LARCH_TREE_SEASONS = Object.freeze({
-  spring: { trunk: '#5d4037', foliage: '#a5d6a7' },
-  summer: { trunk: '#4e342e', foliage: '#004d40' },
-  autumn: { trunk: '#5d4037', foliage: '#ffeb3b' },
+  spring: { trunk: '#5d4037', foliage: '#7cb342' },
+  summer: { trunk: '#4e342e', foliage: '#00695c' },
+  autumn: { trunk: '#5d4037', foliage: '#ffab00' },
   winter: { trunk: '#7d756e', foliage: '#ffffff' }
 });
 
 const IVY_WALL_SEASONS = Object.freeze({
-  spring: { vine: '#6d4c41', leaves: '#8bc34a' },
-  summer: { vine: '#6d4c41', leaves: '#2e7d32' },
-  autumn: { vine: '#5d4037', leaves: '#d84315' },
+  spring: { vine: '#6d4c41', leaves: '#7cb342' },
+  summer: { vine: '#5d4037', leaves: '#2e7d32' },
+  autumn: { vine: '#4e342e', leaves: '#ff3d00' },
   winter: { vine: '#7d756e', leaves: '#ffffff' }
 });
 
+const CLIMBING_ROSE_WALL_SEASONS = Object.freeze({
+  spring: { vine: '#6d4c41', leaves: '#43a047', pinkBlooms: '#ff4081', whiteBlooms: '#ffffff' },
+  summer: { vine: '#5d4037', leaves: '#2e7d32', pinkBlooms: '#e91e63', whiteBlooms: '#fff8e1' },
+  autumn: { vine: '#4e342e', leaves: '#c0ca33', pinkBlooms: '#ce93d8', whiteBlooms: '#f5f5f5' },
+  winter: { vine: '#3e2723', leaves: '#78909c', pinkBlooms: '#ffffff', whiteBlooms: '#eceff1' }
+});
+
+const FLOWER_HEDGE_SEASONS = Object.freeze({
+  spring: { body: '#43a047', accentLeaves: '#9ccc65', blossoms: '#ff80ab' },
+  summer: { body: '#2e7d32', accentLeaves: '#66bb6a', blossoms: '#ff4081' },
+  autumn: { body: '#7d6608', accentLeaves: '#c0ca33', blossoms: '#e040fb' },
+  winter: { body: '#455a64', accentLeaves: '#90a4ae', blossoms: '#ffffff' }
+});
+
+const WISTERIA_PERGOLA_SEASONS = Object.freeze({
+  spring: { vine: '#5d4037', leaves: '#43a047', flowers: '#d8b4e2' },
+  summer: { vine: '#4e342e', leaves: '#2e7d32', flowers: '#ab47bc' },
+  autumn: { vine: '#5d4037', leaves: '#c0ca33', flowers: '#f3e5f5' },
+  winter: { vine: '#3e2723', leaves: '#eceff1', flowers: '#ffffff' }
+});
+
+const WATER_LILY_PADS_SEASONS = Object.freeze({
+  spring: { leaf: '#66bb6a', petal: '#ff80ab', center: '#ffd600' },
+  summer: { leaf: '#00c853', petal: '#ff4081', center: '#ffea00' },
+  autumn: { leaf: '#8d6e63', petal: '#e040fb', center: '#ff9100' },
+  winter: { leaf: '#78909c', petal: '#ffffff', center: '#eceff1' }
+});
+
+const WATER_REEDS_SEASONS = Object.freeze({
+  spring: { leaves: '#7cb342', stems: '#8bc34a', spikes: '#6d4c41' },
+  summer: { leaves: '#2e7d32', stems: '#43a047', spikes: '#4e342e' },
+  autumn: { leaves: '#c0ca33', stems: '#d4c26a', spikes: '#3e2723' },
+  winter: { leaves: '#90a4ae', stems: '#b0bec5', spikes: '#5d4037' }
+});
+
+
+
+
+
 function getSeasonalItem(definition, item, overrides) {
-  const nextColors = { ...(item.colors || {}) };
-  const nextMaterials = { ...(item.materials || {}) };
-  Object.entries(overrides).forEach(([componentId, color]) => {
-    nextColors[componentId] = color;
-    nextMaterials[componentId] = color;
+  const userColors = item.colors || {};
+  const userMaterials = item.materials || {};
+
+  const nextColors = {};
+  const nextMaterials = { ...userMaterials };
+
+  Object.entries(overrides).forEach(([componentId, seasonColor]) => {
+    if (userColors[componentId] !== undefined) {
+      nextColors[componentId] = userColors[componentId];
+    } else {
+      nextColors[componentId] = seasonColor;
+    }
+
+    if (userMaterials[componentId] === undefined && userColors[componentId] === undefined) {
+      nextMaterials[componentId] = seasonColor;
+    }
   });
+
+  Object.entries(userColors).forEach(([componentId, val]) => {
+    if (nextColors[componentId] === undefined) {
+      nextColors[componentId] = val;
+    }
+  });
+
   return {
     ...item,
     colors: nextColors,
@@ -292,8 +349,8 @@ export const landscapeBananaTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'banana-stem', label: '粗壮蕉茎', defaultColor: BANANA_TREE_SEASONS.summer.stem },
-    { id: 'banana-leaves', label: '阔叶蕉叶', defaultColor: BANANA_TREE_SEASONS.summer.leaves }
+    { id: 'banana-leaves', label: '阔叶蕉叶', defaultColor: BANANA_TREE_SEASONS.summer.leaves },
+    { id: 'banana-stem', label: '粗壮蕉茎', defaultColor: BANANA_TREE_SEASONS.summer.stem }
   ],
   build(registry, item, node, size) {
     const seasonKey = BANANA_TREE_SEASONS[item.season] ? item.season : 'summer';
@@ -442,8 +499,8 @@ export const landscapeCourtyardRedMaple = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'maple-trunk', label: '嶙峋树干', defaultColor: COURTYARD_RED_MAPLE_SEASONS.autumn.trunk },
-    { id: 'maple-leaves', label: '朱红枫叶簇', defaultColor: COURTYARD_RED_MAPLE_SEASONS.autumn.leaves }
+    { id: 'maple-leaves', label: '朱红枫叶簇', defaultColor: COURTYARD_RED_MAPLE_SEASONS.autumn.leaves },
+    { id: 'maple-trunk', label: '嶙峋树干', defaultColor: COURTYARD_RED_MAPLE_SEASONS.autumn.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = COURTYARD_RED_MAPLE_SEASONS[item.season] ? item.season : 'autumn';
@@ -522,8 +579,8 @@ export const landscapeCourtyardPineTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'pine-trunk', label: '曲折松干', defaultColor: COURTYARD_PINE_TREE_SEASONS.summer.trunk },
-    { id: 'pine-foliage', label: '叠翠松针', defaultColor: COURTYARD_PINE_TREE_SEASONS.summer.foliage }
+    { id: 'pine-foliage', label: '叠翠松针', defaultColor: COURTYARD_PINE_TREE_SEASONS.summer.foliage },
+    { id: 'pine-trunk', label: '曲折松干', defaultColor: COURTYARD_PINE_TREE_SEASONS.summer.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = COURTYARD_PINE_TREE_SEASONS[item.season] ? item.season : 'summer';
@@ -644,8 +701,8 @@ export const landscapeGinkgoTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'ginkgo-trunk', label: '直立树干', defaultColor: GINKGO_TREE_SEASONS.autumn.trunk },
-    { id: 'ginkgo-leaves', label: '金黄银杏叶', defaultColor: GINKGO_TREE_SEASONS.autumn.leaves }
+    { id: 'ginkgo-leaves', label: '金黄银杏叶', defaultColor: GINKGO_TREE_SEASONS.autumn.leaves },
+    { id: 'ginkgo-trunk', label: '直立树干', defaultColor: GINKGO_TREE_SEASONS.autumn.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = GINKGO_TREE_SEASONS[item.season] ? item.season : 'autumn';
@@ -889,8 +946,8 @@ export const landscapeBirchTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'birch-trunk', label: '银白白桦干', defaultColor: BIRCH_TREE_SEASONS.autumn.trunk },
-    { id: 'birch-foliage', label: '婆娑绿叶', defaultColor: BIRCH_TREE_SEASONS.autumn.foliage }
+    { id: 'birch-foliage', label: '婆娑绿叶', defaultColor: BIRCH_TREE_SEASONS.autumn.foliage },
+    { id: 'birch-trunk', label: '银白白桦干', defaultColor: BIRCH_TREE_SEASONS.autumn.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = BIRCH_TREE_SEASONS[item.season] ? item.season : 'autumn';
@@ -976,8 +1033,8 @@ export const landscapeWillowTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'willow-trunk', label: '弯柳曲干', defaultColor: WILLOW_TREE_SEASONS.spring.trunk },
-    { id: 'willow-leaves', label: '拂水柔条', defaultColor: '#81c784' }
+    { id: 'willow-leaves', label: '拂水柔条', defaultColor: '#81c784' },
+    { id: 'willow-trunk', label: '弯柳曲干', defaultColor: WILLOW_TREE_SEASONS.spring.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = WILLOW_TREE_SEASONS[item.season] ? item.season : 'spring';
@@ -1198,8 +1255,8 @@ export const landscapeCoconutTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'coconut-trunk', label: '弯曲椰树干', defaultColor: COCONUT_TREE_SEASONS.summer.trunk },
-    { id: 'coconut-leaves', label: '阔叶椰子叶', defaultColor: COCONUT_TREE_SEASONS.summer.leaves }
+    { id: 'coconut-leaves', label: '阔叶椰子叶', defaultColor: COCONUT_TREE_SEASONS.summer.leaves },
+    { id: 'coconut-trunk', label: '弯曲椰树干', defaultColor: COCONUT_TREE_SEASONS.summer.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = COCONUT_TREE_SEASONS[item.season] ? item.season : 'summer';
@@ -1320,8 +1377,8 @@ export const landscapePalmTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'palm-trunk', label: '鳞片棕树干', defaultColor: PALM_TREE_SEASONS.summer.trunk },
-    { id: 'palm-leaves', label: '扇形棕榈叶', defaultColor: PALM_TREE_SEASONS.summer.leaves }
+    { id: 'palm-leaves', label: '扇形棕榈叶', defaultColor: PALM_TREE_SEASONS.summer.leaves },
+    { id: 'palm-trunk', label: '鳞片棕树干', defaultColor: PALM_TREE_SEASONS.summer.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = PALM_TREE_SEASONS[item.season] ? item.season : 'summer';
@@ -1862,14 +1919,14 @@ export const landscapeReedMarsh = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'reed-culm', label: '纤细芦苇杆', defaultColor: '#d7ccc8' },
-    { id: 'reed-plume', label: '绒毛花穗', defaultColor: REED_MARSH_SEASONS.autumn.plume }
+    { id: 'reed-plume', label: '绒毛花穗', defaultColor: REED_MARSH_SEASONS.autumn.plume },
+    { id: 'reed-culm', label: '纤细芦苇杆', defaultColor: REED_MARSH_SEASONS.autumn.culm }
   ],
   build(registry, item, node, size) {
     const seasonKey = REED_MARSH_SEASONS[item.season] ? item.season : 'autumn';
     const season = REED_MARSH_SEASONS[seasonKey];
     const seasonalItem = getSeasonalItem(landscapeReedMarsh, item, {
-      'reed-stem': season.culm,
+      'reed-culm': season.culm,
       'reed-plume': season.plume
     });
 
@@ -2370,8 +2427,8 @@ export const landscapeHydrangeaBush = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'hydrangea-foliage', label: '油亮大叶丛', defaultColor: HYDRANGEA_BUSH_SEASONS.summer.foliage },
-    { id: 'hydrangea-blooms', label: '团团团花簇', defaultColor: HYDRANGEA_BUSH_SEASONS.summer.blooms }
+    { id: 'hydrangea-blooms', label: '花团', defaultColor: HYDRANGEA_BUSH_SEASONS.summer.blooms },
+    { id: 'hydrangea-foliage', label: '叶丛', defaultColor: HYDRANGEA_BUSH_SEASONS.summer.foliage }
   ],
   build(registry, item, node, size) {
     const seasonKey = HYDRANGEA_BUSH_SEASONS[item.season] ? item.season : 'summer';
@@ -2479,8 +2536,8 @@ export const landscapeTulipField = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'tulip-leaves', label: '丛生绿叶草甸', defaultColor: TULIP_FIELD_SEASONS.spring.leaves },
-    { id: 'tulip-flowers', label: '郁金香彩朵', defaultColor: '#eb6d86' }
+    { id: 'tulip-flowers', label: '郁金香彩朵', defaultColor: '#eb6d86' },
+    { id: 'tulip-leaves', label: '丛生绿叶草甸', defaultColor: TULIP_FIELD_SEASONS.spring.leaves }
   ],
   build(registry, item, node, size) {
     const seasonKey = TULIP_FIELD_SEASONS[item.season] ? item.season : 'spring';
@@ -2574,8 +2631,8 @@ export const landscapeLarchTree = {
     { value: 'winter', label: '冬' }
   ],
   components: [
-    { id: 'larch-trunk', label: '红棕松树干', defaultColor: LARCH_TREE_SEASONS.autumn.trunk },
-    { id: 'larch-foliage', label: '松针塔叶', defaultColor: LARCH_TREE_SEASONS.autumn.foliage }
+    { id: 'larch-foliage', label: '松针塔叶', defaultColor: LARCH_TREE_SEASONS.autumn.foliage },
+    { id: 'larch-trunk', label: '红棕松树干', defaultColor: LARCH_TREE_SEASONS.autumn.trunk }
   ],
   build(registry, item, node, size) {
     const seasonKey = LARCH_TREE_SEASONS[item.season] ? item.season : 'autumn';
@@ -2850,15 +2907,15 @@ export const appleTreeFurniture = {
     }
 
     const fruitPositions = [
-      { x: -0.32, y: 0.58, z: -0.16 }, // 左前下沿
-      { x: 0.32, y: 0.6, z: 0.12 },    // 右前下沿
-      { x: -0.02, y: 0.59, z: 0.28 },  // 前侧下沿
-      { x: 0.04, y: 0.58, z: -0.28 },  // 后侧下沿
-      { x: -0.22, y: 0.68, z: 0.22 },  // 左后中层
-      { x: 0.24, y: 0.69, z: -0.18 },  // 右后中层
-      { x: -0.26, y: 0.76, z: 0.08 },  // 左侧较高
-      { x: 0.16, y: 0.75, z: 0.24 },   // 右侧较高
-      { x: 0.14, y: 0.82, z: -0.24 }   // 前侧较高
+      { x: -0.32, y: 0.58, z: -0.16 },
+      { x: 0.32, y: 0.6, z: 0.12 },
+      { x: -0.02, y: 0.59, z: 0.28 },
+      { x: 0.04, y: 0.58, z: -0.28 },
+      { x: -0.22, y: 0.68, z: 0.22 },
+      { x: 0.24, y: 0.69, z: -0.18 },
+      { x: -0.26, y: 0.76, z: 0.08 },
+      { x: 0.16, y: 0.75, z: 0.24 },
+      { x: 0.14, y: 0.82, z: -0.24 }
     ];
     const fruitCount = seasonKey === 'summer' ? 9 : (seasonKey === 'autumn' ? 7 : (seasonKey === 'winter' ? 5 : 3));
     for (let i = 0; i < Math.min(fruitCount, fruitPositions.length); i += 1) {
@@ -2876,3 +2933,413 @@ export const appleTreeFurniture = {
     }
   }
 };
+
+export const landscapeClimbingRoseWall = {
+  type: 'landscape_climbing_rose_wall',
+  name: '攀援玫瑰',
+  placeType: 'wall',
+  unit: 'm',
+  defaultSize: { width: 1.6, depth: 0.1, height: 1.8 },
+  defaultSeason: 'spring',
+  seasonOptions: [
+    { value: 'spring', label: '春' },
+    { value: 'summer', label: '夏' },
+    { value: 'autumn', label: '秋' },
+    { value: 'winter', label: '冬' }
+  ],
+  components: [
+    { id: 'rose-flowers', label: '盛开玫瑰', defaultColor: CLIMBING_ROSE_WALL_SEASONS.spring.pinkBlooms },
+    { id: 'rose-leaves', label: '密叶', defaultColor: CLIMBING_ROSE_WALL_SEASONS.spring.leaves },
+    { id: 'rose-white-flowers', label: '玫瑰蕾包', defaultColor: CLIMBING_ROSE_WALL_SEASONS.spring.whiteBlooms },
+    { id: 'wall-vine', label: '主藤蔓', defaultColor: CLIMBING_ROSE_WALL_SEASONS.spring.vine }
+  ],
+  build(registry, item, node, size) {
+    const seasonKey = CLIMBING_ROSE_WALL_SEASONS[item.season] ? item.season : 'spring';
+    const season = CLIMBING_ROSE_WALL_SEASONS[seasonKey];
+    const seasonalItem = getSeasonalItem(landscapeClimbingRoseWall, item, {
+      'wall-vine': season.vine,
+      'rose-leaves': season.leaves,
+      'rose-flowers': season.pinkBlooms,
+      'rose-white-flowers': season.whiteBlooms
+    });
+
+    const hitbox = boxComponent(registry, seasonalItem, landscapeClimbingRoseWall, 'rose-leaves', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: size.depth / 2 } }, { parent: node });
+    hitbox.visibility = 0;
+    hitbox.isPickable = true;
+
+    const points = [
+      { x: -0.1, y: 0 },
+      { x: 0.18, y: 0.25 },
+      { x: -0.15, y: 0.55 },
+      { x: 0.12, y: 0.82 },
+      { x: -0.05, y: 1.0 }
+    ];
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const pt1 = points[i];
+      const pt2 = points[i + 1];
+      const dx = (pt2.x - pt1.x) * size.width;
+      const dy = (pt2.y - pt1.y) * size.height;
+      const h = Math.sqrt(dx * dx + dy * dy);
+      const px = ((pt1.x + pt2.x) / 2) * size.width;
+      const py = ((pt1.y + pt2.y) / 2) * size.height;
+      const pz = size.depth * 0.04;
+
+      const vineSeg = cylinderComponent(registry, seasonalItem, landscapeClimbingRoseWall, 'wall-vine', {
+        diameterTop: size.depth * 0.12, diameterBottom: size.depth * 0.18, height: h, tessellation: 6
+      }, {
+        position: { x: px, y: py, z: pz }
+      }, { parent: node });
+      vineSeg.rotation.z = -Math.atan2(dx, dy);
+    }
+
+    const clusters = [
+      { x: -0.08, y: 0.12, r: 0.16, isWhite: false },
+      { x: 0.15, y: 0.28, r: 0.18, isWhite: true },
+      { x: 0.02, y: 0.42, r: 0.15, isWhite: false },
+      { x: -0.12, y: 0.58, r: 0.19, isWhite: true },
+      { x: 0.04, y: 0.72, r: 0.17, isWhite: false },
+      { x: 0.14, y: 0.85, r: 0.16, isWhite: false },
+      { x: -0.04, y: 0.96, r: 0.14, isWhite: true }
+    ];
+
+    clusters.forEach((cl) => {
+      const px = cl.x * size.width;
+      const py = cl.y * size.height;
+      const pz = size.depth * 0.08;
+      const radius = cl.r * size.width;
+
+      sphereComponent(registry, seasonalItem, landscapeClimbingRoseWall, 'rose-leaves', {
+        diameter: radius * 2.2, segments: 6
+      }, {
+        position: { x: px, y: py, z: pz },
+        scaling: { x: 1.1, y: 0.8, z: 0.6 }
+      }, { parent: node });
+
+      const compId = cl.isWhite ? 'rose-white-flowers' : 'rose-flowers';
+      sphereComponent(registry, seasonalItem, landscapeClimbingRoseWall, compId, {
+        diameter: radius * 1.25, segments: 6
+      }, {
+        position: { x: px, y: py, z: pz + radius * 0.3 }
+      }, { parent: node });
+    });
+  }
+};
+
+export const landscapeWaterLilyPads = {
+  type: 'landscape_water_lily_pads',
+  name: '睡莲',
+  unit: 'm',
+  defaultSize: { width: 0.95, depth: 0.85, height: 0.12 },
+  defaultSeason: 'summer',
+  seasonOptions: [
+    { value: 'spring', label: '春' },
+    { value: 'summer', label: '夏' },
+    { value: 'autumn', label: '秋' },
+    { value: 'winter', label: '冬' }
+  ],
+  components: [
+    { id: 'lily-pad-leaf', label: '荷叶', defaultColor: WATER_LILY_PADS_SEASONS.summer.leaf },
+    { id: 'lily-flower-petal', label: '睡莲', defaultColor: WATER_LILY_PADS_SEASONS.summer.petal },
+    { id: 'lily-flower-center', label: '花蕊', defaultColor: WATER_LILY_PADS_SEASONS.summer.center }
+  ],
+  build(registry, item, node, size) {
+    const seasonKey = WATER_LILY_PADS_SEASONS[item.season] ? item.season : 'summer';
+    const season = WATER_LILY_PADS_SEASONS[seasonKey];
+    const seasonalItem = getSeasonalItem(landscapeWaterLilyPads, item, {
+      'lily-pad-leaf': season.leaf,
+      'lily-flower-petal': season.petal,
+      'lily-flower-center': season.center
+    });
+
+    const pads = [
+      { x: -0.24, z: -0.15, r: 0.22, flower: true },
+      { x: 0.18, z: -0.2, r: 0.19, flower: false },
+      { x: -0.05, z: 0.18, r: 0.24, flower: true },
+      { x: 0.26, z: 0.12, r: 0.17, flower: false },
+      { x: -0.32, z: 0.22, r: 0.16, flower: false }
+    ];
+
+    pads.forEach((p) => {
+      const px = p.x * size.width;
+      const pz = p.z * size.depth;
+      const radius = p.r * Math.min(size.width, size.depth);
+
+      cylinderComponent(registry, seasonalItem, landscapeWaterLilyPads, 'lily-pad-leaf', {
+        diameterTop: radius * 2, diameterBottom: radius * 2, height: 0.008, tessellation: 8
+      }, { position: { x: px, y: 0.004, z: pz } }, { parent: node });
+
+      if (p.flower) {
+        sphereComponent(registry, seasonalItem, landscapeWaterLilyPads, 'lily-flower-petal', {
+          diameter: radius * 0.9, segments: 7
+        }, {
+          position: { x: px, y: 0.04, z: pz },
+          scaling: { x: 1.0, y: 0.6, z: 1.0 }
+        }, { parent: node });
+
+        sphereComponent(registry, seasonalItem, landscapeWaterLilyPads, 'lily-flower-center', {
+          diameter: radius * 0.35, segments: 6
+        }, { position: { x: px, y: 0.065, z: pz } }, { parent: node });
+      }
+    });
+  }
+};
+
+export const landscapeWaterReeds = {
+  type: 'landscape_water_reeds',
+  name: '香蒲',
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 0.85 },
+  defaultSeason: 'summer',
+  seasonOptions: [
+    { value: 'spring', label: '春' },
+    { value: 'summer', label: '夏' },
+    { value: 'autumn', label: '秋' },
+    { value: 'winter', label: '冬' }
+  ],
+  components: [
+    { id: 'reed-spikes', label: '香蒲', defaultColor: WATER_REEDS_SEASONS.summer.spikes },
+    { id: 'reed-leaves', label: '草叶', defaultColor: WATER_REEDS_SEASONS.summer.leaves },
+    { id: 'reed-stems', label: '草杆', defaultColor: WATER_REEDS_SEASONS.summer.stems }
+  ],
+  build(registry, item, node, size) {
+    const seasonKey = WATER_REEDS_SEASONS[item.season] ? item.season : 'summer';
+    const season = WATER_REEDS_SEASONS[seasonKey];
+    const seasonalItem = getSeasonalItem(landscapeWaterReeds, item, {
+      'reed-leaves': season.leaves,
+      'reed-stems': season.stems,
+      'reed-spikes': season.spikes
+    });
+
+    const hitbox = boxComponent(registry, seasonalItem, landscapeWaterReeds, 'reed-leaves', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    hitbox.visibility = 0;
+    hitbox.isPickable = true;
+
+    const reeds = [
+      { x: -0.15, z: -0.12, h: 0.85 },
+      { x: 0.12, z: -0.08, h: 0.92 },
+      { x: -0.05, z: 0.14, h: 0.78 },
+      { x: 0.18, z: 0.1, h: 0.88 },
+      { x: 0, z: -0.02, h: 0.95 }
+    ];
+
+    reeds.forEach((r) => {
+      const px = r.x * size.width;
+      const pz = r.z * size.depth;
+      const rh = r.h * size.height;
+
+      cylinderComponent(registry, seasonalItem, landscapeWaterReeds, 'reed-stems', {
+        diameterTop: 0.012, diameterBottom: 0.018, height: rh, tessellation: 6
+      }, { position: { x: px, y: rh / 2, z: pz } }, { parent: node });
+
+      cylinderComponent(registry, seasonalItem, landscapeWaterReeds, 'reed-spikes', {
+        diameterTop: 0.038, diameterBottom: 0.038, height: size.height * 0.18, tessellation: 8
+      }, { position: { x: px, y: rh * 0.82, z: pz } }, { parent: node });
+    });
+
+    const leaves = [
+      { x: -0.2, z: 0.05, rotZ: 0.25, rotX: -0.1 },
+      { x: 0.22, z: -0.04, rotZ: -0.28, rotX: 0.12 },
+      { x: 0.05, z: -0.2, rotZ: 0.1, rotX: -0.3 },
+      { x: -0.08, z: 0.22, rotZ: -0.15, rotX: 0.28 }
+    ];
+
+    leaves.forEach((lf) => {
+      const leafH = size.height * 0.65;
+      boxComponent(registry, seasonalItem, landscapeWaterReeds, 'reed-leaves', {
+        width: 0.035, height: leafH, depth: 0.005
+      }, {
+        position: { x: lf.x * size.width, y: leafH / 2, z: lf.z * size.depth },
+        rotation: { x: lf.rotX, y: 0, z: lf.rotZ }
+      }, { parent: node });
+    });
+  }
+};
+
+export const landscapeFlowerHedge = {
+  type: 'landscape_flower_hedge',
+  name: '绿篱',
+  unit: 'm',
+  defaultSize: { width: 2.0, depth: 0.6, height: 0.75 },
+  defaultSeason: 'spring',
+  seasonOptions: [
+    { value: 'spring', label: '春' },
+    { value: 'summer', label: '夏' },
+    { value: 'autumn', label: '秋' },
+    { value: 'winter', label: '冬' }
+  ],
+  components: [
+    { id: 'hedge-body', label: '绿篱', defaultColor: FLOWER_HEDGE_SEASONS.spring.body },
+    { id: 'hedge-accent-leaves', label: '新叶', defaultColor: FLOWER_HEDGE_SEASONS.spring.accentLeaves },
+    { id: 'hedge-blossoms', label: '花蕾', defaultColor: FLOWER_HEDGE_SEASONS.spring.blossoms }
+  ],
+  build(registry, item, node, size) {
+    const seasonKey = FLOWER_HEDGE_SEASONS[item.season] ? item.season : 'spring';
+    const season = FLOWER_HEDGE_SEASONS[seasonKey];
+    const seasonalItem = getSeasonalItem(landscapeFlowerHedge, item, {
+      'hedge-body': season.body,
+      'hedge-accent-leaves': season.accentLeaves,
+      'hedge-blossoms': season.blossoms
+    });
+
+    const bodyH = size.height * 0.75;
+    boxComponent(registry, item, landscapeFlowerHedge, 'hedge-body', {
+      width: size.width, height: bodyH, depth: size.depth
+    }, { position: { x: 0, y: bodyH / 2, z: 0 } }, { parent: node });
+
+    // 大号绿化带双排密集绿叶球与花蕾
+    const bumps = 8;
+    for (let i = 0; i < bumps; i++) {
+      const px = (-0.42 + (i / (bumps - 1)) * 0.84) * size.width;
+      
+      // 第一排顶部叶簇
+      sphereComponent(registry, seasonalItem, landscapeFlowerHedge, 'hedge-accent-leaves', {
+        diameter: size.depth * 0.65, segments: 6
+      }, {
+        position: { x: px, y: bodyH + size.height * 0.05, z: 0.12 * size.depth },
+        scaling: { x: 1.15, y: 0.65, z: 1.0 }
+      }, { parent: node });
+
+      // 第二排顶部叶簇
+      sphereComponent(registry, seasonalItem, landscapeFlowerHedge, 'hedge-accent-leaves', {
+        diameter: size.depth * 0.65, segments: 6
+      }, {
+        position: { x: px, y: bodyH + size.height * 0.05, z: -0.12 * size.depth },
+        scaling: { x: 1.15, y: 0.65, z: 1.0 }
+      }, { parent: node });
+
+      // 顶面密集月季花蕾 (始终位于绿叶球上方)
+      sphereComponent(registry, seasonalItem, landscapeFlowerHedge, 'hedge-blossoms', {
+        diameter: size.depth * 0.22, segments: 5
+      }, {
+        position: { x: px, y: bodyH + size.height * 0.05 + size.depth * 0.22, z: (i % 2 === 0 ? 0.1 : -0.1) * size.depth }
+      }, { parent: node });
+    }
+  }
+};
+
+
+export const landscapePergolaFlowerVines = {
+  type: 'landscape_pergola_flower_vines',
+  name: '紫藤萝',
+  unit: 'm',
+  defaultSize: { width: 1.4, depth: 0.8, height: 1.5 },
+  defaultSeason: 'spring',
+  seasonOptions: [
+    { value: 'spring', label: '春' },
+    { value: 'summer', label: '夏' },
+    { value: 'autumn', label: '秋' },
+    { value: 'winter', label: '冬' }
+  ],
+  components: [
+    { id: 'hanging-flowers', label: '紫藤花穗', defaultColor: WISTERIA_PERGOLA_SEASONS.spring.flowers },
+    { id: 'trellis-vine', label: '木质藤架', defaultColor: WISTERIA_PERGOLA_SEASONS.spring.vine },
+    { id: 'trellis-leaves', label: '紫藤嫩叶', defaultColor: WISTERIA_PERGOLA_SEASONS.spring.leaves }
+  ],
+  build(registry, item, node, size) {
+    const seasonKey = WISTERIA_PERGOLA_SEASONS[item.season] ? item.season : 'spring';
+    const season = WISTERIA_PERGOLA_SEASONS[seasonKey];
+    const seasonalItem = getSeasonalItem(landscapePergolaFlowerVines, item, {
+      'trellis-vine': season.vine,
+      'trellis-leaves': season.leaves,
+      'hanging-flowers': season.flowers
+    });
+
+    // 隐形整块碰撞箱，提供良好的点选和拾取交互
+    const hitbox = boxComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'trellis-leaves', {
+      width: size.width, height: size.height, depth: size.depth
+    }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
+    hitbox.visibility = 0;
+    hitbox.isPickable = true;
+
+    // 1. 顶棚羽状细小柳叶簇 (采用多片细长扁平柳叶片错落排布，告别大圆球)
+    const leafSpreadCount = 14;
+    for (let i = 0; i < leafSpreadCount; i++) {
+      const lx = (-0.4 + (i / (leafSpreadCount - 1)) * 0.8) * size.width;
+      const lz = (((i % 3) - 1) * 0.25) * size.depth;
+      const rotY = (i * 0.7) % (Math.PI * 2);
+
+      boxComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'trellis-leaves', {
+        width: size.width * 0.12, height: 0.006, depth: size.depth * 0.22
+      }, {
+        position: { x: lx, y: size.height - 0.03, z: lz },
+        rotation: { x: 0.1, y: rotY, z: 0.15 }
+      }, { parent: node });
+    }
+
+    // 2. 顶棚木质攀援梁架
+    const vineBeams = [
+      { x: 0, z: -size.depth * 0.25, w: size.width },
+      { x: 0, z: size.depth * 0.25, w: size.width },
+      { x: -size.width * 0.25, z: 0, d: size.depth },
+      { x: size.width * 0.25, z: 0, d: size.depth }
+    ];
+
+    vineBeams.forEach((vb) => {
+      if (vb.w) {
+        cylinderComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'trellis-vine', {
+          diameterTop: 0.02, diameterBottom: 0.02, height: vb.w, tessellation: 6
+        }, {
+          position: { x: 0, y: size.height - 0.04, z: vb.z },
+          rotation: { x: 0, y: 0, z: Math.PI / 2 }
+        }, { parent: node });
+      } else if (vb.d) {
+        cylinderComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'trellis-vine', {
+          diameterTop: 0.02, diameterBottom: 0.02, height: vb.d, tessellation: 6
+        }, {
+          position: { x: vb.x, y: size.height - 0.04, z: 0 },
+          rotation: { x: Math.PI / 2, y: 0, z: 0 }
+        }, { parent: node });
+      }
+    });
+
+    // 3. 悬垂的 3 组紫藤萝宝塔穗状花串（上宽下尖、6 节渐变圆锥塔穗紧密下垂）
+    const hangingSpikes = [
+      { x: -0.28, z: 0.15, len: 0.85 },
+      { x: 0.05, z: -0.22, len: 0.92 },
+      { x: 0.3, z: 0.18, len: 0.78 }
+    ];
+
+    hangingSpikes.forEach((hs) => {
+      const px = hs.x * size.width;
+      const pz = hs.z * size.depth;
+      const totalLen = hs.len * size.height;
+
+      // 细长紫藤心杆
+      cylinderComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'trellis-vine', {
+        diameterTop: 0.008, diameterBottom: 0.005, height: totalLen, tessellation: 6
+      }, { position: { x: px, y: size.height - totalLen / 2, z: pz } }, { parent: node });
+
+      // 6 节从上到下逐级收窄收尖的宝塔穗状花节序列
+      const spikeTierCount = 6;
+      const startY = size.height - totalLen * 0.25;
+      const endY = size.height - totalLen;
+
+      for (let k = 0; k < spikeTierCount; k++) {
+        const progress = k / (spikeTierCount - 1);
+        const tierY = startY - progress * (startY - endY);
+        const tierDiameter = (1.0 - progress * 0.75) * size.width * 0.11;
+        const tierHeight = (totalLen * 0.7) / spikeTierCount;
+
+        cylinderComponent(registry, seasonalItem, landscapePergolaFlowerVines, 'hanging-flowers', {
+          diameterTop: tierDiameter * 1.1,
+          diameterBottom: tierDiameter * 0.4,
+          height: tierHeight,
+          tessellation: 6
+        }, {
+          position: { x: px, y: tierY, z: pz }
+        }, { parent: node });
+      }
+    });
+  }
+};
+
+
+
+
+
+

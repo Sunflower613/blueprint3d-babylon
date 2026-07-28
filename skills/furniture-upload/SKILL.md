@@ -21,6 +21,10 @@ export default function createFurniture({ boxComponent, cylinderComponent, spher
 - `unit` (可选): 字符串类型。可选为 `'m'`。如果设置为 `'m'`，表示家具定义的 `defaultSize` 和 `lightSource` 已经是以**米 (meters)**为单位定义的。如果不设置此字段，默认以英制（英寸）解析。
 - `defaultSize`: 必须包含大于零的 `width` (宽度)、`depth` (深度)、`height` (高度)，默认单位是**英寸 (inches)**（若指定了 `unit: 'm'` 则单位为**米 (meters)**）。
 - `components`: 必须包含至少一个元素。每个组件都需要有唯一的 `id` (字符串)、显示的 `label` 标签以及十六进制的默认颜色 `defaultColor`。
+  > [!IMPORTANT]
+  > **2D 渲染代表主色组件前置规则 (`components[0]`)**:
+  > 系统在 2D 平面图纸与控制面板中，默认读取 `components` 数组的**第一个元素 (`components[0]`)** 作为该家具/植物在 2D 视图下的代表渲染颜色。
+  > 因此，在定义 `components: [...]` 时，**务必将最具有代表性的主体部件**（如植物的花朵/叶片/树冠、床品的被褥、椅子的垫面）**置于 `components` 数组的第一位 (`components[0]`)**，切勿将花盆、泥土、脚架、底座或树干放在 `components[0]`。
 - `build(registry, item, node, size)`: 必须将构建出来的每一个三维 Mesh 的 `parent` 挂载到传入的 `node` 上。
 - 优先使用注入的 `boxComponent`、`cylinderComponent` 和 `sphereComponent`；这能确保生成的家具完美支持编辑器中的组件单独选中、修改颜色和编辑材质功能。
 - 禁止使用 `import`、发起网络请求、使用外部图片纹理或硬编码绝对本地路径。上传的模块必须是完全独立自闭环的。

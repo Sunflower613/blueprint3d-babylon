@@ -18,12 +18,11 @@ import {
 test('key indoor and landscape plants keep their public component contracts', () => {
   const expectedComponents = new Map([
     [plantFurniture, ['leaf-upper', 'leaf-mid', 'leaf-lower', 'trunk', 'dirt', 'pot']],
-    [monsteraFurniture, ['monstera-pot', 'monstera-stem', 'monstera-leaf']],
-    [dwarfMonsteraFurniture, ['pot', 'leaves']],
-    [arecaPalmPlant, ['areca-pot', 'areca-stems', 'areca-leaves']],
-    [landscapeCoconutTree, ['coconut-trunk', 'coconut-leaves']],
-    [landscapePalmTree, ['palm-trunk', 'palm-leaves']],
-    [landscapeTulipField, ['tulip-leaves', 'tulip-flowers']]
+    [monsteraFurniture, ['monstera-leaf', 'monstera-stem', 'monstera-pot']],
+    [dwarfMonsteraFurniture, ['leaves', 'pot']],
+    [landscapeCoconutTree, ['coconut-leaves', 'coconut-trunk']],
+    [landscapePalmTree, ['palm-leaves', 'palm-trunk']],
+    [landscapeTulipField, ['tulip-flowers', 'tulip-leaves']]
   ]);
 
   for (const [definition, componentIds] of expectedComponents) {

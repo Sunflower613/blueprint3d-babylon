@@ -882,3 +882,302 @@ export const landscapeStoneLantern = {
     }, { position: { x: 0, y: size.height - jewelH, z: 0 } }, { parent: node });
   }
 };
+
+// 11. 壁挂灯笼 (Wall Lantern)
+export const wallLanternLight = {
+  type: 'wall_lantern_light',
+  name: '壁挂灯笼',
+  unit: 'm',
+  defaultSize: { width: 0.38, depth: 0.45, height: 0.68 },
+  placeType: 'wall',
+  emissiveComponents: ['lantern_shade'],
+  lightColorComponent: 'lantern_shade',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: 0.32, z: 0.12 },
+    color: '#ff9933',
+    intensity: 0.85,
+    range: 4.5
+  },
+  components: [
+    { id: 'lantern_shade', label: '灯笼罩', defaultColor: '#e64a19' },
+    { id: 'frame', label: '古韵灯框', defaultColor: '#3e2723' },
+    { id: 'mount_arm', label: '壁挂托架', defaultColor: '#261c14' },
+    { id: 'tassel', label: '下挂流苏', defaultColor: '#b71c1c' }
+  ],
+  build(registry, item, node, size) {
+    const mountDepth = 0.03;
+    const mountH = size.height * 0.45;
+    const mountW = size.width * 0.28;
+
+    // 1. 背部贴墙底座
+    boxComponent(registry, item, wallLanternLight, 'mount_arm', {
+      width: mountW, height: mountH, depth: mountDepth
+    }, { position: { x: 0, y: size.height * 0.55, z: -size.depth / 2 + mountDepth / 2 } }, { parent: node });
+
+    // 2. 伸出的木伸臂 (主悬臂 + 斜撑)
+    const armThickness = 0.024;
+    const armLength = size.depth * 0.72;
+    boxComponent(registry, item, wallLanternLight, 'mount_arm', {
+      width: armThickness, height: armThickness, depth: armLength
+    }, { position: { x: 0, y: size.height * 0.72, z: -size.depth / 2 + armLength / 2 } }, { parent: node });
+
+    // 斜拉支撑杆
+    const braceH = size.height * 0.28;
+    cylinderComponent(registry, item, wallLanternLight, 'mount_arm', {
+      diameterTop: armThickness * 0.8, diameterBottom: armThickness * 0.8, height: braceH, tessellation: 8
+    }, { position: { x: 0, y: size.height * 0.48, z: -size.depth * 0.18 } }, { parent: node });
+    const braceMesh = node.getChildren().filter(c => c.name.includes('mount_arm'))[2];
+    if (braceMesh) braceMesh.rotation.x = -Math.PI * 0.25;
+
+    // 3. 灯笼顶帽与上挂扣
+    const capH = size.height * 0.1;
+    cylinderComponent(registry, item, wallLanternLight, 'frame', {
+      diameterTop: size.width * 0.12, diameterBottom: size.width * 0.65, height: capH, tessellation: 12
+    }, { position: { x: 0, y: size.height * 0.64, z: size.depth * 0.15 } }, { parent: node });
+
+    // 4. 灯笼主体 (双圆柱多层鼓形拼接)
+    const shadeH = size.height * 0.42;
+    cylinderComponent(registry, item, wallLanternLight, 'lantern_shade', {
+      diameterTop: size.width * 0.65, diameterBottom: size.width * 0.88, height: shadeH * 0.5, tessellation: 16
+    }, { position: { x: 0, y: size.height * 0.64 - capH / 2 - shadeH * 0.25, z: size.depth * 0.15 } }, { parent: node });
+
+    cylinderComponent(registry, item, wallLanternLight, 'lantern_shade', {
+      diameterTop: size.width * 0.88, diameterBottom: size.width * 0.45, height: shadeH * 0.5, tessellation: 16
+    }, { position: { x: 0, y: size.height * 0.64 - capH / 2 - shadeH * 0.75, z: size.depth * 0.15 } }, { parent: node });
+
+    // 5. 底部底座与边框
+    const botFrameH = size.height * 0.05;
+    cylinderComponent(registry, item, wallLanternLight, 'frame', {
+      diameterTop: size.width * 0.45, diameterBottom: size.width * 0.3, height: botFrameH, tessellation: 12
+    }, { position: { x: 0, y: size.height * 0.64 - capH / 2 - shadeH - botFrameH / 2, z: size.depth * 0.15 } }, { parent: node });
+
+    // 6. 底部流苏及吊饰
+    const tasselH = size.height * 0.22;
+    cylinderComponent(registry, item, wallLanternLight, 'tassel', {
+      diameterTop: 0.012, diameterBottom: 0.035, height: tasselH, tessellation: 10
+    }, { position: { x: 0, y: size.height * 0.64 - capH / 2 - shadeH - botFrameH - tasselH / 2, z: size.depth * 0.15 } }, { parent: node });
+
+    sphereComponent(registry, item, wallLanternLight, 'tassel', {
+      diameter: 0.045, segments: 10
+    }, { position: { x: 0, y: size.height * 0.64 - capH / 2 - shadeH - botFrameH - tasselH * 0.2, z: size.depth * 0.15 } }, { parent: node });
+  }
+};
+
+// 12. 华丽水晶吊灯 (Deluxe Crystal Chandelier)
+export const deluxeCrystalChandelier = {
+  type: 'deluxe_crystal_chandelier',
+  name: '水晶吊灯',
+  unit: 'm',
+  defaultSize: { width: 0.85, depth: 0.85, height: 1.1 },
+  placeType: 'ceiling',
+  emissiveComponents: ['bulbs', 'crystals'],
+  lightColorComponent: 'bulbs',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: -0.6, z: 0 },
+    color: '#fff8e7',
+    intensity: 1.25,
+    range: 6.5
+  },
+  components: [
+    { id: 'crystals', label: '水晶吊坠', defaultColor: '#e0f7fa' },
+    { id: 'frame', label: '镀金灯架', defaultColor: '#d4af37' },
+    { id: 'bulbs', label: '烛光灯泡', defaultColor: '#fffde7' },
+    { id: 'chain', label: '吊链底座', defaultColor: '#b8860b' }
+  ],
+  build(registry, item, node, size) {
+    const totalH = size.height;
+    const chainH = totalH * 0.3;
+    const bodyH = totalH * 0.7;
+
+    // 1. 顶部吸顶底座与重型吊链
+    cylinderComponent(registry, item, deluxeCrystalChandelier, 'chain', {
+      diameterTop: size.width * 0.22, diameterBottom: size.width * 0.18, height: totalH * 0.05, tessellation: 16
+    }, { position: { x: 0, y: totalH - totalH * 0.025, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, deluxeCrystalChandelier, 'chain', {
+      diameterTop: 0.025, diameterBottom: 0.025, height: chainH, tessellation: 8
+    }, { position: { x: 0, y: totalH - chainH / 2, z: 0 } }, { parent: node });
+
+    // 2. 镀金主干中央柱与分层球碗
+    const centerColH = bodyH * 0.85;
+    cylinderComponent(registry, item, deluxeCrystalChandelier, 'frame', {
+      diameterTop: size.width * 0.08, diameterBottom: size.width * 0.12, height: centerColH, tessellation: 12
+    }, { position: { x: 0, y: totalH - chainH - centerColH / 2, z: 0 } }, { parent: node });
+
+    // 两个分层镀金盘
+    const upperDishY = totalH - chainH - centerColH * 0.25;
+    cylinderComponent(registry, item, deluxeCrystalChandelier, 'frame', {
+      diameterTop: size.width * 0.28, diameterBottom: size.width * 0.22, height: totalH * 0.04, tessellation: 16
+    }, { position: { x: 0, y: upperDishY, z: 0 } }, { parent: node });
+
+    const lowerDishY = totalH - chainH - centerColH * 0.75;
+    cylinderComponent(registry, item, deluxeCrystalChandelier, 'frame', {
+      diameterTop: size.width * 0.45, diameterBottom: size.width * 0.35, height: totalH * 0.05, tessellation: 16
+    }, { position: { x: 0, y: lowerDishY, z: 0 } }, { parent: node });
+
+    // 3. 放射状弧形灯臂 (6个方向)
+    const armCount = 6;
+    const armRadius = size.width * 0.4;
+    const candleH = totalH * 0.12;
+
+    for (let i = 0; i < armCount; i++) {
+      const angle = (i * Math.PI * 2) / armCount;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      const armEndX = cosA * armRadius;
+      const armEndZ = sinA * armRadius;
+      const armY = lowerDishY + totalH * 0.05;
+
+      // 弧臂金属柱
+      cylinderComponent(registry, item, deluxeCrystalChandelier, 'frame', {
+        diameterTop: 0.018, diameterBottom: 0.024, height: armRadius, tessellation: 8
+      }, { position: { x: armEndX * 0.5, y: lowerDishY, z: armEndZ * 0.5 } }, { parent: node });
+
+      // 灯臂末端金盘
+      cylinderComponent(registry, item, deluxeCrystalChandelier, 'frame', {
+        diameterTop: size.width * 0.1, diameterBottom: size.width * 0.08, height: totalH * 0.02, tessellation: 12
+      }, { position: { x: armEndX, y: armY, z: armEndZ } }, { parent: node });
+
+      // 蜡烛柱与火焰发光灯泡
+      cylinderComponent(registry, item, deluxeCrystalChandelier, 'bulbs', {
+        diameterTop: 0.022, diameterBottom: 0.022, height: candleH, tessellation: 10
+      }, { position: { x: armEndX, y: armY + candleH / 2, z: armEndZ } }, { parent: node });
+
+      sphereComponent(registry, item, deluxeCrystalChandelier, 'bulbs', {
+        diameter: 0.045, segments: 10
+      }, { position: { x: armEndX, y: armY + candleH + 0.025, z: armEndZ } }, { parent: node });
+
+      // 外圈灯臂下方挂的水晶坠
+      sphereComponent(registry, item, deluxeCrystalChandelier, 'crystals', {
+        diameter: 0.038, segments: 8
+      }, { position: { x: armEndX, y: armY - 0.05, z: armEndZ } }, { parent: node });
+    }
+
+    // 4. 水晶流苏与珠串层（中心环状水晶柱 + 最底部大水滴形主水晶）
+    const innerCrystalCount = 8;
+    for (let j = 0; j < innerCrystalCount; j++) {
+      const angle = (j * Math.PI * 2) / innerCrystalCount;
+      const r = armRadius * 0.55;
+      const cx = Math.cos(angle) * r;
+      const cz = Math.sin(angle) * r;
+
+      cylinderComponent(registry, item, deluxeCrystalChandelier, 'crystals', {
+        diameterTop: 0.015, diameterBottom: 0.02, height: totalH * 0.22, tessellation: 8
+      }, { position: { x: cx, y: upperDishY - totalH * 0.12, z: cz } }, { parent: node });
+    }
+
+    // 最底部悬挂的繁复大水晶主球
+    sphereComponent(registry, item, deluxeCrystalChandelier, 'crystals', {
+      diameter: size.width * 0.14, segments: 12
+    }, { position: { x: 0, y: totalH - chainH - centerColH - 0.04, z: 0 } }, { parent: node });
+  }
+};
+
+// 13. 中式大红灯笼 (Chinese Red Lantern)
+export const chineseRedLantern = {
+  type: 'chinese_red_lantern',
+  name: '大红灯笼',
+  unit: 'm',
+  defaultSize: { width: 0.6, depth: 0.6, height: 0.85 },
+  placeType: 'ceiling',
+  emissiveComponents: ['lantern_body'],
+  lightColorComponent: 'lantern_body',
+  lightSource: {
+    type: 'point',
+    offset: { x: 0, y: -0.3, z: 0 },
+    color: '#ff2a00',
+    intensity: 1.0,
+    range: 5.0
+  },
+  components: [
+    { id: 'lantern_body', label: '红绢灯笼面', defaultColor: '#d32f2f' },
+    { id: 'gold_trim', label: '描金云纹饰条', defaultColor: '#ffb300' },
+    { id: 'frame', label: '红木雕花座', defaultColor: '#3e2723' },
+    { id: 'tassel', label: '下挂红流苏', defaultColor: '#b71c1c' },
+    { id: 'cord', label: '吊挂丝绳', defaultColor: '#8d6e63' }
+  ],
+  build(registry, item, node, size) {
+    const totalH = size.height;
+    const cordH = totalH * 0.22;
+    const mainH = totalH * 0.52;
+    const tasselH = totalH * 0.26;
+
+    const lanternW = size.width;
+
+    // 1. 吸顶吊钩与红色吊绳/吊环
+    cylinderComponent(registry, item, chineseRedLantern, 'cord', {
+      diameterTop: 0.012, diameterBottom: 0.012, height: cordH, tessellation: 8
+    }, { position: { x: 0, y: totalH - cordH / 2, z: 0 } }, { parent: node });
+
+    // 顶部结扣饰物
+    sphereComponent(registry, item, chineseRedLantern, 'gold_trim', {
+      diameter: 0.05, segments: 10
+    }, { position: { x: 0, y: totalH - cordH, z: 0 } }, { parent: node });
+
+    // 2. 顶盘 (红木雕花座 + 金色云纹圈)
+    const topCapH = mainH * 0.12;
+    const topCapY = totalH - cordH - topCapH / 2;
+    cylinderComponent(registry, item, chineseRedLantern, 'frame', {
+      diameterTop: lanternW * 0.35, diameterBottom: lanternW * 0.52, height: topCapH, tessellation: 16
+    }, { position: { x: 0, y: topCapY, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, chineseRedLantern, 'gold_trim', {
+      diameterTop: lanternW * 0.53, diameterBottom: lanternW * 0.53, height: topCapH * 0.25, tessellation: 16
+    }, { position: { x: 0, y: totalH - cordH - topCapH + topCapH * 0.125, z: 0 } }, { parent: node });
+
+    // 3. 灯笼主体 (3段无缝饱满鼓形拼接)
+    const bodyTopY = totalH - cordH - topCapH; // 严丝合缝衔接顶盘底部
+    const shadeH = mainH * 0.76;
+    const subH = shadeH / 3;
+
+    // 上鼓部
+    cylinderComponent(registry, item, chineseRedLantern, 'lantern_body', {
+      diameterTop: lanternW * 0.52, diameterBottom: lanternW * 0.96, height: subH, tessellation: 24
+    }, { position: { x: 0, y: bodyTopY - subH / 2, z: 0 } }, { parent: node });
+
+    // 中腰最宽部位
+    cylinderComponent(registry, item, chineseRedLantern, 'lantern_body', {
+      diameterTop: lanternW * 0.96, diameterBottom: lanternW * 0.96, height: subH, tessellation: 24
+    }, { position: { x: 0, y: bodyTopY - subH * 1.5, z: 0 } }, { parent: node });
+
+    // 下收部位 (下鼓)
+    cylinderComponent(registry, item, chineseRedLantern, 'lantern_body', {
+      diameterTop: lanternW * 0.96, diameterBottom: lanternW * 0.52, height: subH, tessellation: 24
+    }, { position: { x: 0, y: bodyTopY - subH * 2.5, z: 0 } }, { parent: node });
+
+    // 腰部描金箍条
+    cylinderComponent(registry, item, chineseRedLantern, 'gold_trim', {
+      diameterTop: lanternW * 0.97, diameterBottom: lanternW * 0.97, height: 0.02, tessellation: 24
+    }, { position: { x: 0, y: bodyTopY - subH * 1.5, z: 0 } }, { parent: node });
+
+    // 4. 底盘与底座 (无缝紧贴下鼓底部 bodyBottomY)
+    const bodyBottomY = bodyTopY - shadeH; // 下鼓底部 Y 坐标
+    const botCapH = mainH * 0.14;
+
+    // 金色饰圈紧贴下鼓底部
+    cylinderComponent(registry, item, chineseRedLantern, 'gold_trim', {
+      diameterTop: lanternW * 0.53, diameterBottom: lanternW * 0.53, height: botCapH * 0.3, tessellation: 16
+    }, { position: { x: 0, y: bodyBottomY - (botCapH * 0.3) / 2, z: 0 } }, { parent: node });
+
+    // 红木雕花底座无缝贴合
+    cylinderComponent(registry, item, chineseRedLantern, 'frame', {
+      diameterTop: lanternW * 0.52, diameterBottom: lanternW * 0.35, height: botCapH, tessellation: 16
+    }, { position: { x: 0, y: bodyBottomY - botCapH / 2, z: 0 } }, { parent: node });
+
+    // 5. 下挂中国结与长红流苏
+    const botCapBottomY = bodyBottomY - botCapH; // 底座底部 Y 坐标
+    sphereComponent(registry, item, chineseRedLantern, 'gold_trim', {
+      diameter: 0.055, segments: 10
+    }, { position: { x: 0, y: botCapBottomY - 0.025, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, chineseRedLantern, 'tassel', {
+      diameterTop: 0.025, diameterBottom: 0.075, height: tasselH * 0.8, tessellation: 12
+    }, { position: { x: 0, y: botCapBottomY - 0.025 - (tasselH * 0.8) / 2, z: 0 } }, { parent: node });
+  }
+};
+
+
+

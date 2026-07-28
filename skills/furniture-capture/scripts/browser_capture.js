@@ -11,7 +11,7 @@
 (async () => {
   // 过滤截图的分类（数组形式）
   // 匹配规则：若包含 'all' 则为全部；若包含 'missing' 则自动检测并只截缺失缩略图的家具；若匹配到 category（如 'seating'）则拍摄该目录；若匹配到 type 或 name 则拍摄该具体家具
-  const CAPTURE_CATEGORIES = ['missing'];
+  const CAPTURE_CATEGORIES = ['wall_lantern_light', 'deluxe_crystal_chandelier', 'chinese_red_lantern', 'plants', 'flora'];
 
   // 内置的默认最佳 3D 视角数据（旋转 180 度以纠正视角至对面正面）
   const DEFAULT_CAMERA = {
@@ -20,9 +20,19 @@
     target: [0, 0, -2.2]
   };
 
-  console.log("使用脚本内置的默认 3D 视角进行截图...");
+  // 等待页面彻底初始化并挂载 appState
+  if (!window.appState) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
 
-  const { FURNITURE_LIST, testMap, viewer3d, scene, camera, engine, refresh3DGrid, editHandleNodes, entityManager, BABYLON } = await import('./app.js');
+  const app = window.appState || {};
+  const testMap = app.testMap || window.testMap;
+  const viewer3d = app.viewer3d;
+  const scene = app.scene || window.scene;
+  const camera = app.camera;
+  const engine = app.engine;
+  const FURNITURE_LIST = app.FURNITURE_LIST || (await import('./app.js')).FURNITURE_LIST;
+  const BABYLON = app.BABYLON || (await import('./app.js')).BABYLON;
 
   // 强行挂载全局变量以防止任何可能隐藏在模型 build 里的隐式 scene 引用报错
   window.scene = scene;
@@ -239,13 +249,25 @@
     // 截图并上传
     try {
       const dataUrl = await BABYLON.Tools.CreateScreenshotAsync(engine, camera, { precision: 1 });
-      const response = await fetch('http://localhost:3001/save-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: def.type, image: dataUrl })
-      });
-      if (!response.ok) {
-        throw new Error(`Save image failed with status ${response.status}`);
+      let savedOk = false;
+      try {
+        const response = await fetch('http://localhost:3001/save-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: def.type, image: dataUrl })
+        });
+        if (response.ok) savedOk = true;
+      } catch (e) {}
+
+      if (!savedOk) {
+        const fallbackRes = await fetch('/api/save-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: def.type, image: dataUrl })
+        });
+        if (!fallbackRes.ok) {
+          throw new Error(`Save image failed with status ${fallbackRes.status}`);
+        }
       }
       console.log(`[CAPTURE SUCCESS] 缩略图生成并存盘成功: ${def.name} (${def.type})`);
     } catch (err) {

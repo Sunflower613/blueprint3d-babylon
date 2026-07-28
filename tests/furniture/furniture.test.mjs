@@ -81,7 +81,7 @@ test('separates landscape plants into flora category', () => {
   assert.equal(floraCategory.label, '草木');
 
   const floraItems = FURNITURE_LIST.filter((item) => item.category === 'flora');
-  assert.equal(floraItems.length, 26, 'Should contain exactly 26 flora items');
+  assert.equal(floraItems.length, 31, 'Should contain exactly 31 flora items');
 
   const floraTypes = new Set(floraItems.map((item) => item.type));
   assert.ok(floraTypes.has('landscape_bamboo_grove'));
@@ -89,7 +89,13 @@ test('separates landscape plants into flora category', () => {
   assert.ok(floraTypes.has('landscape_cherry_tree'));
   assert.ok(floraTypes.has('landscape_rose_bush'));
   assert.ok(floraTypes.has('landscape_ivy_wall'));
+  assert.ok(floraTypes.has('landscape_climbing_rose_wall'));
+  assert.ok(floraTypes.has('landscape_water_lily_pads'));
+  assert.ok(floraTypes.has('landscape_water_reeds'));
+  assert.ok(floraTypes.has('landscape_flower_hedge'));
+  assert.ok(floraTypes.has('landscape_pergola_flower_vines'));
   assert.ok(floraTypes.has('apple_tree'));
+
 
   const landscapeItems = FURNITURE_LIST.filter((item) => item.category === 'landscape');
   assert.equal(landscapeItems.length, 24, 'Should keep exactly 24 non-plant landscape items');

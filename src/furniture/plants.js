@@ -51,15 +51,17 @@ export const plantPotFurniture = {
   defaultSize: { width: 0.4, depth: 0.4, height: 1 },
   placeType: 'ceiling',
   components: [
-    { id: 'leaf', label: '吊兰绿叶', defaultColor: '#7fc995' },
+    { id: 'leaf', label: '吊兰绿叶', defaultColor: '#43a047' },
+    { id: 'leaf-variegated', label: '金边叶条', defaultColor: '#aed581' },
     { id: 'pot', label: '白色吊盆', defaultColor: '#ffffff' },
     { id: 'rope', label: '吊索麻绳', defaultColor: '#7a6652' }
   ],
   build(registry, item, node, size) {
     const potH = size.height * 0.18;
     const ropeH = size.height * 0.72;
+    const potTopY = size.height - ropeH;
 
-    // 1. 吊绳 (Rope)
+    // 1. 吊索 (Rope)
     cylinderComponent(registry, item, plantPotFurniture, 'rope', {
       diameterTop: 0.008, diameterBottom: 0.008, height: ropeH, tessellation: 6
     }, { position: { x: 0, y: size.height - ropeH / 2, z: 0 } }, { parent: node });
@@ -67,12 +69,58 @@ export const plantPotFurniture = {
     // 2. 吊盆 (Pot)
     cylinderComponent(registry, item, plantPotFurniture, 'pot', {
       diameterTop: size.width * 0.78, diameterBottom: size.width * 0.52, height: potH, tessellation: 8
-    }, { position: { x: 0, y: size.height - ropeH - potH / 2, z: 0 } }, { parent: node });
+    }, { position: { x: 0, y: potTopY - potH / 2, z: 0 } }, { parent: node });
 
-    // 3. 绿植叶片
-    sphereComponent(registry, item, plantPotFurniture, 'leaf', {
-      diameter: size.width * 0.94, segments: 6
-    }, { position: { x: 0, y: size.height - ropeH + 0.02, z: 0 } }, { parent: node });
+    // 3. 精致放射状向下弯曲的吊兰细长剑叶（摒弃原本单个大球）
+    const leafCount = 16;
+    for (let i = 0; i < leafCount; i++) {
+      const angle = (i / leafCount) * Math.PI * 2;
+      const radiusPct = 0.35 + (i % 3) * 0.12;
+      const leafLen = size.width * radiusPct;
+      const isVariegated = i % 3 === 0;
+      const compId = isVariegated ? 'leaf-variegated' : 'leaf';
+
+      boxComponent(registry, item, plantPotFurniture, compId, {
+        width: size.width * 0.045, height: 0.004, depth: leafLen
+      }, {
+        position: {
+          x: Math.sin(angle) * leafLen * 0.45,
+          y: potTopY - 0.01 - (i % 2) * 0.02,
+          z: Math.cos(angle) * leafLen * 0.45
+        },
+        rotation: {
+          x: Math.PI * 0.18 + (i % 3) * 0.1,
+          y: angle,
+          z: (i % 2 === 0 ? 0.08 : -0.08)
+        }
+      }, { parent: node });
+    }
+
+    // 4. 2 根垂落的匍匐茎与悬挂子株小吊兰
+    const stolons = [
+      { angle: Math.PI * 0.25, len: size.height * 0.25 },
+      { angle: Math.PI * 1.35, len: size.height * 0.32 }
+    ];
+
+    stolons.forEach((st) => {
+      const sx = Math.sin(st.angle) * size.width * 0.38;
+      const sz = Math.cos(st.angle) * size.depth * 0.38;
+      const sy = potTopY - st.len / 2;
+
+      cylinderComponent(registry, item, plantPotFurniture, 'leaf', {
+        diameterTop: 0.006, diameterBottom: 0.004, height: st.len, tessellation: 6
+      }, {
+        position: { x: sx, y: sy, z: sz },
+        rotation: { x: 0.1, y: 0, z: (sx > 0 ? -0.15 : 0.15) }
+      }, { parent: node });
+
+      sphereComponent(registry, item, plantPotFurniture, 'leaf-variegated', {
+        diameter: size.width * 0.18, segments: 6
+      }, {
+        position: { x: sx * 1.1, y: potTopY - st.len, z: sz * 1.1 },
+        scaling: { x: 1.0, y: 0.6, z: 1.0 }
+      }, { parent: node });
+    });
   }
 };
 
@@ -111,9 +159,9 @@ export const monsteraFurniture = {
   unit: 'm',
   defaultSize: { width: 0.8, depth: 0.8, height: 1.2 },
   components: [
-    { id: 'monstera-pot', label: '极简白瓷盆', defaultColor: '#e8dfd2' },
+    { id: 'monstera-leaf', label: '龟背竹叶片', defaultColor: '#52765c' },
     { id: 'monstera-stem', label: '龟背竹叶茎', defaultColor: '#71906f' },
-    { id: 'monstera-leaf', label: '龟背竹叶片', defaultColor: '#52765c' }
+    { id: 'monstera-pot', label: '极简白瓷盆', defaultColor: '#e8dfd2' }
   ],
   build(registry, item, node, size) {
     const potH = size.height * 0.25;
@@ -156,8 +204,8 @@ export const succulentFurniture = {
   unit: 'm',
   defaultSize: { width: 0.25, depth: 0.25, height: 0.25 },
   components: [
-    { id: 'succulent-pot', label: '马卡龙矮盆', defaultColor: '#ffffff' },
-    { id: 'succulent-leaves', label: '多肉饱满叶瓣', defaultColor: '#80cbc4' }
+    { id: 'succulent-leaves', label: '多肉饱满叶瓣', defaultColor: '#80cbc4' },
+    { id: 'succulent-pot', label: '马卡龙矮盆', defaultColor: '#ffffff' }
   ],
   build(registry, item, node, size) {
     const potH = size.height * 0.44;
@@ -189,8 +237,8 @@ export const bambooFurniture = {
   unit: 'm',
   defaultSize: { width: 0.4, depth: 0.4, height: 1.35 },
   components: [
-    { id: 'bamboo-vase', label: '玻璃水培瓶', defaultColor: '#e0f7fa' },
-    { id: 'bamboo-stem', label: '富贵竹青干', defaultColor: '#388e3c' }
+    { id: 'bamboo-stem', label: '富贵竹青干', defaultColor: '#388e3c' },
+    { id: 'bamboo-vase', label: '玻璃水培瓶', defaultColor: '#e0f7fa' }
   ],
   build(registry, item, node, size) {
     const vaseH = size.height * 0.35;
@@ -222,8 +270,8 @@ export const fernFurniture = {
   unit: 'm',
   defaultSize: { width: 0.7, depth: 0.7, height: 0.65 },
   components: [
-    { id: 'fern-pot', label: '红陶阔口盆', defaultColor: '#b0bec5' },
-    { id: 'fern-leaves', label: '下垂羽状蕨叶', defaultColor: '#1b5e20' }
+    { id: 'fern-leaves', label: '下垂羽状蕨叶', defaultColor: '#1b5e20' },
+    { id: 'fern-pot', label: '红陶阔口盆', defaultColor: '#b0bec5' }
   ],
   build(registry, item, node, size) {
     const potH = size.height * 0.38;
@@ -254,9 +302,9 @@ export const bonsaiFurniture = {
   unit: 'm',
   defaultSize: { width: 0.9, depth: 0.6, height: 0.8 },
   components: [
-    { id: 'bonsai-pot', label: '紫砂长方浅盆', defaultColor: '#5d4037' },
+    { id: 'bonsai-leaves', label: '葱郁松针簇', defaultColor: '#004d40' },
     { id: 'bonsai-trunk', label: '苍劲曲折树干', defaultColor: '#3e2723' },
-    { id: 'bonsai-leaves', label: '葱郁松针簇', defaultColor: '#004d40' }
+    { id: 'bonsai-pot', label: '紫砂长方浅盆', defaultColor: '#5d4037' }
   ],
   build(registry, item, node, size) {
     const potFeetH = size.height * 0.03;
@@ -588,24 +636,71 @@ export const orchidPotFurniture = {
   unit: 'm',
   defaultSize: { width: 0.4, depth: 0.4, height: 0.7 },
   components: [
-    { id: 'pot', label: '紫砂花盆', defaultColor: '#8d6e63' },
+    { id: 'flower', label: '玫红花瓣', defaultColor: '#e91e63' },
+    { id: 'orchid-leaves', label: '肉质绿叶', defaultColor: '#2e7d32' },
     { id: 'stem', label: '蝴蝶兰枝干', defaultColor: '#4caf50' },
-    { id: 'flower', label: '玫红花瓣', defaultColor: '#e91e63' }
+    { id: 'flower-core', label: '淡黄花心', defaultColor: '#fff59d' },
+    { id: 'pot', label: '紫砂花盆', defaultColor: '#8d6e63' }
   ],
   build(registry, item, node, size) {
-    cylinderComponent(registry, item, orchidPotFurniture, 'pot', {
-      diameterTop: size.width * 0.55, diameterBottom: size.width * 0.4, height: size.height * 0.3
-    }, { position: { x: 0, y: size.height * 0.15, z: 0 } }, { parent: node });
+    const potH = size.height * 0.3;
+    const potCenterY = potH / 2;
 
-    const branch = boxComponent(registry, item, orchidPotFurniture, 'stem', {
-      width: 0.02, height: size.height * 0.55, depth: size.depth * 0.35
-    }, { position: { x: -size.width * 0.05, y: size.height * 0.52, z: 0 } }, { parent: node });
+    // 1. 紫砂花盆
+    cylinderComponent(registry, item, orchidPotFurniture, 'pot', {
+      diameterTop: size.width * 0.55, diameterBottom: size.width * 0.4, height: potH
+    }, { position: { x: 0, y: potCenterY, z: 0 } }, { parent: node });
+
+    // 2. 蝴蝶兰基部肉质椭圆大叶片（摒弃单一方片，呈现厚实拱起下垂的基生肉质叶）
+    const baseLeaves = [
+      { angle: 0, len: size.width * 0.38, w: size.width * 0.18, rotX: 0.35 },
+      { angle: Math.PI * 0.8, len: size.width * 0.4, w: size.width * 0.19, rotX: 0.3 },
+      { angle: Math.PI * 1.5, len: size.width * 0.36, w: size.width * 0.17, rotX: 0.4 },
+      { angle: Math.PI * 0.4, len: size.width * 0.32, w: size.width * 0.15, rotX: 0.25 }
+    ];
+
+    baseLeaves.forEach((bl) => {
+      const lx = Math.sin(bl.angle) * bl.len * 0.45;
+      const lz = Math.cos(bl.angle) * bl.len * 0.45;
+      const ly = potH + 0.015;
+
+      const leafMesh = sphereComponent(registry, item, orchidPotFurniture, 'orchid-leaves', {
+        diameter: bl.len, segments: 7
+      }, {
+        position: { x: lx, y: ly, z: lz },
+        scaling: { x: bl.w / bl.len, y: 0.12, z: 1.0 }
+      }, { parent: node });
+
+      leafMesh.rotation.y = bl.angle;
+      leafMesh.rotation.x = bl.rotX;
+    });
+
+    // 3. 优雅分支花茎
+    const stemH = size.height * 0.55;
+    const branch = cylinderComponent(registry, item, orchidPotFurniture, 'stem', {
+      diameterTop: 0.008, diameterBottom: 0.014, height: stemH, tessellation: 6
+    }, { position: { x: -size.width * 0.05, y: potH + stemH / 2, z: 0 } }, { parent: node });
     branch.rotation.z = Math.PI * 0.12;
 
-    for (let i = 0; i < 4; i++) {
+    // 4. 蝶状盛开花朵与淡黄花心
+    for (let i = 0; i < 5; i++) {
+      const fx = (i * 0.045 - size.width * 0.05);
+      const fy = potH + stemH * 0.45 + i * size.height * 0.06;
+      const fz = (i % 2 === 0 ? 0.04 : -0.04);
+      const flowerRadius = size.width * 0.09;
+
+      // 蝴蝶状主花瓣
       sphereComponent(registry, item, orchidPotFurniture, 'flower', {
-        diameterX: 0.07, diameterY: 0.06, diameterZ: 0.07
-      }, { position: { x: i * 0.045 - size.width * 0.05, y: size.height * 0.48 + i * 0.06, z: (i % 2 === 0 ? 0.03 : -0.03) } }, { parent: node });
+        diameter: flowerRadius * 2, segments: 7
+      }, {
+        position: { x: fx, y: fy, z: fz },
+        scaling: { x: 1.1, y: 0.85, z: 0.35 }
+      }, { parent: node });
+
+      // 花心
+      sphereComponent(registry, item, orchidPotFurniture, 'flower-core', {
+        diameter: flowerRadius * 0.6, segments: 6
+      }, { position: { x: fx, y: fy, z: fz + 0.015 } }, { parent: node });
     }
   }
 };
@@ -616,8 +711,8 @@ export const dwarfMonsteraFurniture = {
   unit: 'm',
   defaultSize: { width: 0.5, depth: 0.5, height: 0.6 },
   components: [
-    { id: 'pot', label: '水泥花盆', defaultColor: '#c9c1b5' },
-    { id: 'leaves', label: '龟背叶片', defaultColor: '#5f8068' }
+    { id: 'leaves', label: '龟背叶片', defaultColor: '#5f8068' },
+    { id: 'pot', label: '水泥花盆', defaultColor: '#c9c1b5' }
   ],
   build(registry, item, node, size) {
     cylinderComponent(registry, item, dwarfMonsteraFurniture, 'pot', {
@@ -700,9 +795,9 @@ export const cherryBlossomBonsaiFurniture = {
   unit: 'm',
   defaultSize: { width: 0.45, depth: 0.45, height: 0.65 },
   components: [
-    { id: 'pot', label: '釉面盆', defaultColor: '#e0f7fa' },
+    { id: 'flower', label: '樱花丛', defaultColor: '#ff8a80' },
     { id: 'trunk', label: '苍劲树桩', defaultColor: '#5d4037' },
-    { id: 'flower', label: '樱花丛', defaultColor: '#ff8a80' }
+    { id: 'pot', label: '釉面盆', defaultColor: '#e0f7fa' }
   ],
   build(registry, item, node, size) {
     cylinderComponent(registry, item, cherryBlossomBonsaiFurniture, 'pot', {
@@ -1030,9 +1125,9 @@ export const landscapeMapleBonsai = {
   unit: 'm',
   defaultSize: { width: 0.8, depth: 0.55, height: 1.1 },
   components: [
-    { id: 'maple-pot', label: '紫砂方盆', defaultColor: '#5d4037' },
-    { id: 'maple-trunk', label: '嶙峋树干', defaultColor: '#3e2723' },
-    { id: 'maple-leaves', label: '朱红枫叶簇', defaultColor: '#b71c1c' }
+    { id: 'maple-leaves', label: '枫叶', defaultColor: '#b71c1c' },
+    { id: 'maple-trunk', label: '树干', defaultColor: '#3e2723' },
+    { id: 'maple-pot', label: '紫砂盆', defaultColor: '#5d4037' }
   ],
   build(registry, item, node, size) {
     const potH = size.height * 0.16;
@@ -1040,27 +1135,52 @@ export const landscapeMapleBonsai = {
       width: size.width * 0.9, height: potH, depth: size.depth * 0.9
     }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
 
-    const trunkH = size.height * 0.52;
-    cylinderComponent(registry, item, landscapeMapleBonsai, 'maple-trunk', {
-      diameterTop: 0.016, diameterBottom: 0.026, height: trunkH, tessellation: 8
+    // 1. 苍劲弯曲主干
+    const trunkH = size.height * 0.48;
+    const trunk = cylinderComponent(registry, item, landscapeMapleBonsai, 'maple-trunk', {
+      diameterTop: 0.018, diameterBottom: 0.032, height: trunkH, tessellation: 8
     }, { position: { x: -size.width * 0.08, y: potH + trunkH / 2, z: 0 } }, { parent: node });
+    trunk.rotation.z = -0.15;
 
-    const clusterY = potH + trunkH;
-    sphereComponent(registry, item, landscapeMapleBonsai, 'maple-leaves', {
-      diameter: size.width * 0.42, segments: 8
-    }, { position: { x: -size.width * 0.02, y: clusterY, z: 0 } }, { parent: node });
+    // 2. 斜伸分枝
+    const branchPositions = [
+      { x: -size.width * 0.18, y: potH + trunkH * 0.7, z: size.depth * 0.12, rotZ: 0.45, len: size.width * 0.35 },
+      { x: size.width * 0.08, y: potH + trunkH * 0.85, z: -size.depth * 0.1, rotZ: -0.5, len: size.width * 0.38 }
+    ];
 
-    sphereComponent(registry, item, landscapeMapleBonsai, 'maple-leaves', {
-      diameter: size.width * 0.15, y: clusterY + size.height * 0.12, z: size.depth * 0.12 }
-    );
+    branchPositions.forEach((bp) => {
+      const b = cylinderComponent(registry, item, landscapeMapleBonsai, 'maple-trunk', {
+        diameterTop: 0.01, diameterBottom: 0.016, height: bp.len, tessellation: 6
+      }, { position: { x: bp.x, y: bp.y, z: bp.z } }, { parent: node });
+      b.rotation.z = bp.rotZ;
+    });
+
+    // 3. 摒弃大球！用 5 团多层扁平斜倾朱红枫叶伞房簇堆叠出别致的红枫树冠
+    const foliageClusters = [
+      { x: -size.width * 0.08, y: potH + trunkH + size.height * 0.15, z: 0, r: size.width * 0.22, scaleY: 0.35 },
+      { x: -size.width * 0.28, y: potH + trunkH + size.height * 0.06, z: size.depth * 0.2, r: size.width * 0.18, scaleY: 0.3 },
+      { x: size.width * 0.18, y: potH + trunkH + size.height * 0.08, z: -size.depth * 0.18, r: size.width * 0.2, scaleY: 0.32 },
+      { x: size.width * 0.02, y: potH + trunkH - size.height * 0.02, z: size.depth * 0.22, r: size.width * 0.16, scaleY: 0.28 },
+      { x: -size.width * 0.2, y: potH + trunkH + size.height * 0.22, z: -size.depth * 0.1, r: size.width * 0.15, scaleY: 0.25 }
+    ];
+
+    foliageClusters.forEach((fc) => {
+      const leafMesh = sphereComponent(registry, item, landscapeMapleBonsai, 'maple-leaves', {
+        diameter: fc.r * 2, segments: 7
+      }, {
+        position: { x: fc.x, y: fc.y, z: fc.z },
+        scaling: { x: 1.15, y: fc.scaleY, z: 1.05 }
+      }, { parent: node });
+      leafMesh.rotation.z = 0.08;
+    });
   }
 };
 
 export const landscapeMossMicro = {
   type: 'landscape_moss_micro',
-  name: '微景观',
+  name: '苔藓球',
   unit: 'm',
-  defaultSize: { width: 0.35, depth: 0.35, height: 0.45 },
+  defaultSize: { width: 0.35, depth: 0.35, height: 0.35 },
   components: [
     { id: 'moss-glass', label: '高硼硅玻璃罩', defaultColor: '#e0f2f1' },
     { id: 'moss-green', label: '鲜活苔藓层', defaultColor: '#558b2f' },
@@ -1072,9 +1192,9 @@ export const landscapeMossMicro = {
     }, { position: { x: 0, y: size.height / 2, z: 0 } }, { parent: node });
 
     const mossD = size.width * 0.88;
-    sphereComponent(registry, item, landscapeMossMicro, 'moss-green', {
-      diameter: mossD, segments: 8
-    }, { position: { x: 0, y: size.height * 0.35, z: 0 } }, { parent: node });
+    cylinderComponent(registry, item, landscapeMossMicro, 'moss-green', {
+      diameterTop: mossD, diameterBottom: mossD * 0.5, height: size.height * 0.2, tessellation: 8
+    }, { position: { x: 0, y: size.height * 0.3, z: 0 } }, { parent: node });
 
     sphereComponent(registry, item, landscapeMossMicro, 'moss-decor', {
       diameter: size.width * 0.2, segments: 6
@@ -1213,3 +1333,221 @@ export const arecaPalmPlant = {
     }
   }
 };
+
+export const balconyFlowerBox = {
+  type: 'balcony_flower_box',
+  name: '花盒',
+  unit: 'm',
+  defaultSize: { width: 0.85, depth: 0.28, height: 0.32 },
+  components: [
+    { id: 'pink-blooms', label: '花簇', defaultColor: '#f48fb1' },
+    { id: 'flower-leaves', label: '绿叶', defaultColor: '#487e4c' },
+    { id: 'white-blooms', label: '花蕾', defaultColor: '#ffffff' },
+    { id: 'box-container', label: '木盒', defaultColor: '#ffffff' },
+    { id: 'soil', label: '营养土', defaultColor: '#4a3b32' }
+  ],
+  build(registry, item, node, size) {
+
+    const boxH = size.height * 0.45;
+    const boxW = size.width;
+    const boxD = size.depth;
+    const rimT = Math.min(boxW, boxD) * 0.08;
+
+    boxComponent(registry, item, balconyFlowerBox, 'box-container', {
+      width: boxW, height: size.height * 0.04, depth: boxD
+    }, { position: { x: 0, y: size.height * 0.02, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, balconyFlowerBox, 'box-container', {
+      width: boxW, height: boxH, depth: rimT
+    }, { position: { x: 0, y: boxH / 2, z: (boxD - rimT) / 2 } }, { parent: node });
+
+    boxComponent(registry, item, balconyFlowerBox, 'box-container', {
+      width: boxW, height: boxH, depth: rimT
+    }, { position: { x: 0, y: boxH / 2, z: -(boxD - rimT) / 2 } }, { parent: node });
+
+    boxComponent(registry, item, balconyFlowerBox, 'box-container', {
+      width: rimT, height: boxH, depth: Math.max(0.01, boxD - rimT * 2)
+    }, { position: { x: (boxW - rimT) / 2, y: boxH / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, balconyFlowerBox, 'box-container', {
+      width: rimT, height: boxH, depth: Math.max(0.01, boxD - rimT * 2)
+    }, { position: { x: -(boxW - rimT) / 2, y: boxH / 2, z: 0 } }, { parent: node });
+
+    const soilH = size.height * 0.05;
+    boxComponent(registry, item, balconyFlowerBox, 'soil', {
+      width: boxW - rimT * 1.5, height: soilH, depth: boxD - rimT * 1.5
+    }, { position: { x: 0, y: boxH - soilH / 2, z: 0 } }, { parent: node });
+
+    const flowerClusters = [
+      { x: -0.32, z: -0.04, r: 0.1, isPink: true, yOff: 0.04 },
+      { x: -0.22, z: 0.04, r: 0.09, isPink: false, yOff: 0.08 },
+      { x: -0.1, z: -0.05, r: 0.11, isPink: true, yOff: 0.07 },
+      { x: 0.02, z: 0.03, r: 0.1, isPink: false, yOff: 0.09 },
+      { x: 0.14, z: -0.04, r: 0.12, isPink: true, yOff: 0.06 },
+      { x: 0.25, z: 0.05, r: 0.09, isPink: true, yOff: 0.08 },
+      { x: 0.33, z: -0.02, r: 0.1, isPink: false, yOff: 0.05 }
+    ];
+
+    flowerClusters.forEach((fc) => {
+      const px = fc.x * boxW;
+      const pz = fc.z * boxD;
+      const py = boxH + fc.yOff * size.height;
+      const radius = fc.r * size.width;
+
+      sphereComponent(registry, item, balconyFlowerBox, 'flower-leaves', {
+        diameter: radius * 2.2, segments: 6
+      }, {
+        position: { x: px, y: py - 0.02, z: pz },
+        scaling: { x: 1.2, y: 0.7, z: 1.1 }
+      }, { parent: node });
+
+      const compId = fc.isPink ? 'pink-blooms' : 'white-blooms';
+      sphereComponent(registry, item, balconyFlowerBox, compId, {
+        diameter: radius * 1.6, segments: 6
+      }, {
+        position: { x: px, y: py + radius * 0.5, z: pz },
+        scaling: { x: 1.0, y: 0.85, z: 0.95 }
+      }, { parent: node });
+
+      sphereComponent(registry, item, balconyFlowerBox, compId, {
+        diameter: radius * 0.8, segments: 5
+      }, {
+        position: { x: px + radius * 0.5, y: py + radius * 0.8, z: pz + radius * 0.3 }
+      }, { parent: node });
+    });
+  }
+};
+
+export const terracottaFlowerUrn = {
+  type: 'terracotta_flower_urn',
+  name: '花樽',
+  unit: 'm',
+  defaultSize: { width: 0.65, depth: 0.65, height: 1.1 },
+  components: [
+    { id: 'hydrangea-blooms', label: '花球', defaultColor: '#ff80ab' },
+    { id: 'hydrangea-leaves', label: '绿叶', defaultColor: '#2e7d32' },
+    { id: 'urn-pot', label: '罗马高脚花樽', defaultColor: '#e0d6c8' },
+    { id: 'urn-dirt', label: '营养土', defaultColor: '#4a3628' }
+  ],
+  build(registry, item, node, size) {
+
+    const urnH = size.height * 0.52;
+    const baseW = size.width * 0.55;
+    const stemD = size.width * 0.25;
+    const rimD = size.width * 0.85;
+
+    boxComponent(registry, item, terracottaFlowerUrn, 'urn-pot', {
+      width: baseW, height: size.height * 0.08, depth: baseW
+    }, { position: { x: 0, y: size.height * 0.04, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, terracottaFlowerUrn, 'urn-pot', {
+      diameterTop: stemD * 0.9, diameterBottom: stemD * 1.3, height: size.height * 0.12, tessellation: 8
+    }, { position: { x: 0, y: size.height * 0.14, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, terracottaFlowerUrn, 'urn-pot', {
+      diameterTop: rimD, diameterBottom: stemD * 0.9, height: Math.max(0.01, urnH - size.height * 0.2), tessellation: 8
+    }, { position: { x: 0, y: size.height * 0.3, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, terracottaFlowerUrn, 'urn-pot', {
+      diameterTop: rimD * 1.08, diameterBottom: rimD * 1.02, height: size.height * 0.05, tessellation: 8
+    }, { position: { x: 0, y: urnH - size.height * 0.025, z: 0 } }, { parent: node });
+
+    const dirtH = size.height * 0.04;
+    cylinderComponent(registry, item, terracottaFlowerUrn, 'urn-dirt', {
+      diameterTop: rimD * 0.92, diameterBottom: rimD * 0.92, height: dirtH, tessellation: 8
+    }, { position: { x: 0, y: urnH - dirtH / 2, z: 0 } }, { parent: node });
+
+    const centerBloomRadius = size.width * 0.32;
+    const leafRadius = size.width * 0.42;
+    const leafCenterY = urnH + size.height * 0.1;
+
+    sphereComponent(registry, item, terracottaFlowerUrn, 'hydrangea-leaves', {
+      diameter: leafRadius * 2, segments: 8
+    }, {
+      position: { x: 0, y: leafCenterY, z: 0 },
+      scaling: { x: 1.1, y: 0.5, z: 1.1 }
+    }, { parent: node });
+
+    const bloomPositions = [
+      { x: 0, y: leafCenterY + centerBloomRadius * 0.45, z: 0, scale: 1.0 },
+      { x: centerBloomRadius * 0.55, y: leafCenterY + centerBloomRadius * 0.22, z: centerBloomRadius * 0.3, scale: 0.85 },
+      { x: -centerBloomRadius * 0.55, y: leafCenterY + centerBloomRadius * 0.25, z: centerBloomRadius * 0.2, scale: 0.88 },
+      { x: centerBloomRadius * 0.2, y: leafCenterY + centerBloomRadius * 0.2, z: -centerBloomRadius * 0.55, scale: 0.82 },
+      { x: -centerBloomRadius * 0.3, y: leafCenterY + centerBloomRadius * 0.22, z: -centerBloomRadius * 0.5, scale: 0.85 },
+      { x: 0, y: leafCenterY + centerBloomRadius * 0.18, z: centerBloomRadius * 0.58, scale: 0.8 }
+    ];
+
+    bloomPositions.forEach((bp) => {
+      sphereComponent(registry, item, terracottaFlowerUrn, 'hydrangea-blooms', {
+        diameter: centerBloomRadius * 2 * bp.scale, segments: 8
+      }, {
+        position: { x: bp.x, y: bp.y, z: bp.z }
+      }, { parent: node });
+    });
+  }
+};
+
+
+export const pottedPinkRose = {
+  type: 'potted_pink_rose',
+  name: '盆栽月季',
+  unit: 'm',
+  defaultSize: { width: 0.55, depth: 0.55, height: 0.95 },
+
+  components: [
+    { id: 'pink-rose-blooms', label: '花朵', defaultColor: '#ff4081' },
+    { id: 'rose-leaves', label: '绿叶', defaultColor: '#2e7d32' },
+    { id: 'pot', label: '陶盆', defaultColor: '#f5f0eb' },
+    { id: 'dirt', label: '盆泥', defaultColor: '#5c4033' },
+    { id: 'stem', label: '枝干', defaultColor: '#5d4037' }
+  ],
+  build(registry, item, node, size) {
+    const potH = size.height * 0.32;
+    const potD = size.width * 0.75;
+
+    cylinderComponent(registry, item, pottedPinkRose, 'pot', {
+      diameterTop: potD, diameterBottom: potD * 0.65, height: potH, tessellation: 8
+    }, { position: { x: 0, y: potH / 2, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, pottedPinkRose, 'dirt', {
+      diameterTop: potD * 0.92, diameterBottom: potD * 0.92, height: 0.03, tessellation: 8
+    }, { position: { x: 0, y: potH - 0.015, z: 0 } }, { parent: node });
+
+    const stemH = size.height * 0.45;
+    cylinderComponent(registry, item, pottedPinkRose, 'stem', {
+      diameterTop: 0.02, diameterBottom: 0.032, height: stemH, tessellation: 6
+    }, { position: { x: 0, y: potH + stemH / 2, z: 0 } }, { parent: node });
+
+    const crownCenterY = potH + stemH;
+    const crownWidth = size.width * 0.8;
+    const crownHeight = size.height * 0.32;
+    const crownDepth = size.depth * 0.8;
+
+    // 1. 绿叶冠球
+    sphereComponent(registry, item, pottedPinkRose, 'rose-leaves', {
+      diameter: crownWidth, segments: 7
+    }, {
+      position: { x: 0, y: crownCenterY, z: 0 },
+      scaling: { x: 1.0, y: crownHeight / crownWidth, z: crownDepth / crownWidth }
+    }, { parent: node });
+
+    // 2. 动态凸出于绿叶冠球表面的月季花朵（坐标与花径自适应 size 比例）
+    const bloomRadius = Math.min(size.width, size.depth) * 0.08;
+    const roseBlooms = [
+      { x: 0, y: crownCenterY + crownHeight * 0.52 + bloomRadius * 0.5, z: 0, r: bloomRadius * 1.1 },
+      { x: size.width * 0.28, y: crownCenterY + crownHeight * 0.25, z: size.depth * 0.22, r: bloomRadius * 0.95 },
+      { x: -size.width * 0.3, y: crownCenterY + crownHeight * 0.28, z: -size.depth * 0.18, r: bloomRadius * 0.9 },
+      { x: -size.width * 0.2, y: crownCenterY + crownHeight * 0.12, z: size.depth * 0.3, r: bloomRadius * 0.85 },
+      { x: size.width * 0.25, y: crownCenterY + crownHeight * 0.15, z: -size.depth * 0.26, r: bloomRadius * 0.9 }
+    ];
+
+    roseBlooms.forEach((rb) => {
+      sphereComponent(registry, item, pottedPinkRose, 'pink-rose-blooms', {
+        diameter: rb.r * 2, segments: 6
+      }, { position: { x: rb.x, y: rb.y, z: rb.z } }, { parent: node });
+    });
+  }
+};
+
+
+

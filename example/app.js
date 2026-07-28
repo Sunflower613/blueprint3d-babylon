@@ -162,6 +162,8 @@ import {
 } from '../src/index.js';
 
 const BABYLON = { Color3, MeshBuilder, PointerEventTypes, StandardMaterial, TransformNode, Vector3, Tools };
+window.FURNITURE_LIST = FURNITURE_LIST;
+
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const INCHES_PER_UNIT = 39.37;
@@ -915,6 +917,9 @@ if (snapToggleBtn) {
 })();
 syncLocalToStore();
 renderMaterialLibrary();
+
+
+
 
 
 // ==========================================

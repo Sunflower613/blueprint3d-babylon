@@ -38,8 +38,8 @@ test('sofa definitions preserve component IDs and use continuous upholstered bod
 test('straight and arc floor lamps are independently registered and switchable', () => {
   const straight = getFurnitureDefinition('floor_lamp_light');
   const arc = getFurnitureDefinition('arc_floor_lamp_light');
-  assert.equal(straight.name, '落地灯');
-  assert.equal(arc.name, '弧形落地灯');
+  assert.equal(straight.type, 'floor_lamp_light');
+  assert.equal(arc.type, 'arc_floor_lamp_light');
   assert.ok(FURNITURE_LIST.includes(arc));
   assert.deepEqual(arc.emissiveComponents, ['glow']);
   assert.equal(arc.lightColorComponent, 'glow');
@@ -54,3 +54,55 @@ test('straight and arc floor lamps are independently registered and switchable',
   built.scene.dispose();
   built.engine.dispose();
 });
+
+test('wall lantern light and deluxe crystal chandelier are properly registered and built', () => {
+  const wallLantern = getFurnitureDefinition('wall_lantern_light');
+  const crystalChandelier = getFurnitureDefinition('deluxe_crystal_chandelier');
+
+  assert.equal(wallLantern.type, 'wall_lantern_light');
+  assert.equal(wallLantern.placeType, 'wall');
+  assert.equal(wallLantern.category, 'lighting');
+  assert.equal(wallLantern.components[0].id, 'lantern_shade', 'Representative main component must be first');
+  assert.ok(FURNITURE_LIST.includes(wallLantern));
+
+  assert.equal(crystalChandelier.type, 'deluxe_crystal_chandelier');
+  assert.equal(crystalChandelier.placeType, 'ceiling');
+  assert.equal(crystalChandelier.category, 'lighting');
+  assert.equal(crystalChandelier.components[0].id, 'crystals', 'Representative main component must be first');
+  assert.ok(FURNITURE_LIST.includes(crystalChandelier));
+
+  const builtLantern = build('wall_lantern_light');
+  const lanternShades = builtLantern.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'lantern_shade');
+  assert.ok(lanternShades.length >= 2, 'Wall lantern should have multi-layered鼓形 body');
+  builtLantern.scene.dispose();
+  builtLantern.engine.dispose();
+
+  const builtChandelier = build('deluxe_crystal_chandelier');
+  const crystals = builtChandelier.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'crystals');
+  const bulbs = builtChandelier.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'bulbs');
+  assert.ok(crystals.length >= 7, 'Crystal chandelier should have multiple crystal drop components');
+  assert.ok(bulbs.length >= 12, 'Crystal chandelier should have candle lights & flame bulbs');
+  builtChandelier.scene.dispose();
+  builtChandelier.engine.dispose();
+});
+
+test('chinese red lantern is properly registered and built with main component first', () => {
+  const redLantern = getFurnitureDefinition('chinese_red_lantern');
+
+  assert.equal(redLantern.type, 'chinese_red_lantern');
+  assert.equal(redLantern.placeType, 'ceiling');
+  assert.equal(redLantern.category, 'lighting');
+  assert.equal(redLantern.components[0].id, 'lantern_body', 'Representative main component must be first');
+  assert.ok(FURNITURE_LIST.includes(redLantern));
+
+  const builtLantern = build('chinese_red_lantern');
+  const bodies = builtLantern.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'lantern_body');
+  const goldTrims = builtLantern.meshes.filter((mesh) => mesh.metadata?.blueprintFurnitureComponentId === 'gold_trim');
+  assert.ok(bodies.length >= 3, 'Red lantern should have 3-layer expanded body');
+  assert.ok(goldTrims.length >= 3, 'Red lantern should have gold cloud trim accents');
+  builtLantern.scene.dispose();
+  builtLantern.engine.dispose();
+});
+
+
+

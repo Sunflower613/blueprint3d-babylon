@@ -1015,6 +1015,11 @@ export class FloorplanDocument {
           wall = preferred;
           wallId = preferred.id;
           isCurrentMatched = true;
+        } else if (isCurrentSharedWithOthers) {
+          // The room moved away from a shared wall. Keep the wall in place for
+          // the other room and only remove this room's stale association.
+          wall = null;
+          wallId = null;
         }
       }
 
@@ -1164,10 +1169,28 @@ export class FloorplanDocument {
     const room = this.getRoom(roomId);
     if (!room || room.locked) return false;
     const wallIds = new Set(Object.values(room.wallIds || {}));
+    const remainingRooms = this.floorplan.floor.rooms.filter((candidate) => candidate.id !== room.id);
+    const preservedWallOwners = new Map();
+    remainingRooms.forEach((candidate) => {
+      Object.values(candidate.wallIds || {}).forEach((wallId) => {
+        if (wallIds.has(wallId) && !preservedWallOwners.has(wallId)) {
+          preservedWallOwners.set(wallId, candidate);
+        }
+      });
+    });
+    const removableWallIds = new Set(
+      Array.from(wallIds).filter((wallId) => !preservedWallOwners.has(wallId))
+    );
+
     this.floorplan.items = this.floorplan.items.filter((item) => item.floorId !== room.floorId || (item.roomId !== room.id && !pointInRoom(room, item.x, item.z)));
-    this.floorplan.openings = this.floorplan.openings.filter((opening) => !wallIds.has(opening.wallId));
-    this.floorplan.walls = this.floorplan.walls.filter((wall) => !wallIds.has(wall.id));
-    this.floorplan.floor.rooms = this.floorplan.floor.rooms.filter((candidate) => candidate.id !== room.id);
+    this.floorplan.openings = this.floorplan.openings.filter((opening) => !removableWallIds.has(opening.wallId));
+    this.floorplan.walls = this.floorplan.walls.filter((wall) => {
+      if (removableWallIds.has(wall.id)) return false;
+      const nextOwner = preservedWallOwners.get(wall.id);
+      if (nextOwner && wall.roomId === room.id) wall.roomId = nextOwner.id;
+      return true;
+    });
+    this.floorplan.floor.rooms = remainingRooms;
     return true;
   }
 

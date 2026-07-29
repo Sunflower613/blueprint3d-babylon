@@ -523,6 +523,8 @@ export function updateComponentMaterial(type, id, part, material, rebuild = true
       patch = { sideMaterial: matVal, sideColor: color };
     } else if (part === 'bottom') {
       patch = { bottomMaterial: matVal, bottomColor: color };
+    } else if (part === 'frame') {
+      patch = { frameMaterial: matVal, frameColor: color };
     }
     ctx.testMap.executeCommand('updateRoof', { roofId: id, patch, rebuild });
   } else if (type === 'fence') {
@@ -666,6 +668,7 @@ function findRoofComponentIdFromNode(node) {
   let current = node;
   while (current) {
     if (current.name) {
+      if (current.name.includes('roof_frame')) return 'frame';
       if (current.name.includes('roof_side')) return 'side';
       if (current.name.includes('roof_bottom')) return 'bottom';
       if (current.name.includes('roof_top')) return 'top';
@@ -854,7 +857,10 @@ export function extractMaterial(target, precise = true) {
       const roof = ctx.testMap.getEntity('roof', target.id);
       if (roof) {
         const componentId = target.pick ? findRoofComponentIdFromNode(target.pick.pickedMesh) : null;
-        if (componentId === 'side') {
+        if (componentId === 'frame') {
+          pickedMaterial = roof.frameMaterial || null;
+          pickedColor = roof.frameColor || '#333333';
+        } else if (componentId === 'side') {
           pickedMaterial = roof.sideMaterial || roof.material;
           pickedColor = roof.sideColor || roof.color || '#b75b54';
         } else if (componentId === 'bottom') {
@@ -1062,6 +1068,8 @@ export function extractMaterial(target, precise = true) {
         const rawColSide = roof.sideColor || '#b75b54';
         const rawMatBottom = roof.bottomMaterial || null;
         const rawColBottom = roof.bottomColor || '#b75b54';
+        const rawMatFrame = roof.frameMaterial || null;
+        const rawColFrame = roof.frameColor || '#333333';
         materialsArray.push({
           componentId: 'top',
           material: tryUpdateToFullMaterial(rawMatTop || rawColTop),
@@ -1076,6 +1084,11 @@ export function extractMaterial(target, precise = true) {
           componentId: 'bottom',
           material: tryUpdateToFullMaterial(rawMatBottom || rawColBottom),
           color: rawColBottom
+        });
+        materialsArray.push({
+          componentId: 'frame',
+          material: tryUpdateToFullMaterial(rawMatFrame || rawColFrame),
+          color: rawColFrame
         });
       }
     } else if (target.type === 'stairs') {
@@ -1257,6 +1270,7 @@ export function applyMaterial(target, designMode) {
         const topEntry = activeMaterialArray.find(e => e.componentId === 'top') || activeMaterialArray[0];
         const sideEntry = activeMaterialArray.find(e => e.componentId === 'side') || activeMaterialArray[1] || topEntry;
         const bottomEntry = activeMaterialArray.find(e => e.componentId === 'bottom') || activeMaterialArray[2] || sideEntry;
+        const frameEntry = activeMaterialArray.find(e => e.componentId === 'frame');
         
         ctx.testMap.updateRoof(target.id, {
           material: topEntry.material,
@@ -1264,7 +1278,9 @@ export function applyMaterial(target, designMode) {
           sideMaterial: sideEntry.material,
           sideColor: sideEntry.color,
           bottomMaterial: bottomEntry.material,
-          bottomColor: bottomEntry.color
+          bottomColor: bottomEntry.color,
+          frameMaterial: frameEntry ? frameEntry.material : undefined,
+          frameColor: frameEntry ? frameEntry.color : undefined
         });
       } else if (target.type === 'stairs') {
         const topEntry = activeMaterialArray.find(e => e.componentId === 'top') || activeMaterialArray[0];
@@ -1706,7 +1722,9 @@ export function applyMaterial(target, designMode) {
                 sideMaterial: roof.sideMaterial,
                 sideColor: roof.sideColor,
                 bottomMaterial: roof.bottomMaterial,
-                bottomColor: roof.bottomColor
+                bottomColor: roof.bottomColor,
+                frameMaterial: roof.frameMaterial,
+                frameColor: roof.frameColor
               });
               count++;
             }

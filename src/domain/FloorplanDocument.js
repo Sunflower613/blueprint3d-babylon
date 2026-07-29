@@ -395,6 +395,7 @@ export class FloorplanDocument {
       roof.bottomMaterial ||= roof.bottomColor;
       roof.sideHidden = !!roof.sideHidden;
       roof.bottomHidden = !!roof.bottomHidden;
+      roof.hideFrame = roof.hideFrame !== undefined ? !!roof.hideFrame : roof.showFrame === false;
       roof.locked = !!roof.locked;
       roof.curve = toFiniteNumber(roof.curve, 0);
       roof.elevation = roof.elevation !== undefined ? toFiniteNumber(roof.elevation, 0) : undefined;
@@ -1188,8 +1189,11 @@ export class FloorplanDocument {
       bottomMaterial: partialRoof.bottomMaterial || partialRoof.bottomColor || '#f9fbff',
       sideHidden: !!partialRoof.sideHidden,
       bottomHidden: !!partialRoof.bottomHidden,
+      hideFrame: partialRoof.hideFrame !== undefined ? !!partialRoof.hideFrame : partialRoof.showFrame === false,
       locked: !!partialRoof.locked,
       curve: Number(partialRoof.curve || 0),
+      topWidth: partialRoof.topWidth !== undefined ? Math.max(0.1, Number(partialRoof.topWidth)) : undefined,
+      topDepth: partialRoof.topDepth !== undefined ? Math.max(0.1, Number(partialRoof.topDepth)) : undefined,
       elevation: partialRoof.elevation !== undefined ? Number(partialRoof.elevation) : undefined
     };
     this.floorplan.roofs.push(roof);
@@ -1202,6 +1206,8 @@ export class FloorplanDocument {
     if (roof.locked && !('locked' in patch)) return roof;
     Object.assign(roof, patch);
     if ('elevation' in patch) roof.elevation = patch.elevation !== undefined ? Number(patch.elevation) : undefined;
+    if ('topWidth' in patch) roof.topWidth = patch.topWidth !== undefined ? Math.max(0.1, Number(patch.topWidth)) : undefined;
+    if ('topDepth' in patch) roof.topDepth = patch.topDepth !== undefined ? Math.max(0.1, Number(patch.topDepth)) : undefined;
     roof.x = Number(roof.x || 0);
     roof.z = Number(roof.z || 0);
     roof.width = Math.max(1, Number(roof.width || 1));
@@ -1220,6 +1226,7 @@ export class FloorplanDocument {
     roof.bottomMaterial ||= roof.bottomColor;
     roof.sideHidden = !!roof.sideHidden;
     roof.bottomHidden = !!roof.bottomHidden;
+    roof.hideFrame = patch.hideFrame !== undefined ? !!patch.hideFrame : (patch.showFrame !== undefined ? !patch.showFrame : !!roof.hideFrame);
     return roof;
   }
 

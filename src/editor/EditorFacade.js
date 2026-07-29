@@ -597,6 +597,20 @@ export class EditorFacade {
         } else {
           this._renderer.build({ rebuildType: 'all' });
         }
+      } else if (name === 'updateRoof' || (name === 'updateStructure' && args.type === 'roof')) {
+        const roofId = args.roofId || args.id;
+        if (typeof this._renderer.buildRoofs === 'function') {
+          this._renderer.buildRoofs(roofId);
+        } else {
+          this._renderer.build({ rebuildType: 'all' });
+        }
+      } else if (name === 'updateStairs' || (name === 'updateStructure' && args.type === 'stairs')) {
+        const stairsId = args.stairsId || args.id;
+        if (typeof this._renderer.buildStairs === 'function') {
+          this._renderer.buildStairs(stairsId);
+        } else {
+          this._renderer.build({ rebuildType: 'all' });
+        }
       } else {
         this._renderer.build({ rebuildType: 'all' });
       }

@@ -148,10 +148,19 @@ export function updateSelectedStructure() {
   if (selected.type === 'roof') {
     patch.type = patch.subtype;
     patch.bottomHidden = document.getElementById('structure-bottom-hidden').checked;
+    patch.hideFrame = document.getElementById('structure-hide-frame')?.checked;
     patch.curve = Number(document.getElementById('structure-curve')?.value || 0);
     const eleInput = document.getElementById('structure-elevation');
     if (eleInput) {
       patch.elevation = Number(eleInput.value);
+    }
+    const twInput = document.getElementById('structure-top-width');
+    if (twInput) {
+      patch.topWidth = Number(twInput.value);
+    }
+    const tdInput = document.getElementById('structure-top-depth');
+    if (tdInput) {
+      patch.topDepth = Number(tdInput.value);
     }
   }
   if (selected.type === 'stairs') {

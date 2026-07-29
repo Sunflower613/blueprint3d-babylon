@@ -7,7 +7,7 @@ import { FURNITURE_DEFINITIONS, FURNITURE_LIST, getFurnitureDefinition, isApplia
 import { healingMusic } from '../audio/healingMusic.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
 import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } from '../openings/index.js';
-import { getRoofGeometryData } from '../geometry/roofGeometry.js';
+import { getRoofGeometryData, getRoofFramePaths } from '../geometry/roofGeometry.js';
 import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
 import { buildFenceGateGeometry } from '../geometry/fenceGateGeometry.js';
@@ -1875,9 +1875,22 @@ export class BabylonSceneRenderer {
       });
   }
 
-  buildRoofs() {
+  buildRoofs(targetRoofId) {
     if (this.deferRenderWork()) return;
+
+    if (targetRoofId) {
+      const existing = this.roofNodes.get(targetRoofId);
+      if (existing) {
+        existing.dispose();
+        this.roofNodes.delete(targetRoofId);
+      }
+    } else {
+      this.roofNodes.forEach((node) => node.dispose());
+      this.roofNodes.clear();
+    }
+
     this.floorplan.roofs.filter((roof) => {
+      if (targetRoofId && roof.id !== targetRoofId) return false;
       const roofFloor = this.document.getFloor(roof.floorId);
       if (roofFloor && roofFloor.hideRoof) return false;
       return this.document.isFloorVisible(roof.floorId);
@@ -1904,7 +1917,7 @@ export class BabylonSceneRenderer {
 
       const subtype = roof.subtype || roof.type || 'gable';
       const curve = Number(roof.curve || 0);
-      const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve);
+      const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve, { topWidth: roof.topWidth, topDepth: roof.topDepth });
 
       if (topIndices && topIndices.length > 0) {
         const topMesh = new BABYLON.Mesh(`roof_top_${roof.id}`, this.scene);
@@ -1966,13 +1979,89 @@ export class BabylonSceneRenderer {
         this.shadowCasters.push(bottomMesh);
       }
 
+      // 默认开启显示骨架 (未勾选 hideFrame 时)，侧面跟随 sideHidden 联动，采用高性能方管型材 (tessellation = 4)
+      const showFrame = !roof.hideFrame;
+      if (showFrame) {
+        const frameGridSize = Number(roof.frameGridSize) || 1.0;
+        const frameRadius = Number(roof.frameRadius) || Number(roof.frameThickness) || 0.025;
+        const includeSide = !roof.sideHidden;
+        const rawPaths = getRoofFramePaths(subtype, width, depth, height, curve, frameGridSize, includeSide, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+        const tessellation = roof.frameProfile === 'round' ? 8 : 4;
+
+        const frameMat = createBlueprintMaterial(
+          this.scene,
+          `roof_frame_${roof.id}_mat`,
+          roof.frameMaterial || roof.frameColor || '#2c2c2c',
+          {
+            fallbackColor: roof.frameColor || '#2c2c2c',
+            flatShading: true,
+            backFaceCulling: false
+          }
+        );
+
+        const tubeMeshes = [];
+        rawPaths.forEach((path, idx) => {
+          if (path.length >= 2) {
+            const vecPath = path.map((pt) => new BABYLON.Vector3(pt.x, pt.y, pt.z));
+            const tube = BABYLON.MeshBuilder.CreateTube(
+              `roof_frame_tube_${roof.id}_${idx}`,
+              {
+                path: vecPath,
+                radius: frameRadius,
+                tessellation,
+                cap: BABYLON.Mesh.CAP_ALL,
+                updatable: false
+              },
+              this.scene
+            );
+            tube.material = frameMat;
+            tube.receiveShadows = true;
+            this.shadowCasters.push(tube);
+            tubeMeshes.push(tube);
+          }
+        });
+
+        if (tubeMeshes.length > 1) {
+          const mergedFrameMesh = BABYLON.Mesh.MergeMeshes(
+            tubeMeshes,
+            true,
+            true,
+            undefined,
+            false,
+            true
+          );
+          if (mergedFrameMesh) {
+            mergedFrameMesh.name = `roof_frame_${roof.id}`;
+            mergedFrameMesh.parent = group;
+          }
+        } else if (tubeMeshes.length === 1) {
+          tubeMeshes[0].parent = group;
+        }
+      }
+
       this.roofNodes.set(roof.id, group);
     });
   }
 
-  buildStairs() {
+  buildStairs(targetStairsId) {
     if (this.deferRenderWork()) return;
-    this.floorplan.stairs.filter((stairs) => this.document.isFloorVisible(stairs.floorId)).forEach((stairs) => {
+    if (!this.stairNodes) this.stairNodes = new Map();
+
+    if (targetStairsId) {
+      const existing = this.stairNodes.get(targetStairsId);
+      if (existing) {
+        existing.dispose();
+        this.stairNodes.delete(targetStairsId);
+      }
+    } else {
+      this.stairNodes.forEach((node) => node.dispose());
+      this.stairNodes.clear();
+    }
+
+    this.floorplan.stairs.filter((stairs) => {
+      if (targetStairsId && stairs.id !== targetStairsId) return false;
+      return this.document.isFloorVisible(stairs.floorId);
+    }).forEach((stairs) => {
       const floorY = this.document.getFloorElevation(stairs.floorId);
       const stairsOffset = this.document.getStairsElevationOffset(stairs);
       const group = new BABYLON.TransformNode(`stairs_${stairs.id}`, this.scene);

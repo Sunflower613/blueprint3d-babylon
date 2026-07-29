@@ -131,6 +131,11 @@ export {
   buildFenceGateGeometry
 } from '../geometry/fenceGateGeometry.js';
 
+export {
+  getRoofGeometryData,
+  getRoofFramePaths
+} from '../geometry/roofGeometry.js';
+
 // ==========================================
 // 4. Audio 音频
 // ==========================================

@@ -192,6 +192,17 @@ export function ensureStructureEditor() {
   bottomHiddenLabel.append(bottomHiddenInput, bottomHiddenSpan);
   editor.appendChild(bottomHiddenLabel);
 
+  const hideFrameLabel = document.createElement('label');
+  hideFrameLabel.className = 'check-field';
+  hideFrameLabel.id = 'structure-hide-frame-field';
+  const hideFrameInput = document.createElement('input');
+  hideFrameInput.id = 'structure-hide-frame';
+  hideFrameInput.type = 'checkbox';
+  const hideFrameSpan = document.createElement('span');
+  hideFrameSpan.textContent = '隐藏骨架';
+  hideFrameLabel.append(hideFrameInput, hideFrameSpan);
+  editor.appendChild(hideFrameLabel);
+
   const mirroredLabel = document.createElement('label');
   mirroredLabel.className = 'check-field';
   mirroredLabel.id = 'structure-mirrored-field';
@@ -211,44 +222,10 @@ export function ensureStructureEditor() {
   editor.appendChild(createStructureField('中空长度 (m)', 'structure-u-void-length', { type: 'number', min: '0', max: '3.0', step: '0.1' }));
   editor.appendChild(createStructureField('底梁条数', 'structure-beam-count', { type: 'number', min: '0', max: '4', step: '1' }));
 
-  // 弧度曲线调整把手 / 输入框
-  const curveLabel = document.createElement('label');
-  curveLabel.className = 'field';
-  curveLabel.id = 'structure-curve-field';
-  const curveSpan = document.createElement('span');
-  curveSpan.textContent = '弧度 (m)';
-  
-  const curveContainer = document.createElement('div');
-  curveContainer.style.display = 'flex';
-  curveContainer.style.alignItems = 'center';
-  curveContainer.style.gap = '5px';
-  curveContainer.style.width = '100%';
+  editor.appendChild(createStructureField('弧度 (m)', 'structure-curve', { type: 'number', step: '0.05' }));
 
-  const btnDec = document.createElement('button');
-  btnDec.type = 'button';
-  btnDec.id = 'structure-curve-dec';
-  btnDec.textContent = '-';
-  btnDec.style.padding = '4px 8px';
-  btnDec.style.cursor = 'pointer';
-
-  const curveInput = document.createElement('input');
-  curveInput.id = 'structure-curve';
-  curveInput.type = 'number';
-  curveInput.step = '0.05';
-  curveInput.value = '0';
-  curveInput.style.flex = '1';
-  curveInput.style.minWidth = '0';
-
-  const btnInc = document.createElement('button');
-  btnInc.type = 'button';
-  btnInc.id = 'structure-curve-inc';
-  btnInc.textContent = '+';
-  btnInc.style.padding = '4px 8px';
-  btnInc.style.cursor = 'pointer';
-
-  curveContainer.append(btnDec, curveInput, btnInc);
-  curveLabel.append(curveSpan, curveContainer);
-  editor.appendChild(curveLabel);
+  editor.appendChild(createStructureField('顶面宽 (m)', 'structure-top-width', { type: 'number', min: '0.1', step: '0.1' }));
+  editor.appendChild(createStructureField('顶面深 (m)', 'structure-top-depth', { type: 'number', min: '0.1', step: '0.1' }));
 
   const deleteButton = document.createElement('button');
   deleteButton.id = 'btn-delete-structure';
@@ -279,8 +256,9 @@ export function updateEditor() {
   const fenceGate = selection.selectedFenceGateId ? testMap.getEntity('fenceGate', selection.selectedFenceGateId) : null;
   const item = selection.selectedItemId ? testMap.getEntity('item', selection.selectedItemId) : null;
   const opening = selection.selectedOpeningId ? testMap.getEntity('opening', selection.selectedOpeningId) : null;
-  const roof = selection.selectedRoofId ? testMap.getEntity('roof', selection.selectedRoofId) : null;
-  const stairs = selection.selectedStairsId ? testMap.getEntity('stairs', selection.selectedStairsId) : null;
+  const activeSelected = testMap.getSelectedEntity?.() || null;
+  const roof = selection.selectedRoofId ? (activeSelected && activeSelected.id === selection.selectedRoofId ? activeSelected : testMap.getEntity('roof', selection.selectedRoofId)) : null;
+  const stairs = selection.selectedStairsId ? (activeSelected && activeSelected.id === selection.selectedStairsId ? activeSelected : testMap.getEntity('stairs', selection.selectedStairsId)) : null;
   const structure = roof || stairs;
   const structureType = roof ? 'roof' : (stairs ? 'stairs' : null);
 
@@ -550,13 +528,40 @@ export function updateEditor() {
     }
     document.getElementById('structure-bottom-hidden').checked = !!structure.bottomHidden;
 
-    const curveField = document.getElementById('structure-curve-field');
+    const hideFrameField = document.getElementById('structure-hide-frame-field');
+    if (hideFrameField) {
+      hideFrameField.classList.toggle('hidden', structureType !== 'roof');
+    }
+    document.getElementById('structure-hide-frame').checked = !!structure.hideFrame;
+
+    const curveField = document.getElementById('structure-curve')?.closest('label');
     if (curveField) {
       curveField.classList.toggle('hidden', structureType !== 'roof');
     }
     const curveInput = document.getElementById('structure-curve');
     if (curveInput) {
       curveInput.value = Number((structure.curve || 0).toFixed(2));
+    }
+
+    const isTrapezoid = structureType === 'roof' && (structure.subtype === 'trapezoid' || structure.type === 'trapezoid');
+    const topWidthField = document.getElementById('structure-top-width')?.closest('label');
+    if (topWidthField) {
+      topWidthField.classList.toggle('hidden', !isTrapezoid);
+    }
+    const topWidthInput = document.getElementById('structure-top-width');
+    if (topWidthInput) {
+      const defaultTw = (structure.width || 6) * 0.5;
+      topWidthInput.value = Number((structure.topWidth !== undefined ? structure.topWidth : defaultTw).toFixed(2));
+    }
+
+    const topDepthField = document.getElementById('structure-top-depth')?.closest('label');
+    if (topDepthField) {
+      topDepthField.classList.toggle('hidden', !isTrapezoid);
+    }
+    const topDepthInput = document.getElementById('structure-top-depth');
+    if (topDepthInput) {
+      const defaultTd = (structure.depth || 6) * 0.5;
+      topDepthInput.value = Number((structure.topDepth !== undefined ? structure.topDepth : defaultTd).toFixed(2));
     }
 
     const elevationField = document.getElementById('structure-elevation-field');
@@ -844,6 +849,15 @@ export function renderDesignPanel(room, wall, item, structure = null, structureT
       }, getMaterialFriendlyName(structure.bottomMaterial || structure.bottomColor || '#ffffff'), structure.bottomMaterial));
       groupBottom.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'bottom', activeMaterialDescriptor)));
       designSelectionPanel.appendChild(groupBottom);
+
+      // 4. 骨架 (仅当是屋顶时)
+      const groupFrame = document.createElement('div');
+      groupFrame.className = 'component-material-row';
+      groupFrame.appendChild(createColorField('骨架', structure.frameColor || '#2c2c2c', (color) => {
+        updateComponentMaterial(structureType, structure.id, 'frame', color);
+      }, getMaterialFriendlyName(structure.frameMaterial || structure.frameColor || '#2c2c2c'), structure.frameMaterial));
+      groupFrame.appendChild(createApplyMaterialButton('应用当前材质', () => updateComponentMaterial(structureType, structure.id, 'frame', activeMaterialDescriptor)));
+      designSelectionPanel.appendChild(groupFrame);
     }
     return;
   }
@@ -1298,27 +1312,11 @@ export function initUiEventListeners() {
     }
   });
 
-  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-beam-count', 'structure-curve', 'structure-elevation'].forEach((id) => {
+  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-hide-frame', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-beam-count', 'structure-curve', 'structure-elevation', 'structure-top-width', 'structure-top-depth'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
   });
 
-  document.getElementById('structure-curve-dec')?.addEventListener('click', () => {
-    const input = document.getElementById('structure-curve');
-    if (input) {
-      const val = Math.max(-5, Number(input.value) - 0.05);
-      input.value = Number(val.toFixed(2));
-      updateSelectedStructure();
-    }
-  });
 
-  document.getElementById('structure-curve-inc')?.addEventListener('click', () => {
-    const input = document.getElementById('structure-curve');
-    if (input) {
-      const val = Math.min(5, Number(input.value) + 0.05);
-      input.value = Number(val.toFixed(2));
-      updateSelectedStructure();
-    }
-  });
   
   document.getElementById('structure-rotation')?.addEventListener('change', (event) => {
     commitSelectedStructureRotation(event.target.value);

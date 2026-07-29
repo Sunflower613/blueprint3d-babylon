@@ -3,6 +3,33 @@ const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, Di
 
 const SKYBOX_SIZE = 1000.0;
 const SKYBOX_HORIZON_OFFSET = SKYBOX_SIZE * 0.1;
+const MOBILE_RENDER_FPS = 30;
+const DESKTOP_RENDER_FPS = 45;
+
+export function getRenderPerformanceProfile(environment = {}) {
+  const navigatorLike = environment.navigator || (typeof navigator !== 'undefined' ? navigator : {});
+  const matchMediaLike = environment.matchMedia || (typeof matchMedia === 'function' ? matchMedia : null);
+  const userAgent = String(navigatorLike.userAgent || '');
+  const coarsePointer = !!matchMediaLike?.('(pointer: coarse)')?.matches;
+  const mobile = coarsePointer || /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  const constrainedMemory = Number(navigatorLike.deviceMemory) > 0 && Number(navigatorLike.deviceMemory) <= 4;
+
+  return {
+    targetFps: mobile || constrainedMemory ? MOBILE_RENDER_FPS : DESKTOP_RENDER_FPS,
+    hardwareScalingLevel: mobile || constrainedMemory ? 1.35 : 1,
+    shadowMapSize: mobile || constrainedMemory ? 512 : 1024,
+    shadowBlurKernel: mobile || constrainedMemory ? 12 : 24
+  };
+}
+
+function descriptorKey(descriptor) {
+  if (!descriptor) return 'default';
+  try {
+    return JSON.stringify(descriptor);
+  } catch {
+    return String(descriptor);
+  }
+}
 
 function createSolidColorDataUrl(colorHex) {
   if (typeof document === 'undefined') {
@@ -32,10 +59,15 @@ export class Viewer3D {
    */
   constructor(canvas, options = {}) {
     const clearColor = options.clearColor || '#eef4fbff';
+    const performanceProfile = {
+      ...getRenderPerformanceProfile(),
+      ...(options.performanceProfile || {})
+    };
 
     // ========== 引擎与场景 ==========
     /** @type {BABYLON.Engine} BabylonJS 渲染引擎 */
     this.engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
+    this.engine.setHardwareScalingLevel(performanceProfile.hardwareScalingLevel);
     /** @type {BABYLON.Scene} BabylonJS 场景 */
     this.scene = new BABYLON.Scene(this.engine);
     this.scene.clearColor = BABYLON.Color4.FromHexString(clearColor);
@@ -74,14 +106,31 @@ export class Viewer3D {
 
     // ========== 阴影 ==========
     /** @type {BABYLON.ShadowGenerator} 阴影生成器 */
-    this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.sun);
+    this.shadowGenerator = new BABYLON.ShadowGenerator(performanceProfile.shadowMapSize, this.sun);
     this.shadowGenerator.useBlurExponentialShadowMap = true;
-    this.shadowGenerator.blurKernel = 24;
+    this.shadowGenerator.blurKernel = performanceProfile.shadowBlurKernel;
     this.shadowGenerator.darkness = 0.25; // 避免阴影区域变为纯死黑(#000000)，保留 25% 自然柔和的环境日光
     // ========== 环境纹理（用于镜面反射） ==========
     // 创建程序化环境纹理，使 kind:'mirror' 材质有可见的反射效果
     this._environmentInitialized = false;
     this._renderLoopStarted = false;
+    this._engineLoopRunning = false;
+    this._targetFrameInterval = 1000 / performanceProfile.targetFps;
+    this._lastRenderTime = 0;
+    this._renderFrame = () => {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const elapsed = now - this._lastRenderTime;
+      if (elapsed + 0.5 < this._targetFrameInterval) return;
+      this._lastRenderTime = now - (elapsed % this._targetFrameInterval);
+      this.scene.render();
+    };
+    this._visibilityHandler = () => {
+      if (document.hidden) {
+        this._stopEngineLoop();
+      } else if (this._renderLoopStarted) {
+        this._startEngineLoop();
+      }
+    };
 
     // ========== 地面平面（用于射线拾取） ==========
     /** @type {BABYLON.Plane} 地面平面 */
@@ -110,14 +159,30 @@ export class Viewer3D {
   startRenderLoop() {
     if (this._renderLoopStarted) return;
     this._renderLoopStarted = true;
-    this.engine.runRenderLoop(() => this.scene.render());
+    this._lastRenderTime = 0;
+    this._startEngineLoop();
     window.addEventListener('resize', this._resizeHandler);
+    document.addEventListener('visibilitychange', this._visibilityHandler);
   }
 
   stopRenderLoop() {
+    if (!this._renderLoopStarted) return;
     this._renderLoopStarted = false;
-    this.engine.stopRenderLoop();
+    this._stopEngineLoop();
     window.removeEventListener('resize', this._resizeHandler);
+    document.removeEventListener('visibilitychange', this._visibilityHandler);
+  }
+
+  _startEngineLoop() {
+    if (this._engineLoopRunning || document.hidden) return;
+    this._engineLoopRunning = true;
+    this.engine.runRenderLoop(this._renderFrame);
+  }
+
+  _stopEngineLoop() {
+    if (!this._engineLoopRunning) return;
+    this.engine.stopRenderLoop(this._renderFrame);
+    this._engineLoopRunning = false;
   }
 
   prepareFor3D() {
@@ -441,8 +506,10 @@ export class Viewer3D {
   setEnvironmentMaterials(skyDescriptor = null, groundDescriptor = null) {
     this._environmentSkyMaterial = skyDescriptor;
     this._environmentGroundMaterial = groundDescriptor;
+    const skyMaterialKey = descriptorKey(skyDescriptor);
+    const groundMaterialKey = descriptorKey(groundDescriptor);
 
-    if (this.skybox) {
+    if (this.skybox && this._appliedSkyMaterialKey !== skyMaterialKey) {
       let finalSrc = SKY_TEXTURE_URL;
       let tintColor = null;
       let skyLightColor = '#d9ecff';
@@ -474,9 +541,14 @@ export class Viewer3D {
       this.hemi.groundColor = skyLight.scale(0.45);
 
       if (this.skybox instanceof BABYLON.PhotoDome || this.skybox.photoTexture !== undefined) {
-        this.skybox.photoTexture = new BABYLON.Texture(finalSrc, this.scene);
-        this.skybox.photoTexture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
-        this.skybox.photoTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        const oldTexture = this.skybox.photoTexture;
+        const nextTexture = new BABYLON.Texture(finalSrc, this.scene);
+        nextTexture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        nextTexture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+        this.skybox.photoTexture = nextTexture;
+        if (oldTexture && oldTexture !== nextTexture && !oldTexture.isDisposed) {
+          oldTexture.dispose();
+        }
         const domeMat = this.skybox.mesh?.material;
         if (domeMat) {
           domeMat.emissiveColor = tintColor ? BABYLON.Color3.FromHexString(tintColor) : skyLight;
@@ -493,9 +565,10 @@ export class Viewer3D {
         reflection.coordinatesMode = BABYLON.Texture.FIXED_EQUIRECTANGULAR_MODE;
         material.reflectionTexture = reflection;
       }
+      this._appliedSkyMaterialKey = skyMaterialKey;
     }
 
-    if (this.grassLawn) {
+    if (this.grassLawn && this._appliedGroundMaterialKey !== groundMaterialKey) {
       if (this.grassLawn.material) {
         this.grassLawn.material.dispose();
       }
@@ -506,6 +579,7 @@ export class Viewer3D {
         desc,
         { isFloor: true, isEnvironmentGround: true, surfaceWidth: 120, surfaceHeight: 120 }
       );
+      this._appliedGroundMaterialKey = groundMaterialKey;
     }
   }
 
@@ -564,8 +638,7 @@ export class Viewer3D {
     this.clear3DGrid();
     if (this.skybox) this.skybox.dispose();
     if (this.grassLawn) this.grassLawn.dispose();
-    window.removeEventListener('resize', this._resizeHandler);
-    this.engine.stopRenderLoop();
+    this.stopRenderLoop();
     this.scene.dispose();
     this.engine.dispose();
   }

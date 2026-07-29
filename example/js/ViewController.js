@@ -124,6 +124,7 @@ export function setView(nextView) {
       Context.scene.render();
     });
   } else {
+    Context.viewer3d.stopRenderLoop();
     Context.camera.detachControl(Context.canvas);
     clear3DEditHandles();
     clear3DGrid();

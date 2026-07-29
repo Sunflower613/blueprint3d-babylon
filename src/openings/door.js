@@ -2,7 +2,7 @@ import { CSG, MeshBuilder, TransformNode } from '../core/babylon.js';
 const BABYLON = { CSG, MeshBuilder, TransformNode };
 import { createBox, createCylinder } from '../core/primitives.js';
 import { createBlueprintMaterial } from '../core/materials.js';
-import { buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
+import { buildOpeningBars, buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
 import { isSymmetricShape } from './openingShapes.js';
 
 export function buildDoorOpening(registry, opening, parent, options = {}) {
@@ -18,6 +18,9 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
   const panelMat = opening.panelMaterial
     ? createBlueprintMaterial(registry.scene, `door_panel_${opening.id}`, opening.panelMaterial, materialOptions)
     : registry.materials.door;
+  const mullionMat = opening.mullionMaterial
+    ? createBlueprintMaterial(registry.scene, `door_mullion_${opening.id}`, opening.mullionMaterial, materialOptions)
+    : frameMat;
 
   buildOpeningFrame(registry, opening, parent, {
     width,
@@ -104,6 +107,27 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
     leftPanelMesh.position.set(-leftHingeX, 0, 0);
     rightPanelMesh.position.set(-rightHingeX, 0, 0);
 
+    buildOpeningBars(registry, opening, leftHinge, {
+      width,
+      height,
+      frameW,
+      barDepth: panelD + 0.012,
+      material: mullionMat,
+      clipMinX: -width / 2 + frameW,
+      clipMaxX: -1e-6,
+      offsetX: -leftHingeX
+    });
+    buildOpeningBars(registry, opening, rightHinge, {
+      width,
+      height,
+      frameW,
+      barDepth: panelD + 0.012,
+      material: mullionMat,
+      clipMinX: 0,
+      clipMaxX: width / 2 - frameW,
+      offsetX: -rightHingeX
+    });
+
     const handleD = 0.02;
     const handleH = 0.12;
     const leftHandleX = -leftHingeX - 0.06;
@@ -168,6 +192,15 @@ export function buildDoorOpening(registry, opening, parent, options = {}) {
       shadowCaster: true
     });
     panelMesh.metadata = { ...panelMesh.metadata, blueprintOpeningComponentId: 'panel' };
+
+    buildOpeningBars(registry, opening, hinge, {
+      width,
+      height,
+      frameW,
+      barDepth: panelD + 0.012,
+      material: mullionMat,
+      offsetX: -hingeX
+    });
 
     const handleD = 0.02;
     const handleH = 0.12;

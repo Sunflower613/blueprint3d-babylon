@@ -85,3 +85,34 @@ test('custom window glass stays transparent unless an explicit alpha is supplied
     engine.dispose();
   }
 });
+
+test('doors render all four bar styles on the moving panel', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const registry = createRegistry(scene);
+  const parent = new BABYLON.TransformNode('barred-door-parent', scene);
+
+  buildDoorOpening(registry, {
+    id: 'barred-door',
+    type: 'door',
+    shape: 'round-arch',
+    width: 1.2,
+    height: 2.1,
+    horizontalBars: 1,
+    verticalBars: 1,
+    concentricBars: 1,
+    radialBars: 5,
+    isOpen: true
+  }, parent);
+
+  const componentIds = new Set(scene.meshes.map((mesh) => mesh.metadata?.blueprintOpeningComponentId));
+  assert.ok(componentIds.has('hbar'));
+  assert.ok(componentIds.has('vbar'));
+  assert.ok(componentIds.has('cbar'));
+  assert.ok(componentIds.has('rbar'));
+  const barMeshes = scene.meshes.filter((mesh) => ['hbar', 'vbar', 'cbar', 'rbar'].includes(mesh.metadata?.blueprintOpeningComponentId));
+  assert.ok(barMeshes.every((mesh) => mesh.parent?.name === 'door_hinge_barred-door'));
+
+  scene.dispose();
+  engine.dispose();
+});

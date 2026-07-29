@@ -371,9 +371,11 @@ export class FloorplanDocument {
       if (opening.type === 'window') {
         opening.height = toFinitePositive(opening.height, 0.85, 0.1);
         opening.sillHeight = Math.max(0, toFiniteNumber(opening.sillHeight ?? 1.05, 1.05));
-        opening.horizontalBars = Math.max(0, Math.floor(toFiniteNumber(opening.horizontalBars ?? 0, 0)));
-        opening.verticalBars = Math.max(0, Math.floor(toFiniteNumber(opening.verticalBars ?? 0, 0)));
       }
+      opening.horizontalBars = Math.max(0, Math.floor(toFiniteNumber(opening.horizontalBars ?? 0, 0)));
+      opening.verticalBars = Math.max(0, Math.floor(toFiniteNumber(opening.verticalBars ?? 0, 0)));
+      opening.concentricBars = Math.max(0, Math.floor(toFiniteNumber(opening.concentricBars ?? 0, 0)));
+      opening.radialBars = Math.max(0, Math.floor(toFiniteNumber(opening.radialBars ?? 0, 0)));
     });
 
     normalized.roofs.forEach((roof) => {
@@ -1599,6 +1601,12 @@ export class FloorplanDocument {
     }
     if (opening.verticalBars !== undefined) {
       opening.verticalBars = Math.max(0, Math.floor(toFiniteNumber(opening.verticalBars, 0)));
+    }
+    if (opening.concentricBars !== undefined) {
+      opening.concentricBars = Math.max(0, Math.floor(toFiniteNumber(opening.concentricBars, 0)));
+    }
+    if (opening.radialBars !== undefined) {
+      opening.radialBars = Math.max(0, Math.floor(toFiniteNumber(opening.radialBars, 0)));
     }
     return opening;
   }

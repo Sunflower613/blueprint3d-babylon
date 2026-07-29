@@ -136,10 +136,12 @@ export function createOpeningCutterMesh(scene, opening, options = {}) {
   return mesh;
 }
 
-export function buildWindowMullions(registry, opening, parent, options = {}) {
+export function buildOpeningBars(registry, opening, parent, options = {}) {
   const horizontalBars = Math.max(0, Math.floor(options.horizontalBars ?? opening.horizontalBars ?? 0));
   const verticalBars = Math.max(0, Math.floor(options.verticalBars ?? opening.verticalBars ?? 0));
-  if (horizontalBars <= 0 && verticalBars <= 0) return;
+  const concentricBars = Math.max(0, Math.floor(options.concentricBars ?? opening.concentricBars ?? 0));
+  const radialBars = Math.max(0, Math.floor(options.radialBars ?? opening.radialBars ?? 0));
+  if (horizontalBars <= 0 && verticalBars <= 0 && concentricBars <= 0 && radialBars <= 0) return;
 
   const width = options.width ?? opening.width ?? 1.25;
   const height = options.height ?? opening.height ?? 0.85;
@@ -147,8 +149,52 @@ export function buildWindowMullions(registry, opening, parent, options = {}) {
   const barDepth = options.barDepth ?? 0.05;
   const barWidth = options.barWidth ?? 0.05;
   const material = options.material || registry.materials.trim;
+  const offsetX = options.offsetX ?? 0;
+  const clipMinX = options.clipMinX ?? -Infinity;
+  const clipMaxX = options.clipMaxX ?? Infinity;
 
   const vertices = getOpeningVertices(opening, width, height);
+
+  const createBar = (name, start, end, componentId) => {
+    let x1 = start.x;
+    let y1 = start.y;
+    let x2 = end.x;
+    let y2 = end.y;
+    const dx = x2 - x1;
+    if (Math.abs(dx) < 1e-8) {
+      if (x1 < clipMinX || x1 > clipMaxX) return;
+    } else {
+      const tAtMin = (clipMinX - x1) / dx;
+      const tAtMax = (clipMaxX - x1) / dx;
+      const tStart = Math.max(0, Math.min(tAtMin, tAtMax));
+      const tEnd = Math.min(1, Math.max(tAtMin, tAtMax));
+      if (tStart > tEnd) return;
+      const originalY2 = y2;
+      x2 = x1 + dx * tEnd;
+      y2 = y1 + (originalY2 - y1) * tEnd;
+      x1 += dx * tStart;
+      y1 += (originalY2 - y1) * tStart;
+    }
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    if (length <= 0.01) return;
+    const bar = createBox(registry, name, {
+      width: length,
+      height: barWidth,
+      depth: barDepth
+    }, {
+      position: {
+        x: (x1 + x2) / 2 + offsetX,
+        y: (y1 + y2) / 2 - height / 2,
+        z: 0
+      },
+      rotation: { z: Math.atan2(y2 - y1, x2 - x1) }
+    }, {
+      material,
+      parent,
+      shadowCaster: false
+    });
+    bar.metadata = { ...bar.metadata, blueprintOpeningComponentId: componentId };
+  };
 
   // 1. 绘制横条 (Horizontal Bars)
   if (horizontalBars > 0) {
@@ -171,21 +217,12 @@ export function buildWindowMullions(registry, opening, parent, options = {}) {
       for (let i = 0; i + 1 < xIntersections.length; i += 2) {
         const xStart = xIntersections[i] + frameW * 0.5;
         const xEnd = xIntersections[i + 1] - frameW * 0.5;
-        const barLength = xEnd - xStart;
-        if (barLength > 0.01) {
-          const bar = createBox(registry, `opening_hbar_${opening.id}_${k}_${i}`, {
-            width: barLength,
-            height: barWidth,
-            depth: barDepth
-          }, {
-            position: { x: (xStart + xEnd) / 2, y: targetY - height / 2, z: 0 }
-          }, {
-            material,
-            parent,
-            shadowCaster: false
-          });
-          bar.metadata = { ...bar.metadata, blueprintOpeningComponentId: 'hbar' };
-        }
+        createBar(
+          `opening_hbar_${opening.id}_${k}_${i}`,
+          { x: xStart, y: targetY },
+          { x: xEnd, y: targetY },
+          'hbar'
+        );
       }
     }
   }
@@ -211,23 +248,125 @@ export function buildWindowMullions(registry, opening, parent, options = {}) {
       for (let i = 0; i + 1 < yIntersections.length; i += 2) {
         const yStart = yIntersections[i] + frameW * 0.5;
         const yEnd = yIntersections[i + 1] - frameW * 0.5;
-        const barLength = yEnd - yStart;
-        if (barLength > 0.01) {
-          const bar = createBox(registry, `opening_vbar_${opening.id}_${j}_${i}`, {
-            width: barWidth,
-            height: barLength,
-            depth: barDepth
-          }, {
-            position: { x: targetX, y: (yStart + yEnd) / 2 - height / 2, z: 0 }
-          }, {
-            material,
-            parent,
-            shadowCaster: false
-          });
-          bar.metadata = { ...bar.metadata, blueprintOpeningComponentId: 'vbar' };
-        }
+        createBar(
+          `opening_vbar_${opening.id}_${j}_${i}`,
+          { x: targetX, y: yStart },
+          { x: targetX, y: yEnd },
+          'vbar'
+        );
       }
     }
   }
+
+  const minX = Math.min(...vertices.map((point) => point.x));
+  const maxX = Math.max(...vertices.map((point) => point.x));
+  const minY = Math.min(...vertices.map((point) => point.y));
+  const maxY = Math.max(...vertices.map((point) => point.y));
+  const shape = opening.shape || 'square';
+  const radialCornerShape = ['semicircle', 'quarter-sector', 'right-triangle'].includes(shape);
+  const center = radialCornerShape
+    ? { x: shape === 'semicircle' ? (minX + maxX) / 2 : minX, y: minY }
+    : { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  const outerRatio = Math.max(0.1, 1 - frameW / Math.max(0.001, Math.min(width, height) / 2));
+  const ringRatios = Array.from(
+    { length: concentricBars },
+    (_, index) => outerRatio * (index + 1) / (concentricBars + 1)
+  );
+  let concentricSegmentIndexes = vertices.map((_, index) => index);
+  if (shape === 'semicircle') {
+    concentricSegmentIndexes = concentricSegmentIndexes.slice(1);
+  } else if (shape === 'quarter-sector') {
+    concentricSegmentIndexes = concentricSegmentIndexes.slice(1, -1);
+  } else if (shape === 'right-triangle') {
+    concentricSegmentIndexes = [1];
+  }
+
+  // 半圆、扇形只保留同心弧，直角三角形只保留与斜边对应的收缩线。
+  ringRatios.forEach((ratio, ringIndex) => {
+    const ring = vertices.map((point) => ({
+      x: center.x + (point.x - center.x) * ratio,
+      y: center.y + (point.y - center.y) * ratio
+    }));
+    concentricSegmentIndexes.forEach((segmentIndex) => {
+      createBar(
+        `opening_cbar_${opening.id}_${ringIndex}_${segmentIndex}`,
+        ring[segmentIndex],
+        ring[(segmentIndex + 1) % ring.length],
+        'cbar'
+      );
+    });
+  });
+
+  // 有同心条时从最内层同心条开始并保持内圈净空；没有同心条时直接汇聚到中心。
+  if (radialBars > 0) {
+    const innerRatio = ringRatios[0] ?? 0;
+    let radialTargets;
+    if (shape === 'semicircle') {
+      radialTargets = Array.from({ length: radialBars }, (_, index) => {
+        const angle = Math.PI * (index + 1) / (radialBars + 1);
+        return {
+          x: center.x + (maxX - minX) / 2 * Math.cos(angle),
+          y: center.y + (maxY - minY) * Math.sin(angle)
+        };
+      });
+    } else if (shape === 'quarter-sector') {
+      radialTargets = Array.from({ length: radialBars }, (_, index) => {
+        const angle = Math.PI / 2 * (index + 1) / (radialBars + 1);
+        return {
+          x: center.x + (maxX - minX) * Math.cos(angle),
+          y: center.y + (maxY - minY) * Math.sin(angle)
+        };
+      });
+    } else if (shape === 'right-triangle') {
+      radialTargets = Array.from({ length: radialBars }, (_, index) => {
+        const ratio = (index + 1) / (radialBars + 1);
+        return {
+          x: maxX + (minX - maxX) * ratio,
+          y: minY + (maxY - minY) * ratio
+        };
+      });
+    } else {
+      const cross = (a, b) => a.x * b.y - a.y * b.x;
+      radialTargets = Array.from({ length: radialBars }, (_, index) => {
+        const angle = -Math.PI / 2 + index * Math.PI * 2 / radialBars;
+        const direction = { x: Math.cos(angle), y: Math.sin(angle) };
+        let boundaryDistance = Infinity;
+        vertices.forEach((point, vertexIndex) => {
+          const next = vertices[(vertexIndex + 1) % vertices.length];
+          const edge = { x: next.x - point.x, y: next.y - point.y };
+          const fromCenter = { x: point.x - center.x, y: point.y - center.y };
+          const denominator = cross(direction, edge);
+          if (Math.abs(denominator) < 1e-8) return;
+          const rayT = cross(fromCenter, edge) / denominator;
+          const edgeT = cross(fromCenter, direction) / denominator;
+          if (rayT >= 0 && edgeT >= -1e-8 && edgeT <= 1 + 1e-8) {
+            boundaryDistance = Math.min(boundaryDistance, rayT);
+          }
+        });
+        return {
+          x: center.x + direction.x * boundaryDistance,
+          y: center.y + direction.y * boundaryDistance
+        };
+      });
+    }
+    radialTargets.forEach((target, index) => {
+      if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) return;
+      createBar(
+        `opening_rbar_${opening.id}_${index}`,
+        {
+          x: center.x + (target.x - center.x) * innerRatio,
+          y: center.y + (target.y - center.y) * innerRatio
+        },
+        {
+          x: center.x + (target.x - center.x) * outerRatio,
+          y: center.y + (target.y - center.y) * outerRatio
+        },
+        'rbar'
+      );
+    });
+  }
 }
+
+// 兼容旧版公开方法名。
+export const buildWindowMullions = buildOpeningBars;
 

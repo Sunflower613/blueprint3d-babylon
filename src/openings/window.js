@@ -1,5 +1,5 @@
 import { createBlueprintMaterial } from '../core/materials.js';
-import { buildOpeningFrame, buildWindowMullions, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
+import { buildOpeningBars, buildOpeningFrame, createOpeningPickProxy, createOpeningProfileMesh } from './geometry.js';
 
 export function buildWindowOpening(registry, opening, parent, options = {}) {
   const width = options.width || opening.width || 1.25;
@@ -49,7 +49,7 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
   });
   glassMesh.metadata = { ...glassMesh.metadata, blueprintOpeningComponentId: 'glass' };
 
-  buildWindowMullions(registry, opening, parent, {
+  buildOpeningBars(registry, opening, parent, {
     width,
     height,
     frameW,

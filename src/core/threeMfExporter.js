@@ -2,6 +2,7 @@ import { Color3, Vector3, VertexBuffer } from './babylon.js';
 const BABYLON = { Color3, Vector3, VertexBuffer };
 import { triangulateRoom, pointInRoom } from '../rooms/index.js';
 import { getRoofGeometryData } from '../geometry/roofGeometry.js';
+import { createRoofCutContext, getCutRoofGeometry } from '../geometry/roofCutGeometry.js';
 import {
   DEFAULT_WALL_THICKNESS,
   entityFloorId,
@@ -502,6 +503,7 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
   const floorY = getFloorElevation(floorplan, floorId);
   const floor = getFloor(floorplan, floorId);
   const defaultWallHeight = Number(floor?.wallHeight ?? floorplan.wallHeight ?? 2.8);
+  const cutContext = options.roofCutContext || createRoofCutContext(floorplan);
 
   for (const roof of floorEntities(floorplan, 'roofs', floorId)) {
     const width = Math.max(1, Number(roof.width || 6));
@@ -513,7 +515,16 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
     const roofWallHeight = floor ? (floor.wallHeight ?? floorplan.wallHeight ?? 2.8) : defaultWallHeight;
     const eaveY = floorY + (roof.elevation !== undefined ? Number(roof.elevation) : roofWallHeight);
 
-    const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve);
+    let geometry;
+    try {
+      geometry = getCutRoofGeometry(floorplan, roof, cutContext);
+    } catch (_) {
+      geometry = getRoofGeometryData(subtype, width, depth, height, curve, {
+        topWidth: roof.topWidth,
+        topDepth: roof.topDepth
+      });
+    }
+    const { positions, topIndices, sideIndices, bottomIndices } = geometry;
 
     const vertices = [];
     const rotation = Number(roof.rotation || 0);
@@ -706,6 +717,7 @@ function createObjects(floorplan, options = {}) {
   const objects = [];
   const exportBuilding = options.category !== 'furniture';
   const exportFurniture = options.category !== 'building';
+  const roofCutContext = exportBuilding ? createRoofCutContext(floorplan) : null;
 
   const floors = orderedFloors(floorplan);
   const pegHeight = 0.08;
@@ -790,7 +802,7 @@ function createObjects(floorplan, options = {}) {
         appendWallWithOpenings(mesh, floorplan, wall, extraSpans);
       }
       
-      appendRoofs(mesh, floorplan, floor.id, options);
+      appendRoofs(mesh, floorplan, floor.id, { ...options, roofCutContext });
       
       if (pegsCache[floor.id] && pegsCache[floor.id].length > 0) {
         pegsCache[floor.id].forEach(peg => {

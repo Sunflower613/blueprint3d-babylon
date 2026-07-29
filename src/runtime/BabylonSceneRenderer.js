@@ -8,6 +8,12 @@ import { healingMusic } from '../audio/healingMusic.js';
 import { DEFAULT_MATERIAL_PACKS } from '../core/materialCatalog.js';
 import { buildOpeningGeometry, createOpeningCutterMesh, normalizeOpeningShape } from '../openings/index.js';
 import { getRoofGeometryData, getRoofFramePaths } from '../geometry/roofGeometry.js';
+import {
+  clipRoofFramePaths,
+  createRoofCutContext,
+  getCutRoofGeometry,
+  getRoofCutNeighborIds
+} from '../geometry/roofCutGeometry.js';
 import { buildStairsGeometry } from '../geometry/stairsGeometry.js';
 import { buildFenceGeometry } from '../geometry/fenceGeometry.js';
 import { buildFenceGateGeometry } from '../geometry/fenceGateGeometry.js';
@@ -307,6 +313,7 @@ export class BabylonSceneRenderer {
     this.openingNodes = new Map();
     this.openingDragPreviews = new Map();
     this.roofNodes = new Map();
+    this.roofCutNeighbors = new Map();
     this.stairNodes = new Map();
     this.fenceNodes = new Map();
     this.fenceGateNodes = new Map();
@@ -830,6 +837,7 @@ export class BabylonSceneRenderer {
     this.openingNodes.clear();
     this.openingDragPreviews.clear();
     this.roofNodes.clear();
+    this.roofCutNeighbors.clear();
     this.stairNodes.clear();
     this.fenceNodes.clear();
     this.fenceGateNodes.clear();
@@ -1878,19 +1886,42 @@ export class BabylonSceneRenderer {
   buildRoofs(targetRoofId) {
     if (this.deferRenderWork()) return;
 
+    const cutContext = createRoofCutContext(this.floorplan);
+    let targetRoofIds = null;
     if (targetRoofId) {
-      const existing = this.roofNodes.get(targetRoofId);
-      if (existing) {
-        existing.dispose();
-        this.roofNodes.delete(targetRoofId);
-      }
+      const requestedIds = targetRoofId instanceof Set
+        ? targetRoofId
+        : new Set(Array.isArray(targetRoofId) ? targetRoofId : [targetRoofId]);
+      targetRoofIds = new Set(requestedIds);
+      requestedIds.forEach((roofId) => {
+        (this.roofCutNeighbors.get(roofId) || []).forEach((id) => targetRoofIds.add(id));
+        getRoofCutNeighborIds(cutContext, roofId).forEach((id) => targetRoofIds.add(id));
+      });
+      targetRoofIds.forEach((roofId) => {
+        const existing = this.roofNodes.get(roofId);
+        if (!existing) return;
+        const removedMeshes = new Set(existing.getChildMeshes(false));
+        this.shadowCasters = this.shadowCasters.filter((mesh) => !removedMeshes.has(mesh));
+        this.disposeNodeMaterials(existing);
+        existing.dispose(false, false);
+        this.roofNodes.delete(roofId);
+      });
     } else {
-      this.roofNodes.forEach((node) => node.dispose());
+      const removedMeshes = new Set();
+      this.roofNodes.forEach((node) => {
+        node.getChildMeshes(false).forEach((mesh) => removedMeshes.add(mesh));
+        this.disposeNodeMaterials(node);
+        node.dispose(false, false);
+      });
       this.roofNodes.clear();
+      this.shadowCasters = this.shadowCasters.filter((mesh) => !removedMeshes.has(mesh));
     }
+    this.roofCutNeighbors = new Map(
+      [...cutContext.neighbors].map(([roofId, ids]) => [roofId, new Set(ids)])
+    );
 
     this.floorplan.roofs.filter((roof) => {
-      if (targetRoofId && roof.id !== targetRoofId) return false;
+      if (targetRoofIds && !targetRoofIds.has(roof.id)) return false;
       const roofFloor = this.document.getFloor(roof.floorId);
       if (roofFloor && roofFloor.hideRoof) return false;
       return this.document.isFloorVisible(roof.floorId);
@@ -1917,7 +1948,14 @@ export class BabylonSceneRenderer {
 
       const subtype = roof.subtype || roof.type || 'gable';
       const curve = Number(roof.curve || 0);
-      const { positions, topIndices, sideIndices, bottomIndices } = getRoofGeometryData(subtype, width, depth, height, curve, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+      let roofGeometry;
+      try {
+        roofGeometry = getCutRoofGeometry(this.floorplan, roof, cutContext);
+      } catch (error) {
+        console.warn(`Failed to cut overlapping roof ${roof.id}; using the original geometry.`, error);
+        roofGeometry = getRoofGeometryData(subtype, width, depth, height, curve, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+      }
+      const { positions, topIndices, sideIndices, bottomIndices } = roofGeometry;
 
       if (topIndices && topIndices.length > 0) {
         const topMesh = new BABYLON.Mesh(`roof_top_${roof.id}`, this.scene);
@@ -1985,7 +2023,8 @@ export class BabylonSceneRenderer {
         const frameGridSize = Number(roof.frameGridSize) || 1.0;
         const frameRadius = Number(roof.frameRadius) || Number(roof.frameThickness) || 0.025;
         const includeSide = !roof.sideHidden;
-        const rawPaths = getRoofFramePaths(subtype, width, depth, height, curve, frameGridSize, includeSide, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+        const basePaths = getRoofFramePaths(subtype, width, depth, height, curve, frameGridSize, includeSide, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+        const rawPaths = clipRoofFramePaths(basePaths, roof, cutContext);
         const tessellation = roof.frameProfile === 'round' ? 8 : 4;
 
         const frameMat = createBlueprintMaterial(

@@ -938,6 +938,8 @@ export class EditorFacade {
         } else if (normType === 'fenceGates') {
           const finished = await this._selectionController.finishFenceGateDragPreview(id);
           if (!finished) this._renderer.build();
+        } else if (normType === 'roofs' && typeof this._renderer?.buildRoofs === 'function') {
+          this._renderer.buildRoofs(id);
         } else if (this._renderer && typeof this._renderer.build === 'function') {
           const rebuildType = normType === 'items' ? 'items' : 'all';
           this._renderer.build({ rebuildType });
@@ -968,6 +970,8 @@ export class EditorFacade {
         } else if (normType === 'fenceGates') {
           const finished = await this._selectionController.finishFenceGateDragPreview(id);
           if (!finished) this._renderer.build();
+        } else if (normType === 'roofs' && typeof this._renderer?.buildRoofs === 'function') {
+          this._renderer.buildRoofs(id);
         } else if (this._renderer && typeof this._renderer.build === 'function') {
           const rebuildType = normType === 'items' ? 'items' : 'all';
           this._renderer.build({ rebuildType });

@@ -1,3 +1,45 @@
+const WINDING_EPSILON = 1e-7;
+
+function triangleNeedsOutwardFlip(positions, a, b, c, surface) {
+  const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
+  const bx = positions[b * 3], by = positions[b * 3 + 1], bz = positions[b * 3 + 2];
+  const cx = positions[c * 3], cy = positions[c * 3 + 1], cz = positions[c * 3 + 2];
+  const abx = bx - ax, aby = by - ay, abz = bz - az;
+  const acx = cx - ax, acy = cy - ay, acz = cz - az;
+  const nx = aby * acz - abz * acy;
+  const ny = abz * acx - abx * acz;
+  const nz = abx * acy - aby * acx;
+  if (surface === 'top') return ny < -WINDING_EPSILON;
+  if (surface === 'bottom') return ny > WINDING_EPSILON;
+
+  const centerX = (ax + bx + cx) / 3;
+  const centerZ = (az + bz + cz) / 3;
+  const horizontalDirection = nx * centerX + nz * centerZ;
+  if (Math.abs(horizontalDirection) > WINDING_EPSILON) return horizontalDirection < 0;
+  return ny < -WINDING_EPSILON;
+}
+
+function orientSurfaceTriangles(positions, indices, surface) {
+  for (let i = 0; i < indices.length; i += 3) {
+    if (triangleNeedsOutwardFlip(
+      positions,
+      indices[i],
+      indices[i + 1],
+      indices[i + 2],
+      surface
+    )) {
+      [indices[i + 1], indices[i + 2]] = [indices[i + 2], indices[i + 1]];
+    }
+  }
+}
+
+function normalizeRoofGeometryWinding(geometry) {
+  orientSurfaceTriangles(geometry.positions, geometry.topIndices || [], 'top');
+  orientSurfaceTriangles(geometry.positions, geometry.sideIndices || [], 'side');
+  orientSurfaceTriangles(geometry.positions, geometry.bottomIndices || [], 'bottom');
+  return geometry;
+}
+
 /**
  * 根据屋顶类型及长宽高，计算并返回其 3D 几何体的顶点 (positions) 和索引 (indices)
  * @param {string} subtype 屋顶子类型 ('gable' | 'shed' | 'arch' | 'dome' | 'trapezoid' | 'hip' | 'flat')
@@ -310,7 +352,7 @@ export function getRoofGeometryData(subtype, width, depth, height, curve = 0, op
     }
   }
 
-  return { positions, topIndices, sideIndices, bottomIndices };
+  return normalizeRoofGeometryWinding({ positions, topIndices, sideIndices, bottomIndices });
 }
 
 /**
@@ -839,4 +881,3 @@ export function getRoofFramePaths(subtype, width, depth, height, curve = 0, targ
 
   return paths;
 }
-

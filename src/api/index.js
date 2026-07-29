@@ -135,6 +135,12 @@ export {
   getRoofGeometryData,
   getRoofFramePaths
 } from '../geometry/roofGeometry.js';
+export {
+  clipRoofFramePaths,
+  createRoofCutContext,
+  getCutRoofGeometry,
+  getRoofCutNeighborIds
+} from '../geometry/roofCutGeometry.js';
 
 // ==========================================
 // 4. Audio 音频

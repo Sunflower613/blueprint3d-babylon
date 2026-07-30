@@ -14,6 +14,10 @@ const DEFAULT_FLOOR_ID = 'floor_1';
 const DEFAULT_WALL_BASEBOARD_HEIGHT = 0.1;
 const DEFAULT_WALL_WAINSCOT_HEIGHT = 1.0;
 
+function defaultRoofEaveOverhang(subtype) {
+  return subtype === 'arch' || subtype === 'dome' ? 0 : 0.2;
+}
+
 const WALL_SURFACE_FIELD_MAP = MaterialResolver.WALL_SURFACE_FIELD_MAP;
 
 export const STAIR_SUBTYPE_DEFAULTS = {
@@ -398,7 +402,10 @@ export class FloorplanDocument {
       roof.bottomMaterial ||= roof.bottomColor;
       roof.sideHidden = !!roof.sideHidden;
       roof.bottomHidden = !!roof.bottomHidden;
-      roof.eaveOverhang = Math.max(0, toFiniteNumber(roof.eaveOverhang, 0.2));
+      roof.eaveOverhang = Math.max(
+        0,
+        toFiniteNumber(roof.eaveOverhang, defaultRoofEaveOverhang(roof.subtype))
+      );
       delete roof.eaveHidden;
       roof.hideFrame = roof.hideFrame !== undefined ? !!roof.hideFrame : roof.showFrame === false;
       roof.locked = !!roof.locked;
@@ -1198,6 +1205,7 @@ export class FloorplanDocument {
   }
 
   addRoof(partialRoof = {}) {
+    const subtype = partialRoof.subtype || partialRoof.type || 'gable';
     const roof = {
       id: partialRoof.id || `roof_${Date.now()}`,
       floorId: partialRoof.floorId || this.floorplan.currentFloorId,
@@ -1207,8 +1215,8 @@ export class FloorplanDocument {
       depth: partialRoof.depth || 6,
       height: partialRoof.height || 1.1,
       rotation: partialRoof.rotation || 0,
-      type: partialRoof.type || partialRoof.subtype || 'gable',
-      subtype: partialRoof.subtype || partialRoof.type || 'gable',
+      type: partialRoof.type || subtype,
+      subtype,
       color: partialRoof.color || '#b75b54',
       material: partialRoof.material || partialRoof.color || '#b75b54',
       sideColor: partialRoof.sideColor || '#f9fbff',
@@ -1217,7 +1225,10 @@ export class FloorplanDocument {
       bottomMaterial: partialRoof.bottomMaterial || partialRoof.bottomColor || '#f9fbff',
       sideHidden: !!partialRoof.sideHidden,
       bottomHidden: !!partialRoof.bottomHidden,
-      eaveOverhang: Math.max(0, Number(partialRoof.eaveOverhang ?? 0.2)),
+      eaveOverhang: Math.max(
+        0,
+        Number(partialRoof.eaveOverhang ?? defaultRoofEaveOverhang(subtype))
+      ),
       hideFrame: partialRoof.hideFrame !== undefined ? !!partialRoof.hideFrame : partialRoof.showFrame === false,
       locked: !!partialRoof.locked,
       curve: Number(partialRoof.curve || 0),

@@ -156,6 +156,11 @@ export function ensureStructureEditor() {
   dimRow.appendChild(createStructureField('深度 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
   dimRow.appendChild(createStructureField('高度 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
   editor.appendChild(dimRow);
+  const topRow = document.createElement('div');
+  topRow.className = 'fields-row';
+  topRow.appendChild(createStructureField('顶面宽 (m)', 'structure-top-width', { type: 'number', min: '0.1', step: '0.1' }));
+  topRow.appendChild(createStructureField('顶面深 (m)', 'structure-top-depth', { type: 'number', min: '0.1', step: '0.1' }));
+  editor.appendChild(topRow);
   const eaveOverhangField = createStructureField('屋檐伸出 (m)', 'structure-eave-overhang', { type: 'number', min: '0', max: '3', step: '0.05' });
   eaveOverhangField.id = 'structure-eave-overhang-field';
   editor.appendChild(eaveOverhangField);
@@ -227,8 +232,7 @@ export function ensureStructureEditor() {
 
   editor.appendChild(createStructureField('弧度 (m)', 'structure-curve', { type: 'number', step: '0.05' }));
 
-  editor.appendChild(createStructureField('顶面宽 (m)', 'structure-top-width', { type: 'number', min: '0.1', step: '0.1' }));
-  editor.appendChild(createStructureField('顶面深 (m)', 'structure-top-depth', { type: 'number', min: '0.1', step: '0.1' }));
+
 
   const deleteButton = document.createElement('button');
   deleteButton.id = 'btn-delete-structure';
@@ -534,7 +538,8 @@ export function updateEditor() {
     if (eaveOverhangField) {
       eaveOverhangField.classList.toggle('hidden', structureType !== 'roof');
     }
-    document.getElementById('structure-eave-overhang').value = Number((structure.eaveOverhang ?? 0.2).toFixed(2));
+    const defaultEaveOverhang = structure.subtype === 'arch' || structure.subtype === 'dome' ? 0 : 0.2;
+    document.getElementById('structure-eave-overhang').value = Number((structure.eaveOverhang ?? defaultEaveOverhang).toFixed(2));
 
     const hideFrameField = document.getElementById('structure-hide-frame-field');
     if (hideFrameField) {

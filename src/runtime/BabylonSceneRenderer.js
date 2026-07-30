@@ -1278,7 +1278,7 @@ export class BabylonSceneRenderer {
       }, {
         parent: group,
         material: ceilingMaterial,
-        receiveShadows: true,
+        receiveShadows: false,
         shadowCaster: true
       });
       ceilingPiece.metadata = { blueprintRoomId: room.id, crossFloorShadowOnly: true, locked: !!room.locked };
@@ -1395,6 +1395,7 @@ export class BabylonSceneRenderer {
           const ceilingMesh = this.buildRoomPolygonMesh(group, room, ceilingMaterial, 0.002, -currentFloorHeight / 2 - 0.001, 'ceiling');
           if (ceilingMesh) {
             ceilingMesh.metadata.crossFloorShadowOnly = true;
+            ceilingMesh.receiveShadows = false;
             this.shadowCasters.push(ceilingMesh);
           }
         }
@@ -1973,7 +1974,7 @@ export class BabylonSceneRenderer {
         topVD.applyToMesh(topMesh);
         topMesh.convertToFlatShadedMesh();
         topMesh.material = material;
-        topMesh.receiveShadows = true;
+        topMesh.receiveShadows = false;
         this.shadowCasters.push(topMesh);
       }
 
@@ -1989,7 +1990,7 @@ export class BabylonSceneRenderer {
         eaveVD.applyToMesh(eaveMesh);
         eaveMesh.convertToFlatShadedMesh();
         eaveMesh.material = material;
-        eaveMesh.receiveShadows = true;
+        eaveMesh.receiveShadows = false;
         this.shadowCasters.push(eaveMesh);
       }
 
@@ -2035,7 +2036,7 @@ export class BabylonSceneRenderer {
           backFaceCulling: false
         });
         bottomMesh.material = bottomMat;
-        bottomMesh.receiveShadows = true;
+        bottomMesh.receiveShadows = false;
         this.shadowCasters.push(bottomMesh);
       }
 
@@ -2076,7 +2077,7 @@ export class BabylonSceneRenderer {
               this.scene
             );
             tube.material = frameMat;
-            tube.receiveShadows = true;
+            tube.receiveShadows = false;
             this.shadowCasters.push(tube);
             tubeMeshes.push(tube);
           }

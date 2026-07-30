@@ -41,7 +41,7 @@ test('ceiling skins do not shadow their own floor', () => {
   assert.equal(shouldIncludeShadowCaster(ceilingMesh, 'floor-1'), true);
 });
 
-test('floor surfaces only receive shadows while ceiling skins cast them', () => {
+test('floor surfaces receive shadows while ceiling skins only cast them', () => {
   const engine = new BABYLON.NullEngine();
   const scene = new BABYLON.Scene(engine);
   const document = new FloorplanDocument({
@@ -72,6 +72,8 @@ test('floor surfaces only receive shadows while ceiling skins cast them', () => 
   assert.equal([...casterNames].some((name) => name.startsWith('floor_square-room_')), false);
   assert.equal(casterNames.has('floor_polygon-room_shape'), false);
   assert.equal(scene.getMeshByName('floor_square-room_0').receiveShadows, true);
+  assert.equal(scene.getMeshByName('ceiling_square-room_0').receiveShadows, false);
+  assert.equal(scene.getMeshByName('floor_polygon-room_ceiling').receiveShadows, false);
   assert.equal(scene.getMeshByName('ceiling_square-room_0').metadata.crossFloorShadowOnly, true);
   assert.equal(scene.getTransformNodeByName('floor_square-room').metadata.floorId, 'floor-1');
 
@@ -100,7 +102,8 @@ test('roof fascia and fences cast shadows without receiving them, matching wall 
       depth: 4,
       height: 1,
       subtype: 'gable',
-      hideFrame: true
+      eaveOverhang: 0.4,
+      hideFrame: false
     }],
     stairs: [],
     fences: [{
@@ -118,8 +121,13 @@ test('roof fascia and fences cast shadows without receiving them, matching wall 
 
   renderer.build();
 
-  assert.equal(scene.getMeshByName('roof_top_roof-1').receiveShadows, true);
+  const roofMeshes = renderer.roofNodes.get('roof-1').getChildMeshes(false);
+  assert.ok(roofMeshes.length > 0);
+  assert.equal(roofMeshes.every((mesh) => mesh.receiveShadows === false), true);
+  assert.equal(scene.getMeshByName('roof_top_roof-1').receiveShadows, false);
   assert.equal(scene.getMeshByName('roof_side_roof-1').receiveShadows, false);
+  assert.equal(scene.getMeshByName('roof_bottom_roof-1').receiveShadows, false);
+  assert.equal(scene.getMeshByName('roof_eave_roof-1').receiveShadows, false);
 
   const fenceMeshes = renderer.fenceNodes.get('fence-1').getChildMeshes(false);
   assert.ok(fenceMeshes.length > 0);

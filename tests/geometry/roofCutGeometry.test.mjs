@@ -258,16 +258,30 @@ test('3MF roof shells respect fascia, ceiling and eave visibility independently'
   assert.equal(roofOnly, base.topIndices.length / 3);
 });
 
-test('new and legacy roofs default to a 0.2m eave while zero disables it', () => {
+test('arch and dome roofs default to no eave while other roof types keep a 0.2m default', () => {
   const document = new FloorplanDocument(createFloorplan([]));
   const roof = document.addRoof({ id: 'default-eave' });
   assert.equal(roof.eaveOverhang, 0.2);
 
+  assert.equal(document.addRoof({ id: 'arch-default-eave', subtype: 'arch' }).eaveOverhang, 0);
+  assert.equal(document.addRoof({ id: 'dome-default-eave', subtype: 'dome' }).eaveOverhang, 0);
+  assert.equal(document.addRoof({
+    id: 'arch-explicit-eave',
+    subtype: 'arch',
+    eaveOverhang: 0.35
+  }).eaveOverhang, 0.35);
+
   document.updateRoof(roof.id, { eaveOverhang: 0 });
   assert.equal(roof.eaveOverhang, 0);
 
-  const legacyDocument = new FloorplanDocument(createFloorplan([createFlatRoof('legacy', 0)]));
-  assert.equal(legacyDocument.getRoof('legacy').eaveOverhang, 0.2);
+  const legacyDocument = new FloorplanDocument(createFloorplan([
+    createFlatRoof('legacy-flat', 0),
+    { ...createFlatRoof('legacy-arch', 0), subtype: 'arch', type: 'arch' },
+    { ...createFlatRoof('legacy-dome', 0), subtype: 'dome', type: 'dome' }
+  ]));
+  assert.equal(legacyDocument.getRoof('legacy-flat').eaveOverhang, 0.2);
+  assert.equal(legacyDocument.getRoof('legacy-arch').eaveOverhang, 0);
+  assert.equal(legacyDocument.getRoof('legacy-dome').eaveOverhang, 0);
 });
 
 test('eaves are cut with their roofs while retaining roof-part classification', () => {

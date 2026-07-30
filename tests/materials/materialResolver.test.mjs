@@ -98,6 +98,34 @@ test('resolveMaterialAssetDescriptor strips cross-origin origins to prevent CORS
   }
 });
 
+test('tinted preset textures restore their bundled asset instead of an imported stale URL', () => {
+  const color = '#e1bd7f';
+  const normalized = MaterialResolver.normalizeMaterialDescriptor({
+    id: 'derived_texture_wood-oak-natural-light',
+    kind: 'texture',
+    category: 'wood',
+    src: 'blob:http://old-editor.invalid/expired-texture',
+    derivedFrom: 'wood-oak-natural-light',
+    color
+  });
+  const resolved = resolveMaterialAssetDescriptor(normalized);
+
+  assert.equal(resolved.color, color);
+  assert.equal(resolved.derivedFrom, 'wood-oak-natural-light');
+  assert.doesNotMatch(resolved.src, /^blob:/);
+  assert.match(resolved.src, /wood_oak_natural_light\.jpg/);
+});
+
+test('legacy tinted texture ids restore preset assets without derivedFrom or src', () => {
+  const resolved = resolveMaterialAssetDescriptor({
+    id: 'derived_texture_derived_texture_wood-oak-natural-light',
+    kind: 'texture',
+    color: '#e1bd7f'
+  });
+
+  assert.match(resolved.src, /wood_oak_natural_light\.jpg/);
+});
+
 test('four rug textures (fabric_triangle, fabric_circle, fabric_flower, fabric_square) stretch without tile repeat', () => {
   const rugIds = ['fabric-triangle', 'fabric-circle', 'fabric-flower', 'fabric-square'];
   for (const id of rugIds) {

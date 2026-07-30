@@ -194,6 +194,7 @@ export class MaterialResolver {
         name: value.name || value.fileName || '自定义材质',
         fileName: value.fileName,
         src: value.src || value.url,
+        derivedFrom: value.derivedFrom,
         scale: Number(value.scale || 1),
         color: value.color || fallbackColor,
         alpha: value.alpha !== undefined ? Number(value.alpha) : undefined,

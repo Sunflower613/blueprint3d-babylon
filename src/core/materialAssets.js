@@ -123,8 +123,21 @@ export function resolveMaterialAssetDescriptor(descriptor) {
   if (descriptor.kind !== 'texture' && !descriptor.src && !descriptor.url) return descriptor;
 
   let src = descriptor.src || descriptor.url;
-  if (descriptor.id) {
-    src = DEFAULT_MATERIAL_PACKS.find((pack) => pack.id === descriptor.id)?.src || src;
+  const presetIds = [descriptor.derivedFrom, descriptor.id];
+  if (typeof descriptor.id === 'string') {
+    let baseId = descriptor.id;
+    while (baseId.startsWith('derived_texture_')) {
+      baseId = baseId.slice('derived_texture_'.length);
+    }
+    presetIds.push(baseId);
+  }
+  for (const presetId of presetIds) {
+    if (!presetId) continue;
+    const presetSrc = DEFAULT_MATERIAL_PACKS.find((pack) => pack.id === presetId)?.src;
+    if (presetSrc) {
+      src = presetSrc;
+      break;
+    }
   }
   if (typeof src === 'string') {
     const fileName = src.split('/').pop()?.split('?')[0];

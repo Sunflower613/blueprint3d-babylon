@@ -1991,7 +1991,9 @@ export class BabylonSceneRenderer {
           backFaceCulling: false
         });
         sideMesh.material = sideMat;
-        sideMesh.receiveShadows = true;
+        // Keep fascia lighting consistent with wall faces. The thin roof shell
+        // otherwise receives its own shadow and renders as a uniformly dark face.
+        sideMesh.receiveShadows = false;
         this.shadowCasters.push(sideMesh);
       }
 
@@ -2269,6 +2271,9 @@ export class BabylonSceneRenderer {
           m.metadata.blueprintFenceId = fence.id;
           m.metadata.floorId = fence.floorId;
           m.metadata.locked = !!fence.locked;
+          // Fences still cast shadows, but match walls by not receiving them.
+          // This avoids self-shadowing across their many thin, overlapping parts.
+          m.receiveShadows = false;
         });
 
         this.fenceNodes.set(fence.id, group);

@@ -79,3 +79,57 @@ test('floor surfaces only receive shadows while ceiling skins cast them', () => 
   scene.dispose();
   engine.dispose();
 });
+
+test('roof fascia and fences cast shadows without receiving them, matching wall faces', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const document = new FloorplanDocument({
+    unit: 'm',
+    currentFloorId: 'floor-1',
+    floors: [{ id: 'floor-1', level: 0, floorHeight: 0.1, wallHeight: 2.8 }],
+    floor: { rooms: [] },
+    walls: [],
+    openings: [],
+    items: [],
+    roofs: [{
+      id: 'roof-1',
+      floorId: 'floor-1',
+      x: 0,
+      z: 0,
+      width: 4,
+      depth: 4,
+      height: 1,
+      subtype: 'gable',
+      hideFrame: true
+    }],
+    stairs: [],
+    fences: [{
+      id: 'fence-1',
+      floorId: 'floor-1',
+      from: [-2, -3],
+      to: [2, -3],
+      height: 1,
+      thickness: 0.12,
+      subtype: 'concrete'
+    }],
+    fenceGates: []
+  });
+  const renderer = new BabylonSceneRenderer(scene, document);
+
+  renderer.build();
+
+  assert.equal(scene.getMeshByName('roof_top_roof-1').receiveShadows, true);
+  assert.equal(scene.getMeshByName('roof_side_roof-1').receiveShadows, false);
+
+  const fenceMeshes = renderer.fenceNodes.get('fence-1').getChildMeshes(false);
+  assert.ok(fenceMeshes.length > 0);
+  assert.equal(fenceMeshes.every((mesh) => mesh.receiveShadows === false), true);
+  assert.equal(
+    fenceMeshes.every((mesh) => renderer.shadowCasters.includes(mesh) || mesh.visibility === 0),
+    true
+  );
+
+  renderer.dispose();
+  scene.dispose();
+  engine.dispose();
+});

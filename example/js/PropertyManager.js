@@ -148,6 +148,7 @@ export function updateSelectedStructure() {
   if (selected.type === 'roof') {
     patch.type = patch.subtype;
     patch.bottomHidden = document.getElementById('structure-bottom-hidden').checked;
+    patch.eaveOverhang = Math.max(0, Number(document.getElementById('structure-eave-overhang')?.value || 0));
     patch.hideFrame = document.getElementById('structure-hide-frame')?.checked;
     patch.curve = Number(document.getElementById('structure-curve')?.value || 0);
     const eleInput = document.getElementById('structure-elevation');

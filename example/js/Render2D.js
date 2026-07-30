@@ -460,6 +460,31 @@ export function renderRoof(roof) {
     class: `roof-group ${ctx.selectedRoofId === roof.id ? 'selected' : ''}`,
     'data-roof-id': roof.id
   });
+
+  const eaveOverhang = Math.max(0, Number(roof.eaveOverhang || 0));
+  if (eaveOverhang > 0) {
+    const eaveA = worldToSvg(
+      (roof.x || 0) - (roof.width || 6) / 2 - eaveOverhang,
+      (roof.z || 0) - (roof.depth || 6) / 2 - eaveOverhang
+    );
+    const eaveB = worldToSvg(
+      (roof.x || 0) + (roof.width || 6) / 2 + eaveOverhang,
+      (roof.z || 0) + (roof.depth || 6) / 2 + eaveOverhang
+    );
+    group.appendChild(createSvgElement('rect', {
+      class: 'roof-eave-rect',
+      x: Math.min(eaveA.x, eaveB.x),
+      y: Math.min(eaveA.y, eaveB.y),
+      width: Math.abs(eaveB.x - eaveA.x),
+      height: Math.abs(eaveB.y - eaveA.y),
+      rx: 4,
+      fill: roof.color || '#b75b54',
+      'fill-opacity': 0.38,
+      stroke: roof.color || '#b75b54',
+      'stroke-width': 1,
+      'pointer-events': 'none'
+    }));
+  }
   
   const rect = createSvgElement('rect', {
     class: 'roof-rect',

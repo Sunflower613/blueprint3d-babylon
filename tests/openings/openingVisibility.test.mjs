@@ -58,6 +58,34 @@ test('hidden window glass keeps a pickable opening proxy', () => {
   engine.dispose();
 });
 
+test('hidden window frame keeps the glass and mullions without frame meshes', () => {
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const registry = createRegistry(scene);
+  const parent = new BABYLON.TransformNode('frameless-window-parent', scene);
+  buildWindowOpening(registry, {
+    id: 'frameless-window',
+    type: 'window',
+    shape: 'square',
+    width: 1.2,
+    height: 1,
+    frameHidden: true,
+    verticalBars: 1
+  }, parent);
+
+  assert.equal(
+    parent.getChildMeshes().some((mesh) => mesh.name.startsWith('opening_frame_frameless-window_')),
+    false
+  );
+  assert.ok(scene.getMeshByName('win_glass_frameless-window'));
+  assert.ok(parent.getChildMeshes().some(
+    (mesh) => mesh.metadata?.blueprintOpeningComponentId === 'vbar'
+  ));
+
+  scene.dispose();
+  engine.dispose();
+});
+
 test('custom window glass stays transparent unless an explicit alpha is supplied', () => {
   const engine = new BABYLON.NullEngine();
   const scene = new BABYLON.Scene(engine);

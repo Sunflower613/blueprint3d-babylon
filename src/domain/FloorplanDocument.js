@@ -367,6 +367,7 @@ export class FloorplanDocument {
       opening.shape = normalizeOpeningShape(opening.shape);
       opening.panelHidden = !!opening.panelHidden;
       opening.glassHidden = !!opening.glassHidden;
+      opening.frameHidden = opening.type === 'window' && !!opening.frameHidden;
       opening.locked = !!opening.locked;
       if (opening.type === 'window') {
         opening.height = toFinitePositive(opening.height, 0.85, 0.1);
@@ -397,6 +398,8 @@ export class FloorplanDocument {
       roof.bottomMaterial ||= roof.bottomColor;
       roof.sideHidden = !!roof.sideHidden;
       roof.bottomHidden = !!roof.bottomHidden;
+      roof.eaveOverhang = Math.max(0, toFiniteNumber(roof.eaveOverhang, 0.2));
+      delete roof.eaveHidden;
       roof.hideFrame = roof.hideFrame !== undefined ? !!roof.hideFrame : roof.showFrame === false;
       roof.locked = !!roof.locked;
       roof.curve = toFiniteNumber(roof.curve, 0);
@@ -1214,6 +1217,7 @@ export class FloorplanDocument {
       bottomMaterial: partialRoof.bottomMaterial || partialRoof.bottomColor || '#f9fbff',
       sideHidden: !!partialRoof.sideHidden,
       bottomHidden: !!partialRoof.bottomHidden,
+      eaveOverhang: Math.max(0, Number(partialRoof.eaveOverhang ?? 0.2)),
       hideFrame: partialRoof.hideFrame !== undefined ? !!partialRoof.hideFrame : partialRoof.showFrame === false,
       locked: !!partialRoof.locked,
       curve: Number(partialRoof.curve || 0),
@@ -1251,6 +1255,8 @@ export class FloorplanDocument {
     roof.bottomMaterial ||= roof.bottomColor;
     roof.sideHidden = !!roof.sideHidden;
     roof.bottomHidden = !!roof.bottomHidden;
+    roof.eaveOverhang = Math.max(0, Number(roof.eaveOverhang || 0));
+    delete roof.eaveHidden;
     roof.hideFrame = patch.hideFrame !== undefined ? !!patch.hideFrame : (patch.showFrame !== undefined ? !patch.showFrame : !!roof.hideFrame);
     return roof;
   }
@@ -1601,6 +1607,7 @@ export class FloorplanDocument {
       t: clamp(t, 0.08, 0.92),
       width: openingData.width || (type === 'door' ? 0.9 : 1.25),
       floorId: wall.floorId || this.floorplan.currentFloorId,
+      frameHidden: type === 'window' && !!openingData.frameHidden,
       locked: !!openingData.locked
     };
     if (type === 'window' && openingData.height === undefined) opening.height = 0.85;
@@ -1616,6 +1623,7 @@ export class FloorplanDocument {
     opening.shape = normalizeOpeningShape(opening.shape);
     opening.panelHidden = !!opening.panelHidden;
     opening.glassHidden = !!opening.glassHidden;
+    opening.frameHidden = opening.type === 'window' && !!opening.frameHidden;
     opening.t = clamp(opening.t ?? 0.5, 0.08, 0.92);
     opening.width = Math.max(0.25, Number(opening.width || (opening.type === 'door' ? 0.9 : 1.25)));
     opening.height = Math.max(0.3, Number(opening.height || (opening.type === 'door' ? 2.05 : 0.85)));

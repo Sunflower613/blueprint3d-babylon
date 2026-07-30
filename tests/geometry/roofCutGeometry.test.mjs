@@ -232,8 +232,8 @@ test('3MF export uses the same hollow cut roof shells as the renderer', () => {
   assert.ok(overlappingTriangles < separatedTriangles);
 });
 
-test('3MF roof shells respect hidden fascia and ceiling options', () => {
-  const roof = createFlatRoof('roof', 0);
+test('3MF roof shells respect fascia, ceiling and eave visibility independently', () => {
+  const roof = { ...createFlatRoof('roof', 0), eaveOverhang: 0.4 };
   const triangleCount = (overrides = {}) => {
     const xml = create3MFModelXml(
       createFloorplan([{ ...roof, ...overrides }]),
@@ -241,15 +241,93 @@ test('3MF roof shells respect hidden fascia and ceiling options', () => {
     );
     return (xml.match(/<triangle /g) || []).length;
   };
-  const base = getRoofGeometryData('flat', roof.width, roof.depth, roof.height);
+  const base = getRoofGeometryData('flat', roof.width, roof.depth, roof.height, 0, {
+    eaveOverhang: roof.eaveOverhang
+  });
   const allSurfaces = triangleCount();
   const withoutFascia = triangleCount({ sideHidden: true });
   const withoutCeiling = triangleCount({ bottomHidden: true });
-  const topOnly = triangleCount({ sideHidden: true, bottomHidden: true });
+  const withoutEave = triangleCount({ eaveOverhang: 0 });
+  const roofAndEaveOnly = triangleCount({ sideHidden: true, bottomHidden: true });
+  const roofOnly = triangleCount({ sideHidden: true, bottomHidden: true, eaveOverhang: 0 });
 
   assert.equal(allSurfaces - withoutFascia, base.sideIndices.length / 3);
   assert.equal(allSurfaces - withoutCeiling, base.bottomIndices.length / 3);
-  assert.equal(topOnly, base.topIndices.length / 3);
+  assert.equal(allSurfaces - withoutEave, base.eaveIndices.length / 3);
+  assert.equal(roofAndEaveOnly, (base.topIndices.length + base.eaveIndices.length) / 3);
+  assert.equal(roofOnly, base.topIndices.length / 3);
+});
+
+test('new and legacy roofs default to a 0.2m eave while zero disables it', () => {
+  const document = new FloorplanDocument(createFloorplan([]));
+  const roof = document.addRoof({ id: 'default-eave' });
+  assert.equal(roof.eaveOverhang, 0.2);
+
+  document.updateRoof(roof.id, { eaveOverhang: 0 });
+  assert.equal(roof.eaveOverhang, 0);
+
+  const legacyDocument = new FloorplanDocument(createFloorplan([createFlatRoof('legacy', 0)]));
+  assert.equal(legacyDocument.getRoof('legacy').eaveOverhang, 0.2);
+});
+
+test('eaves are cut with their roofs while retaining roof-part classification', () => {
+  const roofs = [
+    { ...createFlatRoof('roof_a', -1), eaveOverhang: 0.4 },
+    { ...createFlatRoof('roof_b', 1), eaveOverhang: 0.4 }
+  ];
+  const floorplan = createFloorplan(roofs);
+  const context = createRoofCutContext(floorplan);
+  const base = getRoofGeometryData('flat', 4, 4, 1, 0, { eaveOverhang: 0.4 });
+  const baseArea = surfaceArea(base, base.eaveIndices);
+
+  for (const roof of roofs) {
+    const cut = getCutRoofGeometry(floorplan, roof, context);
+    assert.ok(cut.eaveIndices.length > 0);
+    assert.ok(surfaceArea(cut, cut.eaveIndices) < baseArea);
+  }
+});
+
+test('zero-length eaves neither render nor create overlap-cut neighbors', () => {
+  const visibleRoofs = [
+    { ...createFlatRoof('roof_a', -2.5), eaveOverhang: 0.6 },
+    { ...createFlatRoof('roof_b', 2.5), eaveOverhang: 0.6 }
+  ];
+  const visibleContext = createRoofCutContext(createFloorplan(visibleRoofs));
+  assert.deepEqual([...getRoofCutNeighborIds(visibleContext, 'roof_a')], ['roof_b']);
+
+  const hiddenRoofs = visibleRoofs.map((roof) => ({ ...roof, eaveOverhang: 0 }));
+  const hiddenContext = createRoofCutContext(createFloorplan(hiddenRoofs));
+  assert.deepEqual([...getRoofCutNeighborIds(hiddenContext, 'roof_a')], []);
+  assert.deepEqual([...getRoofCutNeighborIds(hiddenContext, 'roof_b')], []);
+});
+
+test('eaves use the roof material and ignore fascia or ceiling visibility', () => {
+  const roof = {
+    ...createFlatRoof('roof', 0),
+    eaveOverhang: 0.4,
+    sideHidden: true,
+    bottomHidden: true
+  };
+  const document = new FloorplanDocument(createFloorplan([roof]));
+  const engine = new BABYLON.NullEngine();
+  const scene = new BABYLON.Scene(engine);
+  const renderer = new BabylonSceneRenderer(scene, document);
+
+  renderer.buildRoofs();
+  const topMesh = scene.getMeshByName('roof_top_roof');
+  const eaveMesh = scene.getMeshByName('roof_eave_roof');
+  assert.ok(topMesh);
+  assert.ok(eaveMesh);
+  assert.equal(eaveMesh.material, topMesh.material);
+  assert.equal(scene.getMeshByName('roof_side_roof'), null);
+  assert.equal(scene.getMeshByName('roof_bottom_roof'), null);
+
+  document.updateRoof('roof', { eaveOverhang: 0 });
+  renderer.buildRoofs('roof');
+  assert.equal(scene.getMeshByName('roof_eave_roof'), null);
+
+  renderer.dispose();
+  engine.dispose();
 });
 
 test('all seven roof subtypes support overlap cutting', () => {

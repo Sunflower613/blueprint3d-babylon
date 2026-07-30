@@ -6,6 +6,7 @@ const SURFACE_COLORS = Object.freeze({
   top: [1, 0, 0, 1],
   side: [0, 1, 0, 1],
   bottom: [0, 0, 1, 1],
+  eave: [1, 0, 1, 1],
   cut: [1, 1, 0, 1]
 });
 
@@ -48,7 +49,8 @@ function roofMetrics(floorplan, roof) {
     x: Number(roof.x || 0),
     z: Number(roof.z || 0),
     rotation: Number(roof.rotation || 0),
-    mirrored: !!roof.mirrored
+    mirrored: !!roof.mirrored,
+    eaveOverhang: Math.max(0, Number(roof.eaveOverhang || 0))
   };
 }
 
@@ -148,7 +150,10 @@ function appendExpandedTriangles(target, record, indices, surface, colorSurface 
     const a = indices[i];
     let b = indices[i + 1];
     let c = indices[i + 2];
-    if (triangleNeedsFlip(surface, positions, a, b, c, record.metrics)) {
+    if (
+      (surface === 'eave' && !record.metrics.mirrored)
+      || (surface !== 'eave' && triangleNeedsFlip(surface, positions, a, b, c, record.metrics))
+    ) {
       [b, c] = [c, b];
     }
     const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
@@ -175,6 +180,7 @@ function createCsgVertexData(record, cutter = false) {
   appendExpandedTriangles(data, record, record.geometry.topIndices, 'top', cutter ? 'cut' : 'top');
   appendExpandedTriangles(data, record, record.geometry.sideIndices, 'side', cutter ? 'cut' : 'side');
   appendExpandedTriangles(data, record, record.geometry.bottomIndices, 'bottom', cutter ? 'cut' : 'bottom');
+  appendExpandedTriangles(data, record, record.geometry.eaveIndices || [], 'eave', cutter ? 'cut' : 'eave');
   return data;
 }
 
@@ -186,6 +192,7 @@ function classifyTriangleSurface(vertexData, indexOffset) {
   const b = vertexData.colors?.[colorOffset + 2] ?? 0;
   if (r > 0.5 && g < 0.5 && b < 0.5) return 'top';
   if (r < 0.5 && g < 0.5 && b > 0.5) return 'bottom';
+  if (r > 0.5 && g < 0.5 && b > 0.5) return 'eave';
   if (r > 0.5 && g > 0.5 && b < 0.5) return 'cut';
   return 'side';
 }
@@ -198,10 +205,11 @@ function toLocalSurfaceCutGeometry(vertexData, record) {
   const positions = [];
   const topIndices = [];
   const sideIndices = [];
+  const eaveIndices = [];
   const indices = Array.from(vertexData.indices || []);
   for (let i = 0; i < indices.length; i += 3) {
     const surface = classifyTriangleSurface(vertexData, i);
-    if (surface !== 'top' && surface !== 'side') continue;
+    if (surface !== 'top' && surface !== 'side' && surface !== 'eave') continue;
     // Legacy CSG emits inward conventional winding. Reverse it for rendering;
     // mirrored local conversion already contributes the required reflection.
     const triangle = record.metrics.mirrored
@@ -216,7 +224,9 @@ function toLocalSurfaceCutGeometry(vertexData, record) {
         cutPositions[offset + 2]
       );
     }
-    const output = surface === 'top' ? topIndices : sideIndices;
+    const output = surface === 'top'
+      ? topIndices
+      : (surface === 'eave' ? eaveIndices : sideIndices);
     output.push(outputBase, outputBase + 1, outputBase + 2);
   }
 
@@ -228,6 +238,7 @@ function toLocalSurfaceCutGeometry(vertexData, record) {
     positions,
     topIndices,
     sideIndices,
+    eaveIndices,
     bottomIndices: record.geometry.bottomIndices.map((index) => index + baseOffset),
     hasCuts: true
   };
@@ -244,7 +255,11 @@ export function createRoofCutContext(floorplan) {
       metrics.depth,
       metrics.height,
       metrics.curve,
-      { topWidth: roof.topWidth, topDepth: roof.topDepth }
+      {
+        topWidth: roof.topWidth,
+        topDepth: roof.topDepth,
+        eaveOverhang: metrics.eaveOverhang
+      }
     );
     const worldPositions = transformGeometryPositions(
       geometry.positions,
@@ -329,7 +344,8 @@ function recordTriangles(record) {
   const indices = [
     ...record.geometry.topIndices,
     ...record.geometry.sideIndices,
-    ...record.geometry.bottomIndices
+    ...record.geometry.bottomIndices,
+    ...(record.geometry.eaveIndices || [])
   ];
   for (let i = 0; i < indices.length; i += 3) {
     const points = [];

@@ -3,6 +3,29 @@ import { test } from 'node:test';
 import { getRoofGeometryData, getRoofFramePaths } from '../src/geometry/roofGeometry.js';
 import { getRoofFramePaths as getRoofFramePathsFromApi } from '../src/api/index.js';
 
+test('all roof subtypes generate a 0.1m-thick overhanging eave as roof geometry', () => {
+  for (const subtype of ['gable', 'shed', 'arch', 'dome', 'trapezoid', 'hip', 'flat']) {
+    const geometry = getRoofGeometryData(subtype, 6, 5, 2, 0, { eaveOverhang: 0.4 });
+    assert.ok(geometry.eaveIndices.length > 0, `${subtype} should generate eave triangles`);
+    assert.equal(geometry.positions.some(Number.isNaN), false);
+
+    const eaveVertices = [...new Set(geometry.eaveIndices)];
+    const hasThicknessPair = eaveVertices.some((a, index) => {
+      const ao = a * 3;
+      return eaveVertices.slice(index + 1).some((b) => {
+        const bo = b * 3;
+        return Math.abs(geometry.positions[ao] - geometry.positions[bo]) < 1e-6
+          && Math.abs(geometry.positions[ao + 2] - geometry.positions[bo + 2]) < 1e-6
+          && Math.abs(Math.abs(geometry.positions[ao + 1] - geometry.positions[bo + 1]) - 0.1) < 1e-6;
+      });
+    });
+    assert.equal(hasThicknessPair, true, `${subtype} eave should have fixed 0.1m thickness`);
+  }
+
+  const withoutEave = getRoofGeometryData('gable', 6, 5, 2);
+  assert.deepEqual(withoutEave.eaveIndices, []);
+});
+
 test('getRoofFramePaths 支持由公开门面导入并正确导出', () => {
   assert.strictEqual(typeof getRoofFramePathsFromApi, 'function');
   assert.strictEqual(getRoofFramePathsFromApi, getRoofFramePaths);
@@ -117,5 +140,4 @@ test('getRoofFramePaths & getRoofGeometryData - 梯形顶支持自定义 topWidt
   const maxTopX = Math.max(...topYPaths.map((pt) => Math.abs(pt.x)));
   assert.ok(Math.abs(maxTopX - 2.0) < 0.1, '顶部框架 x 坐标范围应符合 topWidth = 4.0');
 });
-
 

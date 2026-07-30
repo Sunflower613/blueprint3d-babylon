@@ -33,11 +33,18 @@ describe('窗户横条与竖条 (Mullions) 计算与绘制', () => {
     assert.equal(door1.concentricBars, 2);
     assert.equal(door1.radialBars, 7);
 
-    doc.updateOpening('win1', { horizontalBars: 4, verticalBars: 1, concentricBars: 3, radialBars: 9 });
+    doc.updateOpening('win1', {
+      horizontalBars: 4,
+      verticalBars: 1,
+      concentricBars: 3,
+      radialBars: 9,
+      frameHidden: true
+    });
     assert.equal(win1.horizontalBars, 4);
     assert.equal(win1.verticalBars, 1);
     assert.equal(win1.concentricBars, 3);
     assert.equal(win1.radialBars, 9);
+    assert.equal(win1.frameHidden, true);
 
     doc.updateOpeningMaterial('win1', 'mullion', '#ff0000');
     assert.equal(win1.mullionMaterial.color, '#ff0000');
@@ -51,6 +58,7 @@ describe('窗户横条与竖条 (Mullions) 计算与绘制', () => {
     assert.equal(win2.verticalBars, 1);
     assert.equal(win2.concentricBars, 3);
     assert.equal(win2.radialBars, 9);
+    assert.equal(win2.frameHidden, true);
     assert.equal(win2.mullionMaterial.color, '#ff0000');
   });
 

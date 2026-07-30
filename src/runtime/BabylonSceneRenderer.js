@@ -1953,9 +1953,13 @@ export class BabylonSceneRenderer {
         roofGeometry = getCutRoofGeometry(this.floorplan, roof, cutContext);
       } catch (error) {
         console.warn(`Failed to cut overlapping roof ${roof.id}; using the original geometry.`, error);
-        roofGeometry = getRoofGeometryData(subtype, width, depth, height, curve, { topWidth: roof.topWidth, topDepth: roof.topDepth });
+        roofGeometry = getRoofGeometryData(subtype, width, depth, height, curve, {
+          topWidth: roof.topWidth,
+          topDepth: roof.topDepth,
+          eaveOverhang: roof.eaveOverhang
+        });
       }
-      const { positions, topIndices, sideIndices, bottomIndices } = roofGeometry;
+      const { positions, topIndices, sideIndices, bottomIndices, eaveIndices } = roofGeometry;
 
       if (topIndices && topIndices.length > 0) {
         const topMesh = new BABYLON.Mesh(`roof_top_${roof.id}`, this.scene);
@@ -1971,6 +1975,22 @@ export class BabylonSceneRenderer {
         topMesh.material = material;
         topMesh.receiveShadows = true;
         this.shadowCasters.push(topMesh);
+      }
+
+      if (eaveIndices && eaveIndices.length > 0) {
+        const eaveMesh = new BABYLON.Mesh(`roof_eave_${roof.id}`, this.scene);
+        eaveMesh.parent = group;
+        const eaveNormals = [];
+        BABYLON.VertexData.ComputeNormals(positions, eaveIndices, eaveNormals);
+        const eaveVD = new BABYLON.VertexData();
+        eaveVD.positions = positions;
+        eaveVD.indices = eaveIndices;
+        eaveVD.normals = eaveNormals;
+        eaveVD.applyToMesh(eaveMesh);
+        eaveMesh.convertToFlatShadedMesh();
+        eaveMesh.material = material;
+        eaveMesh.receiveShadows = true;
+        this.shadowCasters.push(eaveMesh);
       }
 
       if (sideIndices && sideIndices.length > 0 && !roof.sideHidden) {

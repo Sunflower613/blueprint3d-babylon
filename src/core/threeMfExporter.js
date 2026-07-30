@@ -521,10 +521,11 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
     } catch (_) {
       geometry = getRoofGeometryData(subtype, width, depth, height, curve, {
         topWidth: roof.topWidth,
-        topDepth: roof.topDepth
+        topDepth: roof.topDepth,
+        eaveOverhang: roof.eaveOverhang
       });
     }
-    const { positions, topIndices, sideIndices, bottomIndices } = geometry;
+    const { positions, topIndices, sideIndices, bottomIndices, eaveIndices } = geometry;
 
     const vertices = [];
     const rotation = Number(roof.rotation || 0);
@@ -552,6 +553,11 @@ function appendRoofs(mesh, floorplan, floorId, options = {}) {
     if (topIndices && topIndices.length > 0) {
       const topMesh = { vertices, triangles: chunkIndices(topIndices) };
       appendMesh(mesh, topMesh, roof.color || '#b75b54');
+    }
+
+    if (eaveIndices && eaveIndices.length > 0) {
+      const eaveMesh = { vertices, triangles: chunkIndices(eaveIndices) };
+      appendMesh(mesh, eaveMesh, roof.color || '#b75b54');
     }
 
     if (sideIndices && sideIndices.length > 0 && !roof.sideHidden) {

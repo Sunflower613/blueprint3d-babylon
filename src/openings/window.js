@@ -25,13 +25,15 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
     glassMat.twoSidedLighting = true;
   }
 
-  buildOpeningFrame(registry, opening, parent, {
-    width,
-    height,
-    frameT,
-    frameW,
-    material: frameMat
-  });
+  if (!opening.frameHidden) {
+    buildOpeningFrame(registry, opening, parent, {
+      width,
+      height,
+      frameT,
+      frameW,
+      material: frameMat
+    });
+  }
   if (opening.glassHidden) {
     createOpeningPickProxy(registry, opening, parent, { width, height, depth: frameT * 0.8 });
   }
@@ -42,8 +44,8 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
     width,
     height,
     depth: 0.012,
-    scaleX: Math.max(0.1, (width - frameW * 2) / width),
-    scaleY: Math.max(0.1, (height - frameW * 2) / height),
+    scaleX: opening.frameHidden ? 1 : Math.max(0.1, (width - frameW * 2) / width),
+    scaleY: opening.frameHidden ? 1 : Math.max(0.1, (height - frameW * 2) / height),
     material: glassMat,
     shadowCaster: false
   });
@@ -52,7 +54,7 @@ export function buildWindowOpening(registry, opening, parent, options = {}) {
   buildOpeningBars(registry, opening, parent, {
     width,
     height,
-    frameW,
+    frameW: opening.frameHidden ? 0 : frameW,
     material: mullionMat
   });
 }

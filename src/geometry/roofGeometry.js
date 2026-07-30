@@ -40,6 +40,202 @@ function normalizeRoofGeometryWinding(geometry) {
   return geometry;
 }
 
+function boundaryLoops(indices) {
+  const edges = new Map();
+  for (let i = 0; i < indices.length; i += 3) {
+    const triangle = [indices[i], indices[i + 1], indices[i + 2]];
+    for (let j = 0; j < 3; j++) {
+      const a = triangle[j];
+      const b = triangle[(j + 1) % 3];
+      const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+      const entry = edges.get(key);
+      if (entry) entry.count += 1;
+      else edges.set(key, { a, b, count: 1 });
+    }
+  }
+
+  const adjacency = new Map();
+  for (const edge of edges.values()) {
+    if (edge.count !== 1) continue;
+    if (!adjacency.has(edge.a)) adjacency.set(edge.a, []);
+    if (!adjacency.has(edge.b)) adjacency.set(edge.b, []);
+    adjacency.get(edge.a).push(edge.b);
+    adjacency.get(edge.b).push(edge.a);
+  }
+
+  const loops = [];
+  const visitedEdges = new Set();
+  for (const [start, neighbors] of adjacency) {
+    for (const first of neighbors) {
+      const firstKey = start < first ? `${start}:${first}` : `${first}:${start}`;
+      if (visitedEdges.has(firstKey)) continue;
+      const loop = [start];
+      let previous = start;
+      let current = first;
+      while (current !== start && loop.length <= adjacency.size + 1) {
+        loop.push(current);
+        const candidates = adjacency.get(current) || [];
+        const next = candidates.find((candidate) => {
+          if (candidate === previous) return false;
+          const key = current < candidate ? `${current}:${candidate}` : `${candidate}:${current}`;
+          return !visitedEdges.has(key);
+        }) ?? candidates.find((candidate) => candidate !== previous);
+        const edgeKey = previous < current ? `${previous}:${current}` : `${current}:${previous}`;
+        visitedEdges.add(edgeKey);
+        if (next === undefined) break;
+        previous = current;
+        current = next;
+      }
+      if (current === start && loop.length >= 3) {
+        const closingKey = previous < start ? `${previous}:${start}` : `${start}:${previous}`;
+        visitedEdges.add(closingKey);
+        loops.push(loop);
+      }
+    }
+  }
+  return loops;
+}
+
+function projectedLoopArea(positions, loop) {
+  let area = 0;
+  for (let i = 0; i < loop.length; i++) {
+    const a = loop[i] * 3;
+    const b = loop[(i + 1) % loop.length] * 3;
+    area += positions[a] * positions[b + 2] - positions[b] * positions[a + 2];
+  }
+  return area / 2;
+}
+
+function buildRoofEave(positions, topIndices, overhang, thickness = 0.1, subtype = '') {
+  if (!(overhang > WINDING_EPSILON) || topIndices.length < 3) return [];
+  const loops = subtype === 'dome'
+    ? [Array.from({ length: 16 }, (_, index) => index)]
+    : boundaryLoops(topIndices);
+  if (!loops.length) return [];
+  const loop = loops.reduce((largest, candidate) => (
+    Math.abs(projectedLoopArea(positions, candidate))
+      > Math.abs(projectedLoopArea(positions, largest))
+      ? candidate
+      : largest
+  ));
+  const area = projectedLoopArea(positions, loop);
+  const orientation = area >= 0 ? 1 : -1;
+  const incidentTriangles = new Map();
+  for (let i = 0; i < topIndices.length; i += 3) {
+    const triangle = topIndices.slice(i, i + 3);
+    for (const vertex of triangle) {
+      if (!incidentTriangles.has(vertex)) incidentTriangles.set(vertex, []);
+      incidentTriangles.get(vertex).push(triangle);
+    }
+  }
+
+  const outer = loop.map((vertexIndex, i) => {
+    const previousIndex = loop[(i - 1 + loop.length) % loop.length];
+    const nextIndex = loop[(i + 1) % loop.length];
+    const offset = vertexIndex * 3;
+    const previousOffset = previousIndex * 3;
+    const nextOffset = nextIndex * 3;
+    const x = positions[offset];
+    const y = positions[offset + 1];
+    const z = positions[offset + 2];
+    const prevDx = x - positions[previousOffset];
+    const prevDz = z - positions[previousOffset + 2];
+    const nextDx = positions[nextOffset] - x;
+    const nextDz = positions[nextOffset + 2] - z;
+    const prevLength = Math.hypot(prevDx, prevDz) || 1;
+    const nextLength = Math.hypot(nextDx, nextDz) || 1;
+    const prevNormal = orientation > 0
+      ? { x: prevDz / prevLength, z: -prevDx / prevLength }
+      : { x: -prevDz / prevLength, z: prevDx / prevLength };
+    const nextNormal = orientation > 0
+      ? { x: nextDz / nextLength, z: -nextDx / nextLength }
+      : { x: -nextDz / nextLength, z: nextDx / nextLength };
+    let mx = prevNormal.x + nextNormal.x;
+    let mz = prevNormal.z + nextNormal.z;
+    const miterLength = Math.hypot(mx, mz);
+    if (miterLength < WINDING_EPSILON) {
+      mx = nextNormal.x;
+      mz = nextNormal.z;
+    } else {
+      mx /= miterLength;
+      mz /= miterLength;
+    }
+    const denominator = Math.max(0.25, Math.abs(mx * nextNormal.x + mz * nextNormal.z));
+    const distance = Math.min(overhang / denominator, overhang * 4);
+    const outerX = x + mx * distance;
+    const outerZ = z + mz * distance;
+    const heights = [];
+    for (const triangle of incidentTriangles.get(vertexIndex) || []) {
+      const a = triangle[0] * 3;
+      const b = triangle[1] * 3;
+      const c = triangle[2] * 3;
+      const abx = positions[b] - positions[a];
+      const aby = positions[b + 1] - positions[a + 1];
+      const abz = positions[b + 2] - positions[a + 2];
+      const acx = positions[c] - positions[a];
+      const acy = positions[c + 1] - positions[a + 1];
+      const acz = positions[c + 2] - positions[a + 2];
+      const nx = aby * acz - abz * acy;
+      const ny = abz * acx - abx * acz;
+      const nz = abx * acy - aby * acx;
+      if (Math.abs(ny) < 1e-4) continue;
+      heights.push(y - (nx * (outerX - x) + nz * (outerZ - z)) / ny);
+    }
+    const predictedY = heights.length
+      ? heights.reduce((sum, value) => sum + value, 0) / heights.length
+      : y;
+    const maxDelta = Math.max(0.1, overhang);
+    return {
+      x: outerX,
+      y: Math.max(y - maxDelta, Math.min(y + maxDelta, predictedY)),
+      z: outerZ
+    };
+  });
+
+  const outerTop = [];
+  const innerBottom = [];
+  const outerBottom = [];
+  for (let i = 0; i < loop.length; i++) {
+    outerTop.push(positions.length / 3);
+    positions.push(outer[i].x, outer[i].y, outer[i].z);
+    const innerOffset = loop[i] * 3;
+    innerBottom.push(positions.length / 3);
+    positions.push(
+      positions[innerOffset],
+      positions[innerOffset + 1] - thickness,
+      positions[innerOffset + 2]
+    );
+    outerBottom.push(positions.length / 3);
+    positions.push(outer[i].x, outer[i].y - thickness, outer[i].z);
+  }
+
+  const eaveIndices = [];
+  const pushOriented = (a, b, c, surface, invertSide = false) => {
+    const triangle = [a, b, c];
+    if (surface === 'side' && invertSide) {
+      if (!triangleNeedsOutwardFlip(positions, a, b, c, 'side')) {
+        [triangle[1], triangle[2]] = [triangle[2], triangle[1]];
+      }
+    } else if (triangleNeedsOutwardFlip(positions, a, b, c, surface)) {
+      [triangle[1], triangle[2]] = [triangle[2], triangle[1]];
+    }
+    eaveIndices.push(...triangle);
+  };
+
+  for (let i = 0; i < loop.length; i++) {
+    const next = (i + 1) % loop.length;
+    pushOriented(loop[i], loop[next], outerTop[next], 'top');
+    pushOriented(loop[i], outerTop[next], outerTop[i], 'top');
+    pushOriented(innerBottom[i], outerBottom[next], innerBottom[next], 'bottom');
+    pushOriented(innerBottom[i], outerBottom[i], outerBottom[next], 'bottom');
+    pushOriented(outerTop[i], outerTop[next], outerBottom[next], 'side');
+    pushOriented(outerTop[i], outerBottom[next], outerBottom[i], 'side');
+    pushOriented(loop[i], innerBottom[next], loop[next], 'side', true);
+    pushOriented(loop[i], innerBottom[i], innerBottom[next], 'side', true);
+  }
+  return eaveIndices;
+}
+
 /**
  * 根据屋顶类型及长宽高，计算并返回其 3D 几何体的顶点 (positions) 和索引 (indices)
  * @param {string} subtype 屋顶子类型 ('gable' | 'shed' | 'arch' | 'dome' | 'trapezoid' | 'hip' | 'flat')
@@ -352,7 +548,15 @@ export function getRoofGeometryData(subtype, width, depth, height, curve = 0, op
     }
   }
 
-  return normalizeRoofGeometryWinding({ positions, topIndices, sideIndices, bottomIndices });
+  const geometry = normalizeRoofGeometryWinding({ positions, topIndices, sideIndices, bottomIndices });
+  geometry.eaveIndices = buildRoofEave(
+    geometry.positions,
+    geometry.topIndices,
+    Math.max(0, Number(options.eaveOverhang || 0)),
+    0.1,
+    subtype
+  );
+  return geometry;
 }
 
 /**

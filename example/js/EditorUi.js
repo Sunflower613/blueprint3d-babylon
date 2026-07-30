@@ -156,6 +156,9 @@ export function ensureStructureEditor() {
   dimRow.appendChild(createStructureField('深度 (m)', 'structure-depth', { type: 'number', min: '0.6', step: '0.1' }));
   dimRow.appendChild(createStructureField('高度 (m)', 'structure-height', { type: 'number', min: '0.2', step: '0.1' }));
   editor.appendChild(dimRow);
+  const eaveOverhangField = createStructureField('屋檐伸出 (m)', 'structure-eave-overhang', { type: 'number', min: '0', max: '3', step: '0.05' });
+  eaveOverhangField.id = 'structure-eave-overhang-field';
+  editor.appendChild(eaveOverhangField);
   const elevationField = createStructureField('离地高度 (m)', 'structure-elevation', { type: 'number', step: '0.1' });
   elevationField.id = 'structure-elevation-field';
   editor.appendChild(elevationField);
@@ -527,6 +530,11 @@ export function updateEditor() {
       bottomHiddenField.classList.toggle('hidden', structureType !== 'roof');
     }
     document.getElementById('structure-bottom-hidden').checked = !!structure.bottomHidden;
+    const eaveOverhangField = document.getElementById('structure-eave-overhang-field');
+    if (eaveOverhangField) {
+      eaveOverhangField.classList.toggle('hidden', structureType !== 'roof');
+    }
+    document.getElementById('structure-eave-overhang').value = Number((structure.eaveOverhang ?? 0.2).toFixed(2));
 
     const hideFrameField = document.getElementById('structure-hide-frame-field');
     if (hideFrameField) {
@@ -714,6 +722,9 @@ export function updateEditor() {
     const isDoor = opening.type === 'door';
     document.getElementById('opening-content-hidden').checked = isDoor ? !!opening.panelHidden : !!opening.glassHidden;
     document.getElementById('opening-content-hidden-label').textContent = isDoor ? '隐藏门板' : '隐藏玻璃';
+    const frameHiddenField = document.getElementById('opening-frame-hidden-field');
+    frameHiddenField?.classList.toggle('hidden', isDoor);
+    document.getElementById('opening-frame-hidden').checked = !isDoor && !!opening.frameHidden;
     if (openField) {
       openField.classList.toggle('hidden', !isDoor);
       document.getElementById('opening-open').checked = !!opening.isOpen;
@@ -1316,7 +1327,7 @@ export function initUiEventListeners() {
     }
   });
 
-  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-hide-frame', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-beam-count', 'structure-curve', 'structure-elevation', 'structure-top-width', 'structure-top-depth'].forEach((id) => {
+  ['structure-x', 'structure-z', 'structure-width', 'structure-depth', 'structure-height', 'structure-steps', 'structure-side-hidden', 'structure-bottom-hidden', 'structure-eave-overhang', 'structure-hide-frame', 'structure-subtype', 'structure-mirrored', 'structure-spiral-degrees', 'structure-corner-step', 'structure-run-before-corner', 'structure-run-after-corner', 'structure-u-slot-width', 'structure-u-void-length', 'structure-beam-count', 'structure-curve', 'structure-elevation', 'structure-top-width', 'structure-top-depth'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', updateSelectedStructure);
   });
 
@@ -1517,6 +1528,10 @@ export function initUiEventListeners() {
     updateSelectedOpening(opening.type === 'door'
       ? { panelHidden: event.target.checked }
       : { glassHidden: event.target.checked });
+  });
+
+  document.getElementById('opening-frame-hidden').addEventListener('change', (event) => {
+    updateSelectedOpening({ frameHidden: event.target.checked });
   });
 
   document.getElementById('opening-locked').addEventListener('change', (event) => {

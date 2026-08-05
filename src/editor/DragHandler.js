@@ -379,7 +379,8 @@ export class DragHandler {
     let closestT = 0.5;
     let minDistance = Infinity;
 
-    for (const w of walls) {
+    const requestedWall = world.wallId ? walls.find((wall) => wall.id === world.wallId) : null;
+    for (const w of requestedWall ? [requestedWall] : walls) {
       const ax = w.from[0];
       const az = w.from[1];
       const bx = w.to[0];

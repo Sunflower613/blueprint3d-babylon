@@ -150,6 +150,22 @@ test('0723: curtains use half-cell wall movement and stay on the room-facing sid
   assert.equal(patch.roomId, room.id);
 });
 
+test('3D wall hint prevents wall furniture from snapping to a wall behind the pointer target', () => {
+  const frontWall = { id: 'front-wall', from: [0, 0], to: [4, 0] };
+  const backWall = { id: 'back-wall', from: [0, 3], to: [4, 3] };
+  const shelf = {
+    id: 'shelf-1', type: 'wall_shelf', x: 2, z: 0.2,
+    width: 0.8, depth: 0.2, height: 0.25, elevation: 0.85, scale: 1
+  };
+  const { manager, updates } = createManager({ items: [shelf], walls: [frontWall, backWall] });
+
+  manager.moveItemTo(shelf.id, 2, 10, false, { wallId: frontWall.id, side: -1 });
+
+  const patch = updates.at(-1).patch;
+  assert.equal(patch.wallId, frontWall.id);
+  assert.ok(patch.z < 0, 'furniture should remain on the camera-facing side of the front wall');
+});
+
 test('0723: moving floor furniture outdoors clears room ownership and grounds it', () => {
   const room = {
     id: 'room-1', floorId: 'floor-1', x: 0, z: 0,

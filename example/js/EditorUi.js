@@ -1172,7 +1172,7 @@ export function createApplyMaterialButton(text, onClick) {
   return button;
 }
 
-export function placeFurnitureAt(type, x, z) {
+export function placeFurnitureAt(type, x, z, placementHint = null) {
   const definition = testMap.getFurnitureDefinition(type);
   if (!definition) return null;
   const room = testMap.getRoomAt(x, z);
@@ -1191,7 +1191,7 @@ export function placeFurnitureAt(type, x, z) {
     floorId: testMap.getCurrentFloorId()
   });
   if (!item) return null;
-  entityManager.moveItemTo(item.id, x, z, true);
+  entityManager.moveItemTo(item.id, x, z, true, placementHint);
   return testMap.getEntity('item', item.id);
 }
 

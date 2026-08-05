@@ -58,7 +58,12 @@ export function updateFurniturePlacement(point) {
   const snapped = Context.snapWorldPoint
     ? Context.snapWorldPoint({ x: point.x, z: point.z })
     : point;
-  placement.point = { x: snapped.x, z: snapped.z };
+  placement.point = {
+    x: snapped.x,
+    z: snapped.z,
+    wallId: point.wallId,
+    side: point.side
+  };
   if (Context.currentView === '2d') {
     Context.renderPlan?.();
   } else {
@@ -78,7 +83,10 @@ export function commitFurniturePlacement(point) {
   updateFurniturePlacement(point);
   const { type, point: target } = placement;
   if (!target) return false;
-  const item = Context.placeFurnitureAt?.(type, target.x, target.z);
+  const item = Context.placeFurnitureAt?.(type, target.x, target.z, {
+    wallId: target.wallId,
+    side: target.side
+  });
   cancelFurniturePlacement({ render: false });
   Context.renderPlan?.();
   return !!item;

@@ -148,7 +148,7 @@ export class EntityManager {
    * @param {number} x - 目标世界坐标 X
    * @param {number} z - 目标世界坐标 Z
    */
-  moveItemTo(itemId, x, z, isFinished = false) {
+  moveItemTo(itemId, x, z, isFinished = false, placementHint = null) {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
@@ -198,7 +198,12 @@ export class EntityManager {
       let bestWall = null;
 
       // 寻找距离光标最近的墙壁
-      this.opts.getWalls().forEach((wall) => {
+      const walls = this.opts.getWalls();
+      const requestedWallId = placementHint?.wallId || (isFinished ? item.wallId : null);
+      const requestedWall = requestedWallId
+        ? walls.find((wall) => wall.id === requestedWallId)
+        : null;
+      (requestedWall ? [requestedWall] : walls).forEach((wall) => {
         const [x1, z1] = wall.from;
         const [x2, z2] = wall.to;
         const dx = x2 - x1;
@@ -275,6 +280,9 @@ export class EntityManager {
           if (positiveInside !== negativeInside) side = positiveInside ? 1 : -1;
           offsetX = normalX * offsetDist * side;
           offsetZ = normalZ * offsetDist * side;
+        } else if (placementHint?.side === 1 || placementHint?.side === -1) {
+          offsetX = normalX * offsetDist * placementHint.side;
+          offsetZ = normalZ * offsetDist * placementHint.side;
         } else if (vLen > 0.0001) {
           offsetX = (vx / vLen) * offsetDist;
           offsetZ = (vz / vLen) * offsetDist;
@@ -285,6 +293,7 @@ export class EntityManager {
 
         patch.x = bestProjX + offsetX;
         patch.z = bestProjZ + offsetZ;
+        patch.wallId = bestWall.id;
 
         const dot1 = Math.sin(bestAngle) * offsetX + Math.cos(bestAngle) * offsetZ;
         const dot2 = Math.sin(bestAngle + Math.PI) * offsetX + Math.cos(bestAngle + Math.PI) * offsetZ;

@@ -52,7 +52,7 @@ const {
   findMetadataFromNode, findRoofComponentIdFromNode, findOpeningIdFromNode,
   findItemIdFromNode, findWallIdFromNode, findRoomIdFromNode, findRoofIdFromNode,
   findStairsIdFromNode, findFenceIdFromNode, findFenceGateIdFromNode,
-  groundPointFromPointer, findWallSideFromNode, get2DWallSideFromPoint
+  groundPointFromPointer, wallPointFromPointer, findWallSideFromNode, get2DWallSideFromPoint
 } = InteractionHelpers;
 const {
   validateUploadedFurniture, registerCustomFurniture, saveCustomFurnitureToLocalStorage,
@@ -359,7 +359,7 @@ const appState = {
   refreshShadows: () => refreshShadows(),
   updateEditor: () => updateEditor(),
   renderPlan: () => renderPlan(),
-  placeFurnitureAt: (type, x, z) => placeFurnitureAt(type, x, z),
+  placeFurnitureAt: (type, x, z, placementHint) => placeFurnitureAt(type, x, z, placementHint),
   clearSelection: () => clearSelection(),
   updateStructure: (type, id, patch, rebuild) => updateStructure(type, id, patch, rebuild),
   getStructure: (type, id) => getStructure(type, id),
@@ -397,6 +397,7 @@ const appState = {
   get canvas() { return canvas; },
   get DragHandler() { return DragHandler; },
   groundPointFromPointer: () => groundPointFromPointer(),
+  wallPointFromPointer: () => wallPointFromPointer(),
   selectOpening: (id) => selectOpening(id),
   selectRoom: (id) => selectRoom(id),
   selectWall: (id) => selectWall(id),
@@ -413,7 +414,7 @@ const appState = {
   getEditHandleDragState: () => getEditHandleDragState(),
   setEditHandleDragState: (v) => setEditHandleDragState(v),
   move3DEditHandle: (gp) => move3DEditHandle(gp),
-  moveItemTo: (id, x, z) => moveItemTo(id, x, z),
+  moveItemTo: (id, x, z, placementHint) => moveItemTo(id, x, z, placementHint),
   moveStructureTo: (type, id, x, z, opts) => moveStructureTo(type, id, x, z, opts),
   get selectedTarget() { return selectedTarget; },
   set selectedTarget(v) { selectedTarget = v; },

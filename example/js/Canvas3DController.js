@@ -7,6 +7,7 @@ import { begin3DEditHandleDrag, pickNearest3DTarget, updateHandleHoverState } fr
 import {
   cancelFurniturePlacement,
   commitFurniturePlacement,
+  getFurniturePlacement,
   hideFurniturePlacementPreview,
   isFurniturePlacementActive,
   updateFurniturePlacement
@@ -33,6 +34,15 @@ export function initCanvas3DController(Context) {
   } = RailingPreview;
   const { selectFence, selectFenceGate, selectOpening, selectRoof, selectRoom, selectStairs } = Context;
 
+function get3DFurniturePlacementPoint() {
+  const activePlacement = getFurniturePlacement();
+  const definition = activePlacement ? testMap.getFurnitureDefinition(activePlacement.type) : null;
+  if (definition?.placeType === 'wall') {
+    return Context.wallPointFromPointer?.() || null;
+  }
+  return groundPointFromPointer();
+}
+
 function begin3DDrag(pointerInfo) {
   if (window.firstPersonActive) return;
   const event = pointerInfo.event;
@@ -44,7 +54,7 @@ function begin3DDrag(pointerInfo) {
     }
     const isPrimaryMouseDown = event.pointerType === 'mouse' && event.button === 0 && event.buttons === 1;
     if (isPrimaryMouseDown || event.pointerType === 'touch' || event.pointerType === 'pen') {
-      const point = groundPointFromPointer();
+      const point = get3DFurniturePlacementPoint();
       if (point) commitFurniturePlacement(point);
       event.preventDefault();
       return;
@@ -406,7 +416,7 @@ scene.onPointerObservable.add((pointerInfo) => {
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
     if (isFurniturePlacementActive()) {
-      const point = groundPointFromPointer();
+      const point = get3DFurniturePlacementPoint();
       if (point) updateFurniturePlacement(point);
       return;
     }

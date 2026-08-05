@@ -1,7 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as BABYLON from '@babylonjs/core';
-import { Viewer3D, getRenderPerformanceProfile } from '../../example/js/Viewer3D.js';
+import { Viewer3D, getRenderPerformanceProfile, intersectWallPlanes } from '../../example/js/Viewer3D.js';
+
+test('wall-plane picking selects the front wall even when its rendered mesh has an opening', () => {
+  const walls = [
+    { id: 'front', from: [-2, 0], to: [2, 0] },
+    { id: 'back', from: [-2, 3], to: [2, 3] }
+  ];
+  const hit = intersectWallPlanes({
+    origin: { x: 0, y: 1.4, z: -5 },
+    direction: { x: 0, y: 0, z: 1 }
+  }, walls, { floorY: 0, wallHeight: 2.8 });
+
+  assert.equal(hit.wallId, 'front');
+  assert.equal(hit.z, 0);
+  assert.equal(hit.side, -1);
+});
 
 test('mobile and constrained-memory devices use a cooler render profile', () => {
   const mobile = getRenderPerformanceProfile({

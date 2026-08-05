@@ -125,7 +125,7 @@ export function findBookshelfNearby(item) { return Topology.findBookshelfNearby(
 export function snapToBookshelf(item, bookshelf) { return Topology.snapToBookshelf(item, bookshelf, (type) => Context.testMap.getFurnitureDefinition(type)); }
 export function getShelfLayerHeights(bookshelf) { return Topology.getShelfLayerHeights(bookshelf, (type) => Context.testMap.getFurnitureDefinition(type)); }
 export function getItemsCountOnBookshelf(bookshelf, items) { return Topology.getItemsCountOnBookshelf(bookshelf, items, (type) => Context.testMap.getFurnitureDefinition(type)); }
-export function moveItemTo(itemId, x, z) { return Context.entityManager.moveItemTo(itemId, x, z); }
+export function moveItemTo(itemId, x, z, placementHint) { return Context.entityManager.moveItemTo(itemId, x, z, false, placementHint); }
 
 export function findMetadataFromNode(node, key) {
   for (let current = node; current; current = current.parent) if (current.metadata?.[key]) return current.metadata[key];
@@ -152,6 +152,12 @@ export function findRoofIdFromNode(node) {
   return roof && Context.testMap.getFloor(roof.floorId)?.hideRoof ? null : id;
 }
 export function groundPointFromPointer() { return Context.viewer3d.groundPointFromPointer(Context.testMap.getFloorElevation?.(Context.testMap.getCurrentFloorId()) || 0); }
+export function wallPointFromPointer() {
+  return Context.viewer3d.wallPointFromPointer(Context.currentWalls(), {
+    floorY: Context.testMap.getFloorElevation?.(Context.testMap.getCurrentFloorId()) || 0,
+    wallHeight: Number(Context.testMap.getProjectMetadata().wallHeight || 2.8)
+  });
+}
 export function findWallSideFromNode(node) {
   for (let current = node; current; current = current.parent) if (current.metadata?.side) return current.metadata.side;
   return null;

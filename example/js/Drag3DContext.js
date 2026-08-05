@@ -1,4 +1,17 @@
 let Context = null;
+const DRAG_START_THRESHOLD_PX = 4;
+
+function hasPassedDragThreshold(dragState, event) {
+  if (dragState.dragStarted) return true;
+  if (!Number.isFinite(event?.clientX) || !Number.isFinite(event?.clientY)) {
+    dragState.dragStarted = true;
+    return true;
+  }
+  const distance = Math.hypot(event.clientX - dragState.startClientX, event.clientY - dragState.startClientY);
+  if (distance < DRAG_START_THRESHOLD_PX) return false;
+  dragState.dragStarted = true;
+  return true;
+}
 
 export function initDrag3DContext(appState) {
   Context = appState;
@@ -20,13 +33,15 @@ export function onDrag3DDown(target, event) {
   if (target.type === 'opening') {
     Context.selectOpening(target.id);
     const opening = testMap.getEntity('opening', target.id);
-    const groundPoint = Context.groundPointFromPointer();
-    if (!opening || opening.locked || !groundPoint) return;
+    if (!opening || opening.locked) return;
     testMap.beginEntityPreview('opening', target.id);
     Context.drag3DState = {
       type: 'opening',
       openingId: target.id,
       pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      dragStarted: false,
       originalT: opening.t ?? 0.5,
       historyPushed: false
     };
@@ -107,15 +122,31 @@ export function onDrag3DDown(target, event) {
   Context.selectItem(itemId, true);
   const item = testMap.getEntity('item', itemId);
   if (!item || item.locked) return;
-  const groundPoint = Context.groundPointFromPointer();
-  if (!groundPoint) return;
+  const definition = testMap.getFurnitureDefinition(item.type);
+  const isWallItem = definition?.placeType === 'wall';
+  const wallPoint = isWallItem ? Context.wallPointFromPointer?.() : null;
+  const pointerPoint = wallPoint || Context.groundPointFromPointer();
+  if (!pointerPoint) return;
+
+  let wallAlongOffset = 0;
+  if (wallPoint?.wall) {
+    const [x1, z1] = wallPoint.wall.from;
+    const [x2, z2] = wallPoint.wall.to;
+    const length = Math.hypot(x2 - x1, z2 - z1) || 1;
+    wallAlongOffset = ((item.x - wallPoint.x) * (x2 - x1) + (item.z - wallPoint.z) * (z2 - z1)) / length;
+  }
 
   Context.drag3DState = {
     type: 'item',
     itemId,
     pointerId: event.pointerId,
-    offsetX: item.x - groundPoint.x,
-    offsetZ: item.z - groundPoint.z,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    dragStarted: false,
+    wallMounted: isWallItem,
+    wallAlongOffset,
+    offsetX: item.x - pointerPoint.x,
+    offsetZ: item.z - pointerPoint.z,
     originalX: item.x,
     originalZ: item.z,
     originalElevation: item.elevation || 0,
@@ -130,21 +161,39 @@ export function onDrag3DDown(target, event) {
 export function move3DDrag(pointerInfo) {
   const dragState = Context.drag3DState;
   if (!dragState) return;
-  const groundPoint = Context.groundPointFromPointer();
+  if (!hasPassedDragThreshold(dragState, pointerInfo.event)) return;
+  const wallPoint = (dragState.type === 'opening' || dragState.wallMounted)
+    ? Context.wallPointFromPointer?.()
+    : null;
+  if ((dragState.type === 'opening' || dragState.wallMounted) && !wallPoint) return;
+  const groundPoint = wallPoint || Context.groundPointFromPointer();
   if (!groundPoint) return;
   
   if (dragState.type === 'edit-handle') {
     Context.move3DEditHandle(groundPoint);
   } else if (dragState.type === 'item') {
-    const nextX = groundPoint.x + dragState.offsetX;
-    const nextZ = groundPoint.z + dragState.offsetZ;
+    let nextX = groundPoint.x + dragState.offsetX;
+    let nextZ = groundPoint.z + dragState.offsetZ;
+    let placementHint = null;
+    if (dragState.wallMounted && wallPoint?.wall) {
+      const [x1, z1] = wallPoint.wall.from;
+      const [x2, z2] = wallPoint.wall.to;
+      const length = Math.hypot(x2 - x1, z2 - z1) || 1;
+      nextX = wallPoint.x + (x2 - x1) / length * dragState.wallAlongOffset;
+      nextZ = wallPoint.z + (z2 - z1) / length * dragState.wallAlongOffset;
+      placementHint = { wallId: wallPoint.wallId, side: wallPoint.side };
+    }
     if (!dragState.historyPushed && Math.hypot(nextX - dragState.originalX, nextZ - dragState.originalZ) > 0.02) {
       Context.pushHistory();
       dragState.historyPushed = true;
     }
-    Context.moveItemTo(dragState.itemId, nextX, nextZ);
+    Context.moveItemTo(dragState.itemId, nextX, nextZ, placementHint);
   } else if (dragState.type === 'opening') {
-    Context.DragHandler.moveOpeningToWorld(dragState.openingId, { x: groundPoint.x, z: groundPoint.z }, dragState);
+    Context.DragHandler.moveOpeningToWorld(dragState.openingId, {
+      x: groundPoint.x,
+      z: groundPoint.z,
+      wallId: wallPoint?.wallId
+    }, dragState);
   } else if (dragState.type === 'roof' || dragState.type === 'stairs') {
     const nextX = groundPoint.x + dragState.offsetX;
     const nextZ = groundPoint.z + dragState.offsetZ;
@@ -168,7 +217,7 @@ export function end3DDrag(event) {
   const canvas = Context.canvas;
   const camera = Context.camera;
 
-  if (dragState.type === 'item') {
+  if (dragState.type === 'item' && dragState.dragStarted) {
     const item = testMap.getEntity('item', dragState.itemId);
     if (item) {
       Context.entityManager.moveItemTo(dragState.itemId, item.x, item.z, true);
@@ -188,7 +237,9 @@ export function end3DDrag(event) {
   document.body.classList.remove('is-dragging-3d');
   camera.attachControl(canvas, true, false, 1);
   
-  if (openingId) {
+  if (openingId && !dragState.dragStarted) {
+    testMap.cancelEntityPreview('opening', openingId);
+  } else if (openingId) {
     testMap.commitEntityPreview('opening', openingId).then(() => {
       Context.refreshShadows();
       Context.selectOpening(openingId);

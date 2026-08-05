@@ -6,6 +6,43 @@ const SKYBOX_HORIZON_OFFSET = SKYBOX_SIZE * 0.1;
 const MOBILE_RENDER_FPS = 30;
 const DESKTOP_RENDER_FPS = 60;
 
+export function intersectWallPlanes(ray, walls, { floorY = 0, wallHeight = 2.8 } = {}) {
+  if (!ray?.origin || !ray?.direction) return null;
+  let nearest = null;
+
+  for (const wall of walls || []) {
+    const [x1, z1] = wall.from || [];
+    const [x2, z2] = wall.to || [];
+    const dx = Number(x2) - Number(x1);
+    const dz = Number(z2) - Number(z1);
+    const length = Math.hypot(dx, dz);
+    if (!Number.isFinite(length) || length < 1e-6) continue;
+
+    const normalX = -dz / length;
+    const normalZ = dx / length;
+    const denominator = ray.direction.x * normalX + ray.direction.z * normalZ;
+    if (Math.abs(denominator) < 1e-7) continue;
+
+    const distance = ((x1 - ray.origin.x) * normalX + (z1 - ray.origin.z) * normalZ) / denominator;
+    if (!Number.isFinite(distance) || distance < 0) continue;
+
+    const x = ray.origin.x + ray.direction.x * distance;
+    const y = ray.origin.y + ray.direction.y * distance;
+    const z = ray.origin.z + ray.direction.z * distance;
+    const segmentT = ((x - x1) * dx + (z - z1) * dz) / (length * length);
+    const baseY = Number(wall.elevation ?? floorY);
+    const height = Number(wall.height ?? wallHeight);
+    if (segmentT < -1e-5 || segmentT > 1 + 1e-5) continue;
+    if (y < baseY - 1e-5 || y > baseY + height + 1e-5) continue;
+    if (nearest && distance >= nearest.distance) continue;
+
+    const cameraSide = ((ray.origin.x - x) * normalX + (ray.origin.z - z) * normalZ) >= 0 ? 1 : -1;
+    nearest = { x, y, z, wallId: wall.id, wall, distance, t: segmentT, side: cameraSide };
+  }
+
+  return nearest;
+}
+
 export function getRenderPerformanceProfile(environment = {}) {
   const navigatorLike = environment.navigator || (typeof navigator !== 'undefined' ? navigator : {});
   const matchMediaLike = environment.matchMedia || (typeof matchMedia === 'function' ? matchMedia : null);
@@ -281,6 +318,14 @@ export class Viewer3D {
     const distance = ray.intersectsPlane(new BABYLON.Plane(0, 1, 0, -floorY));
     if (distance === null || distance === undefined || distance < 0) return null;
     return ray.origin.add(ray.direction.scale(distance));
+  }
+
+  wallPointFromPointer(walls, options = {}) {
+    const ray = this.scene.createPickingRay(
+      this.scene.pointerX, this.scene.pointerY,
+      BABYLON.Matrix.Identity(), this.camera
+    );
+    return intersectWallPlanes(ray, walls, options);
   }
 
   // ==========================================

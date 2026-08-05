@@ -65,6 +65,7 @@ import {
 import { toggleFirstPerson } from './FirstPersonController.js';
 import { getActiveMaterialDisplayName, getActiveMaterialArrayDisplayName } from './MaterialManager.js';
 import { getRoomVertices, MaterialResolver, resolveMaterialAssetDescriptor } from '../../src/index.js';
+import { startFurniturePlacement } from './FurniturePlacementController.js';
 
 let lastActiveRoomId = null;
 
@@ -1171,11 +1172,35 @@ export function createApplyMaterialButton(text, onClick) {
   return button;
 }
 
+export function placeFurnitureAt(type, x, z) {
+  const definition = testMap.getFurnitureDefinition(type);
+  if (!definition) return null;
+  const room = testMap.getRoomAt(x, z);
+  const itemHeight = definition.unit === 'm'
+    ? Number(definition.defaultSize.height || 0)
+    : Number(definition.defaultSize.height || 0) / INCHES_PER_UNIT;
+  let elevation;
+  if (definition.placeType === 'ceiling') {
+    elevation = Number(testMap.getProjectMetadata().wallHeight || 2.8) - itemHeight;
+  } else if (definition.placeType === 'wall' && (type.includes('curtain') || type.includes('blind'))) {
+    elevation = 0;
+  }
+  const item = entityManager.addItem(type, x, z, {
+    elevation,
+    roomId: room?.id,
+    floorId: testMap.getCurrentFloorId()
+  });
+  if (!item) return null;
+  entityManager.moveItemTo(item.id, x, z, true);
+  return testMap.getEntity('item', item.id);
+}
+
 export function initUiEventListeners() {
   document.getElementById('item-grid').addEventListener('click', (event) => {
     const button = event.target.closest('[data-add-item]');
     if (!button) return;
     const type = button.dataset.addItem;
+    if (startFurniturePlacement(type)) return;
     const definition = testMap.getFurnitureDefinition(type);
     
     let room = null;

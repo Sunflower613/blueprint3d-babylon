@@ -1,3 +1,5 @@
+import { cancelFurniturePlacement, isFurniturePlacementActive } from './FurniturePlacementController.js';
+
 const CAMERA_MOVE_KEYS = new Set(['w', 'a', 's', 'd']);
 const CAMERA_MAX_SPEED = 5;
 const CAMERA_ACCELERATION = 4.5;
@@ -136,6 +138,11 @@ export function createSmoothCameraKeyboardController(ctx, environment = {}) {
 }
 
 export function handleHotkeys(event, ctx) {
+  if (event.key === 'Escape' && isFurniturePlacementActive()) {
+    event.preventDefault();
+    cancelFurniturePlacement();
+    return;
+  }
   if (event.key === 'F12') {
     event.preventDefault();
     ctx.takePhoto();

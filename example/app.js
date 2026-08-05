@@ -59,7 +59,8 @@ const {
   restoreCustomFurnitureFromLocalStorage, loadUploadedFurniture, initFurnitureUpload,
   renderFurnitureGrid, cleanFloorplanMaterials, cleanMaterialLibraryForStorage, restoreFloorplanMaterials
 } = UiControls;
-import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor } from './js/EditorUi.js';
+import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor, placeFurnitureAt } from './js/EditorUi.js';
+import { initFurniturePlacementController } from './js/FurniturePlacementController.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp, showAiBuildingHelp } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
@@ -358,6 +359,7 @@ const appState = {
   refreshShadows: () => refreshShadows(),
   updateEditor: () => updateEditor(),
   renderPlan: () => renderPlan(),
+  placeFurnitureAt: (type, x, z) => placeFurnitureAt(type, x, z),
   clearSelection: () => clearSelection(),
   updateStructure: (type, id, patch, rebuild) => updateStructure(type, id, patch, rebuild),
   getStructure: (type, id) => getStructure(type, id),
@@ -738,6 +740,7 @@ Object.assign(appState, {
 
 DragHandler.initDragHandler(appState);
 initEditorUiContext(appState);
+initFurniturePlacementController(appState);
 initTargetHandler(appState);
 initMaterialManager(appState);
 SvgEvents.initSvgEvents(appState);

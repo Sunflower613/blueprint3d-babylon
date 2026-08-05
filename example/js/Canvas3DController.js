@@ -4,6 +4,13 @@ import * as DesignController from './DesignController.js';
 import * as RailingPreview from './RailingPreview.js';
 import { get3DTarget, isTargetOnCurrentFloor, showObjectContextMenu } from './TargetHandler.js';
 import { begin3DEditHandleDrag, pickNearest3DTarget, updateHandleHoverState } from './Viewer3DHandles.js';
+import {
+  cancelFurniturePlacement,
+  commitFurniturePlacement,
+  hideFurniturePlacementPreview,
+  isFurniturePlacementActive,
+  updateFurniturePlacement
+} from './FurniturePlacementController.js';
 
 let API = null;
 
@@ -29,6 +36,20 @@ export function initCanvas3DController(Context) {
 function begin3DDrag(pointerInfo) {
   if (window.firstPersonActive) return;
   const event = pointerInfo.event;
+  if (isFurniturePlacementActive()) {
+    if (event.button === 2) {
+      cancelFurniturePlacement();
+      event.preventDefault();
+      return;
+    }
+    const isPrimaryMouseDown = event.pointerType === 'mouse' && event.button === 0 && event.buttons === 1;
+    if (isPrimaryMouseDown || event.pointerType === 'touch' || event.pointerType === 'pen') {
+      const point = groundPointFromPointer();
+      if (point) commitFurniturePlacement(point);
+      event.preventDefault();
+      return;
+    }
+  }
   if (Context.currentView === '3d' && Context.designMode !== 'select') {
     if (event.button === 0 || event.pointerType === 'touch') {
       const target = pickNearest3DTarget();
@@ -373,6 +394,9 @@ canvas.addEventListener('pointermove', (event) => {
 canvas.addEventListener('pointerup', cancelLongPress);
 canvas.addEventListener('pointercancel', handlePointerCancel);
 canvas.addEventListener('pointerleave', () => {
+  if (isFurniturePlacementActive()) {
+    hideFurniturePlacementPreview();
+  }
   if (Context.designMode === 'picker') {
     updateDesignCursor(null);
   }
@@ -381,6 +405,11 @@ scene.onPointerObservable.add((pointerInfo) => {
   if (Context.currentView !== '3d') return;
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) begin3DDrag(pointerInfo);
   if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
+    if (isFurniturePlacementActive()) {
+      const point = groundPointFromPointer();
+      if (point) updateFurniturePlacement(point);
+      return;
+    }
     updateHandleHoverState();
     if (Context.designMode === 'picker') {
       const target = pickNearest3DTarget();

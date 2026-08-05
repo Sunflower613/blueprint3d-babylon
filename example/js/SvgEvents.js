@@ -1,6 +1,12 @@
 import { Topology } from '../../src/index.js';
 import * as DragHandler from './DragHandler.js';
 import { createStoreProxy } from '../store/proxyHelper.js';
+import {
+  commitFurniturePlacement,
+  hideFurniturePlacementPreview,
+  isFurniturePlacementActive,
+  updateFurniturePlacement
+} from './FurniturePlacementController.js';
 
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
@@ -29,6 +35,7 @@ export function initSvgEvents(appContext) {
   svg.addEventListener('pointercancel', onPointercancel);
   svg.addEventListener('pointerleave', onPointerleave);
   svg.addEventListener('dblclick', onDblclick);
+  svg.addEventListener('click', onFurniturePlacementClick, true);
   svg.addEventListener('click', onClick);
 }
 
@@ -95,6 +102,12 @@ function onWheel(event) {
 
 function onPointerdown(event) {
   if (ctx.currentView !== '2d') return;
+
+  if (isFurniturePlacementActive() && (event.button === 0 || event.pointerType === 'touch' || event.pointerType === 'pen')) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
 
   if (ctx.designMode && ctx.designMode !== 'select') {
     const target = ctx.get2DTargetFromElement(event.target);
@@ -208,6 +221,12 @@ function onPointermove(event) {
     prevTouchDist2D = dist;
     prevTouchCenter2D = center;
     event.preventDefault();
+    return;
+  }
+
+  if (ctx.currentView === '2d' && isFurniturePlacementActive()) {
+    const point = ctx.svgPointFromEvent(event);
+    updateFurniturePlacement(ctx.svgToWorld(point.x, point.y));
     return;
   }
 
@@ -346,9 +365,20 @@ function onDblclick(event) {
 }
 
 function onPointerleave(event) {
+  if (isFurniturePlacementActive()) {
+    hideFurniturePlacementPreview();
+  }
   if (ctx.designMode === 'picker') {
     ctx.updateDesignCursor(null);
   }
+}
+
+function onFurniturePlacementClick(event) {
+  if (ctx.currentView !== '2d' || !isFurniturePlacementActive()) return;
+  const point = ctx.svgPointFromEvent(event);
+  commitFurniturePlacement(ctx.svgToWorld(point.x, point.y));
+  event.preventDefault();
+  event.stopImmediatePropagation();
 }
 
 function onClick(event) {

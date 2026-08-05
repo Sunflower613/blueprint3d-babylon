@@ -1,6 +1,7 @@
 import { getRoomVertices, isItemSnappedToBookshelfOrMannequin } from '../../src/index.js';
 
 import { createStoreProxy } from '../store/proxyHelper.js';
+import { render2DFurniturePlacementPreview } from './FurniturePlacementController.js';
 
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
@@ -142,6 +143,7 @@ export function renderPlan() {
     return 0;
   });
   sortedItems.forEach((item) => renderPlanItem(item));
+  render2DFurniturePlacementPreview();
   const selectedRoom = ctx.selectedRoomId ? ctx.testMap.getEntity('room', ctx.selectedRoomId) : null;
   if (selectedRoom) renderSelectedRoomHandles(selectedRoom);
   const selectedRoof = ctx.selectedRoofId ? ctx.testMap.getEntity('roof', ctx.selectedRoofId) : null;

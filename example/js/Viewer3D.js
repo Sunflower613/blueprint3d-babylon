@@ -5,6 +5,7 @@ const SKYBOX_SIZE = 1000.0;
 const SKYBOX_HORIZON_OFFSET = SKYBOX_SIZE * 0.1;
 const MOBILE_RENDER_FPS = 30;
 const DESKTOP_RENDER_FPS = 60;
+const MAX_RENDER_PIXEL_RATIO = 2;
 
 export function intersectWallPlanes(ray, walls, { floorY = 0, wallHeight = 2.8 } = {}) {
   if (!ray?.origin || !ray?.direction) return null;
@@ -46,14 +47,22 @@ export function intersectWallPlanes(ray, walls, { floorY = 0, wallHeight = 2.8 }
 export function getRenderPerformanceProfile(environment = {}) {
   const navigatorLike = environment.navigator || (typeof navigator !== 'undefined' ? navigator : {});
   const matchMediaLike = environment.matchMedia || (typeof matchMedia === 'function' ? matchMedia : null);
+  const devicePixelRatio = Number(environment.devicePixelRatio
+    ?? (typeof globalThis !== 'undefined' ? globalThis.devicePixelRatio : 1));
   const userAgent = String(navigatorLike.userAgent || '');
   const coarsePointer = !!matchMediaLike?.('(pointer: coarse)')?.matches;
   const mobile = coarsePointer || /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
   const constrainedMemory = Number(navigatorLike.deviceMemory) > 0 && Number(navigatorLike.deviceMemory) <= 4;
+  const renderPixelRatio = Math.min(
+    Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1,
+    MAX_RENDER_PIXEL_RATIO
+  );
 
   return {
     targetFps: mobile || constrainedMemory ? MOBILE_RENDER_FPS : DESKTOP_RENDER_FPS,
-    hardwareScalingLevel: mobile || constrainedMemory ? 1.35 : 1,
+    // Babylon divides the canvas size by this value. Using the inverse DPR keeps
+    // the WebGL canvas sharp on high-density screens while the cap limits GPU load.
+    hardwareScalingLevel: 1 / renderPixelRatio,
     shadowMapSize: mobile || constrainedMemory ? 512 : 1024,
     shadowBlurKernel: mobile || constrainedMemory ? 12 : 24
   };

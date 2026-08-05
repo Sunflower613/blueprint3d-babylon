@@ -21,11 +21,12 @@ test('wall-plane picking selects the front wall even when its rendered mesh has 
 test('mobile and constrained-memory devices use a cooler render profile', () => {
   const mobile = getRenderPerformanceProfile({
     navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 15; Mobile)', deviceMemory: 8 },
-    matchMedia: () => ({ matches: true })
+    matchMedia: () => ({ matches: true }),
+    devicePixelRatio: 3
   });
 
   assert.equal(mobile.targetFps, 30);
-  assert.equal(mobile.hardwareScalingLevel, 1.35);
+  assert.equal(mobile.hardwareScalingLevel, 0.5);
   assert.equal(mobile.shadowMapSize, 512);
   assert.equal(mobile.shadowBlurKernel, 12);
 
@@ -47,6 +48,22 @@ test('desktop devices render at the display-friendly 60 fps cadence', () => {
   assert.equal(desktop.hardwareScalingLevel, 1);
   assert.equal(desktop.shadowMapSize, 1024);
   assert.equal(desktop.shadowBlurKernel, 24);
+});
+
+test('render resolution follows DPR, caps it at 2, and handles invalid values', () => {
+  const highDensity = getRenderPerformanceProfile({
+    navigator: { userAgent: 'Desktop', deviceMemory: 16 },
+    matchMedia: () => ({ matches: false }),
+    devicePixelRatio: 1.5
+  });
+  assert.equal(highDensity.hardwareScalingLevel, 2 / 3);
+
+  const invalidDensity = getRenderPerformanceProfile({
+    navigator: { userAgent: 'Desktop', deviceMemory: 16 },
+    matchMedia: () => ({ matches: false }),
+    devicePixelRatio: 0
+  });
+  assert.equal(invalidDensity.hardwareScalingLevel, 1);
 });
 
 test('reapplying environment materials releases the old sky texture and skips identical refreshes', () => {

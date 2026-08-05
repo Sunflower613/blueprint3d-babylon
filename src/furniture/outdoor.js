@@ -1,4 +1,4 @@
-import { boxComponent, cylinderComponent, sphereComponent, latheComponent } from './_helpers.js';
+import { boxComponent, cylinderComponent, sphereComponent, latheComponent, coneComponent } from './_helpers.js';
 
 // Photo 5 inspired miniature palette: warm, matte and deliberately low saturation.
 export const SOFT_LOW_POLY_OUTDOOR_PALETTE = Object.freeze({
@@ -1990,6 +1990,199 @@ export const outdoorStoneStool = {
       height: h * 0.08,
       tessellation: 12
     }, { position: { x: 0, y: h * 0.92, z: 0 } }, { parent: node });
+  }
+};
+
+export const outdoorDragonBubbleStoneStool = {
+  type: 'outdoor_dragon_bubble_stone_stool',
+  name: '龙泡泡石墩子',
+  unit: 'm',
+  defaultSize: { width: 0.56, depth: 0.52, height: 0.58 },
+  components: [
+    { id: 'dragon-body', label: '龙泡泡墩身', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone },
+    { id: 'dragon-features', label: '龙角耳朵和表情', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.stone },
+    { id: 'dragon-base', label: '圆形石座', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.paleStone }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.94, z: 0, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+
+    const baseH = h * 0.16;
+    const bodyH = h * 0.72;
+    const bodyCenterY = baseH + bodyH * 0.48;
+    const frontZ = d * 0.39;
+
+    // 1. 石座底盘 (dragon-base)
+    cylinderComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-base', {
+      diameterTop: w * 0.94,
+      diameterBottom: w * 0.98,
+      height: baseH * 0.6,
+      tessellation: 12
+    }, { position: { x: 0, y: baseH * 0.3, z: 0 } }, { parent: node });
+
+    // cylinderComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-base', {
+    //   diameterTop: w * 0.86,
+    //   diameterBottom: w * 0.92,
+    //   height: baseH * 0.1,
+    //   tessellation: 12
+    // }, { position: { x: 0, y: baseH * 0.6, z: 0 } }, { parent: node });
+
+    cylinderComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-base', {
+      diameterTop: w * 0.76,
+      diameterBottom: w * 0.84,
+      height: baseH * 0.1,
+      tessellation: 12
+    }, { position: { x: 0, y: baseH * 0.7, z: 0 } }, { parent: node });
+
+    // 2. 支撑身体的 4 个胖胖小短脚 (dragon-body)
+    [-1, 1].forEach((sideX) => {
+      [-1, 1].forEach((sideZ) => {
+        sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-body', {
+          diameterX: w * 0.22,
+          diameterY: h * 0.22,
+          diameterZ: d * 0.22,
+          segments: 10
+        }, { position: { x: sideX * w * 0.1, y: baseH + h * 0.045, z: sideZ * d * 0.1 } }, { parent: node });
+      });
+    });
+
+    // 3. 饱满球形主体/头部 (dragon-body)
+    sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-body', {
+      diameterX: w * 0.86,
+      diameterY: bodyH,
+      diameterZ: d * 0.84,
+      segments: 20
+    }, { position: { x: 0, y: bodyCenterY, z: 0 } }, { parent: node });
+
+    // 4. 头顶两侧萌系弯曲龙角与内凹耳朵 (dragon-features)
+    [-1, 1].forEach((side) => {
+      // 龙角主角体 (向上、向前倾斜，且向内微弯包拢)
+      coneComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        width: w * 0.2,
+        height: h * 0.2
+      }, {
+        position: { x: side * w * 0.3, y: baseH + bodyH * 0.92, z: frontZ * 0.3 },
+        rotation: {
+          x: Math.PI * 0.05,
+          z: -side * Math.PI * 0.1
+        }
+      }, { parent: node, tessellation: 12 });
+
+      // 龙角内侧耳窝内凹层 (使角正面呈现杯状/内凹层次)
+      sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        diameterX: w * 0.2,
+        diameterY: h * 0.2,
+        diameterZ: d * 0.2,
+        segments: 8
+      }, {
+        position: { x: side * w * 0.3, y: baseH + bodyH * 0.80, z: frontZ *  0.3 },
+        rotation: {
+          x: -Math.PI * 0.1,
+          y: side * Math.PI * 0.12,
+          z: -side * Math.PI * 0.2
+        }
+      }, { parent: node });
+
+      // 5. 眉毛
+      sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        diameterX: w * 0.065,
+        diameterY: w * 0.065,
+        diameterZ: d * 0.03,
+        segments: 8
+      }, { position: { x: side * w * 0.13, y: baseH + bodyH * 0.65, z: frontZ * 0.98 } }, { parent: node });
+
+      // 6. 眼睫毛
+      boxComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        width: w * 0.17,
+        height: h * 0.038,
+        depth: d * 0.035
+      }, {
+        position: { x: side * w * 0.18, y: baseH + bodyH * 0.52, z: frontZ * 0.97 },
+        rotation: {
+          x: Math.PI * 0.06,
+          y: side * Math.PI * 0.16,
+          z: side * Math.PI * 0.04
+        }
+      }, { parent: node });
+
+      // 7. 眼睛
+      sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        diameterX: w * 0.13,
+        diameterY: h * 0.12,
+        diameterZ: d * 0.025,
+        segments: 8
+      }, { position: { x: side * w * 0.18, y: baseH + bodyH * 0.44, z: frontZ * 0.96 }, rotation: {
+          x: 0,
+          y: side * Math.PI * 0.16,
+          z: 0
+        } }, { parent: node });
+    });
+
+    // 8. 龙脊鳍
+    [0.08, -0.04, -0.16].forEach((zPos, idx) => {
+      const finHeight = h * (idx === 0 ? 0.13 : idx === 1 ? 0.11 : 0.08);
+      const finWidth = w * (idx === 0 ? 0.05 : idx === 1 ? 0.045 : 0.04);
+      boxComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+            width: finWidth, height: finHeight, depth: finHeight
+          }, { position: { x: 0, y: baseH + bodyH * 0.95 , z: d * zPos },rotation: { x: Math.PI * 0.2 } }, { parent: node });
+    });
+
+    // 9. 萌系猫咪/龙 `ω` 笑嘴 
+    [-1, 1].forEach((side) => {
+      boxComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        width: w * 0.065,
+        height: h * 0.016,
+        depth: d * 0.025
+      }, {
+        position: { x: side * w * 0.028, y: baseH + bodyH * 0.33, z: frontZ },
+        rotation: {
+          x: Math.PI * 0.05,
+          y: side * Math.PI * 0.1,
+          z: -side * Math.PI * 0.18
+        }
+      }, { parent: node });
+      boxComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        width: w * 0.065,
+        height: h * 0.016,
+        depth: d * 0.025
+      }, {
+        position: { x: side * w * 0.05, y: baseH + bodyH * 0.35, z: frontZ },
+        rotation: {
+          x: Math.PI * 0.05,
+          y: side * Math.PI * 0.1,
+          z: side * Math.PI * 0.4
+        }
+      }, { parent: node });
+    });
+
+      // 10. 尾巴
+      // 龙尾巴尖
+      coneComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        width: w * 0.2,
+        height: h * 0.2
+      }, {
+        position: { x: 0, y: baseH + bodyH * 0.6, z: -d * 0.5 },
+        rotation: { x: -Math.PI * 0.3
+        }
+      }, { parent: node, tessellation: 12 });
+
+      // 龙尾巴根
+      sphereComponent(registry, item, outdoorDragonBubbleStoneStool, 'dragon-features', {
+        diameterX: w * 0.3,
+        diameterY: h * 0.4,
+        diameterZ: d * 0.4,
+        segments: 8
+      }, {
+        position: { x: 0, y: baseH + bodyH * 0.5, z: -d * 0.28 },
+      }, { parent: node });
+
   }
 };
 

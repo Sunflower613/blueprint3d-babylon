@@ -4,7 +4,7 @@ import * as BABYLON from '@babylonjs/core';
 
 import { getFurnitureDefinition } from '../../src/furniture/index.js';
 import { landscapeGardenRock, landscapeGiantTreeStump } from '../../src/furniture/landscape.js';
-import { outdoorStoneChessTable, outdoorStoneStool, outdoorPhoneBoothFurniture, electricScooterFurniture, stepladderFurniture } from '../../src/furniture/outdoor.js';
+import { outdoorStoneChessTable, outdoorStoneStool, outdoorDragonBubbleStoneStool, outdoorPhoneBoothFurniture, electricScooterFurniture, stepladderFurniture } from '../../src/furniture/outdoor.js';
 
 function buildMesh(definition) {
   const engine = new BABYLON.NullEngine();
@@ -43,11 +43,14 @@ test('new landscape furniture (rock and giant tree stump) are registered correct
   assert.ok(builtStump.meshes.length >= 4, 'tree stump should build bark, wood, and roots');
 });
 
-test('new outdoor furniture (stone chess table, stone stool, phone booth, electric scooter and stepladder) are registered correctly', () => {
+test('new outdoor furniture including the dragon bubble stone stool are registered correctly', () => {
   assert.equal(outdoorStoneChessTable.type, 'outdoor_stone_chess_table');
   assert.equal(outdoorStoneChessTable.name, '石头象棋桌');
   assert.equal(outdoorStoneStool.type, 'outdoor_stone_stool');
   assert.equal(outdoorStoneStool.name, '石墩子');
+  assert.equal(outdoorDragonBubbleStoneStool.type, 'outdoor_dragon_bubble_stone_stool');
+  assert.equal(outdoorDragonBubbleStoneStool.name, '龙泡泡石墩子');
+  assert.equal(outdoorDragonBubbleStoneStool.interaction.type, 'sit');
   assert.equal(outdoorPhoneBoothFurniture.type, 'outdoor_phone_booth');
   assert.equal(outdoorPhoneBoothFurniture.name, '电话亭');
   assert.equal(electricScooterFurniture.type, 'electric_scooter');

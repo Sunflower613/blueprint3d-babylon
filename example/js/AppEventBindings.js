@@ -1,6 +1,6 @@
 import { createTextureMaterialDescriptor, BLUEPRINT3D_TEST_FLOORPLAN } from '../../src/index.js';
 import { initUiEventListeners } from './EditorUi.js';
-import { handleHotkeys } from './Hotkeys.js';
+import { createSmoothCameraKeyboardController, handleHotkeys } from './Hotkeys.js';
 import { updateLocalProjectCount } from './FileManager.js';
 import { toggleFirstPerson } from './FirstPersonController.js';
 import {
@@ -20,6 +20,12 @@ export function initAppEventBindings(Context) {
   const undoButton = document.getElementById('btn-undo');
   const redoButton = document.getElementById('btn-redo');
   const stage = document.getElementById('stage');
+  const smoothCameraKeyboard = createSmoothCameraKeyboardController({
+    camera: Context.camera,
+    BABYLON: Context.BABYLON,
+    getCurrentView: () => Context.currentView,
+    setHasUserZoomedOrPanned: (value) => { Context.hasUserZoomedOrPanned = value; }
+  });
 
   materialCategorySelect?.addEventListener('change', () => {
     Context.renderMaterialLibrary(!window.isProgrammaticMaterialCategoryChange);
@@ -51,6 +57,7 @@ export function initAppEventBindings(Context) {
   redoButton?.addEventListener('click', Context.redo);
 
   document.addEventListener('keydown', (event) => {
+    if (smoothCameraKeyboard.handleKeyDown(event)) return;
     handleHotkeys(event, {
       currentView: Context.currentView,
       camera: Context.camera,
@@ -85,6 +92,8 @@ export function initAppEventBindings(Context) {
       INCHES_PER_UNIT: Context.INCHES_PER_UNIT
     });
   });
+  document.addEventListener('keyup', (event) => smoothCameraKeyboard.handleKeyUp(event));
+  window.addEventListener('blur', () => smoothCameraKeyboard.reset());
 
   bindToolSelectors(Context);
   bindStageInteractions(Context, stage);

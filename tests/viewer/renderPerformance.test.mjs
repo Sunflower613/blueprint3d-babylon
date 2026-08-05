@@ -22,13 +22,13 @@ test('mobile and constrained-memory devices use a cooler render profile', () => 
   assert.equal(constrainedDesktop.shadowMapSize, 512);
 });
 
-test('desktop devices retain a higher quality profile without rendering at an uncapped 60 fps', () => {
+test('desktop devices render at the display-friendly 60 fps cadence', () => {
   const desktop = getRenderPerformanceProfile({
     navigator: { userAgent: 'Desktop', deviceMemory: 16 },
     matchMedia: () => ({ matches: false })
   });
 
-  assert.equal(desktop.targetFps, 45);
+  assert.equal(desktop.targetFps, 60);
   assert.equal(desktop.hardwareScalingLevel, 1);
   assert.equal(desktop.shadowMapSize, 1024);
   assert.equal(desktop.shadowBlurKernel, 24);

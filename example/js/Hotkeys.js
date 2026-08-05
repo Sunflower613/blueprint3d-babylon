@@ -1,3 +1,140 @@
+const CAMERA_MOVE_KEYS = new Set(['w', 'a', 's', 'd']);
+const CAMERA_MAX_SPEED = 5;
+const CAMERA_ACCELERATION = 4.5;
+const CAMERA_DECELERATION = 12;
+
+function isTextInput(element) {
+  return !!element && (
+    element.tagName === 'INPUT' ||
+    element.tagName === 'SELECT' ||
+    element.tagName === 'TEXTAREA' ||
+    element.isContentEditable
+  );
+}
+
+/**
+ * Keep ordinary 3D camera movement independent from keyboard repeat timing.
+ * Movement is integrated once per animation frame and eased in/out.
+ */
+export function createSmoothCameraKeyboardController(ctx, environment = {}) {
+  const windowLike = environment.window || (typeof window !== 'undefined' ? window : {});
+  const documentLike = environment.pageDocument || (typeof document !== 'undefined' ? document : {});
+  const requestFrame = environment.requestAnimationFrame || windowLike.requestAnimationFrame.bind(windowLike);
+  const cancelFrame = environment.cancelAnimationFrame || windowLike.cancelAnimationFrame.bind(windowLike);
+  const getCurrentView = ctx.getCurrentView || (() => ctx.currentView);
+  const pressed = new Set();
+  const velocity = { x: 0, z: 0 };
+  const delta = new ctx.BABYLON.Vector3(0, 0, 0);
+  let frameId = null;
+  let lastTimestamp = null;
+
+  const frame = (timestamp) => {
+    frameId = null;
+    if (getCurrentView() !== '3d' || windowLike.firstPersonActive) {
+      pressed.clear();
+      velocity.x = 0;
+      velocity.z = 0;
+      lastTimestamp = null;
+      return;
+    }
+
+    const dt = lastTimestamp == null
+      ? 1 / 60
+      : Math.min(Math.max((timestamp - lastTimestamp) / 1000, 0), 0.05);
+    lastTimestamp = timestamp;
+
+    const forward = ctx.camera.target.subtract(ctx.camera.position);
+    forward.y = 0;
+    if (forward.lengthSquared() > 0.000001) forward.normalize();
+    const rightX = -forward.z;
+    const rightZ = forward.x;
+
+    let desiredX = 0;
+    let desiredZ = 0;
+    if (pressed.has('w')) { desiredX += forward.x; desiredZ += forward.z; }
+    if (pressed.has('s')) { desiredX -= forward.x; desiredZ -= forward.z; }
+    if (pressed.has('a')) { desiredX += rightX; desiredZ += rightZ; }
+    if (pressed.has('d')) { desiredX -= rightX; desiredZ -= rightZ; }
+
+    const desiredLength = Math.hypot(desiredX, desiredZ);
+    if (desiredLength > 1) {
+      desiredX /= desiredLength;
+      desiredZ /= desiredLength;
+    }
+    desiredX *= CAMERA_MAX_SPEED;
+    desiredZ *= CAMERA_MAX_SPEED;
+
+    const velocityDotDesired = velocity.x * desiredX + velocity.z * desiredZ;
+    const changingDirection = desiredLength > 0 && velocityDotDesired < 0;
+    const acceleration = pressed.size > 0 && !changingDirection
+      ? CAMERA_ACCELERATION
+      : CAMERA_DECELERATION;
+    const changeX = desiredX - velocity.x;
+    const changeZ = desiredZ - velocity.z;
+    const changeLength = Math.hypot(changeX, changeZ);
+    const maxVelocityChange = acceleration * dt;
+    if (changeLength <= maxVelocityChange) {
+      velocity.x = desiredX;
+      velocity.z = desiredZ;
+    } else if (changeLength > 0) {
+      velocity.x += (changeX / changeLength) * maxVelocityChange;
+      velocity.z += (changeZ / changeLength) * maxVelocityChange;
+    }
+
+    delta.set(velocity.x * dt, 0, velocity.z * dt);
+    ctx.camera.target.addInPlace(delta);
+    if (Math.abs(delta.x) + Math.abs(delta.z) > 0.000001) {
+      ctx.setHasUserZoomedOrPanned?.(true);
+    }
+
+    const stillMoving = pressed.size > 0 || Math.hypot(velocity.x, velocity.z) > 0.01;
+    if (stillMoving) {
+      frameId = requestFrame(frame);
+    } else {
+      velocity.x = 0;
+      velocity.z = 0;
+      lastTimestamp = null;
+    }
+  };
+
+  const start = () => {
+    if (frameId == null) frameId = requestFrame(frame);
+  };
+
+  return {
+    handleKeyDown(event) {
+      const key = event.key.toLowerCase();
+      if (
+        getCurrentView() !== '3d' ||
+        windowLike.firstPersonActive ||
+        !CAMERA_MOVE_KEYS.has(key) ||
+        isTextInput(event.target || documentLike.activeElement)
+      ) return false;
+      event.preventDefault();
+      pressed.add(key);
+      start();
+      return true;
+    },
+    handleKeyUp(event) {
+      const key = event.key.toLowerCase();
+      if (!CAMERA_MOVE_KEYS.has(key)) return false;
+      pressed.delete(key);
+      if (frameId == null && Math.hypot(velocity.x, velocity.z) > 0.01) start();
+      return true;
+    },
+    reset() {
+      pressed.clear();
+      if (frameId == null && Math.hypot(velocity.x, velocity.z) > 0.01) start();
+    },
+    dispose() {
+      pressed.clear();
+      if (frameId != null) cancelFrame(frameId);
+      frameId = null;
+      lastTimestamp = null;
+    }
+  };
+}
+
 export function handleHotkeys(event, ctx) {
   if (event.key === 'F12') {
     event.preventDefault();
@@ -26,16 +163,6 @@ export function handleHotkeys(event, ctx) {
   // 1. WASD 视角移动 (3D模式下)
   if (ctx.currentView === '3d' && ['w', 'a', 's', 'd'].includes(key)) {
     event.preventDefault();
-    const forward = ctx.camera.target.subtract(ctx.camera.position);
-    forward.y = 0;
-    forward.normalize();
-    const right = new ctx.BABYLON.Vector3(-forward.z, 0, forward.x);
-    const speed = 0.25; // 0.25 米/次
-
-    if (key === 'w') ctx.camera.target.addInPlace(forward.scale(speed));
-    if (key === 's') ctx.camera.target.subtractInPlace(forward.scale(speed));
-    if (key === 'a') ctx.camera.target.addInPlace(right.scale(speed));
-    if (key === 'd') ctx.camera.target.subtractInPlace(right.scale(speed));
     return;
   }
 

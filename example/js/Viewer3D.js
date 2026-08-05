@@ -4,7 +4,7 @@ const BABYLON = { AbstractMesh, ArcRotateCamera, Color3, Color4, CubeTexture, Di
 const SKYBOX_SIZE = 1000.0;
 const SKYBOX_HORIZON_OFFSET = SKYBOX_SIZE * 0.1;
 const MOBILE_RENDER_FPS = 30;
-const DESKTOP_RENDER_FPS = 45;
+const DESKTOP_RENDER_FPS = 60;
 
 export function getRenderPerformanceProfile(environment = {}) {
   const navigatorLike = environment.navigator || (typeof navigator !== 'undefined' ? navigator : {});
@@ -115,13 +115,21 @@ export class Viewer3D {
     this._environmentInitialized = false;
     this._renderLoopStarted = false;
     this._engineLoopRunning = false;
-    this._targetFrameInterval = 1000 / performanceProfile.targetFps;
+    // A manual 45 FPS cap on a 60 Hz display creates alternating 16/33 ms
+    // frame gaps. At 60 FPS, let requestAnimationFrame follow display VSync.
+    this._targetFrameInterval = performanceProfile.targetFps >= 60
+      ? 0
+      : 1000 / performanceProfile.targetFps;
     this._lastRenderTime = 0;
     this._renderFrame = () => {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const elapsed = now - this._lastRenderTime;
-      if (elapsed + 0.5 < this._targetFrameInterval) return;
-      this._lastRenderTime = now - (elapsed % this._targetFrameInterval);
+      if (this._targetFrameInterval > 0) {
+        if (elapsed + 0.5 < this._targetFrameInterval) return;
+        this._lastRenderTime = now - (elapsed % this._targetFrameInterval);
+      } else {
+        this._lastRenderTime = now;
+      }
       this.scene.render();
     };
     this._visibilityHandler = () => {

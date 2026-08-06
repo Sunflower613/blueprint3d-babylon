@@ -22,6 +22,11 @@ export let panStart2D = null;
 export let prevTouchDist2D = 0;
 export let prevTouchCenter2D = null;
 export let hasUserZoomedOrPanned = false;
+export let pan2DSpeed = 1.0;
+
+export function set2DPanSpeed(scale) {
+  pan2DSpeed = Math.max(0.1, Number(scale) || 1.0);
+}
 
 /**
  * 初始化 SVG 事件管理器并配置监听
@@ -166,8 +171,8 @@ function onPointermove(event) {
     const rect = svg.getBoundingClientRect();
     const innerW = view.width - view.pad * 2;
     const innerH = view.height - view.pad * 2;
-    const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW;
-    const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH;
+    const worldDx = (dx * (view.width / rect.width)) * (view.maxX - view.minX) / innerW * pan2DSpeed;
+    const worldDz = -(dy * (view.height / rect.height)) * (view.maxZ - view.minZ) / innerH * pan2DSpeed;
 
     view.minX -= worldDx;
     view.maxX -= worldDx;

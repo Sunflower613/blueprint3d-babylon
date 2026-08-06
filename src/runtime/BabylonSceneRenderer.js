@@ -676,6 +676,22 @@ export class BabylonSceneRenderer {
     });
   }
 
+  /**
+   * 设置反射质量等级 ('ultra' | 'high' | 'medium' | 'low')
+   * @param {string} level
+   */
+  setReflectionQuality(level) {
+    const validLevels = ['ultra', 'high', 'medium', 'low'];
+    const quality = validLevels.includes(level) ? level : 'medium';
+    this.reflectionQualityLevel = quality;
+
+    if (quality === 'ultra' || quality === 'high') {
+      this.setAdvancedRendering(true);
+    } else {
+      this.setAdvancedRendering(false);
+    }
+  }
+
   requestReflectionTexturesUpdate() {
     const refreshedTextures = new Set();
     const refreshedProbes = new Set();
@@ -2666,9 +2682,15 @@ export class BabylonSceneRenderer {
     if (!mat) return;
 
     const isMainMirror = !!mirrorMesh.metadata?.isMainMirror;
-    const textureSize = this.enableAdvancedRendering
-      ? (isMainMirror ? 2048 : 1024)
-      : 256;
+    const isUltra = this.reflectionQualityLevel === 'ultra';
+    let textureSize = 256;
+    let refreshThrottle = 100;
+
+    if (this.enableAdvancedRendering) {
+      textureSize = isMainMirror ? 2048 : 1024;
+      refreshThrottle = isUltra ? 0 : 100; // 原画质：0ms 无缝连帧；高画质：100ms 性能防抖
+    }
+
     const cleanTarget = node || mirrorMesh;
 
     if (mat.reflectionTexture && !(mat.reflectionTexture instanceof BABYLON.MirrorTexture) && !mat.customReflectionProbe) {
@@ -2718,7 +2740,7 @@ export class BabylonSceneRenderer {
     let lastRefreshTime = 0;
     const cameraObserver = camera?.onViewMatrixChangedObservable.add(() => {
       const now = Date.now();
-      if (now - lastRefreshTime < 100) return;
+      if (refreshThrottle > 0 && now - lastRefreshTime < refreshThrottle) return;
       lastRefreshTime = now;
       mirrorTexture.resetRefreshCounter();
     });

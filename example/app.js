@@ -9,6 +9,8 @@ import * as DesignController from './js/DesignController.js';
 import { initCanvas3DController, begin3DDrag, move3DDrag, end3DDrag, getCanvasPickFromEvent } from './js/Canvas3DController.js';
 import * as ViewController from './js/ViewController.js';
 import * as InteractionHelpers from './js/InteractionHelpers.js';
+import { set2DPanSpeed } from './js/SvgEvents.js';
+import { updateFirstPersonConfig } from './js/FirstPersonController.js';
 
 const {
   getFreeFloorEdges, clear2DFloorEdgeRailingPreview, clear3DFloorEdgeRailingPreview,
@@ -493,8 +495,26 @@ scene.onBeforeRenderObservable.add(() => {
 
 let dragHandler = null;
 let viewer3DHandles = null;
-
 const initialLocalSave = readLocalSave();
+
+let cameraSettings = { pan2DSpeed: 1.0, pan3DSpeed: 1.0, rotate3DSpeed: 1.0, camera3DFov: 60, fpMoveSpeed: 1.0, fpLookSensitivity: 1.0, fpFov: 75 };
+let renderSettings = { reflectionQuality: 'medium', shadowQuality: 'high', graphicsPreset: 'high' };
+
+if (initialLocalSave.uiState?.cameraSettings) cameraSettings = { ...cameraSettings, ...initialLocalSave.uiState.cameraSettings };
+if (initialLocalSave.uiState?.renderSettings) renderSettings = { ...renderSettings, ...initialLocalSave.uiState.renderSettings };
+
+function applyCameraSettings() {
+  set2DPanSpeed(cameraSettings.pan2DSpeed);
+  if (viewer3d) {
+    viewer3d.set3DPanSpeed(cameraSettings.pan3DSpeed);
+    viewer3d.set3DRotateSpeed(cameraSettings.rotate3DSpeed);
+    viewer3d.setCameraFOV(cameraSettings.camera3DFov ?? 60);
+    viewer3d.setReflectionQuality(renderSettings.reflectionQuality);
+    viewer3d.setShadowQuality(renderSettings.shadowQuality);
+    viewer3d.setGraphicsPreset(renderSettings.graphicsPreset);
+  }
+  updateFirstPersonConfig({ moveSpeedScale: cameraSettings.fpMoveSpeed, lookSensitivityScale: cameraSettings.fpLookSensitivity, fovDeg: cameraSettings.fpFov ?? 75 });
+}
 if (initialLocalSave.buildingData) restoreFloorplanMaterials(initialLocalSave.buildingData);
 let testMap = createEditor({
   scene,
@@ -704,6 +724,21 @@ Object.assign(appState, {
   get2DTargetFromElement,
   BABYLON,
 
+  // 相机与视角及渲染画质设置
+  get cameraSettings() { return cameraSettings; },
+  get renderSettings() { return renderSettings; },
+  saveCameraSettings: () => {
+    store.saveToLocal({
+      materialLibrary: cleanMaterialLibraryForStorage(materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))),
+      uiState: {
+        currentFloorId: testMap.getCurrentFloorId(),
+        currentView,
+        cameraSettings,
+        renderSettings,
+      },
+    });
+  },
+
   // EditorUi dependencies are injected here to avoid importing app.js back.
   updateSelectedRoom,
   updateSelectedFloor,
@@ -815,14 +850,18 @@ store.on('saveError', () => {
   showToast('鈿?鑷姩淇濆瓨澶辫触锛宭ocalStorage 绌洪棿鍙兘涓嶈冻');
 });
 
-// 鍚姩 10 鍒嗛挓鑷姩淇濆瓨
+// 启动 10 分钟自动保存
 store.startAutoSave(() => ({
   materialLibrary: cleanMaterialLibraryForStorage(materialLibrary.filter((m) => !DEFAULT_MATERIAL_PACKS.some((d) => d.id === m.id))),
   uiState: {
     currentFloorId: testMap.getCurrentFloorId(),
     currentView,
+    cameraSettings,
+    renderSettings,
   },
 }));
+
+applyCameraSettings();
 
 FileManager.initFileManager(appState);
 

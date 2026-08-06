@@ -694,6 +694,120 @@ export class Viewer3D {
   }
 
   /**
+   * 设置 3D 相机平移速度
+   * @param {number} scale - 速度倍率 (如 0.5 ~ 2.0)
+   */
+  set3DPanSpeed(scale) {
+    const s = Math.max(0.1, Number(scale) || 1.0);
+    this.camera.panningSensibility = 1200 / s;
+  }
+
+  /**
+   * 设置 3D 相机旋转灵敏度
+   * @param {number} scale - 灵敏度倍率 (如 0.5 ~ 2.0)
+   */
+  set3DRotateSpeed(scale) {
+    const s = Math.max(0.1, Number(scale) || 1.0);
+    this.camera.angularSensibilityX = 2500 / s;
+    this.camera.angularSensibilityY = 2500 / s;
+  }
+
+  /**
+   * 设置 3D 相机广角视场角 (FOV)
+   * @param {number} fovDeg - 视场角度 (30° ~ 150°，默认 75°)
+   */
+  setCameraFOV(fovDeg) {
+    const deg = Math.max(30, Math.min(150, Number(fovDeg) || 75));
+    this.camera.fov = (deg * Math.PI) / 180;
+  }
+
+  /**
+   * 设置反射质量档位 ('ultra' | 'high' | 'medium' | 'low')
+   * ultra: 更高清像素动态反射
+   * high: 高质量动态反射 (对应开启高级渲染)
+   * medium: 基础动态反射 (默认档位，对应原本未开启高级渲染的模式)
+   * low: 完全使用静态预制图片全景反射
+   * @param {string} level
+   */
+  setReflectionQuality(level) {
+    const validLevels = ['ultra', 'high', 'medium', 'low'];
+    const quality = validLevels.includes(level) ? level : 'medium';
+    this.reflectionQuality = quality;
+
+    const testMap = typeof window !== 'undefined' ? window.testMap : null;
+    if (testMap) {
+      if (typeof testMap.setReflectionQuality === 'function') {
+        testMap.setReflectionQuality(quality);
+      } else if (quality === 'ultra' || quality === 'high') {
+        if (typeof testMap.setAdvancedRendering === 'function') testMap.setAdvancedRendering(true);
+      } else {
+        if (typeof testMap.setAdvancedRendering === 'function') testMap.setAdvancedRendering(false);
+      }
+      if (typeof testMap.requestReflectionUpdate === 'function') {
+        testMap.requestReflectionUpdate();
+      }
+    }
+  }
+
+  /**
+   * 设置阴影质量档位 ('ultra' | 'high' | 'medium' | 'off')
+   * @param {string} level
+   */
+  setShadowQuality(level) {
+    const validLevels = ['ultra', 'high', 'medium', 'off'];
+    const quality = validLevels.includes(level) ? level : 'high';
+    this.shadowQuality = quality;
+
+    if (!this.shadowGenerator || !this.sun) return;
+
+    if (quality === 'off') {
+      this.shadowGenerator.getShadowMap()?.renderList?.splice(0);
+      return;
+    }
+
+    const mapSizes = { ultra: 2048, high: 1024, medium: 512 };
+    const blurKernels = { ultra: 48, high: 24, medium: 12 };
+    const size = mapSizes[quality] || 1024;
+    const kernel = blurKernels[quality] || 24;
+
+    const currentSize = this.shadowGenerator.getShadowMap()?.getSize()?.width;
+    if (currentSize !== size) {
+      this.shadowGenerator.dispose();
+      const BABYLON = window.BABYLON || globalThis.BABYLON || this.scene.getEngine()._babylon;
+      this.shadowGenerator = new BABYLON.ShadowGenerator(size, this.sun);
+      this.shadowGenerator.useBlurExponentialShadowMap = true;
+      this.shadowGenerator.darkness = 0.25;
+    }
+    this.shadowGenerator.blurKernel = kernel;
+
+    const testMap = typeof window !== 'undefined' ? window.testMap : null;
+    if (testMap && typeof testMap.populateShadowGenerator === 'function') {
+      testMap.populateShadowGenerator(this.shadowGenerator, testMap.getCurrentFloorId());
+    }
+  }
+
+  /**
+   * 设置全局画质预设与分辨率倍率 ('ultra' | 'high' | 'medium' | 'low')
+   * @param {string} level
+   */
+  setGraphicsPreset(level) {
+    const validLevels = ['ultra', 'high', 'medium', 'low'];
+    const preset = validLevels.includes(level) ? level : 'high';
+    this.graphicsPreset = preset;
+
+    if (!this.engine) return;
+
+    let targetDpr = 1.5;
+    if (preset === 'ultra') targetDpr = 2.0;       // 强制 2.0x 超采样抗锯齿 (超高清)
+    else if (preset === 'high') targetDpr = 1.5;   // 1.5x 高清渲染
+    else if (preset === 'medium') targetDpr = 1.0; // 1.0x 标准渲染
+    else if (preset === 'low') targetDpr = 0.75;  // 0.75x 降低分辨率
+
+    // Babylon.js 通过 setHardwareScalingLevel 设置 WebGL 缓冲区像素比
+    this.engine.setHardwareScalingLevel(1 / Math.max(0.5, targetDpr));
+  }
+
+  /**
    * 销毁渲染器，释放所有资源
    */
   dispose() {

@@ -2615,8 +2615,8 @@ kbd {
 
 /* 控件右侧限定宽度与防挤压容器 */
 .setting-control {
-  width: 170px;
-  max-width: 45%;
+  width: 200px;
+  max-width: 50%;
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
@@ -2652,23 +2652,63 @@ kbd {
 .slider-with-val {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
   flex-shrink: 0;
   width: 100%;
 }
 
 .settings-range {
-  width: 100px;
-  accent-color: #2563eb;
+  width: 96px;
+  accent-color: #334155;
   cursor: pointer;
 }
 
 .range-val {
   font-size: 12.5px;
   font-weight: 600;
-  color: #2563eb;
-  min-width: 34px;
+  color: #334155;
+  min-width: 32px;
   text-align: right;
+}
+
+.btn-range-reset,
+button.btn-range-reset {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-style: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 2px 6px !important;
+  margin-left: 6px !important;
+  margin-right: 2px !important;
+  cursor: pointer !important;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-range-reset:hover,
+button.btn-range-reset:hover {
+  color: #334155 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.btn-range-reset:active,
+button.btn-range-reset:active {
+  color: #0f172a !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* AI 功能卡片：极简纯白干练风格，无花哨渐变 */
@@ -2726,13 +2766,19 @@ kbd {
 
 /* 设置弹窗底部 */
 .settings-modal-footer {
-  height: 44px;
+  height: 48px;
   padding: 0 16px;
   border-top: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   background: #f8fafc;
+}
+
+.settings-modal-footer .footer-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ==========================================

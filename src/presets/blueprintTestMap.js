@@ -236,6 +236,12 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
     }
   }
 
+  setReflectionQuality(level) {
+    if (this.renderer) {
+      this.renderer.setReflectionQuality(level);
+    }
+  }
+
   /** @returns {Object} 渲染器的核心材质集合 */
   get materials() {
     return this.renderer.materials;

@@ -672,6 +672,10 @@ export class EditorFacade {
     this._renderer.setAdvancedRendering(enabled);
   }
 
+  setReflectionQuality(level) {
+    this._renderer.setReflectionQuality(level);
+  }
+
   refreshRendering(options = {}) {
     if (this._previewState !== 'idle') return false;
     this._renderer.build(options);

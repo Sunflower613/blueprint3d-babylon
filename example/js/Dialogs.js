@@ -1,4 +1,6 @@
 import { formatTimestamp } from './Store.js';
+import { toggleFirstPerson, exitFirstPerson, updateFirstPersonConfig } from './FirstPersonController.js';
+import { set2DPanSpeed } from './SvgEvents.js';
 import furnitureUploadExampleSource from '../downloads/custom-furniture-example.js?raw';
 import furnitureUploadSkillSource from '../../skills/furniture-upload/SKILL.md?raw';
 import buildingExampleSource from '../downloads/loft-building-example.b3dbuilding.json?raw';
@@ -582,6 +584,23 @@ export function showSettingsModal(appContext = {}) {
   const currentShowAllFloors = showAllFloorsEl ? showAllFloorsEl.checked : false;
   const currentSnapEnabled = snapToggleBtn ? !snapToggleBtn.classList.contains('off') : true;
 
+  const cameraSettings = appContext.cameraSettings || {
+    pan2DSpeed: 1.0,
+    pan3DSpeed: 1.0,
+    rotate3DSpeed: 1.0,
+    camera3DFov: 60,
+    fpMoveSpeed: 1.0,
+    fpLookSensitivity: 1.0,
+    fpFov: 75,
+  };
+  const isFPActive = !!window.firstPersonActive;
+  const currentUndoSteps = appContext.store?.getMaxHistory() ?? 80;
+  const renderSettings = appContext.renderSettings || {
+    reflectionQuality: 'medium',
+    shadowQuality: 'high',
+    graphicsPreset: 'high',
+  };
+
   backdrop.innerHTML = `
     <div class="custom-modal-container settings-modal-container" role="dialog" aria-modal="true">
       <div class="settings-modal-header">
@@ -663,29 +682,49 @@ export function showSettingsModal(appContext = {}) {
             <h4 class="panel-section-title">渲染与画质</h4>
             <div class="setting-item">
               <div class="setting-info">
-                <span class="setting-label">开启高级渲染</span>
-                <span class="setting-desc">启用后优化材质环境光反射与精细阴影</span>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-adv-render" ${currentAdvRender ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div class="setting-item disabled">
-              <div class="setting-info">
-                <span class="setting-label">阴影质量与画质预设</span>
-                <span class="setting-desc">选择全局渲染精度与阴影贴图质量（预留功能）</span>
+                <span class="setting-label">画面质量</span>
+                <span class="setting-desc">控制全局渲染分辨率缩放与画面像素细腻度</span>
               </div>
               <div class="setting-control">
-                <select class="settings-select" id="set-shadow-quality" disabled>
-                  <option value="ultra">极高 (Ultra)</option>
-                  <option value="high" selected>高 (High)</option>
-                  <option value="medium">中 (Medium)</option>
-                  <option value="low">低 (Low)</option>
+                <select class="settings-select" id="set-graphics-preset">
+                  <option value="ultra" ${renderSettings.graphicsPreset === 'ultra' ? 'selected' : ''}>极高</option>
+                  <option value="high" ${renderSettings.graphicsPreset === 'high' ? 'selected' : ''}>高</option>
+                  <option value="medium" ${renderSettings.graphicsPreset === 'medium' ? 'selected' : ''}>中</option>
+                  <option value="low" ${renderSettings.graphicsPreset === 'low' ? 'selected' : ''}>极低</option>
                 </select>
               </div>
             </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">阴影质量</span>
+                <span class="setting-desc">控制场景太阳光与建筑阴影贴图的尺寸与柔和度</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-shadow-quality">
+                  <option value="ultra" ${renderSettings.shadowQuality === 'ultra' ? 'selected' : ''}>极高</option>
+                  <option value="high" ${renderSettings.shadowQuality === 'high' ? 'selected' : ''}>高</option>
+                  <option value="medium" ${renderSettings.shadowQuality === 'medium' ? 'selected' : ''}>中</option>
+                  <option value="off" ${renderSettings.shadowQuality === 'off' ? 'selected' : ''}>关闭</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">反射质量</span>
+                <span class="setting-desc">即开启高级渲染，控制地板与镜面材质的动态高阶反射与反射探针精度</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-reflection-quality">
+                  <option value="ultra" ${renderSettings.reflectionQuality === 'ultra' ? 'selected' : ''}>极高</option>
+                  <option value="high" ${renderSettings.reflectionQuality === 'high' ? 'selected' : ''}>高</option>
+                  <option value="medium" ${renderSettings.reflectionQuality === 'medium' ? 'selected' : ''}>中</option>
+                  <option value="low" ${renderSettings.reflectionQuality === 'low' ? 'selected' : ''}>极低</option>
+                </select>
+              </div>
+            </div>
+
           </div>
 
           <!-- 2. 建筑与编辑 -->
@@ -713,15 +752,18 @@ export function showSettingsModal(appContext = {}) {
             </div>
 
             <h4 class="panel-section-title">操作与联动</h4>
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">历史撤销步数限制</span>
-                <span class="setting-desc">系统保留的最大撤销/重做记录数量（默认 50 步）</span>
+                <span class="setting-desc">系统保留的最大撤销/重做记录数量（默认 80 步）</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-undo-steps" min="10" max="100" step="5" value="50" disabled>
-                  <span class="range-val" id="val-undo-steps" style="color: #94a3b8;">50 步</span>
+                  <input type="range" class="settings-range" id="set-undo-steps" min="20" max="200" step="5" value="${currentUndoSteps}">
+                  <span class="range-val" id="val-undo-steps">${currentUndoSteps} 步</span>
+                  <button type="button" class="btn-range-reset" data-target="set-undo-steps" data-val-target="val-undo-steps" data-default="80" data-suffix=" 步" title="重置为 80 步" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -730,91 +772,125 @@ export function showSettingsModal(appContext = {}) {
           <!-- 3. 控制与视角 -->
           <div class="settings-panel" id="tab-camera">
             <h4 class="panel-section-title">画布与全景相机</h4>
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">2D 视角平移速度</span>
-                <span class="setting-desc">调整平面图画布拖拽与按键平移速率（预留功能）</span>
+                <span class="setting-desc">调整平面图画布拖拽与按键平移速率</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-2d-speed" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-2d-speed" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-2d-speed" min="0.5" max="2.0" step="0.1" value="${cameraSettings.pan2DSpeed ?? 1.0}">
+                  <span class="range-val" id="val-2d-speed">${cameraSettings.pan2DSpeed ?? 1.0}x</span>
+                  <button type="button" class="btn-range-reset" data-target="set-2d-speed" data-val-target="val-2d-speed" data-default="1.0" data-suffix="x" title="重置为 1.0x" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">3D 相机平移速度</span>
-                <span class="setting-desc">控制三维全景视角中右键或按键平移拖拽速率（预留功能）</span>
+                <span class="setting-desc">控制三维全景视角中右键或按键平移拖拽速率</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-3d-pan" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-3d-pan" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-3d-pan" min="0.5" max="2.0" step="0.1" value="${cameraSettings.pan3DSpeed ?? 1.0}">
+                  <span class="range-val" id="val-3d-pan">${cameraSettings.pan3DSpeed ?? 1.0}x</span>
+                  <button type="button" class="btn-range-reset" data-target="set-3d-pan" data-val-target="val-3d-pan" data-default="1.0" data-suffix="x" title="重置为 1.0x" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">3D 相机旋转灵敏度</span>
-                <span class="setting-desc">控制三维全景视角下鼠标拖拽轨道旋转感应速度（预留功能）</span>
+                <span class="setting-desc">控制三维全景视角下鼠标拖拽轨道旋转感应速度</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-3d-rotate" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-3d-rotate" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-3d-rotate" min="0.5" max="2.0" step="0.1" value="${cameraSettings.rotate3DSpeed ?? 1.0}">
+                  <span class="range-val" id="val-3d-rotate">${cameraSettings.rotate3DSpeed ?? 1.0}x</span>
+                  <button type="button" class="btn-range-reset" data-target="set-3d-rotate" data-val-target="val-3d-rotate" data-default="1.0" data-suffix="x" title="重置为 1.0x" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">3D 相机广角 (FOV)</span>
+                <span class="setting-desc">调节三维全景轨道相机的广角视野范围 (默认 60°)</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-3d-fov" min="30" max="120" step="1" value="${cameraSettings.camera3DFov ?? 60}">
+                  <span class="range-val" id="val-3d-fov">${cameraSettings.camera3DFov ?? 60}°</span>
+                  <button type="button" class="btn-range-reset" data-target="set-3d-fov" data-val-target="val-3d-fov" data-default="60" data-suffix="°" title="重置为 60°" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
             <h4 class="panel-section-title">游览模式</h4>
-             <div class="setting-item disabled">
+             <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">开启第一人称</span>
-                <span class="setting-desc">启用第一人称漫游模式（预留功能）</span>
+                <span class="setting-desc">切换第一人称 3D 漫游视角</span>
               </div>
               <label class="toggle-switch">
-                <input type="checkbox" id="set-fp-mode">
+                <input type="checkbox" id="set-fp-mode" ${isFPActive ? 'checked' : ''}>
                 <span class="toggle-slider"></span>
               </label>
             </div>
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">第一人称移动速度</span>
-                <span class="setting-desc">调节第一人称漫游模式下的 WASD 行走移动速率（预留功能）</span>
+                <span class="setting-desc">调节第一人称漫游模式下的 WASD 行走移动速率</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-fp-move" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-fp-move" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-fp-move" min="0.5" max="2.0" step="0.1" value="${cameraSettings.fpMoveSpeed ?? 1.0}">
+                  <span class="range-val" id="val-fp-move">${cameraSettings.fpMoveSpeed ?? 1.0}x</span>
+                  <button type="button" class="btn-range-reset" data-target="set-fp-move" data-val-target="val-fp-move" data-default="1.0" data-suffix="x" title="重置为 1.0x" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">第一人称鼠标灵敏度</span>
-                <span class="setting-desc">调节第一人称漫游模式下的视角转动感应灵敏度（预留功能）</span>
+                <span class="setting-desc">调节第一人称漫游模式下的视角转动感应灵敏度</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-fp-look" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-fp-look" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-fp-look" min="0.5" max="2.0" step="0.1" value="${cameraSettings.fpLookSensitivity ?? 1.0}">
+                  <span class="range-val" id="val-fp-look">${cameraSettings.fpLookSensitivity ?? 1.0}x</span>
+                  <button type="button" class="btn-range-reset" data-target="set-fp-look" data-val-target="val-fp-look" data-default="1.0" data-suffix="x" title="重置为 1.0x" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="setting-item disabled">
+            <div class="setting-item">
               <div class="setting-info">
                 <span class="setting-label">第一人称相机广角</span>
-                <span class="setting-desc">调节第一人称漫游模式下的视角广角度（预留功能）</span>
+                <span class="setting-desc">调节第一人称漫游模式下的视角广角度 (FOV)</span>
               </div>
               <div class="setting-control">
                 <div class="slider-with-val">
-                  <input type="range" class="settings-range" id="set-fp-look" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
-                  <span class="range-val" id="val-fp-look" style="color: #94a3b8;">1.0x</span>
+                  <input type="range" class="settings-range" id="set-fp-fov" min="60" max="110" step="5" value="${cameraSettings.fpFov ?? 75}">
+                  <span class="range-val" id="val-fp-fov">${cameraSettings.fpFov ?? 75}°</span>
+                  <button type="button" class="btn-range-reset" data-target="set-fp-fov" data-val-target="val-fp-fov" data-default="75" data-suffix="°" title="重置为 75°" aria-label="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -826,7 +902,7 @@ export function showSettingsModal(appContext = {}) {
             <div class="setting-item disabled">
               <div class="setting-info">
                 <span class="setting-label">游戏运行模式</span>
-                <span class="setting-desc">切换建筑创作、模拟经营管理或全景游览模式（预留功能）</span>
+                <span class="setting-desc">切换自由建筑设计、模拟经营管理或全景游览模式（预留功能）</span>
               </div>
               <div class="setting-control">
                 <select class="settings-select" id="set-game-mode" disabled>
@@ -951,7 +1027,11 @@ export function showSettingsModal(appContext = {}) {
         </div>
       </div>
       <div class="settings-modal-footer">
-        <button type="button" class="custom-modal-btn btn-primary" id="btn-save-settings">完成</button>
+        <button type="button" class="custom-modal-btn btn-secondary" id="btn-reset-settings">重置</button>
+        <div class="footer-actions-right">
+          <button type="button" class="custom-modal-btn btn-secondary" id="btn-cancel-settings">取消</button>
+          <button type="button" class="custom-modal-btn btn-primary" id="btn-apply-settings">应用</button>
+        </div>
       </div>
     </div>
   `;
@@ -1005,8 +1085,10 @@ export function showSettingsModal(appContext = {}) {
     { rangeId: 'set-2d-speed', valId: 'val-2d-speed', suffix: 'x' },
     { rangeId: 'set-3d-rotate', valId: 'val-3d-rotate', suffix: 'x' },
     { rangeId: 'set-3d-pan', valId: 'val-3d-pan', suffix: 'x' },
+    { rangeId: 'set-3d-fov', valId: 'val-3d-fov', suffix: '°' },
     { rangeId: 'set-fp-move', valId: 'val-fp-move', suffix: 'x' },
     { rangeId: 'set-fp-look', valId: 'val-fp-look', suffix: 'x' },
+    { rangeId: 'set-fp-fov', valId: 'val-fp-fov', suffix: '°' },
   ];
   ranges.forEach(({ rangeId, valId, suffix }) => {
     const rangeEl = backdrop.querySelector(`#${rangeId}`);
@@ -1031,6 +1113,42 @@ export function showSettingsModal(appContext = {}) {
       advRenderEl.checked = e.target.checked;
       advRenderEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    const selectEl = backdrop.querySelector('#set-reflection-quality');
+    if (e.target.checked) {
+      renderSettings.reflectionQuality = 'high';
+      if (selectEl) selectEl.value = 'high';
+      appContext.viewer3d?.setReflectionQuality('high');
+    } else {
+      renderSettings.reflectionQuality = 'medium';
+      if (selectEl) selectEl.value = 'medium';
+      appContext.viewer3d?.setReflectionQuality('medium');
+    }
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-reflection-quality')?.addEventListener('change', (e) => {
+    renderSettings.reflectionQuality = e.target.value;
+    const isHighOrUltra = ['ultra', 'high'].includes(renderSettings.reflectionQuality);
+    const advToggle = backdrop.querySelector('#set-adv-render');
+    if (advToggle) advToggle.checked = isHighOrUltra;
+    if (advRenderEl) {
+      advRenderEl.checked = isHighOrUltra;
+      advRenderEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    appContext.viewer3d?.setReflectionQuality(renderSettings.reflectionQuality);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-shadow-quality')?.addEventListener('change', (e) => {
+    renderSettings.shadowQuality = e.target.value;
+    appContext.viewer3d?.setShadowQuality(renderSettings.shadowQuality);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-graphics-preset')?.addEventListener('change', (e) => {
+    renderSettings.graphicsPreset = e.target.value;
+    appContext.viewer3d?.setGraphicsPreset(renderSettings.graphicsPreset);
+    saveCamera();
   });
 
   backdrop.querySelector('#set-show-all-floors')?.addEventListener('change', (e) => {
@@ -1040,7 +1158,7 @@ export function showSettingsModal(appContext = {}) {
     }
   });
 
-  // 4. 维度 2 网格对齐触发
+  // 4. 维度 2 网格对齐与撤销步数触发
   backdrop.querySelector('#set-snap')?.addEventListener('change', (e) => {
     if (snapToggleBtn) {
       const isCurrentlyOff = snapToggleBtn.classList.contains('off');
@@ -1050,6 +1168,82 @@ export function showSettingsModal(appContext = {}) {
         snapToggleBtn.click();
       }
     }
+  });
+
+  backdrop.querySelector('#set-undo-steps')?.addEventListener('input', (e) => {
+    const steps = Number(e.target.value);
+    appContext.store?.setMaxHistory(steps);
+    saveCamera();
+  });
+
+  // 维度 3 控制与视角事件联动
+  const saveCamera = () => appContext.saveCameraSettings?.();
+
+  backdrop.querySelector('#set-2d-speed')?.addEventListener('input', (e) => {
+    cameraSettings.pan2DSpeed = Number(e.target.value);
+    set2DPanSpeed(cameraSettings.pan2DSpeed);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-3d-pan')?.addEventListener('input', (e) => {
+    cameraSettings.pan3DSpeed = Number(e.target.value);
+    appContext.viewer3d?.set3DPanSpeed(cameraSettings.pan3DSpeed);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-3d-rotate')?.addEventListener('input', (e) => {
+    cameraSettings.rotate3DSpeed = Number(e.target.value);
+    appContext.viewer3d?.set3DRotateSpeed(cameraSettings.rotate3DSpeed);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-3d-fov')?.addEventListener('input', (e) => {
+    cameraSettings.camera3DFov = Number(e.target.value);
+    appContext.viewer3d?.setCameraFOV(cameraSettings.camera3DFov);
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-fp-mode')?.addEventListener('change', (e) => {
+    if (e.target.checked && !window.firstPersonActive) {
+      cleanup();
+      if (appContext.currentView !== '3d') {
+        appContext.setView?.('3d');
+      }
+      toggleFirstPerson(appContext);
+    } else if (!e.target.checked && window.firstPersonActive) {
+      exitFirstPerson(appContext);
+    }
+  });
+
+  backdrop.querySelector('#set-fp-move')?.addEventListener('input', (e) => {
+    cameraSettings.fpMoveSpeed = Number(e.target.value);
+    updateFirstPersonConfig({ moveSpeedScale: cameraSettings.fpMoveSpeed });
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-fp-look')?.addEventListener('input', (e) => {
+    cameraSettings.fpLookSensitivity = Number(e.target.value);
+    updateFirstPersonConfig({ lookSensitivityScale: cameraSettings.fpLookSensitivity });
+    saveCamera();
+  });
+
+  backdrop.querySelector('#set-fp-fov')?.addEventListener('input', (e) => {
+    cameraSettings.fpFov = Number(e.target.value);
+    updateFirstPersonConfig({ fovDeg: cameraSettings.fpFov });
+    saveCamera();
+  });
+
+  // 单项无边框图标重置按钮响应
+  backdrop.querySelectorAll('.btn-range-reset').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const defaultVal = btn.getAttribute('data-default');
+      const rangeEl = backdrop.querySelector(`#${targetId}`);
+      if (rangeEl && defaultVal !== null) {
+        rangeEl.value = defaultVal;
+        rangeEl.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
   });
 
   // 5. 维度 5 AI 立即导入/上传及模板下载事件绑定
@@ -1082,17 +1276,103 @@ export function showSettingsModal(appContext = {}) {
     downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
   });
 
-  // 6. 关闭与完成按钮
-  backdrop.querySelector('#btn-close-settings').addEventListener('click', cleanup);
-  backdrop.querySelector('#btn-save-settings').addEventListener('click', cleanup);
+  // 6. 重置、取消与应用按钮逻辑
+  const initialCameraSettings = { ...cameraSettings };
+  const initialRenderSettings = { ...renderSettings };
+  const initialUndoSteps = appContext.store?.getMaxHistory() ?? 80;
+
+  const cancelAndRestore = () => {
+    Object.assign(cameraSettings, initialCameraSettings);
+    Object.assign(renderSettings, initialRenderSettings);
+    appContext.store?.setMaxHistory(initialUndoSteps);
+    set2DPanSpeed(cameraSettings.pan2DSpeed);
+    appContext.viewer3d?.set3DPanSpeed(cameraSettings.pan3DSpeed);
+    appContext.viewer3d?.set3DRotateSpeed(cameraSettings.rotate3DSpeed);
+    appContext.viewer3d?.setCameraFOV(cameraSettings.camera3DFov ?? 60);
+    appContext.viewer3d?.setReflectionQuality(renderSettings.reflectionQuality);
+    appContext.viewer3d?.setShadowQuality(renderSettings.shadowQuality);
+    appContext.viewer3d?.setGraphicsPreset(renderSettings.graphicsPreset);
+    updateFirstPersonConfig({
+      moveSpeedScale: cameraSettings.fpMoveSpeed,
+      lookSensitivityScale: cameraSettings.fpLookSensitivity,
+      fovDeg: cameraSettings.fpFov ?? 75,
+    });
+    cleanup();
+  };
+
+  backdrop.querySelector('#btn-reset-settings')?.addEventListener('click', async () => {
+    const ok = await showCustomConfirm('确定重置设置？', '确定要将所有的视角、操控与系统偏好恢复为默认初始状态吗？');
+    if (!ok) return;
+
+    // 重置全部控制与视角参数为默认初值
+    cameraSettings.pan2DSpeed = 1.0;
+    cameraSettings.pan3DSpeed = 1.0;
+    cameraSettings.rotate3DSpeed = 1.0;
+    cameraSettings.camera3DFov = 60;
+    cameraSettings.fpMoveSpeed = 1.0;
+    cameraSettings.fpLookSensitivity = 1.0;
+    cameraSettings.fpFov = 75;
+
+    appContext.viewer3d?.setCameraFOV(60);
+    updateFirstPersonConfig({ fovDeg: 75 });
+
+    renderSettings.reflectionQuality = 'medium';
+    renderSettings.shadowQuality = 'high';
+    renderSettings.graphicsPreset = 'high';
+
+    appContext.viewer3d?.setReflectionQuality('medium');
+    appContext.viewer3d?.setShadowQuality('high');
+    appContext.viewer3d?.setGraphicsPreset('high');
+
+    appContext.store?.setMaxHistory(80);
+
+    // 同步刷新 3 个下拉框 DOM 界面显示值
+    const selectRef = backdrop.querySelector('#set-reflection-quality');
+    if (selectRef) selectRef.value = 'medium';
+
+    const selectSha = backdrop.querySelector('#set-shadow-quality');
+    if (selectSha) selectSha.value = 'high';
+
+    const selectGra = backdrop.querySelector('#set-graphics-preset');
+    if (selectGra) selectGra.value = 'high';
+
+    // 同步刷新高级渲染 Toggle 开关
+    const toggleAdv = backdrop.querySelector('#set-adv-render');
+    if (toggleAdv) toggleAdv.checked = false;
+
+    // 同步批量重置所有滑块控件与右侧数值文本
+    backdrop.querySelectorAll('.btn-range-reset').forEach((btn) => {
+      const targetId = btn.getAttribute('data-target');
+      const valId = btn.getAttribute('data-val-target');
+      const defaultVal = btn.getAttribute('data-default');
+      const suffix = btn.getAttribute('data-suffix') || '';
+      const rangeEl = backdrop.querySelector(`#${targetId}`);
+      const valEl = backdrop.querySelector(`#${valId}`);
+      if (rangeEl && defaultVal !== null) {
+        rangeEl.value = defaultVal;
+      }
+      if (valEl && defaultVal !== null) {
+        valEl.textContent = defaultVal + suffix;
+      }
+    });
+    saveCamera();
+  });
+
+  backdrop.querySelector('#btn-cancel-settings')?.addEventListener('click', cancelAndRestore);
+  backdrop.querySelector('#btn-apply-settings')?.addEventListener('click', () => {
+    saveCamera();
+    cleanup();
+  });
+
+  backdrop.querySelector('#btn-close-settings')?.addEventListener('click', cancelAndRestore);
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) cleanup();
+    if (e.target === backdrop) cancelAndRestore();
   });
 
   const handleKeyDown = (e) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      cleanup();
+      cancelAndRestore();
     }
   };
   window.addEventListener('keydown', handleKeyDown);

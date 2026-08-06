@@ -80,6 +80,25 @@ let beforeRenderObserver = null;
 let isTemporaryPuppet = true;
 let interactionProbeElapsed = 0;
 
+let fpConfig = {
+  moveSpeedScale: 1.0,
+  lookSensitivityScale: 1.0,
+  fovDeg: 75,
+};
+
+/**
+ * 更新第一人称漫游控制参数
+ * @param {Object} config
+ * @param {number} [config.moveSpeedScale]
+ * @param {number} [config.lookSensitivityScale]
+ * @param {number} [config.fovDeg]
+ */
+export function updateFirstPersonConfig(config = {}) {
+  if (typeof config.moveSpeedScale === 'number') fpConfig.moveSpeedScale = config.moveSpeedScale;
+  if (typeof config.lookSensitivityScale === 'number') fpConfig.lookSensitivityScale = config.lookSensitivityScale;
+  if (typeof config.fovDeg === 'number') fpConfig.fovDeg = config.fovDeg;
+}
+
 /**
  * 创建仅存在于 Babylon 场景中的轻量第一人称角色。
  * 角色不包含头部，避免相机进入模型；不可见碰撞体与可见模型保持分离。
@@ -1006,6 +1025,7 @@ function enterFirstPerson(Context, targetPuppetId = null) {
   // 5. 设置相机为第一人称模式
   camera.detachControl(Context.canvas);
   camera.radius = 0.001; // 半径设为 0.001m（1毫米），使相机物理起点与 target 焦点完美重合，消除旋转时的左右横向平移偏移
+  camera.fov = (fpConfig.fovDeg * Math.PI) / 180;
 
   // 获得相机的初始水平朝向，并把眼睛（相机 target）放在面朝方向前置 0.18m 处避开头部穿模
   const camForward = camera.getDirection(new (Context.BABYLON?.Vector3 || window.BABYLON?.Vector3)(0, 0, 1));
@@ -1086,7 +1106,7 @@ function enterFirstPerson(Context, targetPuppetId = null) {
     lastPointerX = e.clientX;
     lastPointerY = e.clientY;
 
-    const sensitivity = 0.001;
+    const sensitivity = 0.001 * fpConfig.lookSensitivityScale;
     camera.alpha += dx * sensitivity;
     camera.beta += dy * sensitivity;
     // 限制俯仰角，防止倒立
@@ -1214,7 +1234,7 @@ function checkRayCollision(scene, posX, posY, posZ, dirX, dirZ, stepDist, puppet
   return false;
 }
 
-    const speed = 2.5; // 水平行走速度 2.5m/s
+    const speed = 2.5 * fpConfig.moveSpeedScale; // 水平行走速度 (基础 2.5m/s * 速率倍率)
     const isMoving = moveDir.length() > 0.001;
     if (isMoving) {
       // 正在行走移动，若当前木偶处于坐姿或躺姿，自动起立站好

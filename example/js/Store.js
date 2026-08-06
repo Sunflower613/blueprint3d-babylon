@@ -115,6 +115,23 @@ export class Store extends EventEmitter {
     return this.cloneData(this._getSnapshot());
   }
 
+  /**
+   * 动态设置撤销历史栈最大上限步数
+   * @param {number} maxHistory
+   */
+  setMaxHistory(maxHistory) {
+    const val = Math.max(20, Math.min(200, Number(maxHistory) || 80));
+    this._maxHistory = val;
+    while (this.undoStack.length > this._maxHistory) {
+      this.undoStack.shift();
+    }
+  }
+
+  /** 获取撤销历史栈最大限制步数 */
+  getMaxHistory() {
+    return this._maxHistory;
+  }
+
   // =============================================
   // 撤销/重做
   // =============================================

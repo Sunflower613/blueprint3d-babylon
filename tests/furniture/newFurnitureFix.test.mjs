@@ -21,7 +21,7 @@ test('1. 新增空调与立式空调，分别实现几何 build 并注册开关�
   assert.ok(APPLIANCE_POWER_EFFECTS.air_conditioner_floor, '立式空调应该有开关特效');
 });
 
-test('2. 新增椭圆桌与三角圆茶几', () => {
+test('2. 新增椭圆桌与椭圆茶几', () => {
   const ovalTable = FURNITURE_LIST.find(item => item.type === 'oval_table');
   assert.ok(ovalTable, '椭圆桌应该注册成功');
   assert.equal(ovalTable.name, '椭圆桌');
@@ -29,8 +29,8 @@ test('2. 新增椭圆桌与三角圆茶几', () => {
   assert.ok(typeof ovalTable.build === 'function');
 
   const triCoffeeTable = FURNITURE_LIST.find(item => item.type === 'triangular_round_coffee_table');
-  assert.ok(triCoffeeTable, '三角圆茶几应该注册成功');
-  assert.equal(triCoffeeTable.name, '三角圆茶几');
+  assert.ok(triCoffeeTable, '椭圆茶几应该注册成功');
+  assert.equal(triCoffeeTable.name, '椭圆茶几');
   assert.equal(triCoffeeTable.category, 'tables');
   assert.ok(typeof triCoffeeTable.build === 'function');
 });

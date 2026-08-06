@@ -560,3 +560,542 @@ export function showLoading(title, message = '') {
   };
 }
 
+/**
+ * 系统设置弹窗
+ * @param {Object} [appContext] - 应用上下文句柄
+ */
+export function showSettingsModal(appContext = {}) {
+  // 清理已有弹窗残余
+  document.querySelectorAll('.settings-modal-backdrop').forEach(el => el.remove());
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'custom-modal-backdrop settings-modal-backdrop';
+
+  // 获取页面现有各项控件的当前激活状态（安全防护）
+  const skyboxEl = document.getElementById('floor-skybox-enabled');
+  const advRenderEl = document.getElementById('show-advanced-rendering');
+  const showAllFloorsEl = document.getElementById('show-all-floors');
+  const snapToggleBtn = document.getElementById('btn-snap-toggle');
+  
+  const currentSkybox = skyboxEl ? skyboxEl.checked : true;
+  const currentAdvRender = advRenderEl ? advRenderEl.checked : false;
+  const currentShowAllFloors = showAllFloorsEl ? showAllFloorsEl.checked : false;
+  const currentSnapEnabled = snapToggleBtn ? !snapToggleBtn.classList.contains('off') : true;
+
+  backdrop.innerHTML = `
+    <div class="custom-modal-container settings-modal-container" role="dialog" aria-modal="true">
+      <div class="settings-modal-header">
+        <div class="settings-modal-title-wrapper">
+          <svg class="settings-header-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <h3>系统设置</h3>
+        </div>
+        <button type="button" class="custom-modal-close" id="btn-close-settings" aria-label="关闭">✕</button>
+      </div>
+
+      <div class="settings-modal-body">
+        <!-- 左侧 5 大维度导航 -->
+        <nav class="settings-tabs-sidebar" aria-label="设置维度">
+          <div class="settings-tabs-slider" id="settings-tabs-slider"></div>
+          <button type="button" class="settings-tab-item active" data-tab="tab-rendering">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 1 0 10 10"/></svg>
+            <span>画面与环境</span>
+          </button>
+          <button type="button" class="settings-tab-item" data-tab="tab-editor">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+            <span>建筑与编辑</span>
+          </button>
+          <button type="button" class="settings-tab-item" data-tab="tab-camera">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 10 4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
+            <span>控制与视角</span>
+          </button>
+          <button type="button" class="settings-tab-item" data-tab="tab-simulation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+            <span>模拟与系统</span>
+          </button>
+          <button type="button" class="settings-tab-item" data-tab="tab-ai">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/></svg>
+            <span>智能与 AI</span>
+          </button>
+        </nav>
+
+        <!-- 右侧维度设置内容 -->
+        <div class="settings-tab-content">
+
+          <!-- 1. 画面与环境 -->
+          <div class="settings-panel active" id="tab-rendering">
+            <h4 class="panel-section-title">场景环境</h4>
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">开启天空盒</span>
+                <span class="setting-desc">渲染 360 度全景天空球背景与环境日光</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-skybox" ${currentSkybox ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">显示 3D 辅助网格</span>
+                <span class="setting-desc">在三维坐标系地板上显示空间辅助网格</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-grid" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">显示所有楼层</span>
+                <span class="setting-desc">在三维视角中同时全景展示所有建筑层</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-show-all-floors" ${currentShowAllFloors ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <h4 class="panel-section-title">渲染与画质</h4>
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">开启高级渲染</span>
+                <span class="setting-desc">启用后优化材质环境光反射与精细阴影</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-adv-render" ${currentAdvRender ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">阴影质量与画质预设</span>
+                <span class="setting-desc">选择全局渲染精度与阴影贴图质量（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-shadow-quality" disabled>
+                  <option value="ultra">极高 (Ultra)</option>
+                  <option value="high" selected>高 (High)</option>
+                  <option value="medium">中 (Medium)</option>
+                  <option value="low">低 (Low)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 建筑与编辑 -->
+          <div class="settings-panel" id="tab-editor">
+            <h4 class="panel-section-title">网格与吸附</h4>
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">网格自动对齐与捕捉</span>
+                <span class="setting-desc">拖拽家具与绘制墙体时自动对齐格点</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-snap" ${currentSnapEnabled ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">吸附网格尺寸</span>
+                <span class="setting-desc">网格吸附的基本参考单位（默认 1m）</span>
+              </div>
+              <div class="setting-control">
+                <input type="text" class="settings-input" value="1m" disabled readonly style="width: 90px; text-align: center; font-weight: bold; background: #f1f5f9; color: #94a3b8; cursor: not-allowed;" />
+              </div>
+            </div>
+
+            <h4 class="panel-section-title">操作与联动</h4>
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">历史撤销步数限制</span>
+                <span class="setting-desc">系统保留的最大撤销/重做记录数量（默认 50 步）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-undo-steps" min="10" max="100" step="5" value="50" disabled>
+                  <span class="range-val" id="val-undo-steps" style="color: #94a3b8;">50 步</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. 控制与视角 -->
+          <div class="settings-panel" id="tab-camera">
+            <h4 class="panel-section-title">画布与全景相机</h4>
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">2D 视角平移速度</span>
+                <span class="setting-desc">调整平面图画布拖拽与按键平移速率（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-2d-speed" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-2d-speed" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">3D 相机平移速度</span>
+                <span class="setting-desc">控制三维全景视角中右键或按键平移拖拽速率（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-3d-pan" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-3d-pan" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">3D 相机旋转灵敏度</span>
+                <span class="setting-desc">控制三维全景视角下鼠标拖拽轨道旋转感应速度（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-3d-rotate" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-3d-rotate" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <h4 class="panel-section-title">游览模式</h4>
+             <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">开启第一人称</span>
+                <span class="setting-desc">启用第一人称漫游模式（预留功能）</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-fp-mode">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">第一人称移动速度</span>
+                <span class="setting-desc">调节第一人称漫游模式下的 WASD 行走移动速率（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-fp-move" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-fp-move" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">第一人称鼠标灵敏度</span>
+                <span class="setting-desc">调节第一人称漫游模式下的视角转动感应灵敏度（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-fp-look" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-fp-look" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">第一人称相机广角</span>
+                <span class="setting-desc">调节第一人称漫游模式下的视角广角度（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <div class="slider-with-val">
+                  <input type="range" class="settings-range" id="set-fp-look" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+                  <span class="range-val" id="val-fp-look" style="color: #94a3b8;">1.0x</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. 模拟与系统 -->
+          <div class="settings-panel" id="tab-simulation">
+            <h4 class="panel-section-title">运行模式与保存</h4>
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">游戏运行模式</span>
+                <span class="setting-desc">切换建筑创作、模拟经营管理或全景游览模式（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-game-mode" disabled>
+                  <option value="architect" selected>建筑设计模式</option>
+                  <option value="management">模拟经营体验</option>
+                  <option value="tour">视察游览模式</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">项目自动保存间隔</span>
+                <span class="setting-desc">定期自动备份建筑项目档案至本地存储（预留功能）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-autosave" disabled>
+                  <option value="0">关闭自动保存</option>
+                  <option value="5" selected>每 5 分钟</option>
+                  <option value="10">每 10 分钟</option>
+                  <option value="30">每 30 分钟</option>
+                </select>
+              </div>
+            </div>
+
+            <h4 class="panel-section-title">系统偏好</h4>
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">界面语言</span>
+                <span class="setting-desc">选择系统的全局显示语言（当前固定简体中文）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-language" disabled>
+                  <option value="zh-CN" selected>简体中文 (zh-CN)</option>
+                  <option value="en-US">English (en-US)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">界面主题</span>
+                <span class="setting-desc">切换系统的外观显示模式（当前固定浅色）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-theme" disabled>
+                  <option value="light" selected>浅色主题 (Light)</option>
+                  <option value="dark">高对比暗黑 (Dark)</option>
+                  <option value="system">跟随系统</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-item disabled">
+              <div class="setting-info">
+                <span class="setting-label">长度测量单位</span>
+                <span class="setting-desc">选择尺寸标注与测量刻度的显示单位（默认米 m）</span>
+              </div>
+              <div class="setting-control">
+                <select class="settings-select" id="set-unit" disabled>
+                  <option value="m" selected>米 (m)</option>
+                  <option value="cm">厘米 (cm)</option>
+                  <option value="in">英寸 (in)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. 智能与 AI -->
+          <div class="settings-panel" id="tab-ai">
+            
+            <div class="ai-feature-card">
+              <div class="ai-card-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                <div>
+                  <strong class="ai-card-title">AI 生成 3D 建筑</strong>
+                  <div class="ai-card-desc">
+                    <p style="margin: 0 0 4px 0;">结合 AI 提示词与规范要求，可将户型图精准转换为符合 <code>blueprint3d-babylon.building.v1</code> 格式的 <code>.b3dbuilding.json</code> 建筑档案。生成后可直接点击“立即导入”载入场景。</p>
+                    <p style="margin: 0; font-size: 11.5px; color: #64748b;">提示：先下载下方 AI 提示词与范例 JSON 配合大模型生成方案。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="ai-card-actions-row">
+                <button type="button" class="custom-modal-btn btn-secondary btn-sm" id="btn-settings-download-building-example">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>下载建筑模板
+                </button>
+                <button type="button" class="custom-modal-btn btn-secondary btn-sm" id="btn-settings-download-building-skill">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>下载 AI 提示词
+                </button>
+                <button type="button" class="custom-modal-btn btn-primary btn-sm" id="btn-settings-import-building">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>立即导入建筑
+                </button>
+              </div>
+            </div>
+
+            <div class="ai-feature-card" style="margin-top: 10px;">
+              <div class="ai-card-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5"/><path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4H2Z"/><path d="M6 18v2"/><path d="M18 18v2"/></svg>
+                <div>
+                  <strong class="ai-card-title">AI 生成家具</strong>
+                  <div class="ai-card-desc">
+                    <p style="margin: 0 0 4px 0;">编写或 AI 生成自定义 3D 家具代码文件 (<code>.js</code> 或 <code>.mjs</code>) 后，可点击“立即上传家具”选择文件添加至自定义家具库。</p>
+                    <p style="margin: 0; font-size: 11.5px; color: #64748b;">提示：脚本将在本地执行，请确保代码来源安全可靠。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="ai-card-actions-row">
+                <button type="button" class="custom-modal-btn btn-secondary btn-sm" id="btn-settings-download-furniture-example">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>下载家具模板
+                </button>
+                <button type="button" class="custom-modal-btn btn-secondary btn-sm" id="btn-settings-download-furniture-skill">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1Z"/></svg>下载 AI 提示词
+                </button>
+                <button type="button" class="custom-modal-btn btn-primary btn-sm" id="btn-settings-upload-furniture">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>立即上传家具
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" class="custom-modal-btn btn-primary" id="btn-save-settings">完成</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  backdrop.getBoundingClientRect();
+  backdrop.classList.add('active');
+
+  let isCleaned = false;
+  const cleanup = () => {
+    if (isCleaned) return;
+    isCleaned = true;
+    backdrop.classList.remove('active');
+    window.removeEventListener('keydown', handleKeyDown);
+    setTimeout(() => {
+      backdrop.remove();
+    }, 200);
+  };
+
+  // 1. Tab 页签切换与竖向动画滑块逻辑
+  const tabButtons = Array.from(backdrop.querySelectorAll('.settings-tab-item'));
+  const tabPanels = Array.from(backdrop.querySelectorAll('.settings-panel'));
+  const sliderEl = backdrop.querySelector('#settings-tabs-slider');
+
+  const updateSlider = (activeBtn) => {
+    if (!activeBtn || !sliderEl) return;
+    sliderEl.style.transform = `translateY(${activeBtn.offsetTop}px)`;
+    sliderEl.style.height = `${activeBtn.offsetHeight}px`;
+  };
+
+  // 延时在渲染 DOM 完成后首次计算初始化滑块位置
+  setTimeout(() => {
+    const initialActive = backdrop.querySelector('.settings-tab-item.active');
+    if (initialActive) updateSlider(initialActive);
+  }, 10);
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      tabButtons.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      backdrop.querySelector(`#${targetTab}`)?.classList.add('active');
+      updateSlider(btn);
+    });
+  });
+
+  // 2. 实时滑块数值提示绑定
+  const ranges = [
+    { rangeId: 'set-undo-steps', valId: 'val-undo-steps', suffix: ' 步' },
+    { rangeId: 'set-2d-speed', valId: 'val-2d-speed', suffix: 'x' },
+    { rangeId: 'set-3d-rotate', valId: 'val-3d-rotate', suffix: 'x' },
+    { rangeId: 'set-3d-pan', valId: 'val-3d-pan', suffix: 'x' },
+    { rangeId: 'set-fp-move', valId: 'val-fp-move', suffix: 'x' },
+    { rangeId: 'set-fp-look', valId: 'val-fp-look', suffix: 'x' },
+  ];
+  ranges.forEach(({ rangeId, valId, suffix }) => {
+    const rangeEl = backdrop.querySelector(`#${rangeId}`);
+    const valEl = backdrop.querySelector(`#${valId}`);
+    if (rangeEl && valEl) {
+      rangeEl.addEventListener('input', () => {
+        valEl.textContent = rangeEl.value + suffix;
+      });
+    }
+  });
+
+  // 3. 维度 1 事件联动 (天空盒, 3D网格, 高级渲染, 显示所有楼层)
+  backdrop.querySelector('#set-skybox')?.addEventListener('change', (e) => {
+    if (skyboxEl) {
+      skyboxEl.checked = e.target.checked;
+      skyboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  backdrop.querySelector('#set-adv-render')?.addEventListener('change', (e) => {
+    if (advRenderEl) {
+      advRenderEl.checked = e.target.checked;
+      advRenderEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  backdrop.querySelector('#set-show-all-floors')?.addEventListener('change', (e) => {
+    if (showAllFloorsEl) {
+      showAllFloorsEl.checked = e.target.checked;
+      showAllFloorsEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  // 4. 维度 2 网格对齐触发
+  backdrop.querySelector('#set-snap')?.addEventListener('change', (e) => {
+    if (snapToggleBtn) {
+      const isCurrentlyOff = snapToggleBtn.classList.contains('off');
+      if (e.target.checked && isCurrentlyOff) {
+        snapToggleBtn.click();
+      } else if (!e.target.checked && !isCurrentlyOff) {
+        snapToggleBtn.click();
+      }
+    }
+  });
+
+  // 5. 维度 5 AI 立即导入/上传及模板下载事件绑定
+  backdrop.querySelector('#btn-settings-import-building')?.addEventListener('click', () => {
+    cleanup();
+    const input = document.getElementById('building-file-input');
+    if (input) {
+      input.value = '';
+      input.click();
+    }
+  });
+  backdrop.querySelector('#btn-settings-upload-furniture')?.addEventListener('click', () => {
+    cleanup();
+    const input = document.getElementById('furniture-upload-input');
+    if (input) {
+      input.value = '';
+      input.click();
+    }
+  });
+  backdrop.querySelector('#btn-settings-download-building-example')?.addEventListener('click', () => {
+    downloadTextFile(buildingExampleSource, 'loft-building-example.b3dbuilding.json', 'application/json;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-settings-download-building-skill')?.addEventListener('click', () => {
+    downloadTextFile(buildingSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-settings-download-furniture-example')?.addEventListener('click', () => {
+    downloadTextFile(furnitureUploadExampleSource, 'custom-furniture-example.js', 'text/javascript;charset=utf-8');
+  });
+  backdrop.querySelector('#btn-settings-download-furniture-skill')?.addEventListener('click', () => {
+    downloadTextFile(furnitureUploadSkillSource, 'SKILL.md', 'text/markdown;charset=utf-8');
+  });
+
+  // 6. 关闭与完成按钮
+  backdrop.querySelector('#btn-close-settings').addEventListener('click', cleanup);
+  backdrop.querySelector('#btn-save-settings').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) cleanup();
+  });
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      cleanup();
+    }
+  };
+  window.addEventListener('keydown', handleKeyDown);
+}
+
+

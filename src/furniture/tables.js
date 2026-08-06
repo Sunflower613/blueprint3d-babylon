@@ -627,7 +627,7 @@ export const ovalTableFurniture = {
 
 export const triangularRoundCoffeeTableFurniture = {
   type: 'triangular_round_coffee_table',
-  name: '三角圆茶几',
+  name: '椭圆茶几',
   unit: 'm',
   defaultSize: { width: 1, depth: 0.7, height: 0.4 },
   components: [

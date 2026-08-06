@@ -371,6 +371,10 @@ export function handleHotkeys(event, ctx) {
       event.preventDefault();
       document.getElementById('btn-load')?.click();
       return;
+    } else if (key === ',') {
+      event.preventDefault();
+      document.getElementById('btn-settings')?.click();
+      return;
     } else if (key === 'n') {
       event.preventDefault();
       document.getElementById('btn-new')?.click();

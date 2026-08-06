@@ -42,7 +42,7 @@
 | `round_table` | 圆桌 | 自动/自适应 |
 | `side_table` | 边几 | 自动/自适应 |
 | `table` | 餐桌 | 自动/自适应 |
-| `triangular_round_coffee_table` | 三角圆茶几 | 自动/自适应 |
+| `triangular_round_coffee_table` | 椭圆茶几 | 自动/自适应 |
 
 ## 3. 收纳与柜体 (`storage` - 共 17 件)
 

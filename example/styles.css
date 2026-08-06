@@ -248,10 +248,21 @@ button:disabled {
   pointer-events: none;
 }
 
-.control-group-left,
+.control-group-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  pointer-events: auto;
+  overflow: visible !important;
+  position: relative;
+  z-index: 10000;
+}
+
 .control-group-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   pointer-events: auto;
 }
@@ -329,6 +340,7 @@ button:disabled {
 
 .file-dropdown {
   position: relative;
+  z-index: 10000;
 }
 
 .dropdown-content {
@@ -341,8 +353,9 @@ button:disabled {
   padding: 6px;
   border: 1px solid rgba(42, 65, 92, 0.14);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 30px rgba(31, 45, 61, 0.15);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 30px rgba(31, 45, 61, 0.2);
+  z-index: 10001;
 }
 
 .dropdown-content button {
@@ -1241,11 +1254,13 @@ select {
   justify-content: center;
   z-index: 99999;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .custom-modal-backdrop.active {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .custom-modal-container {
@@ -1382,8 +1397,8 @@ select {
 /* 右上角关闭按钮样式 */
 .custom-modal-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
   border: none !important;
   background: transparent !important;
   padding: 6px !important;
@@ -2288,7 +2303,7 @@ kbd {
 }
 
 /* 移动端/窄屏响应式隐藏快捷键，防止换行 */
-@media (max-width: 768px) {
+@media (max-width: 450px) {
   .dropdown-content button .shortcut,
   .submenu-wrapper .has-submenu .shortcut {
     display: none !important;
@@ -2329,5 +2344,444 @@ kbd {
     border-bottom: 0;
     border-left: 1px solid rgba(42, 65, 92, 0.12);
     border-right: 1px solid rgba(42, 65, 92, 0.12);
+  }
+}
+
+/* ==========================================
+   5 大维度系统设置弹窗专属 CSS
+   ========================================== */
+.settings-modal-backdrop {
+  z-index: 9999;
+}
+
+.settings-modal-container {
+  width: 760px;
+  max-width: 90vw;
+  height: 540px;
+  max-height: 85vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+}
+
+.settings-modal-header {
+  height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f8fafc;
+  position: relative;
+}
+
+.settings-modal-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+}
+
+.settings-header-icon {
+  color: #2563eb;
+}
+
+.settings-modal-title-wrapper h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.settings-modal-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* 左侧 5 大维度侧边导航 */
+.settings-tabs-sidebar {
+  width: 210px;
+  background: #f8fafc;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.settings-tabs-slider {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  width: calc(100% - 12px);
+  height: 40px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(31, 45, 61, 0.12);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), height 0.22s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.settings-tab-item {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent !important;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-tab-item svg {
+  color: #64748b;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.settings-tab-item:hover {
+  color: #1e293b;
+}
+
+.settings-tab-item:hover svg {
+  color: #2563eb;
+}
+
+.settings-tab-item.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.settings-tab-item.active svg {
+  color: #2563eb;
+}
+
+/* 右侧内容面板容器 */
+.settings-tab-content {
+  flex: 1;
+  padding: 12px 18px;
+  overflow-y: auto;
+}
+
+.settings-panel {
+  display: none;
+}
+
+.settings-panel.active {
+  display: block;
+}
+
+/* 二级标题：精致分组分割线风格 */
+.panel-section-title {
+  margin: 14px 0 6px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.02em;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-section-title:first-child {
+  margin-top: 0;
+}
+
+/* 单条设置行 */
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8fafc;
+  gap: 16px;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.setting-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+/* 现代化 Switch 滑动开关门 (非原简陋勾选框) */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: background-color 0.2s ease;
+  border-radius: 22px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #2563eb;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  background-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.toggle-switch input:disabled + .toggle-slider:before {
+  background-color: #f1f5f9;
+}
+
+/* 暂不支持修改的置灰样式 */
+.setting-item.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.setting-item.disabled .setting-label,
+.setting-item.disabled .setting-desc {
+  color: #94a3b8 !important;
+}
+
+.setting-item.disabled input,
+.setting-item.disabled select,
+.setting-item.disabled .settings-select,
+.setting-item.disabled .settings-range {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* 控件右侧限定宽度与防挤压容器 */
+.setting-control {
+  width: 170px;
+  max-width: 45%;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.setting-control select,
+.setting-control .settings-select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* 下拉选择框与项目统一样式 */
+.settings-select {
+  height: 32px;
+  border: 1px solid rgba(42, 65, 92, 0.2);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: #172033;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.slider-with-val {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.settings-range {
+  width: 100px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.range-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2563eb;
+  min-width: 34px;
+  text-align: right;
+}
+
+/* AI 功能卡片：极简纯白干练风格，无花哨渐变 */
+.ai-feature-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ai-card-header svg {
+  color: #2563eb;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.ai-card-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.ai-card-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.ai-card-desc code {
+  background: #f1f5f9;
+  color: #2563eb;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.ai-card-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* 设置弹窗底部 */
+.settings-modal-footer {
+  height: 44px;
+  padding: 0 16px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: #f8fafc;
+}
+
+/* ==========================================
+   专属系统设置弹窗移动端全屏响应式（独立作用域，不干扰主界面 workspace 侧边栏）
+   ========================================== */
+@media (max-width: 768px), (max-height: 520px) {
+  .settings-modal-backdrop {
+    padding: 0 !important;
+  }
+
+  .settings-modal-container {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  .settings-modal-container .settings-tabs-sidebar {
+    width: 140px !important;
+    padding: 8px 4px;
+  }
+
+  .settings-modal-container .settings-tab-item {
+    padding: 10px 8px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .settings-modal-container .settings-tab-item svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .settings-modal-container .settings-tab-content {
+    padding: 16px 14px;
+  }
+
+  .settings-modal-container .setting-item {
+    padding: 12px 0;
+  }
+
+  .settings-modal-container .setting-control {
+    width: 140px !important;
+    max-width: 50% !important;
+  }
+
+  .settings-modal-container .ai-card-actions-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }

@@ -1,7 +1,23 @@
 import { pointInRoom, Topology } from '../../src/index.js';
-const { getItemsOnBookshelf, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition, snapToGridSegmentCenter } = Topology;
+const { getItemsOnBookshelf, getItemsOnTable, getItemSizeInMetres, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition, snapToGridSegmentCenter } = Topology;
 
 const INCHES_PER_UNIT = 39.37;
+
+function captureBeforeState(item) {
+  if (!item) return null;
+  return {
+    id: item.id,
+    x: item.x,
+    z: item.z,
+    rotation: item.rotation,
+    elevation: item.elevation,
+    width: item.width,
+    depth: item.depth,
+    height: item.height,
+    scale: item.scale,
+    type: item.type
+  };
+}
 
 function definitionSizeInMetres(definition, dimension) {
   const value = Number(definition?.defaultSize?.[dimension] || 0);
@@ -152,7 +168,7 @@ export class EntityManager {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
-    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+    const beforeState = captureBeforeState(item);
 
     const definition = this.opts.testMap.getFurnitureDefinition(item.type);
 
@@ -694,7 +710,7 @@ export class EntityManager {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
-    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+    const beforeState = captureBeforeState(item);
 
     this.opts.pushHistory();
 
@@ -743,7 +759,7 @@ export class EntityManager {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
-    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+    const beforeState = captureBeforeState(item);
 
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('rotateItem', { itemId, rotationRadians: degrees * Math.PI / 180 });
@@ -877,7 +893,7 @@ export class EntityManager {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
-    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+    const beforeState = captureBeforeState(item);
 
     this.opts.pushHistory();
     this.opts.testMap.executeCommand('updateItem', { itemId, patch: { x: item.x + dx, z: item.z + dz } });
@@ -898,7 +914,7 @@ export class EntityManager {
     const item = this.opts.testMap.getEntity('item', itemId);
     if (!item || item.locked) return;
 
-    const beforeState = { x: item.x, z: item.z, rotation: item.rotation, elevation: item.elevation, type: item.type };
+    const beforeState = captureBeforeState(item);
 
     this.opts.pushHistory();
     const newElev = Math.max(0, (item.elevation || 0) + delta);
@@ -956,13 +972,27 @@ export class EntityManager {
     if (!definition) return;
     
     const isMannequin = definition.type.includes('clothing_mannequin');
-    if (!supportedTypes.includes(definition.type) && !isMannequin) return;
+    const isTable = definition.category === 'tables';
+    if (!supportedTypes.includes(definition.type) && !isMannequin && !isTable) return;
     
     const dx = bookshelf.x - beforeState.x;
     const dz = bookshelf.z - beforeState.z;
     const dr = (bookshelf.rotation || 0) - (beforeState.rotation || 0);
     const de = (bookshelf.elevation || 0) - (beforeState.elevation || 0);
-    if (Math.abs(dx) < 0.0001 && Math.abs(dz) < 0.0001 && Math.abs(dr) < 0.0001 && Math.abs(de) < 0.0001) return;
+
+    const beforeSize = getItemSizeInMetres(beforeState, definition);
+    const currentSize = getItemSizeInMetres(bookshelf, definition);
+
+    const oldTopElevation = (beforeState.elevation || 0) + beforeSize.height;
+    const newTopElevation = (bookshelf.elevation || 0) + currentSize.height;
+    const deTop = newTopElevation - oldTopElevation;
+
+    const dw = currentSize.width - beforeSize.width;
+    const dd = currentSize.depth - beforeSize.depth;
+
+    const deEffective = isTable ? deTop : (Math.abs(de) > 0.0001 ? de : deTop);
+
+    if (Math.abs(dx) < 0.0001 && Math.abs(dz) < 0.0001 && Math.abs(dr) < 0.0001 && Math.abs(deEffective) < 0.0001 && Math.abs(dw) < 0.0001 && Math.abs(dd) < 0.0001) return;
     
     let isDraggingThis = false;
     let initialChildrenIds = null;
@@ -997,6 +1027,18 @@ export class EntityManager {
           const modelElev = beforeState.elevation || 0;
           return itemElev >= modelElev && itemElev <= modelElev + modelH + (5.0 / INCHES_PER_UNIT);
         });
+      } else if (isTable) {
+        const queryTableState = {
+          ...beforeState,
+          width: Math.max(beforeSize.width, currentSize.width),
+          depth: Math.max(beforeSize.depth, currentSize.depth),
+          height: beforeSize.height
+        };
+        itemsOnShelf = getItemsOnTable(
+          queryTableState, 
+          this.opts.testMap.getEntities('item'),
+          (type) => this.opts.testMap.getFurnitureDefinition(type)
+        );
       } else {
         itemsOnShelf = getItemsOnBookshelf(
           beforeState, 
@@ -1041,7 +1083,7 @@ export class EntityManager {
       const newWz = nz - lx * sinRot + lz * cosRot;
       
       const newRot = (childItem.rotation || 0) + dr;
-      const newElevation = (childItem.elevation || 0) + de;
+      const newElevation = (childItem.elevation || 0) + deEffective;
       
       this.opts.testMap.executeCommand('updateItem', {
         itemId: childItem.id,

@@ -387,18 +387,23 @@ export function calculateSnappedPosition({
  * @param {Object} definition - 家具物品的规格定义
  * @returns {{width: number, depth: number, height: number}} 物理大小
  */
-function getItemSizeInMetres(item, definition) {
+export function getItemSizeInMetres(item, definition) {
   if (!definition) return { width: 0, depth: 0, height: 0 };
-  const scale = Number(item.scale || 1);
-  const isMeter = definition.unit === 'm';
-  const defW = isMeter ? definition.defaultSize.width : definition.defaultSize.width / INCHES_PER_UNIT;
-  const defD = isMeter ? definition.defaultSize.depth : definition.defaultSize.depth / INCHES_PER_UNIT;
-  const defH = isMeter ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT;
-  
+  const scale = Number(item?.scale || 1);
+  const isMeterDef = definition.unit === 'm';
+
+  const defW = isMeterDef ? definition.defaultSize.width : definition.defaultSize.width / INCHES_PER_UNIT;
+  const defD = isMeterDef ? definition.defaultSize.depth : definition.defaultSize.depth / INCHES_PER_UNIT;
+  const defH = isMeterDef ? definition.defaultSize.height : definition.defaultSize.height / INCHES_PER_UNIT;
+
+  const w = item?.width !== undefined && item?.width !== null ? item.width : defW;
+  const d = item?.depth !== undefined && item?.depth !== null ? item.depth : defD;
+  const h = item?.height !== undefined && item?.height !== null ? item.height : defH;
+
   return {
-    width: (item.width !== undefined ? item.width : defW) * scale,
-    depth: (item.depth !== undefined ? item.depth : defD) * scale,
-    height: (item.height !== undefined ? item.height : defH) * scale
+    width: Number(w || 0) * scale,
+    depth: Number(d || 0) * scale,
+    height: Number(h || 0) * scale
   };
 }
 
@@ -1134,7 +1139,7 @@ export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
     
     // 增加高程范围判定，防止把非本柜架上的邻近、地面重叠或高处物件误吸附随动
     const itemElev = item.elevation || 0;
-    if (itemElev < bottomElevation + 0.1 || itemElev > topElevation + 5.0) continue;
+    if (itemElev < bottomElevation - 0.02 || itemElev > topElevation + 5.0) continue;
     
     const dx = item.x - cx;
     const dz = item.z - cz;
@@ -1150,3 +1155,56 @@ export function getItemsOnBookshelf(bookshelf, items, getFurnitureDefinition) {
   }
   return result;
 }
+
+/**
+ * 找出目前摆放在指定桌台/台面投影范围内且在桌面高度以上（0-10cm）的所有小物件
+ * @param {Object} table 目标桌台家具
+ * @param {Array<Object>} items 全局物品列表
+ * @param {Function} getFurnitureDefinition 获取家具定义的函数
+ * @returns {Array<Object>} 摆放在桌面上的物体列表
+ */
+export function getItemsOnTable(table, items, getFurnitureDefinition) {
+  const result = [];
+  const allItems = items || [];
+  const tableDef = getFurnitureDefinition(table.type);
+  if (!tableDef) return [];
+  if (tableDef.category !== 'tables') return [];
+
+  const cx = table.x;
+  const cz = table.z;
+  const angle = table.rotation || 0;
+  
+  const size = getItemSizeInMetres(table, tableDef);
+  const halfW = size.width / 2;
+  const halfD = size.depth / 2;
+  const snapMargin = 0.02; // 允许少量边缘容差
+  
+  const tableTopElevation = (table.elevation || 0) + size.height;
+  
+  for (const item of allItems) {
+    if (item.id === table.id) continue;
+    const itemDef = getFurnitureDefinition(item.type);
+    if (!itemDef) continue;
+    if (!canPlaceOnTable(item, itemDef)) continue;
+    
+    const dx = item.x - cx;
+    const dz = item.z - cz;
+    
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+
+    // 桌面以上 0 ~ 10cm（0 ~ 0.10m）的随动判定范围
+    const itemElev = item.elevation || 0;
+    if (itemElev < tableTopElevation - 0.02 || itemElev > tableTopElevation + 0.10) {
+      continue;
+    }
+    
+    if (Math.abs(localX) <= halfW + snapMargin && Math.abs(localZ) <= halfD + snapMargin) {
+      result.push(item);
+    }
+  }
+  return result;
+}
+

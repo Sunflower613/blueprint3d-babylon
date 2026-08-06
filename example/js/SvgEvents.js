@@ -7,6 +7,11 @@ import {
   isFurniturePlacementActive,
   updateFurniturePlacement
 } from './FurniturePlacementController.js';
+import {
+  commitBuildingPlacement,
+  isBuildingPlacementActive,
+  updateBuildingPlacement
+} from './BuildingPlacementController.js';
 
 let rawCtx = null;
 const ctx = createStoreProxy(() => rawCtx);
@@ -36,6 +41,7 @@ export function initSvgEvents(appContext) {
   svg.addEventListener('pointerleave', onPointerleave);
   svg.addEventListener('dblclick', onDblclick);
   svg.addEventListener('click', onFurniturePlacementClick, true);
+  svg.addEventListener('click', onBuildingPlacementClick, true);
   svg.addEventListener('click', onClick);
 }
 
@@ -230,6 +236,21 @@ function onPointermove(event) {
     return;
   }
 
+  if (ctx.currentView === '2d' && isBuildingPlacementActive()) {
+    const point = ctx.svgPointFromEvent(event);
+    const worldPt = ctx.svgToWorld(point.x, point.y);
+    const wallEl = event.target.closest?.('[data-wall-id]');
+    const fenceEl = event.target.closest?.('[data-fence-id]');
+    let pickTarget = null;
+    if (wallEl) {
+      pickTarget = { type: 'wall', id: wallEl.dataset.wallId };
+    } else if (fenceEl) {
+      pickTarget = { type: 'fence', id: fenceEl.dataset.fenceId };
+    }
+    updateBuildingPlacement(worldPt, pickTarget);
+    return;
+  }
+
   ctx.updatePointer(event);
   if (ctx.designMode === 'picker') {
     const target = ctx.get2DTargetFromElement(event.target);
@@ -377,6 +398,24 @@ function onFurniturePlacementClick(event) {
   if (ctx.currentView !== '2d' || !isFurniturePlacementActive()) return;
   const point = ctx.svgPointFromEvent(event);
   commitFurniturePlacement(ctx.svgToWorld(point.x, point.y));
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+function onBuildingPlacementClick(event) {
+  if (ctx.currentView !== '2d' || !isBuildingPlacementActive()) return;
+  const point = ctx.svgPointFromEvent(event);
+  const worldPt = ctx.svgToWorld(point.x, point.y);
+  const wallEl = event.target.closest?.('[data-wall-id]');
+  const fenceEl = event.target.closest?.('[data-fence-id]');
+  let pickTarget = null;
+  if (wallEl) {
+    pickTarget = { type: 'wall', id: wallEl.dataset.wallId };
+  } else if (fenceEl) {
+    pickTarget = { type: 'fence', id: fenceEl.dataset.fenceId };
+  }
+  ctx.pushHistory();
+  commitBuildingPlacement(worldPt, pickTarget);
   event.preventDefault();
   event.stopImmediatePropagation();
 }

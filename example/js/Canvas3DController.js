@@ -12,6 +12,14 @@ import {
   isFurniturePlacementActive,
   updateFurniturePlacement
 } from './FurniturePlacementController.js';
+import {
+  cancelBuildingPlacement,
+  commitBuildingPlacement,
+  isBuildingPlacementActive,
+  isBuildingPlacementMode,
+  startBuildingPlacement,
+  updateBuildingPlacement
+} from './BuildingPlacementController.js';
 
 let API = null;
 
@@ -81,7 +89,9 @@ function begin3DDrag(pointerInfo) {
     return;
   }
   if (event.button === 2) {
-    if (Context.mode === 'draw-wall' || Context.mode === 'delete-wall' || isAddRoomMode() || Context.mode.startsWith('add-roof') || Context.mode.startsWith('add-stairs') || isAddOpeningMode() || Context.mode.startsWith('draw-fence')) {
+    if (isBuildingPlacementActive() || isFurniturePlacementActive() || Context.mode === 'draw-wall' || Context.mode === 'delete-wall' || isAddRoomMode() || Context.mode.startsWith('add-roof') || Context.mode.startsWith('add-stairs') || isAddOpeningMode() || Context.mode.startsWith('draw-fence')) {
+      cancelBuildingPlacement();
+      cancelFurniturePlacement();
       Context.drawStart = null;
       clearDrawWallPreview();
       switchToSelectMode();
@@ -90,6 +100,17 @@ function begin3DDrag(pointerInfo) {
     }
   }
   if (event.button !== 0 && event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+
+  if (isBuildingPlacementActive()) {
+    const point = groundPointFromPointer();
+    const pickTarget = pickNearest3DTarget();
+    if (point || pickTarget) {
+      pushHistory();
+      commitBuildingPlacement(point, pickTarget);
+      event.preventDefault();
+      return;
+    }
+  }
 
   if (Context.mode === 'delete-wall') {
     const target = pickNearest3DTarget();
@@ -500,10 +521,13 @@ scene.onPointerObservable.add((pointerInfo) => {
       } else {
         clearDrawWallPreview();
       }
-    } else {
-      clear3DStairsRailingPreview();
-      clear3DFloorEdgeRailingPreview();
-      clearDrawWallPreview();
+    }
+    if (isBuildingPlacementActive()) {
+      const point = groundPointFromPointer();
+      const pickTarget = pickNearest3DTarget();
+      if (point) {
+        updateBuildingPlacement(point, pickTarget);
+      }
     }
     move3DDrag(pointerInfo);
   }

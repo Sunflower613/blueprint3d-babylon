@@ -1253,8 +1253,16 @@ export class Blueprint3DTestMap extends BlueprintRegistry {
   updateFenceGate(gateId, patch, rebuild = true) {
     const gate = this.document.updateFenceGate(gateId, patch);
     if (!gate) return null;
-    if (rebuild) {
-      this.build();
+    const hasMorphChange = Object.keys(patch || {}).some(k =>
+      ['isOpen', 'doubleDoor', 'isFlippedLR', 'isFlippedIO', 'width', 'height', 'thickness', 'subtype', 'from', 'to', 'fenceId', 't'].includes(k)
+    );
+    if (rebuild || hasMorphChange) {
+      if (typeof this.editorFacade?._renderer?.buildFenceGates === 'function') {
+        this.editorFacade._renderer.buildFenceGates();
+        this.editorFacade._renderer.buildFences();
+      } else {
+        this.build();
+      }
     } else {
       this.updateFenceGateNodeTransform(gateId);
     }

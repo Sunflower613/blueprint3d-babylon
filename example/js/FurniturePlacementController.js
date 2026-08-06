@@ -91,7 +91,8 @@ export function updateFurniturePlacement(point) {
   placement.point = {
     x: snapped.x,
     z: snapped.z,
-    wallId: point.wallId,
+    rotation: snapped.rotation !== undefined ? snapped.rotation : point.rotation,
+    wallId: snapped.wallId || point.wallId,
     side: point.side
   };
   if (Context.currentView === '2d') {
@@ -185,13 +186,24 @@ function update3DPreview() {
   const roomY = Number(room?.elevation || 0);
   const wallHeight = Number(Context.testMap.getProjectMetadata().wallHeight || 2.8);
   let elevation = 0;
-  if (definition.placeType === 'ceiling') elevation = Math.max(0, wallHeight - size.height);
+  if (definition.placeType === 'ceiling') {
+    elevation = Math.max(0, wallHeight - size.height);
+  } else if (definition.placeType === 'wall') {
+    const isCurtain = placement.type.toLowerCase().includes('curtain') || placement.type.toLowerCase().includes('blind');
+    if (isCurtain) {
+      elevation = 0;
+    } else {
+      const preferredElevation = definition.defaultElevation !== undefined ? definition.defaultElevation : 0.85;
+      elevation = Math.max(0, Math.min(preferredElevation, Math.max(0, wallHeight - size.height)));
+    }
+  }
 
   const targetY = floorY + roomY + elevation;
 
-  // 复用已构建好的 3D Mesh 节点，只移动位置，提升性能
+  // 复用已构建好的 3D Mesh 节点，只移动位置与更新旋转，提升性能
   if (preview3D && preview3D._type === placement.type) {
     preview3D.position.set(placement.point.x, targetY, placement.point.z);
+    preview3D.rotation.y = placement.point.rotation || 0;
     return;
   }
 
@@ -235,5 +247,6 @@ function update3DPreview() {
   });
 
   previewNode.position.set(placement.point.x, targetY, placement.point.z);
+  previewNode.rotation.y = placement.point.rotation || 0;
   preview3D = previewNode;
 }

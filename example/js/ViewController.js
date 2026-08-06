@@ -137,10 +137,7 @@ export function setView(nextView) {
 export function snapValue(value) { return Topology.snapValue(value, Context.snapEnabled, Context.snapSize); }
 export function snapWorldPoint(world) { return Topology.snapWorldPoint(world, Context.snapEnabled, Context.snapSize); }
 export function snapWorldPointForFurniture(type, x, z) {
-  if (!Context.snapEnabled || !Context.snapSize) {
-    return { x: Number(x.toFixed(3)), z: Number(z.toFixed(3)) };
-  }
-  const definition = Context.testMap.getFurnitureDefinition(type);
+  const definition = Context.testMap?.getFurnitureDefinition(type);
   if (!definition) {
     return Topology.snapWorldPoint({ x, z }, Context.snapEnabled, Context.snapSize);
   }
@@ -153,6 +150,71 @@ export function snapWorldPointForFurniture(type, x, z) {
     rotation: 0
   };
   const walls = Context.testMap.getCurrentFloorEntities('wall');
+
+  if (definition.placeType === 'wall' && walls && walls.length > 0) {
+    let minDistance = Infinity;
+    let bestProjX = x;
+    let bestProjZ = z;
+    let bestAngle = 0;
+    let bestWall = null;
+
+    walls.forEach((wall) => {
+      const [x1, z1] = wall.from;
+      const [x2, z2] = wall.to;
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const len2 = dx * dx + dz * dz;
+      if (len2 === 0) return;
+      let t = ((x - x1) * dx + (z - z1) * dz) / len2;
+      t = Math.max(0.02, Math.min(0.98, t));
+      const projX = x1 + t * dx;
+      const projZ = z1 + t * dz;
+      const dist = Math.hypot(x - projX, z - projZ);
+      if (dist < minDistance) {
+        minDistance = dist;
+        bestProjX = projX;
+        bestProjZ = projZ;
+        bestAngle = -Math.atan2(dz, dx);
+        bestWall = wall;
+      }
+    });
+
+    if (bestWall) {
+      const wallThickness = Context.testMap.getProjectMetadata().wallThickness || 0.2;
+      const offsetDist = wallThickness / 2 + item.depth / 2 + 0.002;
+      const vx = x - bestProjX;
+      const vz = z - bestProjZ;
+      const vLen = Math.hypot(vx, vz);
+
+      let finalX = bestProjX;
+      let finalZ = bestProjZ;
+      if (vLen > 0.001) {
+        finalX = bestProjX + (vx / vLen) * offsetDist;
+        finalZ = bestProjZ + (vz / vLen) * offsetDist;
+      } else {
+        const [x1, z1] = bestWall.from;
+        const [x2, z2] = bestWall.to;
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const normX = -dz / Math.hypot(dx, dz);
+        const normZ = dx / Math.hypot(dx, dz);
+        finalX = bestProjX + normX * offsetDist;
+        finalZ = bestProjZ + normZ * offsetDist;
+      }
+
+      return {
+        x: Number(finalX.toFixed(3)),
+        z: Number(finalZ.toFixed(3)),
+        rotation: Number(bestAngle.toFixed(3)),
+        wallId: bestWall.id
+      };
+    }
+  }
+
+  if (!Context.snapEnabled || !Context.snapSize) {
+    return { x: Number(x.toFixed(3)), z: Number(z.toFixed(3)) };
+  }
+
   const wallThickness = Context.testMap.getProjectMetadata().wallThickness || 0.2;
   const shouldSnapToEdge = Context.shouldSnapToEdge ? Context.shouldSnapToEdge(type) : false;
   const snapped = Topology.calculateSnappedPosition({

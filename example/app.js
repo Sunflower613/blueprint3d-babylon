@@ -61,6 +61,7 @@ const {
 } = UiControls;
 import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor, placeFurnitureAt, getPlacementInitialPoint } from './js/EditorUi.js';
 import { initFurniturePlacementController } from './js/FurniturePlacementController.js';
+import { initBuildingPlacementController } from './js/BuildingPlacementController.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp, showAiBuildingHelp } from './js/Dialogs.js';
 import { createCustomDropdown } from './js/Dropdown.js';
@@ -744,6 +745,7 @@ Object.assign(appState, {
 DragHandler.initDragHandler(appState);
 initEditorUiContext(appState);
 initFurniturePlacementController(appState);
+initBuildingPlacementController(appState);
 initTargetHandler(appState);
 initMaterialManager(appState);
 SvgEvents.initSvgEvents(appState);
@@ -944,7 +946,7 @@ function currentFences() {
 function updateSelectedFenceGatePreview(patch) {
   if (!selectedFenceGateId) return;
   if (testMap.getEntity('fence_gate', selectedFenceGateId)?.locked && !('locked' in patch)) return;
-  testMap.updateFenceGate(selectedFenceGateId, patch, false);
+  testMap.updateFenceGate(selectedFenceGateId, patch, true);
   refreshShadows();
   updateEditor();
   renderPlan();

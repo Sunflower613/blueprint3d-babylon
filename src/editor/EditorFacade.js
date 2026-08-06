@@ -594,6 +594,9 @@ export class EditorFacade {
       } else if (['addFence', 'updateFence', 'deleteFence', 'addFenceGate', 'updateFenceGate', 'deleteFenceGate'].includes(name)) {
         if (typeof this._renderer.buildFences === 'function') {
           this._renderer.buildFences();
+          if (typeof this._renderer.buildFenceGates === 'function') {
+            this._renderer.buildFenceGates();
+          }
         } else {
           this._renderer.build({ rebuildType: 'all' });
         }

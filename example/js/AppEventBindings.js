@@ -4,6 +4,11 @@ import { createSmoothCameraKeyboardController, handleHotkeys } from './Hotkeys.j
 import { updateLocalProjectCount } from './FileManager.js';
 import { toggleFirstPerson } from './FirstPersonController.js';
 import {
+  cancelBuildingPlacement,
+  isBuildingPlacementMode,
+  startBuildingPlacement
+} from './BuildingPlacementController.js';
+import {
   copyTarget,
   get2DTargetFromElement,
   isAllowedTarget,
@@ -126,13 +131,14 @@ function bindToolSelectors(Context) {
 
   document.querySelectorAll('.mode').forEach((button) => {
     button.addEventListener('click', () => {
+      const clickedMode = button.dataset.mode;
+      cancelBuildingPlacement({ render: false });
       const preview = Context.testMap.getEntityPreviewStatus?.();
       if (preview?.state === 'active' && preview.type && preview.id) {
         void Promise.resolve(Context.testMap.cancelEntityPreview(preview.type, preview.id)).catch((error) => {
           console.error('Failed to cancel active preview while changing tools:', error);
         });
       }
-      const clickedMode = button.dataset.mode;
       if (Context.mode === clickedMode && clickedMode !== 'select') {
         Context.switchToSelectMode();
         return;
@@ -142,6 +148,9 @@ function bindToolSelectors(Context) {
       Context.clearDrawWallPreview();
       document.querySelectorAll('.mode').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
       Context.handleModeChange(Context.mode);
+      if (isBuildingPlacementMode(clickedMode)) {
+        startBuildingPlacement(clickedMode);
+      }
       Context.syncLocalToStore();
       Context.renderPlan();
     });

@@ -2023,9 +2023,10 @@ input:checked + .slider .lock-icon {
 .furniture-upload-actions {
   display: flex;
   align-items: center;
+  position: fixed;
   gap: 7px;
-  margin-top: 10px;
-  width: 100%;
+  bottom: 10px;
+  width: 90%;
 }
 
 .furniture-upload-button,

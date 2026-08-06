@@ -430,3 +430,23 @@ test('a scene-ready callback queued after dispose starts cannot touch disposed p
 
   engine.dispose();
 });
+
+test('roof preview update updates width and depth in both domain model and rendered node', async () => {
+  const harness = createHarness();
+  const { editor } = harness;
+
+  const roof = editor.executeCommand('addRoof', { x: 0, z: 0, width: 4, depth: 4, subtype: 'gable' });
+  assert.ok(roof, '应该成功添加屋顶');
+
+  assert.equal(editor.beginEntityPreview('roof', roof.id), true);
+  assert.equal(editor.updateEntityPreview('roof', roof.id, { x: 2, z: 3, width: 8, depth: 10 }), true);
+
+  const updatedRoof = editor.getEntity('roof', roof.id);
+  assert.equal(updatedRoof.width, 8);
+  assert.equal(updatedRoof.depth, 10);
+  assert.equal(updatedRoof.x, 2);
+  assert.equal(updatedRoof.z, 3);
+
+  assert.equal(await editor.commitEntityPreview('roof', roof.id), true);
+  await destroyHarness(harness);
+});

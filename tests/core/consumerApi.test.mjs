@@ -437,6 +437,7 @@ test('Consumer API: executeCommand 统一命令 API 覆盖与验证测试', () =
   // 7. 其它结构（屋顶、楼梯、围栏、围栏门）和 updateStructure 测试
   const roof = editor.executeCommand('addRoof', { x: 2, z: 2, width: 4, depth: 4, subtype: 'gable' });
   assert.ok(roof, '应该成功执行 addRoof 命令');
+  assert.equal(roof.hideFrame, true, '屋顶默认不显示骨架 (hideFrame 默认为 true)');
 
   editor.executeCommand('updateStructure', { type: 'roof', id: roof.id, patch: { height: 1.5 } });
   assert.equal(editor.getEntity('roof', roof.id).height, 1.5, '应该成功执行 updateStructure 更新屋顶高度');

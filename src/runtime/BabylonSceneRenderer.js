@@ -626,11 +626,8 @@ export class BabylonSceneRenderer {
 
   _syncRoofPreview(id) {
     const roof = this.document.getRoof(id);
-    const node = this.getEntityNode('roof', id);
-    if (!roof || !node) return false;
-    node.position.x = roof.x || 0;
-    node.position.z = roof.z || 0;
-    if (roof.rotation !== undefined) node.rotation.y = roof.rotation;
+    if (!roof) return false;
+    this.buildRoofs(id);
     return true;
   }
 

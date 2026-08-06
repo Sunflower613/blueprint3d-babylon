@@ -407,7 +407,7 @@ export class FloorplanDocument {
         toFiniteNumber(roof.eaveOverhang, defaultRoofEaveOverhang(roof.subtype))
       );
       delete roof.eaveHidden;
-      roof.hideFrame = roof.hideFrame !== undefined ? !!roof.hideFrame : roof.showFrame === false;
+      roof.hideFrame = roof.hideFrame !== undefined ? !!roof.hideFrame : (roof.showFrame !== undefined ? !roof.showFrame : true);
       roof.locked = !!roof.locked;
       roof.curve = toFiniteNumber(roof.curve, 0);
       roof.elevation = roof.elevation !== undefined ? toFiniteNumber(roof.elevation, 0) : undefined;
@@ -1230,7 +1230,7 @@ export class FloorplanDocument {
         0,
         Number(partialRoof.eaveOverhang ?? defaultRoofEaveOverhang(subtype))
       ),
-      hideFrame: partialRoof.hideFrame !== undefined ? !!partialRoof.hideFrame : partialRoof.showFrame === false,
+      hideFrame: partialRoof.hideFrame !== undefined ? !!partialRoof.hideFrame : (partialRoof.showFrame !== undefined ? !partialRoof.showFrame : true),
       locked: !!partialRoof.locked,
       curve: Number(partialRoof.curve || 0),
       topWidth: partialRoof.topWidth !== undefined ? Math.max(0.1, Number(partialRoof.topWidth)) : undefined,
@@ -1269,7 +1269,7 @@ export class FloorplanDocument {
     roof.bottomHidden = !!roof.bottomHidden;
     roof.eaveOverhang = Math.max(0, Number(roof.eaveOverhang || 0));
     delete roof.eaveHidden;
-    roof.hideFrame = patch.hideFrame !== undefined ? !!patch.hideFrame : (patch.showFrame !== undefined ? !patch.showFrame : !!roof.hideFrame);
+    roof.hideFrame = patch.hideFrame !== undefined ? !!patch.hideFrame : (patch.showFrame !== undefined ? !patch.showFrame : (roof.hideFrame !== undefined ? !!roof.hideFrame : true));
     return roof;
   }
 

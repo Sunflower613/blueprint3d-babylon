@@ -36,7 +36,7 @@ const normalizeRotationDegrees = (degrees, useSnap = snapEnabled) => PropertyMan
 const { isAddRoomMode, roomShapeFromMode, getOpeningModeInfo, isAddOpeningMode, handleModeChange, switchToSelectMode, setDesignMode, getPickedColorFromTarget, executeDesignTool } = DesignController;
 const {
   updateHistoryButtons, getMeshFloorId, refreshShadows, resetCamera, clear3DGrid,
-  refresh3DGrid, resetCurrentMaterial, setView, snapValue, snapWorldPoint,
+  refresh3DGrid, resetCurrentMaterial, setView, snapValue, snapWorldPoint, snapWorldPointForFurniture,
   snapToGridSegmentCenter, snapNumber, currentRooms, currentWalls, referenceFloorWalls,
   currentOpenings, currentItems, currentRoofs, currentStairs, getFloorEntityCount,
   ensureVisibleCurrentFloor, makeButton, hideContextMenu, showIconMenu, cancelLongPress,
@@ -59,7 +59,7 @@ const {
   restoreCustomFurnitureFromLocalStorage, loadUploadedFurniture, initFurnitureUpload,
   renderFurnitureGrid, cleanFloorplanMaterials, cleanMaterialLibraryForStorage, restoreFloorplanMaterials
 } = UiControls;
-import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor, placeFurnitureAt } from './js/EditorUi.js';
+import { ensure3DGridControls, ensureStructureEditor, updateEditor, initUiEventListeners, updateDesignCursor, placeFurnitureAt, getPlacementInitialPoint } from './js/EditorUi.js';
 import { initFurniturePlacementController } from './js/FurniturePlacementController.js';
 import { initEditorUiContext } from './js/EditorUiContext.js';
 import { showCustomConfirm, showCustomAlert, showCustomPrompt, showProjectListModal, show3MFExportDialog, showFurnitureUploadHelp, showAiBuildingHelp } from './js/Dialogs.js';
@@ -736,7 +736,9 @@ Object.assign(appState, {
   getSnapSize,
   setSnapSize,
   getShelfLayerHeights,
-  getItemsCountOnBookshelf
+  getItemsCountOnBookshelf,
+  snapWorldPointForFurniture,
+  getPlacementInitialPoint
 });
 
 DragHandler.initDragHandler(appState);

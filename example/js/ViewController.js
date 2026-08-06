@@ -136,6 +136,40 @@ export function setView(nextView) {
 
 export function snapValue(value) { return Topology.snapValue(value, Context.snapEnabled, Context.snapSize); }
 export function snapWorldPoint(world) { return Topology.snapWorldPoint(world, Context.snapEnabled, Context.snapSize); }
+export function snapWorldPointForFurniture(type, x, z) {
+  if (!Context.snapEnabled || !Context.snapSize) {
+    return { x: Number(x.toFixed(3)), z: Number(z.toFixed(3)) };
+  }
+  const definition = Context.testMap.getFurnitureDefinition(type);
+  if (!definition) {
+    return Topology.snapWorldPoint({ x, z }, Context.snapEnabled, Context.snapSize);
+  }
+  const divisor = definition.unit === 'm' ? 1 : 39.37;
+  const item = {
+    type,
+    width: Number(definition.defaultSize?.width || 0) / divisor,
+    depth: Number(definition.defaultSize?.depth || 0) / divisor,
+    height: Number(definition.defaultSize?.height || 0) / divisor,
+    rotation: 0
+  };
+  const walls = Context.testMap.getCurrentFloorEntities('wall');
+  const wallThickness = Context.testMap.getProjectMetadata().wallThickness || 0.2;
+  const shouldSnapToEdge = Context.shouldSnapToEdge ? Context.shouldSnapToEdge(type) : false;
+  const snapped = Topology.calculateSnappedPosition({
+    item,
+    definition,
+    x,
+    z,
+    snapSize: Context.snapSize,
+    wallThickness,
+    walls,
+    shouldSnapToEdge
+  });
+  return {
+    x: Number(snapped.x.toFixed(3)),
+    z: Number(snapped.z.toFixed(3))
+  };
+}
 export function snapToGridSegmentCenter(point) { return Topology.snapToGridSegmentCenter(point, Context.snapEnabled, Context.snapSize); }
 export function snapNumber(value) { return Topology.snapNumber(value, Context.snapEnabled, Context.snapSize); }
 export function currentRooms() { return Context.testMap.getCurrentFloorEntities('room'); }

@@ -88,13 +88,16 @@ test('新增壁挂家具立即获得安全标高且不会穿过天花板', () =>
   const curtain = manager.addItem('curtain', 0, 0, {});
   const wallAc = manager.addItem('air_conditioner_wall', 0, 0, {});
   const wallShelf = manager.addItem('wall_shelf', 0, 0, {});
+  const bedsideDesk = manager.addItem('bedside_desk', 0, 0, {});
 
   assert.equal(FURNITURE_DEFINITIONS.air_conditioner_wall.placeType, 'wall');
   assert.equal(FURNITURE_DEFINITIONS.wall_shelf.placeType, 'wall');
+  assert.equal(FURNITURE_DEFINITIONS.bedside_desk.placeType, 'wall');
   assert.ok(curtain.elevation >= 0);
   assert.ok(curtain.elevation + curtain.height <= 2.8 + 1e-9);
   assert.equal(wallAc.elevation, 0.85);
   assert.equal(wallShelf.elevation, 0.85);
+  assert.ok(bedsideDesk.elevation > 0);
 });
 
 test('窗帘移动时离地默认保持 0 贴地', () => {
@@ -205,4 +208,43 @@ test('0723: legacy outdoor floor furniture is normalized to an unassigned ground
   const item = document.floorplan.items[0];
   assert.equal(item.roomId, null);
   assert.equal(item.elevation, 0);
+});
+
+test('悬浮搁板 (bedside_desk) 可被识别为下方支持台面并抬升小家具', () => {
+  const bedsideDesk = {
+    id: 'shelf-1', type: 'bedside_desk', floorId: 'floor-1',
+    x: 1, z: 1, elevation: 1.2, width: 1, depth: 0.35, height: 0.05
+  };
+  const smallItem = {
+    id: 'cup-1', type: 'cushion', floorId: 'floor-1',
+    x: 1, z: 1, elevation: 0
+  };
+
+  const getDef = (type) => FURNITURE_DEFINITIONS[type];
+  const tableBelow = Topology.findTableBelow(smallItem, [bedsideDesk, smallItem], 'floor-1', getDef);
+
+  assert.ok(tableBelow);
+  assert.equal(tableBelow.id, 'shelf-1');
+});
+
+test('相同 (X,Z) 坐标下多层悬浮搁板根据 Y 轴上下阈值智能匹配最贴近的搁板', () => {
+  const shelfLower = {
+    id: 'shelf-lower', type: 'bedside_desk', floorId: 'floor-1',
+    x: 1, z: 1, elevation: 0.8, width: 1, depth: 0.35, height: 0.05
+  };
+  const shelfUpper = {
+    id: 'shelf-upper', type: 'bedside_desk', floorId: 'floor-1',
+    x: 1, z: 1, elevation: 1.6, width: 1, depth: 0.35, height: 0.05
+  };
+  const getDef = (type) => FURNITURE_DEFINITIONS[type];
+
+  // 1. 小家具在 lower (0.8m) 附近 -> 应匹配 shelf-lower
+  const itemNearLower = { id: 'cup-1', type: 'cushion', floorId: 'floor-1', x: 1, z: 1, elevation: 0.8 };
+  const matchedLower = Topology.findTableBelow(itemNearLower, [shelfLower, shelfUpper, itemNearLower], 'floor-1', getDef);
+  assert.equal(matchedLower.id, 'shelf-lower');
+
+  // 2. 小家具在 upper (1.6m) 附近 -> 应匹配 shelf-upper
+  const itemNearUpper = { id: 'cup-2', type: 'cushion', floorId: 'floor-1', x: 1, z: 1, elevation: 1.6 };
+  const matchedUpper = Topology.findTableBelow(itemNearUpper, [shelfLower, shelfUpper, itemNearUpper], 'floor-1', getDef);
+  assert.equal(matchedUpper.id, 'shelf-upper');
 });

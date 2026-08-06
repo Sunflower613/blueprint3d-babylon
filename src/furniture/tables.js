@@ -335,14 +335,15 @@ export const computerDeskFurniture = {
   }
 };
 
-// 9. 悬浮床头搁板 (Bedside Desk)
+// 9. 悬浮搁板 (Bedside Desk)
 export const bedsideDeskFurniture = {
   type: 'bedside_desk',
   name: '悬浮搁板',
+  placeType: 'wall',
   unit: 'm',
-  defaultSize: { width: 0.45, depth: 0.35, height: 0.1 },
+  defaultSize: { width: 1, depth: 0.35, height: 0.05 },
   components: [
-    { id: 'top', label: '搁板桌身', defaultColor: '#ebd8c8' }
+    { id: 'top', label: '木板', defaultColor: '#ebd8c8' }
   ],
   build(registry, item, node, size) {
     // 挂墙无脚抽屉盒子
@@ -393,7 +394,7 @@ export const picnicTableFurniture = {
 // 11. 露台餐桌 (Patio Dining Table)
 export const patioDiningTableFurniture = {
   type: 'patio_dining_table',
-  name: '露台餐桌',
+  name: '工作台',
   unit: 'm',
   defaultSize: { width: 1.7, depth: 0.9, height: 0.75 },
   components: [
@@ -420,20 +421,20 @@ export const patioDiningTableFurniture = {
     [-1, 1].forEach((xSide) => {
       boxComponent(registry, item, patioDiningTableFurniture, 'frame', {
         width: 0.03, height: 0.03, depth: size.depth * 0.76
-      }, { position: { x: xSide * size.width * 0.39, y: legH * 0.36, z: 0 } }, { parent: node });
+      }, { position: { x: xSide * size.width * 0.42, y: legH * 0.36, z: 0 } }, { parent: node });
     });
 
     // 中间纵向拉杆
     boxComponent(registry, item, patioDiningTableFurniture, 'frame', {
-      width: size.width * 0.78, height: 0.03, depth: 0.03
+      width: size.width * 0.82, height: 0.03, depth: 0.03
     }, { position: { x: 0, y: legH * 0.36, z: 0 } }, { parent: node });
   }
 };
 
-// 12. 庭院小圆桌 (Bistro Table)
+// 12. 玻璃边几
 export const bistroTableFurniture = {
   type: 'bistro_table',
-  name: '玻璃圆桌',
+  name: '玻璃边几',
   unit: 'm',
   defaultSize: { width: 0.65, depth: 0.65, height: 0.7 },
   components: [
@@ -442,7 +443,7 @@ export const bistroTableFurniture = {
   ],
   build(registry, item, node, size) {
     // 1. 四角金属桌腿
-    const legRadius = 0.03;
+    const legRadius = 0.02;
     const legH = size.height*0.95;
     [-1, 1].forEach((xSide) => {
       [-1, 1].forEach((zSide) => {
@@ -628,10 +629,10 @@ export const triangularRoundCoffeeTableFurniture = {
   type: 'triangular_round_coffee_table',
   name: '三角圆茶几',
   unit: 'm',
-  defaultSize: { width: 0.7, depth: 0.7, height: 0.4 },
+  defaultSize: { width: 1, depth: 0.7, height: 0.4 },
   components: [
-    { id: 'top', label: '几面', defaultColor: '#e5e0d8' },
-    { id: 'legs', label: '三脚架', defaultColor: '#5c544a' }
+    { id: 'top', label: '桌面', defaultColor: '#e5e0d8' },
+    { id: 'legs', label: '桌脚', defaultColor: '#5c544a' }
   ],
   build(registry, item, node, size) {
     const topH = 0.03;
@@ -657,4 +658,48 @@ export const triangularRoundCoffeeTableFurniture = {
     });
   }
 };
+
+// 16. C型极简边几 (C-Shape Side Table)
+export const cShapeSideTableFurniture = {
+  type: 'c_shape_side_table',
+  name: 'C型边几',
+  unit: 'm',
+  defaultSize: { width: 0.35, depth: 0.42, height: 0.46 },
+  components: [
+    { id: 'top', label: '边几框体', defaultColor: '#ffffff' },
+    { id: 'towel', label: '托盘', defaultColor: '#f7f7f8' }
+  ],
+  build(registry, item, node, size) {
+    const tableT = 0.018;
+
+    // 1. 顶板 (Top Surface)
+    boxComponent(registry, item, cShapeSideTableFurniture, 'top', {
+      width: size.width, height: tableT, depth: size.depth
+    }, {
+      position: { x: 0, y: size.height - tableT / 2, z: 0 }
+    }, { parent: node });
+
+    // 2. 侧立板 (Side Panel)
+    boxComponent(registry, item, cShapeSideTableFurniture, 'top', {
+      width: tableT, height: size.height - tableT * 2, depth: size.depth
+    }, {
+      position: { x: size.width / 2 - tableT / 2, y: size.height / 2, z: 0 }
+    }, { parent: node });
+
+    // 3. 底板 (Base Surface)
+    boxComponent(registry, item, cShapeSideTableFurniture, 'top', {
+      width: size.width, height: tableT, depth: size.depth
+    }, {
+      position: { x: 0, y: tableT / 2, z: 0 }
+    }, { parent: node });
+
+    // 4. 搁置于几面上的高档洁白沙滩浴巾 (Folded Beach Towel)
+    boxComponent(registry, item, cShapeSideTableFurniture, 'towel', {
+      width: size.width * 0.65, height: 0.02, depth: size.depth * 0.65
+    }, {
+      position: { x: -0.02, y: size.height + 0.01, z: 0 }
+    }, { parent: node });
+  }
+};
+
 

@@ -1,4 +1,4 @@
-import { Color3, MeshBuilder, StandardMaterial } from '../../src/index.js';
+import { Color3, TransformNode } from '../../src/index.js';
 import { createSvgElement, worldToSvg } from './Render2D.js';
 
 let Context = null;
@@ -43,21 +43,51 @@ export function getFurniturePlacement() {
 export function startFurniturePlacement(type) {
   if (!Context?.testMap.getFurnitureDefinition(type)) return false;
   dispose3DPreview();
-  placement = { type, point: null };
+
+  const initialPoint = Context.getPlacementInitialPoint
+    ? Context.getPlacementInitialPoint()
+    : { x: 0, z: 0 };
+
+  const snapped = Context.snapWorldPointForFurniture
+    ? Context.snapWorldPointForFurniture(type, initialPoint.x, initialPoint.z)
+    : (Context.snapWorldPoint ? Context.snapWorldPoint(initialPoint) : initialPoint);
+
+  placement = {
+    type,
+    point: {
+      x: snapped.x,
+      z: snapped.z,
+      wallId: initialPoint.wallId || null,
+      side: initialPoint.side || null
+    }
+  };
+
   Context.switchToSelectMode?.();
   Context.setDesignMode?.('select');
   setFurnitureButtonState(type);
   document.body.classList.add('placing-furniture');
-  Context.renderPlan?.();
-  Context.showToast?.('移动鼠标预览家具，点击画布完成放置，Esc 取消');
+
+  if (Context.currentView === '2d') {
+    Context.renderPlan?.();
+  } else {
+    update3DPreview();
+  }
+
+  const isMobile = typeof window !== 'undefined' && (
+    'ontouchstart' in window ||
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '')
+  );
+  Context.showToast?.(isMobile ? '请点击场景放置家具' : '点击左键放置家具，右键取消');
   return true;
 }
 
 export function updateFurniturePlacement(point) {
   if (!placement || !point) return;
-  const snapped = Context.snapWorldPoint
-    ? Context.snapWorldPoint({ x: point.x, z: point.z })
-    : point;
+  const snapped = Context.snapWorldPointForFurniture
+    ? Context.snapWorldPointForFurniture(placement.type, point.x, point.z)
+    : (Context.snapWorldPoint ? Context.snapWorldPoint({ x: point.x, z: point.z }) : point);
+
   placement.point = {
     x: snapped.x,
     z: snapped.z,
@@ -141,28 +171,13 @@ export function render2DFurniturePlacementPreview() {
 }
 
 function update3DPreview() {
-  dispose3DPreview();
-  if (!placement?.point || Context?.currentView !== '3d') return;
+  if (!placement?.point || Context?.currentView !== '3d') {
+    dispose3DPreview();
+    return;
+  }
   const definition = Context.testMap.getFurnitureDefinition(placement.type);
   if (!definition) return;
   const size = dimensionsFor(definition);
-  const previewHeight = Math.max(size.height, 0.04);
-  preview3D = MeshBuilder.CreateBox('furniture_placement_preview', {
-    width: Math.max(size.width, 0.04),
-    depth: Math.max(size.depth, 0.04),
-    height: previewHeight
-  }, Context.scene);
-  const material = new StandardMaterial('furniture_placement_preview_material', Context.scene);
-  const color = definition.components?.[0]?.defaultColor || '#60a5fa';
-  try {
-    material.diffuseColor = Color3.FromHexString(color);
-  } catch {
-    material.diffuseColor = Color3.FromHexString('#60a5fa');
-  }
-  material.alpha = 0.42;
-  material.backFaceCulling = false;
-  preview3D.material = material;
-  preview3D.isPickable = false;
 
   const floorId = Context.testMap.getCurrentFloorId();
   const floorY = Context.testMap.getFloorElevation?.(floorId) || 0;
@@ -170,10 +185,55 @@ function update3DPreview() {
   const roomY = Number(room?.elevation || 0);
   const wallHeight = Number(Context.testMap.getProjectMetadata().wallHeight || 2.8);
   let elevation = 0;
-  if (definition.placeType === 'ceiling') elevation = Math.max(0, wallHeight - previewHeight);
-  preview3D.position.set(
-    placement.point.x,
-    floorY + roomY + elevation + previewHeight / 2,
-    placement.point.z
-  );
+  if (definition.placeType === 'ceiling') elevation = Math.max(0, wallHeight - size.height);
+
+  const targetY = floorY + roomY + elevation;
+
+  // 复用已构建好的 3D Mesh 节点，只移动位置，提升性能
+  if (preview3D && preview3D._type === placement.type) {
+    preview3D.position.set(placement.point.x, targetY, placement.point.z);
+    return;
+  }
+
+  // 释放旧模型，构建新实际建模
+  dispose3DPreview();
+
+  const previewNode = new TransformNode('furniture_placement_preview', Context.scene);
+  previewNode._type = placement.type;
+
+  const previewItem = {
+    id: 'furniture_placement_preview_item',
+    type: placement.type,
+    width: size.width,
+    depth: size.depth,
+    height: size.height,
+    elevation: 0,
+    rotation: 0,
+    colors: {},
+    materials: {}
+  };
+
+  if (Array.isArray(definition.components)) {
+    definition.components.forEach((component) => {
+      previewItem.colors[component.id] = component.defaultColor || '#ffffff';
+      previewItem.materials[component.id] = component.defaultMaterial || previewItem.colors[component.id];
+    });
+  }
+
+  const registry = Context.testMap;
+  definition.build(registry, previewItem, previewNode, size);
+
+  const childMeshes = previewNode.getChildMeshes ? previewNode.getChildMeshes(false) : [];
+  childMeshes.forEach((mesh) => {
+    mesh.isPickable = false;
+    mesh.checkCollisions = false;
+    if (mesh.material) {
+      mesh.material = mesh.material.clone(`${mesh.material.name}_preview`);
+      mesh.material.alpha = 0.6;
+      mesh.material.backFaceCulling = false;
+    }
+  });
+
+  previewNode.position.set(placement.point.x, targetY, placement.point.z);
+  preview3D = previewNode;
 }

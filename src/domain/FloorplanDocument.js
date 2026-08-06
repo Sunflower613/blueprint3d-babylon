@@ -833,6 +833,7 @@ export class FloorplanDocument {
   addItem(partialItem = {}) {
     const definition = getFurnitureDefinition(partialItem.type || 'table');
     const isMeterDef = definition.unit === 'm';
+    const defaultElevation = definition.defaultElevation ?? (definition.placeType === 'wall' ? 1.2 : 0);
     const item = {
       ...partialItem,
       id: partialItem.id || `${definition.type}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -840,7 +841,7 @@ export class FloorplanDocument {
       name: partialItem.name || definition.name,
       x: partialItem.x ?? 0,
       z: partialItem.z ?? 0,
-      elevation: partialItem.elevation ?? 0,
+      elevation: partialItem.elevation ?? defaultElevation,
       width: partialItem.width || (isMeterDef ? Number(definition.defaultSize.width.toFixed(4)) : Number((definition.defaultSize.width / INCHES_PER_UNIT).toFixed(4))),
       depth: partialItem.depth || (isMeterDef ? Number(definition.defaultSize.depth.toFixed(4)) : Number((definition.defaultSize.depth / INCHES_PER_UNIT).toFixed(4))),
       height: partialItem.height || (isMeterDef ? Number(definition.defaultSize.height.toFixed(4)) : Number((definition.defaultSize.height / INCHES_PER_UNIT).toFixed(4))),

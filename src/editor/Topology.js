@@ -411,11 +411,12 @@ function getItemSizeInMetres(item, definition) {
  * @returns {Object|null} 下方最高的桌子或储物柜对象
  */
 export function findTableBelow(item, items, currentFloorId, getFurnitureDefinition) {
-  let highestTable = null;
-  let highestSurface = -Infinity;
-  
   const allItems = items || [];
   const itemFloorId = item.floorId || currentFloorId;
+  const itemElev = item.elevation ?? 0;
+  
+  const candidates = [];
+  
   for (const other of allItems) {
     if (other.id === item.id) continue;
     if (other.floorId !== itemFloorId) continue;
@@ -426,7 +427,7 @@ export function findTableBelow(item, items, currentFloorId, getFurnitureDefiniti
     if (otherDef.category !== 'tables' && otherDef.category !== 'storage') {
       continue;
     }
-    if (otherDef.placeType === 'wall' || otherDef.placeType === 'ceiling') {
+    if (otherDef.placeType === 'ceiling') {
       continue;
     }
     
@@ -447,15 +448,38 @@ export function findTableBelow(item, items, currentFloorId, getFurnitureDefiniti
     const halfD = size.depth / 2;
     
     if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
-      const surface = (other.elevation || 0) + size.height;
-      if (surface > highestSurface) {
-        highestSurface = surface;
-        highestTable = other;
-      }
+      const bottom = other.elevation || 0;
+      const surface = bottom + size.height;
+      candidates.push({
+        item: other,
+        bottom,
+        surface,
+        size
+      });
     }
   }
   
-  return highestTable;
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0].item;
+
+  // 存在多个相同 (X,Z) 重叠的台面/悬浮搁板时，优先考虑在 Y 轴上下阈值以内的候选对象
+  const validCandidates = candidates.filter((c) => {
+    return itemElev >= c.bottom - 0.3 && itemElev <= c.surface + 0.8;
+  });
+
+  const pool = validCandidates.length > 0 ? validCandidates : candidates;
+
+  // 根据当前物体的离地高度 itemElev 筛选垂直距离 |itemElev - surface| 最小的最贴近台面
+  pool.sort((a, b) => {
+    const distA = Math.abs(itemElev - a.surface);
+    const distB = Math.abs(itemElev - b.surface);
+    if (Math.abs(distA - distB) < 1e-4) {
+      return a.surface - b.surface;
+    }
+    return distA - distB;
+  });
+
+  return pool[0].item;
 }
 
 /**

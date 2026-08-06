@@ -432,7 +432,6 @@ export const officechairFurniture = {
     cylinderComponent(registry, item, officechairFurniture, 'base', {
       diameterTop: 0.04, diameterBottom: 0.06, height: baseH, tessellation: 12
     }, { position: { x: 0, y: baseH / 2, z: 0 } }, { parent: node });
-
     boxComponent(registry, item, officechairFurniture, 'base', {
       width: size.width * 0.72, height: 0.03, depth: size.depth * 0.72
     }, { position: { x: 0, y: 0.015, z: 0 } }, { parent: node });
@@ -475,41 +474,174 @@ export const beanbagFurniture = {
   }
 };
 
-// 10. 折叠躺椅 (Deckchair)
+// 10. 躺椅 (Sunbed)
 export const deckchairFurniture = {
   type: 'deckchair',
   name: '躺椅',
   unit: 'm',
-  defaultSize: { width: 0.6, depth: 1, height: 0.7 },
+  defaultSize: { width: 0.6, depth: 1.8, height: 0.5 },
   components: [
-    { id: 'fabric', label: '帆布面', defaultColor: '#ff9a6c' },
-    { id: 'frame', label: '折叠架', defaultColor: '#ebd5bd' }
+    { id: 'fabric', label: '软垫', defaultColor: '#ff9a6c' },
+    { id: 'frame', label: '极简底架', defaultColor: '#ebd5bd' },
+    { id: 'wheels', label: '后轮', defaultColor: '#e2e2e5' }
   ],
   interaction: {
     type: 'lie',
     getInteractionPoints(size) {
       return [
-        { x: 0, y: size.height * 0.36, z: -size.depth * 0.02, rot: 0 }
+        { x: 0, y: size.height * 0.48, z: -size.depth * 0.05, rot: 0 }
       ];
     }
   },
   build(registry, item, node, size) {
-    // 1. 竹木支架 (Frame)
+    const cushionCompId = 'fabric';
+
+    const frameThickness = 0.035;
+    const baseY = 0.20; // 底框中心高度
+    const railX = size.width / 2 - frameThickness / 2;
+
+    // --- 1. 白色极简底框 (Base Metal Frame) ---
+    // 左右纵梁
+    [-1, 1].forEach((side) => {
+      boxComponent(registry, item, deckchairFurniture, 'frame', {
+        width: frameThickness, height: frameThickness, depth: size.depth * 0.88
+      }, {
+        position: { x: side * railX, y: baseY, z: -size.depth * 0.02 }
+      }, { parent: node });
+    });
+
+    // 前横梁
     boxComponent(registry, item, deckchairFurniture, 'frame', {
-      width: size.width, height: 0.04, depth: size.depth
-    }, { position: { x: 0, y: size.height * 0.18, z: 0 } }, { parent: node });
+      width: size.width, height: frameThickness, depth: frameThickness
+    }, {
+      position: { x: 0, y: baseY, z: size.depth * 0.42 }
+    }, { parent: node });
 
-    // 2. 躺椅斜支架 (Back Frame)
-    const backFrame = boxComponent(registry, item, deckchairFurniture, 'frame', {
-      width: size.width, height: size.height * 0.88, depth: 0.04
-    }, { position: { x: 0, y: size.height * 0.44, z: -size.depth * 0.28 } }, { parent: node });
-    backFrame.rotation.x = -Math.PI * 0.16;
+    // 后横轴
+    cylinderComponent(registry, item, deckchairFurniture, 'frame', {
+      diameterTop: 0.025, diameterBottom: 0.025, height: size.width * 1.05, tessellation: 16
+    }, {
+      position: { x: 0, y: 0.10, z: -size.depth * 0.42 },
+      rotation: { z: Math.PI / 2 }
+    }, { parent: node });
 
-    // 3. 倾斜帆布铺面 (Slanted Fabric)
-    const cloth = boxComponent(registry, item, deckchairFurniture, 'fabric', {
-      width: size.width * 0.88, height: 0.016, depth: size.depth * 1.08
-    }, { position: { x: 0, y: size.height * 0.42, z: -size.depth * 0.02 } }, { parent: node });
-    cloth.rotation.x = -Math.PI * 0.16; // 稍微向后躺的倾角
+    // --- 2. 前端弯折极简腿 (Curved Front Legs) ---
+    [-1, 1].forEach((side) => {
+      const leg = boxComponent(registry, item, deckchairFurniture, 'frame', {
+        width: frameThickness, height: baseY - frameThickness / 2, depth: frameThickness * 1.2
+      }, {
+        position: {
+          x: side * (size.width / 2 - frameThickness * 0.6),
+          y: (baseY - frameThickness / 2) / 2,
+          z: size.depth * 0.38
+        }
+      }, { parent: node });
+      leg.rotation.x = -0.10;
+    });
+
+    // --- 3. 后端大圆盘移动滚轮 (Rear Disc Wheels) ---
+    const wheelRadius = 0.095;
+    const wheelThick = 0.028;
+    [-1, 1].forEach((side) => {
+      cylinderComponent(registry, item, deckchairFurniture, 'wheels', {
+        diameterTop: wheelRadius * 2,
+        diameterBottom: wheelRadius * 2,
+        height: wheelThick,
+        tessellation: 32
+      }, {
+        position: {
+          x: side * (size.width / 2 + wheelThick / 2 + 0.005),
+          y: wheelRadius,
+          z: -size.depth * 0.42
+        },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+    });
+
+    // --- 4. 波浪管状奢华软垫 (Channel-Tufted Cushion Mattress) ---
+    const padThickness = 0.07;
+    const padY = baseY + frameThickness / 2 + padThickness / 2;
+    const padW = size.width * 0.94;
+
+    // A. 腿部/座面平坦段垫子 (Leg/Seat Section)
+    const seatZStart = size.depth * 0.43;
+    const seatZEnd = -size.depth * 0.06;
+    const seatLen = seatZStart - seatZEnd;
+    const seatCenterZ = (seatZStart + seatZEnd) / 2;
+
+    boxComponent(registry, item, deckchairFurniture, cushionCompId, {
+      width: padW, height: padThickness, depth: seatLen
+    }, {
+      position: { x: 0, y: padY, z: seatCenterZ }
+    }, { parent: node });
+
+    // 在座垫表层生成横向管状波浪凸起软包
+    const tubeRadius = 0.042;
+    const numSeatTubes = 9;
+    for (let i = 0; i < numSeatTubes; i++) {
+      const t = i / (numSeatTubes - 1);
+      const tubeZ = seatZStart - t * (seatLen - tubeRadius * 1.2) - tubeRadius * 0.6;
+      const tube = cylinderComponent(registry, item, deckchairFurniture, cushionCompId, {
+        diameterTop: tubeRadius * 2,
+        diameterBottom: tubeRadius * 2,
+        height: padW * 0.98,
+        tessellation: 16
+      }, {
+        position: { x: 0, y: padY + padThickness * 0.28, z: tubeZ },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+      tube.scaling.y = 0.65;
+    }
+
+    // B. 斜靠背段垫子 (Reclining Backrest Section)
+    const backZStart = seatZEnd;
+    const backZEnd = -size.depth * 0.44;
+    const backYEnd = size.height - padThickness / 2;
+
+    const backDz = backZStart - backZEnd;
+    const backDy = backYEnd - padY;
+    const backLen = Math.sqrt(backDz * backDz + backDy * backDy);
+    const backAngle = Math.atan2(backDz, backDy) / 2;
+
+    const backCenterY = backYEnd / 2 + padY;
+    const backCenterZ = (backZStart + backZEnd) / 2;
+
+    const backPadMesh = boxComponent(registry, item, deckchairFurniture, cushionCompId, {
+      width: padW, height: padThickness, depth: backLen
+    }, {
+      position: { x: 0, y: backCenterY, z: backCenterZ }
+    }, { parent: node });
+    backPadMesh.rotation.x = backAngle;
+
+    // 靠背后支撑架
+    const backFrameBar = boxComponent(registry, item, deckchairFurniture, 'frame', {
+      width: size.width * 0.88, height: frameThickness * 0.8, depth: backLen / 3
+    }, {
+      position: { x: 0, y: backYEnd / 2 + frameThickness * 2, z: backCenterZ }
+    }, { parent: node });
+    backFrameBar.rotation.x = backAngle - Math.PI / 2;
+
+    // 在靠背表层生成横向管状波浪凸起软包
+    const numBackTubes = 8;
+    for (let i = 0; i < numBackTubes; i++) {
+      const frac = i / (numBackTubes - 1);
+      const dist = (frac - 0.5) * (backLen - tubeRadius * 1.2);
+      const localY = padThickness * 0.28;
+      const worldY = backCenterY + dist * Math.sin(backAngle) + localY * Math.cos(backAngle);
+      const worldZ = backCenterZ - dist * Math.cos(backAngle) + localY * Math.sin(backAngle);
+
+      const tube = cylinderComponent(registry, item, deckchairFurniture, cushionCompId, {
+        diameterTop: tubeRadius * 2,
+        diameterBottom: tubeRadius * 2,
+        height: padW * 0.98,
+        tessellation: 16
+      }, {
+        position: { x: 0, y: worldY, z: worldZ },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+      tube.rotation.x = -backAngle;
+      tube.scaling.y = 0.65;
+    }
   }
 };
 
@@ -576,34 +708,93 @@ export const foldingCampingChairFurniture = {
     }
   },
   build(registry, item, node, size) {
-    const legH = size.height * 0.54;
-    const legY = legH / 2;
-    const legThickness = 0.03;
+    const seatY = size.height * 0.48; // 座面高度
+    const pipeD = 0.025; // 腿管直径
+    const groundY = pipeD / 2; // 地面接触点 Y
 
-    // 左右两对交叉折叠腿 (X 结构)
+    // 1. 左右两侧 X 交叉管腿结构 (触地 Y = groundY)
+    const legDz = size.depth * 0.68;
+    const legDy = seatY - groundY;
+    const legLen = Math.sqrt(legDz * legDz + legDy * legDy);
+    const legAngle = Math.atan2(legDz, legDy);
+
     [-1, 1].forEach((xSide) => {
-      // 倾斜向后的腿
-      const leg1 = boxComponent(registry, item, foldingCampingChairFurniture, 'frame', {
-        width: legThickness, height: legH, depth: legThickness
-      }, { position: { x: xSide * size.width * 0.32, y: legH, z: 0 } }, { parent: node });
-      leg1.rotation.x = Math.PI * 0.25;
+      const xPos = xSide * (size.width / 2 - pipeD * 1.5);
 
-      // 倾斜向前的腿
-      const leg2 = boxComponent(registry, item, foldingCampingChairFurniture, 'frame', {
-        width: legThickness, height: legH, depth: legThickness
-      }, { position: { x: xSide * size.width * 0.32, y: legH, z: 0 } }, { parent: node });
-      leg2.rotation.x = -Math.PI * 0.25;
+      // 腿1：前角座面 -> 后角地面
+      const leg1 = cylinderComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        diameterTop: pipeD, diameterBottom: pipeD, height: legLen, tessellation: 12
+      }, {
+        position: {
+          x: xPos,
+          y: (seatY + groundY) / 2,
+          z: 0
+        }
+      }, { parent: node });
+      leg1.rotation.x = -legAngle;
+
+      // 腿2：后角座面 -> 前角地面
+      const leg2 = cylinderComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        diameterTop: pipeD, diameterBottom: pipeD, height: legLen, tessellation: 12
+      }, {
+        position: {
+          x: xPos,
+          y: (seatY + groundY) / 2,
+          z: 0
+        }
+      }, { parent: node });
+      leg2.rotation.x = legAngle;
     });
 
-    const seat = boxComponent(registry, item, foldingCampingChairFurniture, 'fabric', {
-      width: size.width * 0.78, height: 0.02, depth: size.depth * 0.7
-    }, { position: { x: 0, y: size.height * 0.42, z: size.depth * 0.04 } }, { parent: node });
-    seat.rotation.x = -Math.PI * 0.08;
+    // 地面前后横管脚垫
+    [-1, 1].forEach((zSide) => {
+      cylinderComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        diameterTop: pipeD * 1.1, diameterBottom: pipeD * 1.1, height: size.width * 0.88, tessellation: 12
+      }, {
+        position: {
+          x: 0,
+          y: groundY,
+          z: zSide * (legDz / 2)
+        },
+        rotation: { z: Math.PI / 2 }
+      }, { parent: node });
+    });
 
+    // 2. 靠背竖管 (Back Rest Poles)
+    const backPoleH = size.height - seatY;
+    [-1, 1].forEach((xSide) => {
+      const backPole = cylinderComponent(registry, item, foldingCampingChairFurniture, 'frame', {
+        diameterTop: pipeD, diameterBottom: pipeD, height: backPoleH, tessellation: 12
+      }, {
+        position: {
+          x: xSide * (size.width / 2 - pipeD * 1.5),
+          y: seatY + backPoleH / 2,
+          z: -legDz / 2
+        }
+      }, { parent: node });
+      backPole.rotation.x = -Math.PI * 0.06;
+    });
+
+    // 3. 坐垫布面 (Seat Fabric)
+    const seat = boxComponent(registry, item, foldingCampingChairFurniture, 'fabric', {
+      width: size.width * 0.84, height: 0.016, depth: legDz * 0.96
+    }, {
+      position: { x: 0, y: seatY, z: 0 }
+    }, { parent: node });
+    seat.rotation.x = -Math.PI * 0.03;
+
+    // 4. 靠背布面 (Backrest Fabric)
+    const backH = backPoleH * 0.75;
     const back = boxComponent(registry, item, foldingCampingChairFurniture, 'fabric', {
-      width: size.width * 0.78, height: size.height * 0.46, depth: 0.02
-    }, { position: { x: 0, y: size.height * 0.68, z: -size.depth * 0.22 } }, { parent: node });
-    back.rotation.x = -Math.PI * 0.12;
+      width: size.width * 0.84, height: backH, depth: 0.016
+    }, {
+      position: {
+        x: 0,
+        y: seatY + backPoleH * 0.55,
+        z: -legDz / 2 - 0.01
+      }
+    }, { parent: node });
+    back.rotation.x = -Math.PI * 0.06;
   }
 };
 

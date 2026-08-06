@@ -1172,6 +1172,34 @@ export function createApplyMaterialButton(text, onClick) {
   return button;
 }
 
+export function getPlacementInitialPoint() {
+  let room = null;
+  if (selection.selectedRoomId) {
+    room = testMap.getEntity('room', selection.selectedRoomId);
+  } else if (selection.selectedItemId) {
+    const selectedItem = testMap.getEntity('item', selection.selectedItemId);
+    if (selectedItem && selectedItem.roomId) {
+      room = testMap.getEntity('room', selectedItem.roomId);
+    }
+  }
+  
+  if (!room && lastActiveRoomId) {
+    room = testMap.getEntity('room', lastActiveRoomId);
+  }
+  
+  if (!room) {
+    const rooms = currentRooms();
+    room = rooms && rooms.length > 0 ? rooms[0] : null;
+  }
+  
+  if (room) {
+    lastActiveRoomId = room.id;
+    return { x: room.x, z: room.z, roomId: room.id };
+  }
+  
+  return { x: 0, z: 0 };
+}
+
 export function placeFurnitureAt(type, x, z, placementHint = null) {
   const definition = testMap.getFurnitureDefinition(type);
   if (!definition) return null;
@@ -1203,30 +1231,9 @@ export function initUiEventListeners() {
     if (startFurniturePlacement(type)) return;
     const definition = testMap.getFurnitureDefinition(type);
     
-    let room = null;
-    if (selection.selectedRoomId) {
-      room = testMap.getEntity('room', selection.selectedRoomId);
-    } else if (selection.selectedItemId) {
-      const selectedItem = testMap.getEntity('item', selection.selectedItemId);
-      if (selectedItem && selectedItem.roomId) {
-        room = testMap.getEntity('room', selectedItem.roomId);
-      }
-    }
-    
-    if (!room && lastActiveRoomId) {
-      room = testMap.getEntity('room', lastActiveRoomId);
-    }
-    
-    if (!room) {
-      room = currentRooms()[0];
-    }
-    
-    if (room) {
-      lastActiveRoomId = room.id;
-    }
-
-    let x = room ? room.x : 0;
-    let z = room ? room.z : 0;
+    const initialPoint = getPlacementInitialPoint();
+    let x = initialPoint.x;
+    let z = initialPoint.z;
     let elevation = undefined;
     let rotation = undefined;
     if (definition.placeType === 'ceiling') {

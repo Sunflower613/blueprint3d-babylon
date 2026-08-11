@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getActiveMaterialDisplayName, getActiveMaterialArrayDisplayName } from '../../example/js/MaterialManager.js';
+import {
+  getActiveMaterialDisplayName,
+  getActiveMaterialArrayDisplayName,
+  tryUpdateToFullMaterial
+} from '../../example/js/MaterialManager.js';
 import { DEFAULT_MATERIAL_PACKS } from '../../src/index.js';
 
 test('材质名称展示：验证单材质与材质数组名称格式化', () => {
@@ -32,4 +36,20 @@ test('材质匹配防错：验证纯白色 #ffffff 绝不匹配为天空盒/背�
   assert.ok(foundPaint, '应优先匹配到纯色 paint 材质');
   assert.equal(foundPaint.id, 'paint-pure-white');
   assert.notEqual(foundPaint.category, 'sky');
+});
+
+test('right-click picked floor materials replace stale deployment URLs before painting', () => {
+  const staleUrl = 'https://3000thvvtest.frp.pengyg.top/blueprint3d-babylon/example/assets/brick_diamond-BXNRXH3p.jpg';
+  const picked = tryUpdateToFullMaterial({
+    id: 'brick-diamond',
+    name: '菱形砖',
+    category: 'brick',
+    kind: 'texture',
+    src: staleUrl,
+    color: '#ffffff'
+  });
+
+  assert.notEqual(picked.src, staleUrl);
+  assert.doesNotMatch(picked.src, /^https:\/\/3000thvvtest\.frp\.pengyg\.top/);
+  assert.match(picked.src, /brick_diamond\.jpg/);
 });

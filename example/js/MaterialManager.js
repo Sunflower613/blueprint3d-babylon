@@ -698,13 +698,16 @@ function getOpeningDefaultColor(openingType, componentId) {
   }
 }
 
-function tryUpdateToFullMaterial(matOrColor) {
+export function tryUpdateToFullMaterial(matOrColor) {
   if (!matOrColor) return null;
 
-  // 1. 如果是带有明确标识 (id / src / kind) 的材质描述符对象，直接返回该对象
+  // 1. 如果是带有明确标识 (id / src / kind) 的材质描述符对象，先恢复为当前运行环境的资源地址
   if (typeof matOrColor === 'object') {
     if (matOrColor.id || matOrColor.src || (matOrColor.kind && matOrColor.kind !== 'color' && matOrColor.kind !== 'paint')) {
-      return matOrColor;
+      // Picked materials may contain an absolute URL from a previous preview
+      // deployment. Resolve it before the descriptor is copied to another
+      // surface so painting never reloads an expired tunnel/certificate URL.
+      return resolveMaterialAssetDescriptor(matOrColor);
     }
   }
 

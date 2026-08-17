@@ -260,6 +260,11 @@ button:disabled {
 }
 
 .control-group-right {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 90%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: flex-end;

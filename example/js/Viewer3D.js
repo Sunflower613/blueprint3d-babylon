@@ -773,7 +773,6 @@ export class Viewer3D {
     const currentSize = this.shadowGenerator.getShadowMap()?.getSize()?.width;
     if (currentSize !== size) {
       this.shadowGenerator.dispose();
-      const BABYLON = window.BABYLON || globalThis.BABYLON || this.scene.getEngine()._babylon;
       this.shadowGenerator = new BABYLON.ShadowGenerator(size, this.sun);
       this.shadowGenerator.useBlurExponentialShadowMap = true;
       this.shadowGenerator.darkness = 0.25;

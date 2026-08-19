@@ -4,7 +4,17 @@ import * as BABYLON from '@babylonjs/core';
 
 import { getFurnitureDefinition } from '../../src/furniture/index.js';
 import { landscapeGardenRock, landscapeGiantTreeStump } from '../../src/furniture/landscape.js';
-import { outdoorStoneChessTable, outdoorStoneStool, outdoorDragonBubbleStoneStool, outdoorPhoneBoothFurniture, electricScooterFurniture, stepladderFurniture } from '../../src/furniture/outdoor.js';
+import {
+  outdoorStoneChessTable,
+  outdoorStoneStool,
+  outdoorDragonBubbleStoneStool,
+  outdoorPhoneBoothFurniture,
+  electricScooterFurniture,
+  stepladderFurniture,
+  outdoorMahjongTableFurniture,
+  outdoorPlasticStoolFurniture,
+  outdoorMahjongPileFurniture
+} from '../../src/furniture/outdoor.js';
 
 function buildMesh(definition) {
   const engine = new BABYLON.NullEngine();
@@ -96,4 +106,41 @@ test('new outdoor furniture including the dragon bubble stone stool are register
 
   const builtLadder = buildMesh(ladderDef);
   assert.ok(builtLadder.meshes.length >= 10, 'stepladder should build top platform, struts, steps, braces, hinges and feet');
+});
+
+test('mahjong outdoor furniture is registered, interactive, and builds detailed meshes', () => {
+  assert.equal(outdoorMahjongTableFurniture.name, '麻将桌');
+  assert.equal(outdoorPlasticStoolFurniture.name, '塑料凳');
+  assert.equal(outdoorMahjongPileFurniture.name, '麻将堆');
+
+  const tableDef = getFurnitureDefinition('outdoor_mahjong_table');
+  const stoolDef = getFurnitureDefinition('outdoor_plastic_stool');
+  const pileDef = getFurnitureDefinition('outdoor_mahjong_pile');
+
+  assert.equal(tableDef.category, 'outdoor');
+  assert.equal(tableDef.tabletopSurface, true);
+  assert.equal(stoolDef.category, 'outdoor');
+  assert.equal(pileDef.category, 'outdoor');
+  assert.equal(stoolDef.interaction?.type, 'sit');
+  assert.ok(stoolDef.interaction.getInteractionPoints(stoolDef.defaultSize).length >= 1);
+
+  const builtTable = buildMesh(tableDef);
+  const builtStool = buildMesh(stoolDef);
+  const builtPile = buildMesh(pileDef);
+  assert.ok(builtTable.meshes.length >= 10, 'mahjong table should build frame, felt, legs, rails and braces');
+  assert.ok(builtStool.meshes.length >= 38, 'plastic stool should build seat, legs, aprons, a connected base rail and perforations');
+  assert.ok(builtPile.meshes.length >= 30, 'mahjong pile should build scattered tiles and face markings');
+
+  const pileComponents = new Set(builtPile.meshes.map((mesh) => mesh.metadata?.blueprintFurnitureComponentId));
+  assert.ok(pileComponents.has('mahjong-tiles'));
+  assert.ok(pileComponents.has('mahjong-red-marks'));
+  assert.ok(pileComponents.has('mahjong-green-marks'));
+  assert.ok(pileComponents.has('mahjong-blue-marks'));
+
+  builtTable.scene.dispose();
+  builtTable.engine.dispose();
+  builtStool.scene.dispose();
+  builtStool.engine.dispose();
+  builtPile.scene.dispose();
+  builtPile.engine.dispose();
 });

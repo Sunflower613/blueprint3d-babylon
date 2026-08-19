@@ -1,5 +1,5 @@
 import { pointInRoom, Topology } from '../../src/index.js';
-const { getItemsOnBookshelf, getItemsOnTable, getItemSizeInMetres, isBigBedroomItem, isBigKitchenBathItem, calculateSnappedPosition, snapToGridSegmentCenter } = Topology;
+const { getItemsOnBookshelf, getItemsOnTable, getItemSizeInMetres, isBigBedroomItem, isBigKitchenBathItem, isTabletopSurfaceDefinition, calculateSnappedPosition, snapToGridSegmentCenter } = Topology;
 
 const INCHES_PER_UNIT = 39.37;
 
@@ -350,10 +350,14 @@ export class EntityManager {
               patch.rotation = snappedState.rotation;
             }
           } else {
-            const tableBelow = this.opts.findTableBelow(item);
+            const tableBelow = this.opts.findTableBelow({
+              ...item,
+              x: patch.x ?? snapped.x,
+              z: patch.z ?? snapped.z
+            });
             if (tableBelow) {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-              patch.elevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
+              patch.elevation = (tableBelow.elevation || 0) + getItemSizeInMetres(tableBelow, tableDef).height;
             } else {
               // 释放时无桌面：恢复为拖拽开始时的初始高程
               let origElevation = 0;
@@ -383,10 +387,14 @@ export class EntityManager {
 
           // 2. 若没有书架，尝试检测下方桌台的顶面高度
           if (targetElevation === null) {
-            const tableBelow = this.opts.findTableBelow(item);
+            const tableBelow = this.opts.findTableBelow({
+              ...item,
+              x: patch.x ?? snapped.x,
+              z: patch.z ?? snapped.z
+            });
             if (tableBelow) {
               const tableDef = this.opts.testMap.getFurnitureDefinition(tableBelow.type);
-              targetElevation = (tableBelow.elevation || 0) + (tableBelow.height ?? (tableDef.defaultSize.height / INCHES_PER_UNIT)) * (tableBelow.scale || 1);
+              targetElevation = (tableBelow.elevation || 0) + getItemSizeInMetres(tableBelow, tableDef).height;
             }
           }
 
@@ -972,7 +980,7 @@ export class EntityManager {
     if (!definition) return;
     
     const isMannequin = definition.type.includes('clothing_mannequin');
-    const isTable = definition.category === 'tables';
+    const isTable = isTabletopSurfaceDefinition(definition);
     if (!supportedTypes.includes(definition.type) && !isMannequin && !isTable) return;
     
     const dx = bookshelf.x - beforeState.x;

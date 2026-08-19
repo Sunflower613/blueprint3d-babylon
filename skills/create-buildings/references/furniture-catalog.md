@@ -1,6 +1,6 @@
 # Blueprint3D 官方内置全量家具组件索引库 (Full Furniture Catalog)
 
-本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。包含当前代码库注册的 **100% 全量 (400 件) 家具组件词典**。
+本文档由 `node skills/create-buildings/scripts/update-catalogs.mjs` 自动构建生成。包含当前代码库注册的 **100% 全量 (405 件) 家具组件词典**。
 
 ---
 
@@ -23,12 +23,13 @@
 | `sofa` | 云朵沙发 | 自动/自适应 |
 | `stool` | 木凳 | 自动/自适应 |
 
-## 2. 桌几类 (`tables` - 共 16 件)
+## 2. 桌几类 (`tables` - 共 17 件)
 
 | `type` 标识 | 中文名称 | 默认尺寸 ($W \times D \times H$, 单位: 米) |
 | :--- | :--- | :--- |
 | `bedside_desk` | 悬浮搁板 | 自动/自适应 |
-| `bistro_table` | 玻璃圆桌 | 自动/自适应 |
+| `bistro_table` | 玻璃边几 | 自动/自适应 |
+| `c_shape_side_table` | C型边几 | 自动/自适应 |
 | `coffee_table` | 茶几 | 自动/自适应 |
 | `computer_desk` | 电脑桌 | 自动/自适应 |
 | `console_table` | 长条几 | 自动/自适应 |
@@ -36,7 +37,7 @@
 | `dining_table_long` | 长餐桌 | 自动/自适应 |
 | `garden_side_table` | 花园边几 | 自动/自适应 |
 | `oval_table` | 椭圆桌 | 自动/自适应 |
-| `patio_dining_table` | 露台餐桌 | 自动/自适应 |
+| `patio_dining_table` | 工作台 | 自动/自适应 |
 | `picnic_table` | 野餐桌 | 自动/自适应 |
 | `rattan_coffee_table` | 藤编茶几 | 自动/自适应 |
 | `round_table` | 圆桌 | 自动/自适应 |
@@ -362,7 +363,7 @@
 | `landscape_winding_stream` | 溪流 | 自动/自适应 |
 | `landscape_zen_gravel` | 枯山水砂石 | 自动/自适应 |
 
-## 14. 户外休闲与设施 (`outdoor` - 共 28 件)
+## 14. 户外休闲与设施 (`outdoor` - 共 32 件)
 
 | `type` 标识 | 中文名称 | 默认尺寸 ($W \times D \times H$, 单位: 米) |
 | :--- | :--- | :--- |
@@ -379,7 +380,11 @@
 | `landscape_euro_pond_sculpture` | 水池雕塑 | 自动/自适应 |
 | `landscape_marble_bridge` | 石拱桥 | 自动/自适应 |
 | `landscape_marble_fountain` | 跌水喷泉 | 自动/自适应 |
+| `outdoor_dragon_bubble_stone_stool` | 龙泡泡石墩子 | 自动/自适应 |
+| `outdoor_mahjong_pile` | 麻将堆 | 自动/自适应 |
+| `outdoor_mahjong_table` | 麻将桌 | 自动/自适应 |
 | `outdoor_phone_booth` | 电话亭 | 自动/自适应 |
+| `outdoor_plastic_stool` | 塑料凳 | 自动/自适应 |
 | `outdoor_stone_chess_table` | 石头象棋桌 | 自动/自适应 |
 | `outdoor_stone_stool` | 石墩子 | 自动/自适应 |
 | `outdoor_storage_box` | 收纳箱 | 自动/自适应 |

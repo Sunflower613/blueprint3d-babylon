@@ -17,7 +17,16 @@ export const SOFT_LOW_POLY_OUTDOOR_PALETTE = Object.freeze({
   flower: '#d69aa5',
   charcoal: '#454743',
   terracotta: '#b87555',
-  classicRed: '#bd3a3a'
+  classicRed: '#bd3a3a',
+  mahjongWood: '#5b342a',
+  mahjongDarkWood: '#3f2825',
+  mahjongFelt: '#126d59',
+  plasticPink: '#ed315d',
+  plasticHole: '#a9143c',
+  tileIvory: '#f2eedc',
+  tileRed: '#d64b52',
+  tileGreen: '#36856d',
+  tileBlue: '#405c9e'
 });
 
 const lieInteraction = (yRatio = 0.42, zRatio = 0) => ({
@@ -2777,6 +2786,258 @@ export const stepladderFurniture = {
           depth: strutDepth * 1.15
         }, { position: { x: xPos, y: 0.011, z: zPos } }, { parent: node });
       });
+    });
+  }
+};
+
+export const outdoorMahjongTableFurniture = {
+  type: 'outdoor_mahjong_table',
+  name: '麻将桌',
+  unit: 'm',
+  tabletopSurface: true,
+  defaultSize: { width: 0.82, depth: 0.82, height: 0.76 },
+  components: [
+    { id: 'mahjong-table-frame', label: '深色木桌框', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.mahjongWood },
+    { id: 'mahjong-table-felt', label: '绿色绒布桌面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.mahjongFelt },
+    { id: 'mahjong-table-braces', label: '折叠支撑架', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.mahjongDarkWood }
+  ],
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+    const topH = Math.max(0.045, h * 0.075);
+    const railW = Math.max(0.045, Math.min(w, d) * 0.075);
+    const legW = Math.max(0.035, Math.min(w, d) * 0.055);
+    const legInsetX = w * 0.39;
+    const legInsetZ = d * 0.39;
+    const legH = h - topH;
+
+    boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-frame', {
+      width: w,
+      height: topH,
+      depth: d
+    }, { position: { x: 0, y: h - topH / 2, z: 0 } }, { parent: node });
+
+    boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-felt', {
+      width: Math.max(0.01, w - railW * 2.25),
+      height: Math.max(0.006, topH * 0.16),
+      depth: Math.max(0.01, d - railW * 2.25)
+    }, { position: { x: 0, y: h + topH * 0.08, z: 0 } }, { parent: node });
+
+    [-1, 1].forEach((zSide) => {
+      boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-frame', {
+        width: w,
+        height: topH * 0.55,
+        depth: railW
+      }, {
+        position: { x: 0, y: h + topH * 0.275, z: zSide * (d / 2 - railW / 2) }
+      }, { parent: node });
+    });
+    [-1, 1].forEach((xSide) => {
+      boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-frame', {
+        width: railW,
+        height: topH * 0.55,
+        depth: Math.max(0.01, d - railW * 2)
+      }, {
+        position: { x: xSide * (w / 2 - railW / 2), y: h + topH * 0.275, z: 0 }
+      }, { parent: node });
+    });
+
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-frame', {
+          width: legW,
+          height: legH,
+          depth: legW
+        }, {
+          position: { x: xSide * legInsetX, y: legH / 2, z: zSide * legInsetZ }
+        }, { parent: node });
+      });
+    });
+
+    const braceH = Math.max(0.025, h * 0.035);
+    const braceY = h * 0.36;
+    const diagonalLength = Math.hypot(w * 0.72, d * 0.72);
+    [-1, 1].forEach((direction) => {
+      boxComponent(registry, item, outdoorMahjongTableFurniture, 'mahjong-table-braces', {
+        width: diagonalLength,
+        height: braceH,
+        depth: legW * 0.72
+      }, {
+        position: { x: 0, y: braceY + direction * braceH * 0.65, z: 0 },
+        rotation: { y: direction * Math.atan2(d, w) }
+      }, { parent: node });
+    });
+  }
+};
+
+export const outdoorPlasticStoolFurniture = {
+  type: 'outdoor_plastic_stool',
+  name: '塑料凳',
+  unit: 'm',
+  defaultSize: { width: 0.36, depth: 0.36, height: 0.45 },
+  components: [
+    { id: 'plastic-stool-body', label: '塑料凳身', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.plasticPink },
+    { id: 'plastic-stool-holes', label: '坐面透气孔', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.plasticHole }
+  ],
+  interaction: {
+    type: 'sit',
+    getInteractionPoints(size) {
+      return [{ x: 0, y: size.height * 0.96, z: 0, rot: 0 }];
+    }
+  },
+  build(registry, item, node, size) {
+    const w = size.width;
+    const d = size.depth;
+    const h = size.height;
+    const seatH = Math.max(0.035, h * 0.11);
+    const legW = Math.max(0.035, w * 0.12);
+    const legD = Math.max(0.035, d * 0.12);
+    const legH = h - seatH;
+    const apronH = h * 0.14;
+
+    boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+      width: w * 0.9,
+      height: seatH,
+      depth: d * 0.9
+    }, { position: { x: 0, y: h - seatH / 2, z: 0 } }, { parent: node });
+
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+          width: legW,
+          height: legH,
+          depth: legD
+        }, {
+          position: {
+            x: xSide * (w / 2 - legW * 0.72),
+            y: legH / 2,
+            z: zSide * (d / 2 - legD * 0.72)
+          },
+          rotation: { x: -zSide * 0.045, z: xSide * 0.045 }
+        }, { parent: node });
+      });
+    });
+
+    [-1, 1].forEach((zSide) => {
+      boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+        width: w * 0.82,
+        height: apronH,
+        depth: legD * 0.75
+      }, {
+        position: { x: 0, y: h - seatH - apronH / 2, z: zSide * (d / 2 - legD) }
+      }, { parent: node });
+    });
+    [-1, 1].forEach((xSide) => {
+      boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+        width: legW * 0.75,
+        height: apronH,
+        depth: d * 0.82
+      }, {
+        position: { x: xSide * (w / 2 - legW), y: h - seatH - apronH / 2, z: 0 }
+      }, { parent: node });
+    });
+
+    // 参考常见塑料凳的一体注塑底圈：四根横条连接凳脚，同时保留中部大开口。
+    const baseRailH = Math.max(0.025, h * 0.065);
+    const baseRailY = baseRailH / 2;
+    [-1, 1].forEach((zSide) => {
+      boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+        width: w * 0.9,
+        height: baseRailH * 1.5,
+        depth: legD * 0.5
+      }, {
+        position: { x: 0, y: baseRailY + 0.15 * h, z: zSide * (d / 2 - legD * 0.4) }
+      }, { parent: node });
+    });
+    [-1, 1].forEach((xSide) => {
+      boxComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-body', {
+        width: legW * 0.5,
+        height: baseRailH * 1.5,
+        depth: d * 0.9
+      }, {
+        position: { x: xSide * (w / 2 - legW * 0.4), y: baseRailY + 0.15 * h, z: 0 }
+      }, { parent: node });
+    });
+
+    const holeDiameter = Math.min(w, d) * 0.045;
+    for (let row = -2; row <= 2; row += 1) {
+      for (let column = -2; column <= 2; column += 1) {
+        cylinderComponent(registry, item, outdoorPlasticStoolFurniture, 'plastic-stool-holes', {
+          diameterTop: holeDiameter,
+          diameterBottom: holeDiameter,
+          height: Math.max(0.002, seatH * 0.035),
+          tessellation: 8
+        }, {
+          position: {
+            x: column * w * 0.095,
+            y: h + seatH * 0.02,
+            z: row * d * 0.095
+          }
+        }, { parent: node });
+      }
+    }
+  }
+};
+
+export const outdoorMahjongPileFurniture = {
+  type: 'outdoor_mahjong_pile',
+  name: '麻将堆',
+  unit: 'm',
+  defaultSize: { width: 0.5, depth: 0.38, height: 0.065 },
+  components: [
+    { id: 'mahjong-tiles', label: '象牙色麻将牌', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.tileIvory },
+    { id: 'mahjong-red-marks', label: '红色牌面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.tileRed },
+    { id: 'mahjong-green-marks', label: '绿色牌面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.tileGreen },
+    { id: 'mahjong-blue-marks', label: '蓝色牌面', defaultColor: SOFT_LOW_POLY_OUTDOOR_PALETTE.tileBlue }
+  ],
+  build(registry, item, node, size) {
+    const tileW = size.width * 0.105;
+    const tileD = size.depth * 0.16;
+    const tileH = size.height * 0.72;
+    const layouts = [
+      [-0.38, -0.28, -0.18, 0], [-0.16, -0.32, 0.12, 0], [0.08, -0.31, -0.06, 0], [0.32, -0.25, 0.2, 0],
+      [-0.32, -0.02, 0.08, 0], [-0.08, -0.08, -0.28, 0], [0.18, -0.04, 0.1, 0], [0.39, 0.02, -0.16, 0],
+      [-0.4, 0.24, -0.12, 0], [-0.17, 0.22, 0.24, 0], [0.06, 0.25, -0.08, 0], [0.3, 0.27, 0.16, 0],
+      [-0.22, -0.02, 0.32, 1], [0.02, 0.04, -0.22, 1], [0.25, -0.08, 0.28, 1], [-0.03, 0.24, 0.06, 1],
+      [0.13, 0.2, -0.16, 2], [-0.3, 0.15, 0.18, 1]
+    ];
+    const markIds = ['mahjong-red-marks', 'mahjong-green-marks', 'mahjong-blue-marks'];
+
+    layouts.forEach(([xRatio, zRatio, rotation, level], index) => {
+      const x = xRatio * size.width;
+      const z = zRatio * size.depth;
+      const y = tileH / 2 + level * tileH * 0.78;
+      boxComponent(registry, item, outdoorMahjongPileFurniture, 'mahjong-tiles', {
+        width: tileW,
+        height: tileH,
+        depth: tileD
+      }, {
+        position: { x, y, z },
+        rotation: { y: rotation }
+      }, { parent: node });
+
+      const markId = markIds[index % markIds.length];
+      if (index % 3 === 0) {
+        cylinderComponent(registry, item, outdoorMahjongPileFurniture, markId, {
+          diameterTop: tileW * 0.24,
+          diameterBottom: tileW * 0.24,
+          height: Math.max(0.0015, tileH * 0.035),
+          tessellation: 8
+        }, {
+          position: { x, y: y + tileH / 2 + tileH * 0.018, z },
+          rotation: { y: rotation }
+        }, { parent: node });
+      } else {
+        boxComponent(registry, item, outdoorMahjongPileFurniture, markId, {
+          width: tileW * 0.16,
+          height: Math.max(0.0015, tileH * 0.035),
+          depth: tileD * 0.56
+        }, {
+          position: { x, y: y + tileH / 2 + tileH * 0.018, z },
+          rotation: { y: rotation }
+        }, { parent: node });
+      }
     });
   }
 };

@@ -197,7 +197,7 @@ export function canPlaceOnTable(item, definition) {
   const category = definition.category || '';
   
   // 1. 桌子、柜架大类本身不能摆放在别的桌上
-  if (category === 'tables' || category === 'storage') {
+  if (isTabletopSurfaceDefinition(definition) || category === 'storage') {
     return false;
   }
   
@@ -248,6 +248,16 @@ export function canPlaceOnTable(item, definition) {
     return false;
   }
   return true;
+}
+
+/**
+ * 判断家具是否提供可承载小物件的桌面。
+ * 显式能力标记允许户外等分类中的桌子复用桌面吸附与随动特性。
+ * @param {Object} definition 家具定义
+ * @returns {boolean}
+ */
+export function isTabletopSurfaceDefinition(definition) {
+  return !!definition && (definition.category === 'tables' || definition.tabletopSurface === true);
 }
 
 /**
@@ -429,7 +439,7 @@ export function findTableBelow(item, items, currentFloorId, getFurnitureDefiniti
     const otherDef = getFurnitureDefinition(other.type);
     if (!otherDef) continue;
     
-    if (otherDef.category !== 'tables' && otherDef.category !== 'storage') {
+    if (!isTabletopSurfaceDefinition(otherDef) && otherDef.category !== 'storage') {
       continue;
     }
     if (otherDef.placeType === 'ceiling') {
@@ -1168,7 +1178,7 @@ export function getItemsOnTable(table, items, getFurnitureDefinition) {
   const allItems = items || [];
   const tableDef = getFurnitureDefinition(table.type);
   if (!tableDef) return [];
-  if (tableDef.category !== 'tables') return [];
+  if (!isTabletopSurfaceDefinition(tableDef)) return [];
 
   const cx = table.x;
   const cz = table.z;

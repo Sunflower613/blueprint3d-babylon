@@ -3,7 +3,7 @@ import test from 'node:test';
 import { FURNITURE_DEFINITIONS, Topology } from '../../src/index.js';
 import { EntityManager } from '../../example/js/EntityManager.js';
 
-function createTestManager(initialItems = []) {
+function createTestManager(initialItems = [], options = {}) {
   const entities = new Map(initialItems.map((item) => [item.id, item]));
   const updates = [];
   const testMap = {
@@ -11,7 +11,7 @@ function createTestManager(initialItems = []) {
     getEntity: (_kind, id) => entities.get(id),
     getEntities: (kind) => (kind === 'item' ? [...entities.values()] : []),
     getProjectMetadata: () => ({ wallHeight: 2.8, wallThickness: 0.15 }),
-    getRoomAt: () => null,
+    getRoomAt: options.getRoomAt || (() => null),
     syncEntityPreview() {},
     executeCommand(command, payload) {
       if (command === 'updateItem') {
@@ -48,7 +48,12 @@ function createTestManager(initialItems = []) {
     clear3DEditHandles() {},
     onSelectionChanged() {},
     canPlaceOnTable: Topology.canPlaceOnTable,
-    findTableBelow: () => null
+    findTableBelow: (item) => Topology.findTableBelow(
+      item,
+      [...entities.values()],
+      item.floorId || 'floor-1',
+      (type) => FURNITURE_DEFINITIONS[type]
+    )
   });
 
   return { manager, entities, updates };
@@ -260,4 +265,41 @@ test('手动调整桌子宽度扩大后大桌面上的小物件依然精准随�
   assert.equal(itemOnDesk.z, 3);
 });
 
+test('户外麻将桌提供桌面吸附能力并带动桌面麻将堆移动', () => {
+  const tableDef = FURNITURE_DEFINITIONS.outdoor_mahjong_table;
+  const pileDef = FURNITURE_DEFINITIONS.outdoor_mahjong_pile;
+  const tableHeight = Topology.getItemSizeInMetres({ type: tableDef.type, scale: 1 }, tableDef).height;
+  const table = {
+    id: 'mahjong-table-1', type: tableDef.type, floorId: 'floor-1',
+    x: 1, z: 2, elevation: 0, rotation: 0, scale: 1
+  };
+  const pile = {
+    id: 'mahjong-pile-1', type: pileDef.type, floorId: 'floor-1',
+    x: 0, z: 0, elevation: 0, rotation: 0, scale: 1
+  };
+  const definitions = (type) => FURNITURE_DEFINITIONS[type];
 
+  assert.equal(Topology.isTabletopSurfaceDefinition(tableDef), true);
+  assert.equal(Topology.canPlaceOnTable(pile, pileDef), true);
+  const pileOnTable = { ...pile, x: 1.1, z: 2, elevation: tableHeight };
+  assert.equal(Topology.findTableBelow(pileOnTable, [table, pileOnTable], 'floor-1', definitions)?.id, table.id);
+  assert.deepEqual(Topology.getItemsOnTable(table, [table, pileOnTable], definitions).map(({ id }) => id), [pile.id]);
+
+  const { manager } = createTestManager([table, pile], { getRoomAt: () => ({ id: 'room-1' }) });
+
+  manager.moveItemTo(pile.id, 1.1, 2, true);
+  assert.equal(pile.elevation, tableHeight, '麻将堆放到桌面后应自动抬升');
+
+  manager.moveItemTo(table.id, 3, 4);
+  assert.equal(pile.x, 3.1);
+  assert.equal(pile.z, 4);
+  assert.equal(pile.elevation, tableHeight);
+
+  manager.updateItemRotation(table.id, 90);
+  assert.ok(Math.abs(pile.x - 3) < 0.001);
+  assert.ok(Math.abs(pile.z - 3.9) < 0.001);
+  assert.ok(Math.abs(pile.rotation - Math.PI / 2) < 0.001);
+
+  manager.updateItemSize(table.id, tableDef.defaultSize.width, tableDef.defaultSize.depth, tableHeight + 0.1, 0);
+  assert.ok(Math.abs(pile.elevation - (tableHeight + 0.1)) < 0.001);
+});
